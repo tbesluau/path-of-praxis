@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "lucide": "^0.469.0"
+    "lucide": "^0.469.0",
+    "pixi.js": "^8.0.0"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

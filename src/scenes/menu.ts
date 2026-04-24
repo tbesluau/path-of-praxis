@@ -1,6 +1,7 @@
 import { createIcons, Play, Trophy, Settings } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
+import type { SceneId } from '../core/router'
 
 interface Particle {
   x: number
@@ -18,7 +19,10 @@ const PARTICLE_COLORS = [
   tokens.color.accentAlt,
 ]
 
-export function createMenuScene(container: HTMLElement): () => void {
+export function createMenuScene(
+  container: HTMLElement,
+  navigate: (to: SceneId) => void,
+): () => void {
   const el = document.createElement('div')
   el.className = 'scene scene-menu'
   el.innerHTML = `
@@ -54,8 +58,8 @@ export function createMenuScene(container: HTMLElement): () => void {
   el.querySelectorAll<HTMLButtonElement>('.menu-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset['action']
-      console.info(`[menu] action: ${action}`)
-      // TODO: wire scene router
+      if (action === 'play') navigate('game')
+      else console.info(`[menu] action: ${action}`)
     })
   })
 
