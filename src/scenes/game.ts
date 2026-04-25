@@ -125,10 +125,11 @@ export function createGameScene(
   const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
 
   function updateActionBtn(def: ActionDef): void {
-    actionBtn.querySelector('i')!.setAttribute('data-lucide', def.icon)
-    actionBtn.querySelector('span')!.textContent = def.label
+    actionBtn.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><span>${def.label}</span>`
     createIcons({ icons: { Sword, Target, Flame, Zap } })
   }
+
+  updateActionBtn(getAction('sword'))
 
   actionBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
