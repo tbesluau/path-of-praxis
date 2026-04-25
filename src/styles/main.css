@@ -287,11 +287,21 @@ body {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+  background: linear-gradient(
+    to right,
+    rgba(139, 124, 248, 0.22) var(--xp-pct, 0%),
+    rgba(139, 124, 248, 0.08) var(--xp-pct, 0%)
+  );
 }
 
 .game-action-btn--action:hover,
 .game-action-btn--action:focus-visible {
   color: var(--color-text);
+  background: linear-gradient(
+    to right,
+    rgba(139, 124, 248, 0.32) var(--xp-pct, 0%),
+    rgba(139, 124, 248, 0.18) var(--xp-pct, 0%)
+  );
 }
 
 .game-action-btn--action svg {
@@ -397,6 +407,12 @@ body {
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+.action-card-meta {
+  font-size: 0.65rem;
+  opacity: 0.55;
+  letter-spacing: 0.04em;
 }
 
 /* ── Menu disabled state ── */

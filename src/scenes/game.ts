@@ -154,7 +154,11 @@ export function createGameScene(
   const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
 
   function updateActionBtn(def: ActionDef): void {
-    const level = getPlayerLevel(def.id as ActionId)
+    const id = def.id as ActionId
+    const p = actionProgress[id]
+    const level = p?.level ?? 1
+    const xpPct = p ? Math.round((p.xp / (p.level * balance.action.xpPerLevel)) * 100) : 0
+    actionBtn.style.setProperty('--xp-pct', `${xpPct}%`)
     actionBtn.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><span>${def.label}</span><small class="action-level">Lv.${level}</small>`
     createIcons({ icons: { Sword, Target, Flame, Zap } })
   }
@@ -174,6 +178,7 @@ export function createGameScene(
         if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress)
       },
       () => { modalCleanup = null },
+      actionProgress,
     )
   })
 
@@ -440,6 +445,7 @@ export function createGameScene(
 
     playerDead = false
     updateBars()
+    updateActionBtn(getAction(playerActionId))
 
     scheduleWave()
   }
@@ -785,16 +791,26 @@ function mountActionSelectModal(
   currentId: ActionId,
   onSelect: (id: ActionId) => void,
   onClose: () => void,
+  actionProgress: Record<string, ActionProgress>,
 ): () => void {
   const weaponActions = allActions.filter(a => a.kind === 'weapon')
   const spellActions  = allActions.filter(a => a.kind === 'spell')
 
   const buildCards = (actions: ActionDef[]) =>
-    actions.map(a => `
-      <button class="action-card${a.id === currentId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
-        <i data-lucide="${a.icon}" aria-hidden="true"></i>
-        <span class="action-card-name">${escapeHtml(a.label)}</span>
-      </button>`).join('')
+    actions.map(a => {
+      const p = actionProgress[a.id]
+      const level = p?.level ?? 1
+      const maxLevel = p?.maxLevel ?? 1
+      const meta = maxLevel > 1
+        ? `Lv.${level} · ×${Math.sqrt(maxLevel).toFixed(1)}`
+        : `Lv.${level}`
+      return `
+        <button class="action-card${a.id === currentId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
+          <i data-lucide="${a.icon}" aria-hidden="true"></i>
+          <span class="action-card-name">${escapeHtml(a.label)}</span>
+          <span class="action-card-meta">${meta}</span>
+        </button>`
+    }).join('')
 
   const startOnWeapons = weaponActions.some(a => a.id === currentId)
 
