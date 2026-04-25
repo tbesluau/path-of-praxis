@@ -5,6 +5,7 @@ import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState } from '../core/character'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
+import { GRID_SIZE } from '../core/world'
 import type { SceneId } from '../core/router'
 
 const PLAYER_RADIUS = 20
@@ -139,6 +140,7 @@ export function createGameScene(
   // ── PixiJS ──────────────────────────────────────────────────────────────
 
   let app: Application | null = null
+  let worldGrid: Graphics | null = null
   let destroyed = false
   let modalCleanup: (() => void) | null = null
   const entityGraphics = new Map<string, Graphics>()
@@ -167,6 +169,33 @@ export function createGameScene(
     g.position.set(entity.x, entity.y)
     app.stage.addChild(g)
     entityGraphics.set(entity.id, g)
+  }
+
+  // Redraws the world grid to cover the current viewport in world-space coordinates.
+  function drawGrid(): void {
+    if (!app || !worldGrid) return
+    const { width, height } = app.screen
+    const halfW = width / 2
+    const halfH = (height - HUD_HEIGHT) / 2
+
+    const left   = playerEntity.x - halfW   - GRID_SIZE
+    const right  = playerEntity.x + halfW   + GRID_SIZE
+    const top    = playerEntity.y - halfH   - GRID_SIZE
+    const bottom = playerEntity.y + halfH   + GRID_SIZE
+
+    const startX = Math.floor(left  / GRID_SIZE) * GRID_SIZE
+    const startY = Math.floor(top   / GRID_SIZE) * GRID_SIZE
+
+    worldGrid.clear()
+    for (let x = startX; x <= right;  x += GRID_SIZE) {
+      worldGrid.moveTo(x, top)
+      worldGrid.lineTo(x, bottom)
+    }
+    for (let y = startY; y <= bottom; y += GRID_SIZE) {
+      worldGrid.moveTo(left, y)
+      worldGrid.lineTo(right, y)
+    }
+    worldGrid.stroke({ color: tokens.color.primary, width: 1, alpha: 0.1 })
   }
 
   // Offsets the stage so the player always appears at the visual center.
@@ -222,9 +251,13 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       el.insertBefore(wrapper, el.firstChild)
 
+      worldGrid = new Graphics()
+      app.stage.addChild(worldGrid)
+
       initEntityGraphics(playerEntity)
+      drawGrid()
       updateCamera()
-      app.renderer.on('resize', updateCamera)
+      app.renderer.on('resize', () => { drawGrid(); updateCamera() })
 
       app.ticker.add((ticker) => {
         const dt = ticker.deltaMS / 1000
@@ -240,6 +273,7 @@ export function createGameScene(
           entity.y += (dy / dist) * ENTITY_SPEED * dt
           entityGraphics.get(entity.id)?.position.set(entity.x, entity.y)
         }
+        drawGrid()
         updateCamera()
       })
     } catch (err) {
