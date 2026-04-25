@@ -52,6 +52,18 @@ body {
 
 /* ── Menu ── */
 
+.version-badge {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-md);
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  z-index: 5;
+}
+
 .menu-content {
   position: relative;
   z-index: 1;
