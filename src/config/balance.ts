@@ -16,9 +16,7 @@ export const balance = {
     startingLife:  50,   // on new character creation and after rebirth
     startingMana:  50,
     regenRate:     1,    // life and mana recovered per second
-    attackSpeed:   1,    // attacks per second
-    attackDamage:  1,
-    attackRange:   1,    // range units (1 unit = player radius)
+    // attack stats are defined per-action in src/config/weapons.ts and spells.ts
   },
 
   // ── Enemy teams ─────────────────────────────────────────────────────────
@@ -26,18 +24,14 @@ export const balance = {
     radius:        20,   // pixels
     moveSpeed:     80,   // pixels per second
     maxLife:       100,
-    attackSpeed:   1,    // attacks per second
-    attackDamage:  1,
-    attackRange:   1,    // range units (1 unit = player radius)
+    // attack stats are defined per-action in src/config/weapons.ts and spells.ts
   },
 
   enemyB: {
     radius:        20,   // pixels
     moveSpeed:     80,   // pixels per second
     maxLife:       100,
-    attackSpeed:   1,    // attacks per second
-    attackDamage:  1,
-    attackRange:   1,    // range units (1 unit = player radius)
+    // attack stats are defined per-action in src/config/weapons.ts and spells.ts
   },
 
   // ── Enemy waves ─────────────────────────────────────────────────────────
