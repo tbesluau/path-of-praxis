@@ -768,14 +768,18 @@ function mountActionSelectModal(
     panels.forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab })
   }))
 
-  const dismiss = () => { backdrop.remove(); onClose() }
+  let selectedId = currentId
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action-id]').forEach(card =>
     card.addEventListener('click', () => {
-      onSelect(card.dataset.actionId as ActionId)
-      dismiss()
+      selectedId = card.dataset.actionId as ActionId
+      backdrop.querySelectorAll('[data-action-id]').forEach(c =>
+        c.classList.toggle('action-card--selected', c === card),
+      )
     }),
   )
+
+  const dismiss = () => { onSelect(selectedId); backdrop.remove(); onClose() }
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
