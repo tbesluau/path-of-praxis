@@ -1,7 +1,15 @@
-import { createIcons, Play, Trophy, Settings } from 'lucide'
+import { createIcons, Play, UserPlus, FolderOpen, Trophy, Settings, Trash2 } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import type { SceneId } from '../core/router'
+import {
+  getCharacters,
+  getCurrentId,
+  createCharacter,
+  loadCharacter,
+  deleteCharacter,
+  MAX_SLOTS,
+} from '../core/character'
 
 interface Particle {
   x: number
@@ -33,10 +41,19 @@ export function createMenuScene(
         <p class="game-subtitle">${t('game', 'subtitle')}</p>
       </header>
       <nav class="menu-nav" aria-label="${t('menu', 'nav')}">
-        <button class="menu-btn" data-action="play">
+        <button class="menu-btn" data-action="continue">
           <i data-lucide="play" aria-hidden="true"></i>
-          <span>${t('menu', 'play')}</span>
+          <span>${t('menu', 'continue')}</span>
         </button>
+        <button class="menu-btn" data-action="new-character">
+          <i data-lucide="user-plus" aria-hidden="true"></i>
+          <span>${t('menu', 'newCharacter')}</span>
+        </button>
+        <button class="menu-btn" data-action="load-character">
+          <i data-lucide="folder-open" aria-hidden="true"></i>
+          <span>${t('menu', 'loadCharacter')}</span>
+        </button>
+        <div class="menu-divider" role="separator"></div>
         <button class="menu-btn" data-action="ladder">
           <i data-lucide="trophy" aria-hidden="true"></i>
           <span>${t('menu', 'ladder')}</span>
@@ -50,23 +67,219 @@ export function createMenuScene(
   `
 
   container.appendChild(el)
-  createIcons({ icons: { Play, Trophy, Settings } })
+  createIcons({ icons: { Play, UserPlus, FolderOpen, Trophy, Settings, Trash2 } })
 
   const canvas = el.querySelector<HTMLCanvasElement>('#menu-canvas')!
   const stopParticles = startParticles(canvas)
 
-  el.querySelectorAll<HTMLButtonElement>('.menu-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const action = btn.dataset['action']
-      if (action === 'play') navigate('game')
-      else console.info(`[menu] action: ${action}`)
+  const btnContinue = el.querySelector<HTMLButtonElement>('[data-action="continue"]')!
+  const btnNew = el.querySelector<HTMLButtonElement>('[data-action="new-character"]')!
+  const btnLoad = el.querySelector<HTMLButtonElement>('[data-action="load-character"]')!
+
+  let modalCleanup: (() => void) | null = null
+
+  function refreshButtonStates(): void {
+    const chars = getCharacters()
+    const currentId = getCurrentId()
+    btnContinue.disabled = currentId === null
+    btnLoad.disabled = chars.length === 0
+    btnNew.disabled = chars.length >= MAX_SLOTS
+  }
+
+  function closeModal(): void {
+    if (modalCleanup) {
+      modalCleanup()
+      modalCleanup = null
+    }
+    refreshButtonStates()
+  }
+
+  refreshButtonStates()
+
+  btnContinue.addEventListener('click', () => {
+    if (!btnContinue.disabled) navigate('game')
+  })
+
+  btnNew.addEventListener('click', () => {
+    if (btnNew.disabled) return
+    closeModal()
+    modalCleanup = mountNewCharacterModal(el, {
+      onClose: closeModal,
+      onCreate: (name) => {
+        createCharacter(name)
+        closeModal()
+      },
     })
   })
 
+  btnLoad.addEventListener('click', () => {
+    if (btnLoad.disabled) return
+    closeModal()
+    modalCleanup = mountLoadCharacterModal(el, { onClose: closeModal })
+  })
+
+  el.querySelectorAll<HTMLButtonElement>('.menu-btn').forEach(btn => {
+    const action = btn.dataset['action']
+    if (action === 'ladder' || action === 'options') {
+      btn.addEventListener('click', () => console.info(`[menu] action: ${action}`))
+    }
+  })
+
+  function onEscape(e: KeyboardEvent): void {
+    if (e.key === 'Escape') closeModal()
+  }
+  document.addEventListener('keydown', onEscape)
+
   return () => {
     stopParticles()
+    document.removeEventListener('keydown', onEscape)
+    if (modalCleanup) modalCleanup()
     el.remove()
   }
+}
+
+function mountNewCharacterModal(
+  parent: HTMLElement,
+  { onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => void },
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-new-title">
+      <h2 class="modal-title" id="modal-new-title">${t('character', 'newTitle')}</h2>
+      <div class="modal-field">
+        <label class="modal-label" for="char-name-input">${t('character', 'nameLabel')}</label>
+        <input
+          id="char-name-input"
+          class="modal-input"
+          type="text"
+          maxlength="32"
+          placeholder="${t('character', 'namePlaceholder')}"
+          autocomplete="off"
+        />
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
+        <button class="modal-btn modal-btn--primary" data-action="create" disabled>${t('character', 'create')}</button>
+      </div>
+    </div>
+  `
+
+  parent.appendChild(backdrop)
+
+  const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
+  const createBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="create"]')!
+  const cancelBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
+
+  input.focus()
+
+  input.addEventListener('input', () => {
+    createBtn.disabled = input.value.trim().length === 0
+  })
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !createBtn.disabled) {
+      onCreate(input.value.trim())
+    }
+  })
+
+  createBtn.addEventListener('click', () => {
+    if (!createBtn.disabled) onCreate(input.value.trim())
+  })
+
+  cancelBtn.addEventListener('click', onClose)
+
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) onClose()
+  })
+
+  return () => backdrop.remove()
+}
+
+function mountLoadCharacterModal(
+  parent: HTMLElement,
+  { onClose }: { onClose: () => void },
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-load-title">
+      <h2 class="modal-title" id="modal-load-title">${t('character', 'loadTitle')}</h2>
+      <div class="char-slot-list"></div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
+      </div>
+    </div>
+  `
+
+  parent.appendChild(backdrop)
+
+  const slotList = backdrop.querySelector<HTMLElement>('.char-slot-list')!
+
+  function renderSlots(): void {
+    const chars = getCharacters()
+    const currentId = getCurrentId()
+    slotList.innerHTML = ''
+
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const char = chars[i]
+      const row = document.createElement('div')
+
+      if (!char) {
+        row.className = 'char-slot char-slot--empty'
+        row.textContent = t('character', 'emptySlot')
+      } else {
+        const isCurrent = char.id === currentId
+        row.className = `char-slot${isCurrent ? ' char-slot--current' : ' char-slot--selectable'}`
+
+        const nameSpan = document.createElement('span')
+        nameSpan.className = 'char-slot-name'
+        nameSpan.textContent = char.name
+
+        row.appendChild(nameSpan)
+
+        if (isCurrent) {
+          const badge = document.createElement('span')
+          badge.className = 'char-slot-badge'
+          badge.textContent = t('character', 'current')
+          row.appendChild(badge)
+        } else {
+          row.addEventListener('click', () => {
+            loadCharacter(char.id)
+            onClose()
+          })
+        }
+
+        const delBtn = document.createElement('button')
+        delBtn.className = 'char-slot-delete'
+        delBtn.setAttribute('aria-label', t('character', 'deleteLabel'))
+        delBtn.innerHTML = '<i data-lucide="trash-2" aria-hidden="true"></i>'
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          deleteCharacter(char.id)
+          createIcons({ icons: { Trash2 } })
+          renderSlots()
+          if (getCharacters().length === 0) onClose()
+        })
+        row.appendChild(delBtn)
+      }
+
+      slotList.appendChild(row)
+    }
+
+    createIcons({ icons: { Trash2 } })
+  }
+
+  renderSlots()
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
+    .addEventListener('click', onClose)
+
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) onClose()
+  })
+
+  return () => backdrop.remove()
 }
 
 function startParticles(canvas: HTMLCanvasElement): () => void {

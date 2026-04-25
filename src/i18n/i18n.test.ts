@@ -7,14 +7,16 @@ describe('i18n', () => {
   it('returns correct English translations', () => {
     expect(t('game', 'title')).toBe('Path of Praxis')
     expect(t('game', 'subtitle')).toBe('Forge your path')
-    expect(t('menu', 'play')).toBe('Play')
+    expect(t('menu', 'continue')).toBe('Continue')
+    expect(t('menu', 'newCharacter')).toBe('New Character')
+    expect(t('menu', 'loadCharacter')).toBe('Load Character')
     expect(t('menu', 'ladder')).toBe('Ladder')
     expect(t('menu', 'options')).toBe('Options')
   })
 
   it('switches locale to French', () => {
     setLocale('fr')
-    expect(t('menu', 'play')).toBe('Jouer')
+    expect(t('menu', 'continue')).toBe('Continuer')
     expect(t('menu', 'ladder')).toBe('Classement')
     expect(t('game', 'subtitle')).toBe('Forge ta voie')
   })
@@ -22,13 +24,13 @@ describe('i18n', () => {
   it('falls back to English for unknown browser locale', () => {
     Object.defineProperty(navigator, 'language', { value: 'ja', configurable: true })
     initI18n()
-    expect(t('menu', 'play')).toBe('Play')
+    expect(t('menu', 'continue')).toBe('Continue')
   })
 
   it('detects French from browser locale', () => {
     Object.defineProperty(navigator, 'language', { value: 'fr-FR', configurable: true })
     initI18n()
-    expect(t('menu', 'play')).toBe('Jouer')
+    expect(t('menu', 'continue')).toBe('Continuer')
     setLocale('en')
   })
 })
