@@ -23,6 +23,9 @@ export const fr: TranslationSchema = {
     emptySlot: '— Vide —',
     deleteLabel: 'Supprimer',
     nameTaken: 'Ce nom est déjà utilisé.',
+    infoTitle: 'Personnage',
+    statMaxLife: 'Vie max',
+    statMaxMana: 'Mana max',
   },
   settings: {
     title: 'Paramètres',

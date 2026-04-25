@@ -14,10 +14,12 @@ describe('character', () => {
     expect(character.getCurrentCharacter()).toBeNull()
   })
 
-  it('creates a character and sets it as current', () => {
+  it('creates a character with default stats', () => {
     const c = character.createCharacter('Alice')
     expect(c.name).toBe('Alice')
     expect(c.id).toBeTruthy()
+    expect(c.maxLife).toBe(100)
+    expect(c.maxMana).toBe(100)
     expect(character.getCharacters()).toHaveLength(1)
     expect(character.getCurrentId()).toBe(c.id)
     expect(character.getCurrentCharacter()?.name).toBe('Alice')
@@ -75,5 +77,13 @@ describe('character', () => {
     character.deleteCharacter(c.id)
     expect(character.getCharacters()).toHaveLength(0)
     expect(character.getCurrentId()).toBeNull()
+  })
+
+  it('normalises legacy saves missing maxLife/maxMana', () => {
+    const legacy = { characters: [{ id: 'x', name: 'Old', createdAt: 0 }], currentId: 'x' }
+    localStorage.setItem('pop:save', JSON.stringify(legacy))
+    const chars = character.getCharacters()
+    expect(chars[0].maxLife).toBe(100)
+    expect(chars[0].maxMana).toBe(100)
   })
 })
