@@ -5,8 +5,6 @@ describe('character', () => {
 
   beforeEach(async () => {
     localStorage.clear()
-    // Re-import each time so module-level state doesn't carry over
-    // (character.ts reads from localStorage at call time, so clear() is enough)
     character = await import('./character')
   })
 
@@ -30,6 +28,11 @@ describe('character', () => {
     expect(c.name).toBe('Bob')
   })
 
+  it('prevents duplicate character names', () => {
+    character.createCharacter('Alice')
+    expect(() => character.createCharacter('Alice')).toThrow(/taken/)
+  })
+
   it('allows up to MAX_SLOTS characters', () => {
     for (let i = 0; i < character.MAX_SLOTS; i++) {
       character.createCharacter(`Hero ${i}`)
@@ -50,13 +53,21 @@ describe('character', () => {
     expect(() => character.loadCharacter('does-not-exist')).toThrow(/not found/)
   })
 
-  it('deletes a character and falls back current to first remaining', () => {
-    const a = character.createCharacter('Alpha')
+  it('deleting current character sets currentId to null', () => {
+    character.createCharacter('Alpha')
     const b = character.createCharacter('Beta')
     character.loadCharacter(b.id)
     character.deleteCharacter(b.id)
     expect(character.getCharacters()).toHaveLength(1)
-    expect(character.getCurrentId()).toBe(a.id)
+    expect(character.getCurrentId()).toBeNull()
+  })
+
+  it('deleting a non-current character preserves current', () => {
+    const a = character.createCharacter('Alpha')
+    const b = character.createCharacter('Beta')
+    character.loadCharacter(b.id)
+    character.deleteCharacter(a.id)
+    expect(character.getCurrentId()).toBe(b.id)
   })
 
   it('sets currentId to null when last character is deleted', () => {

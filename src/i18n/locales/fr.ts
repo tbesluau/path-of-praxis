@@ -23,5 +23,6 @@ export const fr: TranslationSchema = {
     current: 'Actuel',
     emptySlot: '— Vide —',
     deleteLabel: 'Supprimer',
+    nameTaken: 'Ce nom est déjà utilisé.',
   },
 }

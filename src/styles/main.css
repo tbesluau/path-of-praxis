@@ -206,6 +206,19 @@ body {
   transform: scale(0.94);
 }
 
+.game-action-btn--icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-action-btn--icon svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.75;
+  color: var(--color-primary);
+}
+
 /* ── Menu disabled state ── */
 
 .menu-btn:disabled {
@@ -409,4 +422,41 @@ body {
   width: 16px;
   height: 16px;
   stroke-width: 1.75;
+}
+
+/* ── Modal input error ── */
+
+.modal-input-error {
+  font-size: 0.75rem;
+  color: #f87171;
+  min-height: 1em;
+}
+
+/* ── Character info modal ── */
+
+.char-info-panel {
+  width: min(480px, 90vw);
+}
+
+.char-info-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.char-info-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  min-width: 64px;
+}
+
+.char-info-value {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--color-text);
 }

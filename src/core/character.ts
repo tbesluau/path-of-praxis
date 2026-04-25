@@ -46,7 +46,9 @@ export function getCurrentCharacter(): Character | null {
 export function createCharacter(name: string): Character {
   const data = read()
   if (data.characters.length >= MAX_SLOTS) throw new Error('All save slots are full')
-  const char: Character = { id: crypto.randomUUID(), name: name.trim(), createdAt: Date.now() }
+  const trimmed = name.trim()
+  if (data.characters.some(c => c.name === trimmed)) throw new Error('Name already taken')
+  const char: Character = { id: crypto.randomUUID(), name: trimmed, createdAt: Date.now() }
   data.characters.push(char)
   data.currentId = char.id
   write(data)
@@ -63,6 +65,6 @@ export function loadCharacter(id: string): void {
 export function deleteCharacter(id: string): void {
   const data = read()
   data.characters = data.characters.filter(c => c.id !== id)
-  if (data.currentId === id) data.currentId = data.characters[0]?.id ?? null
+  if (data.currentId === id) data.currentId = null
   write(data)
 }
