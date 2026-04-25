@@ -2,6 +2,8 @@ export interface TranslationSchema {
   game: {
     title: string
     subtitle: string
+    deathTitle: string
+    deathRebirth: string
   }
   menu: {
     continue: string
@@ -38,6 +40,8 @@ export const en: TranslationSchema = {
   game: {
     title: 'Path of Praxis',
     subtitle: 'Forge your path',
+    deathTitle: 'You have died',
+    deathRebirth: 'Rebirth',
   },
   menu: {
     continue: 'Continue',

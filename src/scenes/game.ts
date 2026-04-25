@@ -11,13 +11,24 @@ import type { SceneId } from '../core/router'
 
 const PLAYER_RADIUS = 20
 const HP_BAR_H = 4
-const HP_BAR_GAP = 4   // px between entity top and bar bottom
+const HP_BAR_GAP = 4
 const HUD_HEIGHT = 128
 const REGEN_RATE = 1
 const SAVE_INTERVAL_MS = 10_000
 const ENEMY_SPAWN_DELAY_MS = 2_000
-const ENTITY_SPEED = 80   // px/s
+const ENTITY_SPEED = 80
 const SPAWN_DISTANCE = 300
+const FRAG_COUNT = 8
+const FRAG_LIFETIME = 750 // ms
+
+interface DeathFragment {
+  g: Graphics
+  vx: number
+  vy: number
+  spin: number
+  age: number
+  maxAge: number
+}
 
 export function createGameScene(
   container: HTMLElement,
@@ -57,6 +68,7 @@ export function createGameScene(
   createEntityBody(playerEntity)
 
   let paused = true
+  let playerDead = false
   let enemiesSpawned = false
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -105,6 +117,7 @@ export function createGameScene(
   function startRegen(): void {
     if (regenTimer !== null) return
     regenTimer = setInterval(() => {
+      if (playerDead) return
       playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + REGEN_RATE)
       playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + REGEN_RATE)
       updateBars()
@@ -149,11 +162,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoBack(): void {
-    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
     navigate('menu')
   }
 
@@ -167,12 +180,10 @@ export function createGameScene(
   let destroyed = false
   let modalCleanup: (() => void) | null = null
 
-  // One Container per entity (holds sprite + optional life bar); positioned at world coords.
   const entityContainers = new Map<string, Container>()
-  // Life bar Graphics per enemy (child of that entity's Container).
   const lifeBarGraphics = new Map<string, Graphics>()
-  // ms remaining until each entity's next attack.
   const attackCooldowns = new Map<string, number>()
+  const deathFragments: DeathFragment[] = []
 
   const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
   charBtn.addEventListener('click', () => {
@@ -184,7 +195,6 @@ export function createGameScene(
     modalCleanup = mountCharacterModal(el, () => { modalCleanup = null })
   })
 
-  // Redraws the life bar fill for an enemy (call on spawn and after each hit).
   function drawLifeBar(entity: Entity): void {
     const bar = lifeBarGraphics.get(entity.id)
     if (!bar) return
@@ -199,12 +209,9 @@ export function createGameScene(
     }
   }
 
-  // Creates the Container with sprite (and life bar for enemies) for an entity.
   function initEntityDisplay(entity: Entity): void {
     if (!app || entityContainers.has(entity.id)) return
-
     const c = new Container()
-
     const sprite = new Graphics()
     if (entity.role === 'player') {
       sprite.circle(0, 0, entity.radius)
@@ -214,36 +221,29 @@ export function createGameScene(
       sprite.fill({ color: tokens.color.accentAlt })
     }
     c.addChild(sprite)
-
     if (entity.role !== 'player') {
       const bar = new Graphics()
-      // Position bar above entity: top edge of sprite is at -radius, leave HP_BAR_GAP above
       bar.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H))
       c.addChild(bar)
       lifeBarGraphics.set(entity.id, bar)
       drawLifeBar(entity)
     }
-
     c.position.set(entity.x, entity.y)
     app.stage.addChild(c)
     entityContainers.set(entity.id, c)
   }
 
-  // Redraws the world grid to cover the current viewport in world-space coordinates.
   function drawGrid(): void {
     if (!app || !worldGrid) return
     const { width, height } = app.screen
     const halfW = width / 2
     const halfH = (height - HUD_HEIGHT) / 2
-
     const left   = playerEntity.x - halfW   - GRID_SIZE
     const right  = playerEntity.x + halfW   + GRID_SIZE
     const top    = playerEntity.y - halfH   - GRID_SIZE
     const bottom = playerEntity.y + halfH   + GRID_SIZE
-
     const startX = Math.floor(left  / GRID_SIZE) * GRID_SIZE
     const startY = Math.floor(top   / GRID_SIZE) * GRID_SIZE
-
     worldGrid.clear()
     for (let x = startX; x <= right;  x += GRID_SIZE) {
       worldGrid.moveTo(x, top)
@@ -256,7 +256,6 @@ export function createGameScene(
     worldGrid.stroke({ color: tokens.color.primary, width: 1, alpha: 0.1 })
   }
 
-  // Offsets the stage so the player always appears at the visual center.
   function updateCamera(): void {
     if (!app) return
     const { width, height } = app.screen
@@ -265,6 +264,122 @@ export function createGameScene(
       (height - HUD_HEIGHT) / 2 - playerEntity.y,
     )
   }
+
+  // ── Death system ─────────────────────────────────────────────────────────
+
+  function spawnDeathFragments(entity: Entity): void {
+    if (!app) return
+    const color = entity.role === 'player' ? tokens.color.primary : tokens.color.accentAlt
+    const fragSize = entity.radius * 0.35
+
+    for (let i = 0; i < FRAG_COUNT; i++) {
+      const angle = (i / FRAG_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.5
+      const speed = 70 + Math.random() * 110
+      const g = new Graphics()
+      if (entity.role === 'player') {
+        g.circle(0, 0, fragSize)
+        g.fill({ color })
+      } else {
+        g.rect(-fragSize, -fragSize * 0.6, fragSize * 2, fragSize * 1.2)
+        g.fill({ color })
+      }
+      g.position.set(entity.x, entity.y)
+      app.stage.addChild(g)
+      deathFragments.push({
+        g,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        spin: entity.role === 'player' ? 0 : (Math.random() - 0.5) * 9,
+        age: 0,
+        maxAge: FRAG_LIFETIME + Math.random() * 300,
+      })
+    }
+  }
+
+  // Removes entity from all data structures without spawning animation.
+  function removeEntity(entity: Entity): void {
+    const body = entityBodies.get(entity.id)
+    if (body) {
+      Matter.Composite.remove(physicsEngine.world, body)
+      entityBodies.delete(entity.id)
+    }
+    const c = entityContainers.get(entity.id)
+    if (c) {
+      c.destroy()
+      entityContainers.delete(entity.id)
+    }
+    lifeBarGraphics.delete(entity.id)
+    attackCooldowns.delete(entity.id)
+    const idx = entities.indexOf(entity)
+    if (idx !== -1) entities.splice(idx, 1)
+  }
+
+  // On-death hook: runs the shatter animation then cleans up the entity.
+  function killEntity(entity: Entity): void {
+    spawnDeathFragments(entity)
+    removeEntity(entity)
+    if (entity.role === 'player') {
+      playerDead = true
+      modalCleanup = mountDeathModal()
+    }
+  }
+
+  function rebirth(): void {
+    modalCleanup = null
+
+    // Clear any in-progress fragments immediately
+    for (const f of deathFragments) f.g.destroy()
+    deathFragments.length = 0
+
+    // Remove remaining enemies without animation
+    for (const entity of [...entities]) {
+      if (entity.role !== 'player') removeEntity(entity)
+    }
+
+    // Cancel any pending enemy spawn timer
+    if (enemySpawnTimeout !== null) {
+      clearTimeout(enemySpawnTimeout)
+      enemySpawnTimeout = null
+    }
+
+    // Reset player
+    playerEntity.currentLife = playerEntity.maxLife
+    playerEntity.currentMana = playerEntity.maxMana
+    playerEntity.x = 0
+    playerEntity.y = 0
+
+    entities.push(playerEntity)
+    createEntityBody(playerEntity)
+    initEntityDisplay(playerEntity)
+
+    playerDead = false
+    enemiesSpawned = false
+    updateBars()
+
+    // Schedule enemy respawn (game is still unpaused at this point)
+    enemySpawnTimeout = setTimeout(() => {
+      if (!destroyed) spawnEnemies()
+    }, ENEMY_SPAWN_DELAY_MS)
+  }
+
+  function mountDeathModal(): () => void {
+    const backdrop = document.createElement('div')
+    backdrop.className = 'modal-backdrop'
+    backdrop.innerHTML = `
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="death-title">
+        <h2 class="modal-title" id="death-title">${t('game', 'deathTitle')}</h2>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn--primary" data-action="rebirth">${t('game', 'deathRebirth')}</button>
+        </div>
+      </div>
+    `
+    backdrop.querySelector<HTMLButtonElement>('[data-action="rebirth"]')!
+      .addEventListener('click', () => { backdrop.remove(); rebirth() })
+    el.appendChild(backdrop)
+    return () => backdrop.remove()
+  }
+
+  // ── Spawn ────────────────────────────────────────────────────────────────
 
   function spawnEnemies(): void {
     if (!app || enemiesSpawned) return
@@ -318,9 +433,33 @@ export function createGameScene(
       app.renderer.on('resize', () => { drawGrid(); updateCamera() })
 
       app.ticker.add((ticker) => {
+        // ── Death fragment animation (always runs while ticker is active) ───
+        for (let i = deathFragments.length - 1; i >= 0; i--) {
+          const f = deathFragments[i]
+          f.age += ticker.deltaMS
+          if (f.age >= f.maxAge) {
+            f.g.destroy()
+            deathFragments.splice(i, 1)
+            continue
+          }
+          const dt = ticker.deltaMS / 1000
+          const progress = f.age / f.maxAge
+          f.g.x += f.vx * dt
+          f.g.y += f.vy * dt
+          f.g.rotation += f.spin * dt
+          f.g.alpha = 1 - progress
+          f.g.scale.set(1 - progress * 0.4)
+        }
+
+        if (playerDead) {
+          drawGrid()
+          updateCamera()
+          return
+        }
+
         const dt = ticker.deltaMS / 1000
 
-        // ── Movement: advance toward target, stop when in attack range ──────
+        // ── Movement ────────────────────────────────────────────────────────
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (!body) continue
@@ -343,10 +482,10 @@ export function createGameScene(
           }
         }
 
-        // ── Physics step: resolves collisions ────────────────────────────────
+        // ── Physics step ────────────────────────────────────────────────────
         Matter.Engine.update(physicsEngine, ticker.deltaMS)
 
-        // ── Sync entity positions from physics bodies ────────────────────────
+        // ── Sync positions ──────────────────────────────────────────────────
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (body) {
@@ -356,12 +495,11 @@ export function createGameScene(
           entityContainers.get(entity.id)?.position.set(entity.x, entity.y)
         }
 
-        // ── Attack: tick cooldowns, deal damage when in range ────────────────
+        // ── Attacks ─────────────────────────────────────────────────────────
         const damagedIds = new Set<string>()
         for (const entity of entities) {
           const cd = (attackCooldowns.get(entity.id) ?? 0) - ticker.deltaMS
           attackCooldowns.set(entity.id, cd)
-
           const target = nearestTarget(entity, entities)
           if (!target) continue
           const dx = target.x - entity.x
@@ -374,12 +512,17 @@ export function createGameScene(
           }
         }
 
-        // ── Update life visuals for damaged entities ─────────────────────────
+        // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
           const entity = entities.find(e => e.id === id)
           if (!entity) continue
-          if (entity.role === 'player') updateBars()
-          else drawLifeBar(entity)
+          if (entity.currentLife <= 0) {
+            killEntity(entity)
+          } else if (entity.role === 'player') {
+            updateBars()
+          } else {
+            drawLifeBar(entity)
+          }
         }
 
         drawGrid()
@@ -396,6 +539,8 @@ export function createGameScene(
     clearInterval(saveInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    for (const f of deathFragments) f.g.destroy()
+    deathFragments.length = 0
     Matter.Composite.clear(physicsEngine.world, false)
     Matter.Engine.clear(physicsEngine)
     app?.destroy(true)
@@ -406,7 +551,6 @@ export function createGameScene(
 
 function mountCharacterModal(parent: HTMLElement, onClose: () => void): () => void {
   const char = getCurrentCharacter()
-
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
@@ -429,16 +573,12 @@ function mountCharacterModal(parent: HTMLElement, onClose: () => void): () => vo
       </div>
     </div>
   `
-
   parent.appendChild(backdrop)
-
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', () => { backdrop.remove(); onClose() })
-
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) { backdrop.remove(); onClose() }
   })
-
   return () => backdrop.remove()
 }
 
