@@ -1,4 +1,5 @@
 import { Application, Graphics } from 'pixi.js'
+import * as Matter from 'matter-js'
 import { createIcons, User, ArrowLeft, Play, Pause } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
@@ -9,7 +10,6 @@ import { GRID_SIZE } from '../core/world'
 import type { SceneId } from '../core/router'
 
 const PLAYER_RADIUS = 20
-const ENEMY_SIZE = 40
 const HUD_HEIGHT = 128
 const REGEN_RATE = 1
 const SAVE_INTERVAL_MS = 10_000
@@ -30,9 +30,31 @@ export function createGameScene(
     maxMana,
     currentLife: char?.currentLife ?? 50,
     currentMana: char?.currentMana ?? 50,
+    radius: PLAYER_RADIUS,
   })
 
   const entities: Entity[] = [playerEntity]
+
+  // ── Physics (Matter.js) ─────────────────────────────────────────────────
+  // Used for collision detection and resolution; our AI drives the velocities.
+
+  const physicsEngine = Matter.Engine.create({ gravity: { x: 0, y: 0 } })
+  const entityBodies = new Map<string, Matter.Body>()
+
+  function createEntityBody(entity: Entity): void {
+    const body = Matter.Bodies.circle(entity.x, entity.y, entity.radius, {
+      frictionAir: 0,
+      friction: 0,
+      restitution: 0,
+      inertia: Infinity,
+      label: entity.id,
+    })
+    Matter.Composite.add(physicsEngine.world, body)
+    entityBodies.set(entity.id, body)
+  }
+
+  createEntityBody(playerEntity)
+
   let paused = true
   let enemiesSpawned = false
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
@@ -160,10 +182,10 @@ export function createGameScene(
     if (!app || entityGraphics.has(entity.id)) return
     const g = new Graphics()
     if (entity.role === 'player') {
-      g.circle(0, 0, PLAYER_RADIUS)
+      g.circle(0, 0, entity.radius)
       g.fill({ color: tokens.color.primary })
     } else {
-      g.rect(-ENEMY_SIZE / 2, -ENEMY_SIZE / 2, ENEMY_SIZE, ENEMY_SIZE)
+      g.rect(-entity.radius, -entity.radius, entity.radius * 2, entity.radius * 2)
       g.fill({ color: tokens.color.accentAlt })
     }
     g.position.set(entity.x, entity.y)
@@ -211,7 +233,6 @@ export function createGameScene(
   function spawnEnemies(): void {
     if (!app || enemiesSpawned) return
     enemiesSpawned = true
-    // Place the two enemies on opposite sides of the player in world space.
     const baseAngle = Math.random() * Math.PI * 2
     for (let i = 0; i < 2; i++) {
       const angle = baseAngle + i * Math.PI + (Math.random() - 0.5) * 0.8
@@ -222,6 +243,7 @@ export function createGameScene(
         playerEntity.y + Math.sin(angle) * dist,
       )
       entities.push(enemy)
+      createEntityBody(enemy)
       initEntityGraphics(enemy)
     }
   }
@@ -261,18 +283,44 @@ export function createGameScene(
 
       app.ticker.add((ticker) => {
         const dt = ticker.deltaMS / 1000
+
+        // Set velocities toward nearest cross-team target; stop at contact distance.
         for (const entity of entities) {
+          const body = entityBodies.get(entity.id)
+          if (!body) continue
           const target = nearestTarget(entity, entities)
-          if (!target) continue
-          const dx = target.x - entity.x
-          const dy = target.y - entity.y
-          const distSq = dx * dx + dy * dy
-          if (distSq < 4) continue
-          const dist = Math.sqrt(distSq)
-          entity.x += (dx / dist) * ENTITY_SPEED * dt
-          entity.y += (dy / dist) * ENTITY_SPEED * dt
-          entityGraphics.get(entity.id)?.position.set(entity.x, entity.y)
+          if (target) {
+            const dx = target.x - entity.x
+            const dy = target.y - entity.y
+            const distSq = dx * dx + dy * dy
+            const minDist = entity.radius + target.radius
+            if (distSq > minDist * minDist) {
+              const dist = Math.sqrt(distSq)
+              Matter.Body.setVelocity(body, {
+                x: (dx / dist) * ENTITY_SPEED * dt,
+                y: (dy / dist) * ENTITY_SPEED * dt,
+              })
+            } else {
+              Matter.Body.setVelocity(body, { x: 0, y: 0 })
+            }
+          } else {
+            Matter.Body.setVelocity(body, { x: 0, y: 0 })
+          }
         }
+
+        // Step physics: resolves collisions and updates body positions.
+        Matter.Engine.update(physicsEngine, ticker.deltaMS)
+
+        // Sync entity positions from physics bodies and update graphics.
+        for (const entity of entities) {
+          const body = entityBodies.get(entity.id)
+          if (body) {
+            entity.x = body.position.x
+            entity.y = body.position.y
+            entityGraphics.get(entity.id)?.position.set(entity.x, entity.y)
+          }
+        }
+
         drawGrid()
         updateCamera()
       })
@@ -287,6 +335,8 @@ export function createGameScene(
     clearInterval(saveInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    Matter.Composite.clear(physicsEngine.world, false)
+    Matter.Engine.clear(physicsEngine)
     app?.destroy(true)
     app = null
     el.remove()

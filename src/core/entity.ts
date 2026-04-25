@@ -7,6 +7,7 @@ export interface Entity {
   team: EntityTeam
   x: number
   y: number
+  radius: number
   maxLife: number
   maxMana: number
   currentLife: number
@@ -14,7 +15,7 @@ export interface Entity {
 }
 
 export function createPlayerEntity(
-  stats: Pick<Entity, 'maxLife' | 'maxMana' | 'currentLife' | 'currentMana'>,
+  stats: Pick<Entity, 'maxLife' | 'maxMana' | 'currentLife' | 'currentMana' | 'radius'>,
 ): Entity {
   return {
     id: 'player',
@@ -31,6 +32,7 @@ export function createEnemyEntity(
   x: number,
   y: number,
   team: EntityTeam = 'enemyA',
+  radius = 20,
 ): Entity {
   return {
     id,
@@ -38,6 +40,7 @@ export function createEnemyEntity(
     team,
     x,
     y,
+    radius,
     maxLife: 100,
     maxMana: 0,
     currentLife: 100,
