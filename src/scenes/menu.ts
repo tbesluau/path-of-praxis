@@ -1,4 +1,4 @@
-import { createIcons, Play, UserPlus, FolderOpen, Trophy, Settings, Trash2 } from 'lucide'
+import { createIcons, Play, UserPlus, FolderOpen, Trophy, Trash2 } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import type { SceneId } from '../core/router'
@@ -58,16 +58,12 @@ export function createMenuScene(
           <i data-lucide="trophy" aria-hidden="true"></i>
           <span>${t('menu', 'ladder')}</span>
         </button>
-        <button class="menu-btn" data-action="options">
-          <i data-lucide="settings" aria-hidden="true"></i>
-          <span>${t('menu', 'options')}</span>
-        </button>
       </nav>
     </div>
   `
 
   container.appendChild(el)
-  createIcons({ icons: { Play, UserPlus, FolderOpen, Trophy, Settings, Trash2 } })
+  createIcons({ icons: { Play, UserPlus, FolderOpen, Trophy, Trash2 } })
 
   const canvas = el.querySelector<HTMLCanvasElement>('#menu-canvas')!
   const stopParticles = startParticles(canvas)
@@ -115,15 +111,14 @@ export function createMenuScene(
   btnLoad.addEventListener('click', () => {
     if (btnLoad.disabled) return
     closeModal()
-    modalCleanup = mountLoadCharacterModal(el, { onClose: closeModal })
+    modalCleanup = mountLoadCharacterModal(el, {
+      onClose: closeModal,
+      onSelect: () => navigate('game'),
+    })
   })
 
-  el.querySelectorAll<HTMLButtonElement>('.menu-btn').forEach(btn => {
-    const action = btn.dataset['action']
-    if (action === 'ladder' || action === 'options') {
-      btn.addEventListener('click', () => console.info(`[menu] action: ${action}`))
-    }
-  })
+  el.querySelector<HTMLButtonElement>('[data-action="ladder"]')!
+    .addEventListener('click', () => console.info('[menu] action: ladder'))
 
   function onEscape(e: KeyboardEvent): void {
     if (e.key === 'Escape') closeModal()
@@ -203,7 +198,7 @@ function mountNewCharacterModal(
 
 function mountLoadCharacterModal(
   parent: HTMLElement,
-  { onClose }: { onClose: () => void },
+  { onClose, onSelect }: { onClose: () => void; onSelect: () => void },
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -251,7 +246,7 @@ function mountLoadCharacterModal(
         } else {
           row.addEventListener('click', () => {
             loadCharacter(char.id)
-            onClose()
+            onSelect()
           })
         }
 

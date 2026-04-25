@@ -10,7 +10,6 @@ export const fr: TranslationSchema = {
     newCharacter: 'Nouveau personnage',
     loadCharacter: 'Charger un personnage',
     ladder: 'Classement',
-    options: 'Options',
     nav: 'Menu principal',
   },
   character: {

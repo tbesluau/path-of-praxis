@@ -11,7 +11,6 @@ describe('i18n', () => {
     expect(t('menu', 'newCharacter')).toBe('New Character')
     expect(t('menu', 'loadCharacter')).toBe('Load Character')
     expect(t('menu', 'ladder')).toBe('Ladder')
-    expect(t('menu', 'options')).toBe('Options')
   })
 
   it('switches locale to French', () => {
