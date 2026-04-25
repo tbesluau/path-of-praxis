@@ -7,6 +7,7 @@ import { getCurrentCharacter, saveCharacterState } from '../core/character'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
+import { allActions, getAction, randomAction, type ActionId } from '../config/actions'
 import type { SceneId } from '../core/router'
 
 const HP_BAR_H = 4
@@ -38,12 +39,23 @@ export function createGameScene(
     currentMana: char?.currentMana ?? balance.player.startingMana,
     radius: balance.player.radius,
     moveSpeed: balance.player.moveSpeed,
-    attackSpeed: balance.player.attackSpeed,
-    attackDamage: balance.player.attackDamage,
-    attackRange: balance.player.attackRange * balance.player.radius,
   })
 
   const entities: Entity[] = [playerEntity]
+
+  // ── Actions ──────────────────────────────────────────────────────────────
+
+  const entityActions = new Map<string, ActionId>()
+
+  function assignAction(entity: Entity, id: ActionId): void {
+    const def = getAction(id)
+    entity.attackSpeed  = def.speed
+    entity.attackDamage = def.damage
+    entity.attackRange  = def.range * balance.player.radius
+    entityActions.set(entity.id, id)
+  }
+
+  assignAction(playerEntity, 'sword')
 
   // ── Physics ─────────────────────────────────────────────────────────────
 
@@ -85,7 +97,7 @@ export function createGameScene(
       </div>
     </div>
     <div class="game-hud">
-      <button class="game-action-btn" data-label="A">A</button>
+      <button class="game-action-btn" data-action="cycle-action">Sword</button>
       <button class="game-action-btn game-action-btn--icon" data-action="playpause" aria-label="Play">
         <i data-lucide="play" aria-hidden="true"></i>
       </button>
@@ -100,6 +112,15 @@ export function createGameScene(
   const lifeFill = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
   const playPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
+  const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="cycle-action"]')!
+
+  actionBtn.addEventListener('click', () => {
+    const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id
+    const currentIdx = allActions.findIndex(a => a.id === currentId)
+    const next = allActions[(currentIdx + 1) % allActions.length]
+    assignAction(playerEntity, next.id)
+    actionBtn.textContent = next.label
+  })
 
   function updateBars(): void {
     lifeFill.style.width = `${(playerEntity.currentLife / playerEntity.maxLife) * 100}%`
@@ -307,6 +328,7 @@ export function createGameScene(
     }
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
+    entityActions.delete(entity.id)
     const idx = entities.indexOf(entity)
     if (idx !== -1) entities.splice(idx, 1)
   }
@@ -404,14 +426,9 @@ export function createGameScene(
         playerEntity.y + Math.sin(angle) * dist,
         'enemyA',
         balance.enemyA.radius,
-        {
-          moveSpeed:    balance.enemyA.moveSpeed,
-          maxLife:      balance.enemyA.maxLife,
-          attackSpeed:  balance.enemyA.attackSpeed,
-          attackDamage: balance.enemyA.attackDamage,
-          attackRange:  balance.enemyA.attackRange * balance.player.radius,
-        },
+        { moveSpeed: balance.enemyA.moveSpeed, maxLife: balance.enemyA.maxLife },
       )
+      assignAction(enemy, randomAction().id)
       entities.push(enemy)
       createEntityBody(enemy)
       initEntityDisplay(enemy)
@@ -516,20 +533,31 @@ export function createGameScene(
 
         // ── Attacks ─────────────────────────────────────────────────────────
         const damagedIds = new Set<string>()
+        let playerManaSpent = false
         for (const entity of entities) {
+          const actionId = entityActions.get(entity.id)
+          if (!actionId) continue
+          const action = getAction(actionId)
           const cd = (attackCooldowns.get(entity.id) ?? 0) - ticker.deltaMS
           attackCooldowns.set(entity.id, cd)
+          if (cd > 0) continue
           const target = nearestTarget(entity, entities)
           if (!target) continue
           const dx = target.x - entity.x
           const dy = target.y - entity.y
           const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist - target.radius <= entity.attackRange && cd <= 0) {
-            target.currentLife = Math.max(0, target.currentLife - entity.attackDamage)
-            attackCooldowns.set(entity.id, 1000 / entity.attackSpeed)
-            damagedIds.add(target.id)
+          if (dist - target.radius > entity.attackRange) continue
+          // Mana gate — only enforced for entities with a mana pool
+          if (entity.maxMana > 0 && entity.currentMana < action.manaCost) continue
+          target.currentLife = Math.max(0, target.currentLife - action.damage)
+          if (entity.maxMana > 0) {
+            entity.currentMana = Math.max(0, entity.currentMana - action.manaCost)
+            if (entity.role === 'player') playerManaSpent = true
           }
+          attackCooldowns.set(entity.id, 1000 / action.speed)
+          damagedIds.add(target.id)
         }
+        if (playerManaSpent) updateBars()
 
         // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
