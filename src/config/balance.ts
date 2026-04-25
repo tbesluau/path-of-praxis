@@ -23,14 +23,14 @@ export const balance = {
   enemyA: {
     radius:        20,   // pixels
     moveSpeed:     80,   // pixels per second
-    maxLife:       100,
+    maxLife:       50,
     // attack stats are defined per-action in src/config/weapons.ts and spells.ts
   },
 
   enemyB: {
     radius:        20,   // pixels
     moveSpeed:     80,   // pixels per second
-    maxLife:       100,
+    maxLife:       50,
     // attack stats are defined per-action in src/config/weapons.ts and spells.ts
   },
 

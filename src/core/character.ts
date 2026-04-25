@@ -11,6 +11,7 @@ export interface Character {
   maxMana: number
   currentLife: number
   currentMana: number
+  actionId: string
 }
 
 interface SaveData {
@@ -31,6 +32,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     // are explicitly set via balance.player.startingLife/startingMana.
     currentLife: c.currentLife ?? maxLife,
     currentMana: c.currentMana ?? maxMana,
+    actionId: c.actionId ?? 'sword',
   }
 }
 
@@ -68,7 +70,7 @@ export function getCurrentCharacter(): Character | null {
   return characters.find(c => c.id === currentId) ?? null
 }
 
-export function createCharacter(name: string): Character {
+export function createCharacter(name: string, actionId: string): Character {
   const data = read()
   if (data.characters.length >= MAX_SLOTS) throw new Error('All save slots are full')
   const trimmed = name.trim()
@@ -81,6 +83,7 @@ export function createCharacter(name: string): Character {
     maxMana: balance.player.maxMana,
     currentLife: balance.player.startingLife,
     currentMana: balance.player.startingMana,
+    actionId,
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -102,11 +105,17 @@ export function deleteCharacter(id: string): void {
   write(data)
 }
 
-export function saveCharacterState(id: string, currentLife: number, currentMana: number): void {
+export function saveCharacterState(
+  id: string,
+  currentLife: number,
+  currentMana: number,
+  actionId?: string,
+): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
   if (!char) return
   char.currentLife = currentLife
   char.currentMana = currentMana
+  if (actionId !== undefined) char.actionId = actionId
   write(data)
 }

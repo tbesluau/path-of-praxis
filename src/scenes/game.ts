@@ -53,6 +53,7 @@ export function createGameScene(
   // ── Actions ──────────────────────────────────────────────────────────────
 
   const entityActions = new Map<string, ActionId>()
+  let playerActionId: ActionId = (char?.actionId as ActionId | undefined) ?? 'sword'
 
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
@@ -62,7 +63,7 @@ export function createGameScene(
     entityActions.set(entity.id, id)
   }
 
-  assignAction(playerEntity, 'sword')
+  assignAction(playerEntity, playerActionId)
 
   // ── Physics ─────────────────────────────────────────────────────────────
 
@@ -125,10 +126,11 @@ export function createGameScene(
   const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
 
   function updateActionBtn(def: ActionDef): void {
-    actionBtn.querySelector('i')!.setAttribute('data-lucide', def.icon)
-    actionBtn.querySelector('span')!.textContent = def.label
+    actionBtn.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><span>${def.label}</span>`
     createIcons({ icons: { Sword, Target, Flame, Zap } })
   }
+
+  updateActionBtn(getAction(playerActionId))
 
   actionBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
@@ -136,7 +138,12 @@ export function createGameScene(
     modalCleanup = mountActionSelectModal(
       el,
       currentId,
-      (id) => { assignAction(playerEntity, id); updateActionBtn(getAction(id)) },
+      (id) => {
+        playerActionId = id
+        assignAction(playerEntity, id)
+        updateActionBtn(getAction(id))
+        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id)
+      },
       () => { modalCleanup = null },
     )
   })
@@ -197,11 +204,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoBack(): void {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId)
     navigate('menu')
   }
 
@@ -394,6 +401,7 @@ export function createGameScene(
     entities.push(playerEntity)
     createEntityBody(playerEntity)
     initEntityDisplay(playerEntity)
+    assignAction(playerEntity, playerActionId)
 
     playerDead = false
     updateBars()
@@ -760,14 +768,18 @@ function mountActionSelectModal(
     panels.forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab })
   }))
 
-  const dismiss = () => { backdrop.remove(); onClose() }
+  let selectedId = currentId
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action-id]').forEach(card =>
     card.addEventListener('click', () => {
-      onSelect(card.dataset.actionId as ActionId)
-      dismiss()
+      selectedId = card.dataset.actionId as ActionId
+      backdrop.querySelectorAll('[data-action-id]').forEach(c =>
+        c.classList.toggle('action-card--selected', c === card),
+      )
     }),
   )
+
+  const dismiss = () => { onSelect(selectedId); backdrop.remove(); onClose() }
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
