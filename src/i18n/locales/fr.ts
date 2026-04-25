@@ -25,4 +25,11 @@ export const fr: TranslationSchema = {
     deleteLabel: 'Supprimer',
     nameTaken: 'Ce nom est déjà utilisé.',
   },
+  settings: {
+    title: 'Paramètres',
+    language: 'Langue',
+    langEn: 'Anglais',
+    langFr: 'Français',
+    close: 'Fermer',
+  },
 }
