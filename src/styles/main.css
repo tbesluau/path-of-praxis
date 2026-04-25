@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;500;600&display=swap');
+
+/* ── Reset ── */
 
 *,
 *::before,
@@ -32,6 +34,89 @@ body {
   overflow: hidden;
 }
 
+/* ── Design system: asymmetric shapes ──────────────────────────────────────
+   All clip-path polygons use non-uniform corner cuts to achieve the
+   "chiseled by hand" silhouette. Corners intentionally differ in size.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* 8-vertex asymmetric polygon — menu buttons */
+  --clip-btn: polygon(
+    0px 8px,
+    6px 0px,
+    calc(100% - 3px) 2px,
+    100% 9px,
+    calc(100% - 4px) calc(100% - 8px),
+    calc(100% - 7px) 100%,
+    3px calc(100% - 2px),
+    0px calc(100% - 5px)
+  );
+
+  /* Larger cuts — modal panels */
+  --clip-panel: polygon(
+    0px 16px,
+    13px 0px,
+    calc(100% - 6px) 3px,
+    100% 18px,
+    calc(100% - 5px) calc(100% - 16px),
+    calc(100% - 15px) 100%,
+    7px calc(100% - 4px),
+    0px calc(100% - 11px)
+  );
+
+  /* Compact cuts — small icon buttons (settings, back) */
+  --clip-btn-sm: polygon(
+    0px 5px,
+    5px 0px,
+    calc(100% - 2px) 1px,
+    100% 6px,
+    calc(100% - 3px) calc(100% - 5px),
+    calc(100% - 6px) 100%,
+    2px calc(100% - 1px),
+    0px calc(100% - 4px)
+  );
+
+  /* Wider cuts — modal action buttons */
+  --clip-btn-modal: polygon(
+    0px 5px,
+    4px 0px,
+    calc(100% - 2px) 1px,
+    100% 5px,
+    calc(100% - 3px) calc(100% - 4px),
+    calc(100% - 5px) 100%,
+    2px calc(100% - 1px),
+    0px calc(100% - 3px)
+  );
+
+  /* Gold drop-shadow border — resting (solid 2px outline) */
+  --filter-border: drop-shadow(2px 0 0 var(--color-primary))
+    drop-shadow(-2px 0 0 var(--color-primary))
+    drop-shadow(0 2px 0 var(--color-primary))
+    drop-shadow(0 -2px 0 var(--color-primary))
+    drop-shadow(1px 1px 0 var(--color-primary))
+    drop-shadow(-1px -1px 0 var(--color-primary))
+    drop-shadow(1px -1px 0 var(--color-primary))
+    drop-shadow(-1px 1px 0 var(--color-primary));
+
+  /* Gold drop-shadow border — hover (border + glow) */
+  --filter-border-glow: drop-shadow(2px 0 0 var(--color-primary))
+    drop-shadow(-2px 0 0 var(--color-primary))
+    drop-shadow(0 2px 0 var(--color-primary))
+    drop-shadow(0 -2px 0 var(--color-primary))
+    drop-shadow(1px 1px 0 var(--color-primary))
+    drop-shadow(-1px -1px 0 var(--color-primary))
+    drop-shadow(1px -1px 0 var(--color-primary))
+    drop-shadow(-1px 1px 0 var(--color-primary))
+    drop-shadow(0 0 14px rgba(255, 215, 0, 0.55));
+
+  /* Accent (blue) border — for current-character slot */
+  --filter-border-accent: drop-shadow(2px 0 0 var(--color-accent))
+    drop-shadow(-2px 0 0 var(--color-accent))
+    drop-shadow(0 2px 0 var(--color-accent))
+    drop-shadow(0 -2px 0 var(--color-accent))
+    drop-shadow(0 0 10px rgba(65, 105, 225, 0.4));
+}
+
 /* ── Scenes ── */
 
 .scene {
@@ -50,7 +135,7 @@ body {
   pointer-events: none;
 }
 
-/* ── Menu ── */
+/* ── Menu layout ── */
 
 .menu-content {
   position: relative;
@@ -66,23 +151,25 @@ body {
   text-align: center;
 }
 
+/* ── Game title ── */
+
 .game-title {
   font-family: var(--font-display);
   font-size: clamp(2rem, 8vw, 4.5rem);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 900;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: linear-gradient(135deg, var(--color-text) 20%, var(--color-primary) 100%);
+  background: linear-gradient(160deg, #fff8d6 0%, #ffd700 45%, #e6a500 75%, #dc143c 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 28px rgba(139, 124, 248, 0.45));
+  filter: drop-shadow(0 0 28px rgba(255, 215, 0, 0.35)) drop-shadow(3px 3px 0 rgba(0, 0, 0, 0.7));
 }
 
 .game-subtitle {
   margin-top: var(--space-sm);
-  font-size: clamp(0.7rem, 2vw, 0.875rem);
-  letter-spacing: 0.3em;
+  font-size: clamp(0.65rem, 1.8vw, 0.8rem);
+  letter-spacing: 0.38em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
@@ -93,56 +180,72 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  width: min(320px, 88vw);
+  width: min(340px, 90vw);
 }
+
+/* ── Menu buttons ── */
 
 .menu-btn {
   display: flex;
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
-  min-height: 52px;
-  background: rgba(139, 124, 248, 0.08);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  min-height: 56px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.09) 0%, rgba(255, 215, 0, 0.03) 100%);
+  border: none;
+  clip-path: var(--clip-btn);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 1rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
   width: 100%;
+  transform: skewX(-2deg);
+  filter: var(--filter-border);
   transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast);
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 160ms ease,
+    background 160ms ease;
 }
 
 .menu-btn:hover,
 .menu-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.18);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-glow);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.07) 100%);
+  filter: var(--filter-border-glow);
+  transform: skewX(0deg) scale(1.06);
   outline: none;
 }
 
 .menu-btn:active {
-  transform: scale(0.97);
-  background: rgba(139, 124, 248, 0.28);
+  transform: skewX(0deg) scale(0.98);
+}
+
+.menu-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .menu-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   color: var(--color-primary);
-  stroke-width: 1.75;
+  stroke-width: 2.25;
 }
 
 .menu-btn span {
   flex: 1;
   text-align: left;
+}
+
+.menu-divider {
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 215, 0, 0.25) 30%, rgba(255, 215, 0, 0.25) 70%, transparent 100%);
+  margin: var(--space-xs) 0;
+  clip-path: none;
 }
 
 /* ── Game scene ── */
@@ -180,25 +283,28 @@ body {
   width: 72px;
   height: 72px;
   border-radius: var(--radius-full);
-  background: rgba(139, 124, 248, 0.1);
-  border: 2px solid var(--color-border);
+  background: rgba(255, 215, 0, 0.07);
+  border: none;
   color: var(--color-text);
-  font-family: var(--font-body);
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
   cursor: pointer;
+  filter: drop-shadow(2px 0 0 rgba(255, 215, 0, 0.5))
+    drop-shadow(-2px 0 0 rgba(255, 215, 0, 0.5))
+    drop-shadow(0 2px 0 rgba(255, 215, 0, 0.5))
+    drop-shadow(0 -2px 0 rgba(255, 215, 0, 0.5));
   transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast);
+    background 140ms ease,
+    filter 140ms ease,
+    transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .game-action-btn:hover,
 .game-action-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.2);
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-glow);
+  background: rgba(255, 215, 0, 0.16);
+  filter: var(--filter-border-glow);
+  transform: scale(1.12);
   outline: none;
 }
 
@@ -215,253 +321,11 @@ body {
 .game-action-btn--icon svg {
   width: 28px;
   height: 28px;
-  stroke-width: 1.75;
+  stroke-width: 2.25;
   color: var(--color-primary);
 }
 
-/* ── Menu disabled state ── */
-
-.menu-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.menu-divider {
-  height: 1px;
-  background: var(--color-border);
-  margin: var(--space-xs) 0;
-}
-
-/* ── Modal ── */
-
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-xl);
-  width: min(380px, 92vw);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
-}
-
-.modal-title {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text);
-}
-
-.modal-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.modal-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.modal-input {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text);
-  font-family: var(--font-body);
-  font-size: 1rem;
-  padding: var(--space-sm) var(--space-md);
-  min-height: 44px;
-  outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.modal-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(139, 124, 248, 0.3);
-}
-
-.modal-actions {
-  display: flex;
-  gap: var(--space-sm);
-  justify-content: flex-end;
-}
-
-.modal-btn {
-  min-height: 40px;
-  padding: 0 var(--space-lg);
-  border-radius: var(--radius-md);
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.modal-btn--primary {
-  background: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  color: #fff;
-}
-
-.modal-btn--primary:hover:not(:disabled) {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-}
-
-.modal-btn--primary:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.modal-btn--ghost {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-}
-
-.modal-btn--ghost:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text);
-}
-
-/* ── Character slots ── */
-
-.char-slot-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.char-slot {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  min-height: 52px;
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-}
-
-.char-slot--empty {
-  color: var(--color-text-muted);
-  font-style: italic;
-  font-size: 0.875rem;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.char-slot--selectable {
-  background: rgba(139, 124, 248, 0.06);
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.char-slot--selectable:hover {
-  background: rgba(139, 124, 248, 0.16);
-  border-color: var(--color-primary);
-}
-
-.char-slot--current {
-  background: rgba(139, 124, 248, 0.12);
-  border-color: var(--color-primary);
-}
-
-.char-slot-name {
-  flex: 1;
-  font-weight: 500;
-}
-
-.char-slot-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-  padding: 2px 8px;
-  border: 1px solid var(--color-primary);
-  border-radius: 999px;
-}
-
-.char-slot-delete {
-  background: transparent;
-  border: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.char-slot-delete:hover {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.1);
-}
-
-.char-slot-delete svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.75;
-}
-
-/* ── Modal input error ── */
-
-.modal-input-error {
-  font-size: 0.75rem;
-  color: #f87171;
-  min-height: 1em;
-}
-
-/* ── Character info modal ── */
-
-.char-info-panel {
-  width: min(480px, 90vw);
-}
-
-.char-info-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg);
-  padding: var(--space-md) 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.char-info-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  min-width: 64px;
-}
-
-.char-info-value {
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-/* ── Settings button (persistent, top-right) ── */
+/* ── Settings button (persistent top-right) ── */
 
 .settings-btn {
   position: absolute;
@@ -469,37 +333,85 @@ body {
   right: var(--space-md);
   width: 44px;
   height: 44px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  background: rgba(45, 45, 45, 0.85);
+  border: none;
+  clip-path: var(--clip-btn-sm);
   color: var(--color-text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10;
-  backdrop-filter: blur(6px);
+  filter: drop-shadow(1px 0 0 rgba(255, 215, 0, 0.4))
+    drop-shadow(-1px 0 0 rgba(255, 215, 0, 0.4))
+    drop-shadow(0 1px 0 rgba(255, 215, 0, 0.4))
+    drop-shadow(0 -1px 0 rgba(255, 215, 0, 0.4));
   transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
+    background 140ms ease,
+    filter 140ms ease,
+    color 140ms ease,
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .settings-btn:hover,
 .settings-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.15);
-  border-color: var(--color-primary);
-  color: var(--color-text);
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--color-primary);
+  filter: var(--filter-border-glow);
+  transform: scale(1.08);
   outline: none;
 }
 
 .settings-btn svg {
   width: 20px;
   height: 20px;
-  stroke-width: 1.75;
+  stroke-width: 2.25;
 }
 
-/* ── Settings modal (above settings button) ── */
+/* ── Back button (game scene top-left) ── */
+
+.back-btn {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  width: 44px;
+  height: 44px;
+  background: rgba(45, 45, 45, 0.85);
+  border: none;
+  clip-path: var(--clip-btn-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  filter: drop-shadow(1px 0 0 rgba(255, 215, 0, 0.4))
+    drop-shadow(-1px 0 0 rgba(255, 215, 0, 0.4))
+    drop-shadow(0 1px 0 rgba(255, 215, 0, 0.4))
+    drop-shadow(0 -1px 0 rgba(255, 215, 0, 0.4));
+  transition:
+    background 140ms ease,
+    filter 140ms ease,
+    color 140ms ease,
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.back-btn:hover,
+.back-btn:focus-visible {
+  background: rgba(255, 215, 0, 0.15);
+  color: var(--color-primary);
+  filter: var(--filter-border-glow);
+  transform: scale(1.08);
+  outline: none;
+}
+
+.back-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.25;
+}
+
+/* ── Settings modal ── */
 
 .settings-modal-backdrop {
   z-index: 40;
@@ -516,66 +428,293 @@ body {
 .lang-option {
   flex: 1;
   min-height: 52px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: transparent;
+  clip-path: var(--clip-btn);
+  border: none;
+  background: rgba(255, 215, 0, 0.05);
   color: var(--color-text-muted);
   font-family: var(--font-body);
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   cursor: pointer;
+  filter: drop-shadow(1px 0 0 rgba(255, 215, 0, 0.3))
+    drop-shadow(-1px 0 0 rgba(255, 215, 0, 0.3))
+    drop-shadow(0 1px 0 rgba(255, 215, 0, 0.3))
+    drop-shadow(0 -1px 0 rgba(255, 215, 0, 0.3));
   transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
+    background 140ms ease,
+    filter 140ms ease,
+    color 140ms ease,
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .lang-option:hover {
-  background: rgba(139, 124, 248, 0.1);
-  border-color: var(--color-primary);
+  background: rgba(255, 215, 0, 0.14);
   color: var(--color-text);
+  filter: var(--filter-border-glow);
+  transform: scale(1.05);
 }
 
 .lang-option--active {
-  background: rgba(139, 124, 248, 0.15);
-  border-color: var(--color-primary);
-  color: var(--color-text);
+  background: rgba(255, 215, 0, 0.16);
+  color: var(--color-primary);
+  filter: var(--filter-border-glow);
 }
 
-/* ── Back button (game scene, top-left) ── */
+/* ── Modal backdrop ── */
 
-.back-btn {
+.modal-backdrop {
   position: absolute;
-  top: var(--space-md);
-  left: var(--space-md);
-  width: 44px;
-  height: 44px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-muted);
-  cursor: pointer;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(5px);
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
-  backdrop-filter: blur(6px);
-  transition:
-    background var(--transition-fast),
-    border-color var(--transition-fast),
-    color var(--transition-fast);
 }
 
-.back-btn:hover,
-.back-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.15);
-  border-color: var(--color-primary);
+/* ── Modal panel ── */
+
+.modal-panel {
+  background: linear-gradient(160deg, #3a3a3a 0%, #2e2e2e 100%);
+  clip-path: var(--clip-panel);
+  padding: var(--space-xl) var(--space-xl) var(--space-lg);
+  width: min(400px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  filter: var(--filter-border);
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.3));
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.modal-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.modal-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.35);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 4px) 100%, 3px 100%);
   color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: var(--space-sm) var(--space-md);
+  min-height: 44px;
   outline: none;
+  transition: border-color 140ms ease, background 140ms ease;
 }
 
-.back-btn svg {
-  width: 20px;
-  height: 20px;
-  stroke-width: 1.75;
+.modal-input:focus {
+  border-bottom-color: var(--color-primary);
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.modal-input-error {
+  font-size: 0.72rem;
+  color: var(--color-accent-alt);
+  min-height: 1em;
+  letter-spacing: 0.03em;
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}
+
+/* ── Modal buttons ── */
+
+.modal-btn {
+  min-height: 40px;
+  padding: 0 var(--space-lg);
+  clip-path: var(--clip-btn-modal);
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    filter 140ms ease,
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-btn--primary {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.85) 0%, rgba(204, 168, 0, 0.9) 100%);
+  color: #1a1600;
+  filter: drop-shadow(1px 0 0 #FFD700)
+    drop-shadow(-1px 0 0 #FFD700)
+    drop-shadow(0 1px 0 #FFD700)
+    drop-shadow(0 -1px 0 #FFD700);
+}
+
+.modal-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #FFE85A 0%, #FFD700 100%);
+  filter: var(--filter-border-glow);
+  transform: scale(1.06);
+}
+
+.modal-btn--primary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.modal-btn--ghost {
+  background: rgba(255, 215, 0, 0.04);
+  color: var(--color-text-muted);
+  filter: drop-shadow(1px 0 0 rgba(255, 215, 0, 0.25))
+    drop-shadow(-1px 0 0 rgba(255, 215, 0, 0.25))
+    drop-shadow(0 1px 0 rgba(255, 215, 0, 0.25))
+    drop-shadow(0 -1px 0 rgba(255, 215, 0, 0.25));
+}
+
+.modal-btn--ghost:hover {
+  background: rgba(255, 215, 0, 0.1);
+  color: var(--color-text);
+  filter: var(--filter-border);
+  transform: scale(1.04);
+}
+
+/* ── Character info modal ── */
+
+.char-info-panel {
+  width: min(480px, 92vw);
+}
+
+.char-info-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+}
+
+.char-info-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  min-width: 64px;
+}
+
+.char-info-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* ── Character slots ── */
+
+.char-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.char-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 52px;
+  padding: var(--space-sm) var(--space-md);
+  clip-path: var(--clip-btn);
+  background: rgba(255, 215, 0, 0.04);
+  filter: drop-shadow(1px 0 0 rgba(255, 215, 0, 0.2))
+    drop-shadow(-1px 0 0 rgba(255, 215, 0, 0.2))
+    drop-shadow(0 1px 0 rgba(255, 215, 0, 0.2))
+    drop-shadow(0 -1px 0 rgba(255, 215, 0, 0.2));
+  transition: background 140ms ease, filter 140ms ease, transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.char-slot--empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 0.85rem;
+  opacity: 0.5;
+}
+
+.char-slot--selectable {
+  cursor: pointer;
+}
+
+.char-slot--selectable:hover {
+  background: rgba(255, 215, 0, 0.12);
+  filter: var(--filter-border-glow);
+  transform: skewX(-1deg) scale(1.02);
+}
+
+.char-slot--current {
+  background: rgba(65, 105, 225, 0.12);
+  filter: var(--filter-border-accent);
+}
+
+.char-slot-name {
+  flex: 1;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.char-slot-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  padding: 2px 8px;
+  clip-path: polygon(4px 0%, calc(100% - 2px) 0%, 100% 4px, calc(100% - 4px) 100%, 2px 100%, 0% calc(100% - 4px));
+  border: 1px solid rgba(65, 105, 225, 0.6);
+  background: rgba(65, 105, 225, 0.15);
+}
+
+.char-slot-delete {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  clip-path: var(--clip-btn-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 140ms ease, background 140ms ease, filter 140ms ease;
+}
+
+.char-slot-delete:hover {
+  color: var(--color-accent-alt);
+  background: rgba(220, 20, 60, 0.12);
+  filter: drop-shadow(1px 0 0 var(--color-accent-alt))
+    drop-shadow(-1px 0 0 var(--color-accent-alt))
+    drop-shadow(0 1px 0 var(--color-accent-alt))
+    drop-shadow(0 -1px 0 var(--color-accent-alt));
+}
+
+.char-slot-delete svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.25;
 }
