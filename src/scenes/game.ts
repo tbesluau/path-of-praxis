@@ -1,5 +1,5 @@
 import { Application, Graphics, Text, TextStyle } from 'pixi.js'
-import { createIcons, User, ArrowLeft } from 'lucide'
+import { createIcons, User, ArrowLeft, Play, Pause } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState } from '../core/character'
@@ -20,6 +20,7 @@ export function createGameScene(
 
   let currentLife = char?.currentLife ?? 50
   let currentMana = char?.currentMana ?? 50
+  let paused = true
 
   const el = document.createElement('div')
   el.className = 'scene scene-game'
@@ -37,17 +38,20 @@ export function createGameScene(
     </div>
     <div class="game-hud">
       <button class="game-action-btn" data-label="A">A</button>
-      <button class="game-action-btn" data-label="B">B</button>
+      <button class="game-action-btn game-action-btn--icon" data-action="playpause" aria-label="Play">
+        <i data-lucide="play" aria-hidden="true"></i>
+      </button>
       <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
         <i data-lucide="user" aria-hidden="true"></i>
       </button>
     </div>
   `
   container.appendChild(el)
-  createIcons({ icons: { User, ArrowLeft } })
+  createIcons({ icons: { User, ArrowLeft, Play, Pause } })
 
   const lifeFill = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
+  const playPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
 
   function updateBars(): void {
     lifeFill.style.width = `${(currentLife / maxLife) * 100}%`
@@ -56,11 +60,50 @@ export function createGameScene(
 
   updateBars()
 
-  const regenInterval = setInterval(() => {
-    currentLife = Math.min(maxLife, currentLife + REGEN_RATE)
-    currentMana = Math.min(maxMana, currentMana + REGEN_RATE)
-    updateBars()
-  }, 1000)
+  // ── Regen (start/stop so it respects pause state) ──────────────────────
+
+  let regenTimer: ReturnType<typeof setInterval> | null = null
+
+  function startRegen(): void {
+    if (regenTimer !== null) return
+    regenTimer = setInterval(() => {
+      currentLife = Math.min(maxLife, currentLife + REGEN_RATE)
+      currentMana = Math.min(maxMana, currentMana + REGEN_RATE)
+      updateBars()
+    }, 1000)
+  }
+
+  function stopRegen(): void {
+    if (regenTimer !== null) {
+      clearInterval(regenTimer)
+      regenTimer = null
+    }
+  }
+
+  // ── Play / Pause ────────────────────────────────────────────────────────
+
+  function updatePlayPauseBtn(): void {
+    const icon = paused ? 'play' : 'pause'
+    playPauseBtn.setAttribute('aria-label', paused ? 'Play' : 'Pause')
+    playPauseBtn.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`
+    createIcons({ icons: { Play, Pause } })
+  }
+
+  function togglePause(): void {
+    paused = !paused
+    if (paused) {
+      stopRegen()
+      app?.ticker.stop()
+    } else {
+      startRegen()
+      app?.ticker.start()
+    }
+    updatePlayPauseBtn()
+  }
+
+  playPauseBtn.addEventListener('click', togglePause)
+
+  // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
     if (char) saveCharacterState(char.id, currentLife, currentMana)
@@ -73,6 +116,8 @@ export function createGameScene(
 
   el.querySelector<HTMLButtonElement>('.back-btn')!
     .addEventListener('click', saveAndGoBack)
+
+  // ── PixiJS ──────────────────────────────────────────────────────────────
 
   let app: Application | null = null
   let destroyed = false
@@ -103,6 +148,9 @@ export function createGameScene(
         instance.destroy(true)
         return
       }
+
+      // Respect pause state that may have been set before init completed
+      if (paused) instance.ticker.stop()
 
       app = instance
 
@@ -151,7 +199,7 @@ export function createGameScene(
 
   return () => {
     destroyed = true
-    clearInterval(regenInterval)
+    stopRegen()
     clearInterval(saveInterval)
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     app?.destroy(true)
