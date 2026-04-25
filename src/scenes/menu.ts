@@ -35,6 +35,7 @@ export function createMenuScene(
   el.className = 'scene scene-menu'
   el.innerHTML = `
     <canvas class="scene-bg" id="menu-canvas"></canvas>
+    <span class="version-badge">v${__APP_VERSION__}</span>
     <div class="menu-content">
       <header class="menu-header">
         <h1 class="game-title">${t('game', 'title')}</h1>
