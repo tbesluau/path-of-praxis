@@ -1,4 +1,4 @@
-import { createIcons, Play, UserPlus, FolderOpen, Trophy, Trash2 } from 'lucide'
+import { createIcons, Play, UserPlus, FolderOpen, Trophy, Trash2, Sword, Target, Flame, Zap } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import { mountSettingsButton } from '../ui/settings'
@@ -11,6 +11,7 @@ import {
   deleteCharacter,
   MAX_SLOTS,
 } from '../core/character'
+import { allActions, type ActionId, type ActionDef } from '../config/actions'
 
 interface Particle {
   x: number
@@ -105,8 +106,8 @@ export function createMenuScene(
     closeModal()
     modalCleanup = mountNewCharacterModal(el, {
       onClose: closeModal,
-      onCreate: (name) => {
-        createCharacter(name)
+      onCreate: (name, actionId) => {
+        createCharacter(name, actionId)
         navigate('game')
       },
     })
@@ -140,8 +141,18 @@ export function createMenuScene(
 
 function mountNewCharacterModal(
   parent: HTMLElement,
-  { onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => void },
+  { onClose, onCreate }: { onClose: () => void; onCreate: (name: string, actionId: ActionId) => void },
 ): () => void {
+  const weaponActions = allActions.filter((a): a is ActionDef & { kind: 'weapon' } => a.kind === 'weapon')
+  const spellActions  = allActions.filter((a): a is ActionDef & { kind: 'spell'  } => a.kind === 'spell')
+
+  const buildCards = (actions: ActionDef[], selected: ActionId) =>
+    actions.map(a => `
+      <button class="action-card${a.id === selected ? ' action-card--selected' : ''}" data-action-id="${a.id}">
+        <i data-lucide="${a.icon}" aria-hidden="true"></i>
+        <span class="action-card-name">${a.label}</span>
+      </button>`).join('')
+
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
@@ -159,6 +170,15 @@ function mountNewCharacterModal(
         />
         <span class="modal-input-error" aria-live="polite"></span>
       </div>
+      <div class="modal-field">
+        <span class="modal-label">${t('game', 'actionSelectTitle')}</span>
+        <div class="action-tabs">
+          <button class="action-tab action-tab--active" data-tab="weapon">${t('game', 'weaponsTab')}</button>
+          <button class="action-tab" data-tab="spell">${t('game', 'spellsTab')}</button>
+        </div>
+        <div class="action-grid" data-panel="weapon">${buildCards(weaponActions, 'sword')}</div>
+        <div class="action-grid" data-panel="spell" hidden>${buildCards(spellActions, 'sword')}</div>
+      </div>
       <div class="modal-actions">
         <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
         <button class="modal-btn modal-btn--primary" data-action="create" disabled>${t('character', 'create')}</button>
@@ -167,11 +187,30 @@ function mountNewCharacterModal(
   `
 
   parent.appendChild(backdrop)
+  createIcons({ icons: { Sword, Target, Flame, Zap } })
 
   const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
   const createBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="create"]')!
   const cancelBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
   const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
+
+  let selectedActionId: ActionId = 'sword'
+
+  const tabs   = backdrop.querySelectorAll<HTMLButtonElement>('.action-tab')
+  const panels = backdrop.querySelectorAll<HTMLElement>('[data-panel]')
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.toggle('action-tab--active', t === tab))
+    panels.forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab })
+  }))
+
+  backdrop.querySelectorAll<HTMLButtonElement>('[data-action-id]').forEach(card =>
+    card.addEventListener('click', () => {
+      selectedActionId = card.dataset.actionId as ActionId
+      backdrop.querySelectorAll('[data-action-id]').forEach(c =>
+        c.classList.toggle('action-card--selected', c === card),
+      )
+    }),
+  )
 
   input.focus()
 
@@ -184,12 +223,12 @@ function mountNewCharacterModal(
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !createBtn.disabled) {
-      onCreate(input.value.trim())
+      onCreate(input.value.trim(), selectedActionId)
     }
   })
 
   createBtn.addEventListener('click', () => {
-    if (!createBtn.disabled) onCreate(input.value.trim())
+    if (!createBtn.disabled) onCreate(input.value.trim(), selectedActionId)
   })
 
   cancelBtn.addEventListener('click', onClose)

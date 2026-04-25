@@ -53,6 +53,7 @@ export function createGameScene(
   // ── Actions ──────────────────────────────────────────────────────────────
 
   const entityActions = new Map<string, ActionId>()
+  let playerActionId: ActionId = (char?.actionId as ActionId | undefined) ?? 'sword'
 
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
@@ -62,7 +63,7 @@ export function createGameScene(
     entityActions.set(entity.id, id)
   }
 
-  assignAction(playerEntity, 'sword')
+  assignAction(playerEntity, playerActionId)
 
   // ── Physics ─────────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ export function createGameScene(
     createIcons({ icons: { Sword, Target, Flame, Zap } })
   }
 
-  updateActionBtn(getAction('sword'))
+  updateActionBtn(getAction(playerActionId))
 
   actionBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
@@ -137,7 +138,12 @@ export function createGameScene(
     modalCleanup = mountActionSelectModal(
       el,
       currentId,
-      (id) => { assignAction(playerEntity, id); updateActionBtn(getAction(id)) },
+      (id) => {
+        playerActionId = id
+        assignAction(playerEntity, id)
+        updateActionBtn(getAction(id))
+        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id)
+      },
       () => { modalCleanup = null },
     )
   })
@@ -198,11 +204,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoBack(): void {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId)
     navigate('menu')
   }
 
@@ -395,6 +401,7 @@ export function createGameScene(
     entities.push(playerEntity)
     createEntityBody(playerEntity)
     initEntityDisplay(playerEntity)
+    assignAction(playerEntity, playerActionId)
 
     playerDead = false
     updateBars()
