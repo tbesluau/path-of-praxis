@@ -8,17 +8,18 @@ export interface Entity {
   x: number
   y: number
   radius: number
+  moveSpeed: number    // pixels per second
   maxLife: number
   maxMana: number
   currentLife: number
   currentMana: number
   attackSpeed: number  // attacks per second
   attackDamage: number
-  attackRange: number  // px from target edge; 1 base unit = player radius (20 px)
+  attackRange: number  // pixels from target edge
 }
 
 export function createPlayerEntity(
-  stats: Pick<Entity, 'maxLife' | 'maxMana' | 'currentLife' | 'currentMana' | 'radius'> &
+  stats: Pick<Entity, 'radius' | 'moveSpeed' | 'maxLife' | 'maxMana' | 'currentLife' | 'currentMana'> &
     Partial<Pick<Entity, 'attackSpeed' | 'attackDamage' | 'attackRange'>>,
 ): Entity {
   return {
@@ -27,14 +28,15 @@ export function createPlayerEntity(
     team: 'player',
     x: 0,
     y: 0,
-    attackSpeed: stats.attackSpeed ?? 1,
+    attackSpeed:  stats.attackSpeed  ?? 1,
     attackDamage: stats.attackDamage ?? 1,
-    attackRange: stats.attackRange ?? 20,
-    maxLife: stats.maxLife,
-    maxMana: stats.maxMana,
-    currentLife: stats.currentLife,
-    currentMana: stats.currentMana,
-    radius: stats.radius,
+    attackRange:  stats.attackRange  ?? 20,
+    radius:       stats.radius,
+    moveSpeed:    stats.moveSpeed,
+    maxLife:      stats.maxLife,
+    maxMana:      stats.maxMana,
+    currentLife:  stats.currentLife,
+    currentMana:  stats.currentMana,
   }
 }
 
@@ -44,7 +46,9 @@ export function createEnemyEntity(
   y: number,
   team: EntityTeam = 'enemyA',
   radius = 20,
+  stats?: Partial<Pick<Entity, 'moveSpeed' | 'maxLife' | 'attackSpeed' | 'attackDamage' | 'attackRange'>>,
 ): Entity {
+  const maxLife = stats?.maxLife ?? 100
   return {
     id,
     role: 'enemy',
@@ -52,13 +56,14 @@ export function createEnemyEntity(
     x,
     y,
     radius,
-    attackSpeed: 1,
-    attackDamage: 1,
-    attackRange: 20,
-    maxLife: 100,
-    maxMana: 0,
-    currentLife: 100,
-    currentMana: 0,
+    moveSpeed:    stats?.moveSpeed    ?? 80,
+    maxLife,
+    maxMana:      0,
+    currentLife:  maxLife,
+    currentMana:  0,
+    attackSpeed:  stats?.attackSpeed  ?? 1,
+    attackDamage: stats?.attackDamage ?? 1,
+    attackRange:  stats?.attackRange  ?? 20,
   }
 }
 

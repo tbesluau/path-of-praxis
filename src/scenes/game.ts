@@ -6,20 +6,13 @@ import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState } from '../core/character'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
-import { GRID_SIZE } from '../core/world'
+import { balance } from '../config/balance'
 import type { SceneId } from '../core/router'
 
-const PLAYER_RADIUS = 20
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
 const HUD_HEIGHT = 128
-const REGEN_RATE = 1
 const SAVE_INTERVAL_MS = 10_000
-const ENEMY_SPAWN_DELAY_MS = 2_000
-const ENTITY_SPEED = 80
-const SPAWN_DISTANCE = 300
-const FRAG_COUNT = 8
-const FRAG_LIFETIME = 750 // ms
 
 interface DeathFragment {
   g: Graphics
@@ -41,9 +34,13 @@ export function createGameScene(
   const playerEntity = createPlayerEntity({
     maxLife,
     maxMana,
-    currentLife: char?.currentLife ?? 50,
-    currentMana: char?.currentMana ?? 50,
-    radius: PLAYER_RADIUS,
+    currentLife: char?.currentLife ?? balance.player.startingLife,
+    currentMana: char?.currentMana ?? balance.player.startingMana,
+    radius: balance.player.radius,
+    moveSpeed: balance.player.moveSpeed,
+    attackSpeed: balance.player.attackSpeed,
+    attackDamage: balance.player.attackDamage,
+    attackRange: balance.player.attackRange * balance.player.radius,
   })
 
   const entities: Entity[] = [playerEntity]
@@ -118,8 +115,8 @@ export function createGameScene(
     if (regenTimer !== null) return
     regenTimer = setInterval(() => {
       if (playerDead) return
-      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + REGEN_RATE)
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + REGEN_RATE)
+      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate)
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate)
       updateBars()
     }, 1000)
   }
@@ -151,7 +148,7 @@ export function createGameScene(
       if (!enemiesSpawned) {
         enemySpawnTimeout = setTimeout(() => {
           if (!destroyed) spawnEnemies()
-        }, ENEMY_SPAWN_DELAY_MS)
+        }, balance.wave.spawnDelay)
       }
     }
     updatePlayPauseBtn()
@@ -236,20 +233,21 @@ export function createGameScene(
   function drawGrid(): void {
     if (!app || !worldGrid) return
     const { width, height } = app.screen
+    const gs = balance.world.gridSize
     const halfW = width / 2
     const halfH = (height - HUD_HEIGHT) / 2
-    const left   = playerEntity.x - halfW   - GRID_SIZE
-    const right  = playerEntity.x + halfW   + GRID_SIZE
-    const top    = playerEntity.y - halfH   - GRID_SIZE
-    const bottom = playerEntity.y + halfH   + GRID_SIZE
-    const startX = Math.floor(left  / GRID_SIZE) * GRID_SIZE
-    const startY = Math.floor(top   / GRID_SIZE) * GRID_SIZE
+    const left   = playerEntity.x - halfW   - gs
+    const right  = playerEntity.x + halfW   + gs
+    const top    = playerEntity.y - halfH   - gs
+    const bottom = playerEntity.y + halfH   + gs
+    const startX = Math.floor(left / gs) * gs
+    const startY = Math.floor(top  / gs) * gs
     worldGrid.clear()
-    for (let x = startX; x <= right;  x += GRID_SIZE) {
+    for (let x = startX; x <= right;  x += gs) {
       worldGrid.moveTo(x, top)
       worldGrid.lineTo(x, bottom)
     }
-    for (let y = startY; y <= bottom; y += GRID_SIZE) {
+    for (let y = startY; y <= bottom; y += gs) {
       worldGrid.moveTo(left, y)
       worldGrid.lineTo(right, y)
     }
@@ -272,8 +270,9 @@ export function createGameScene(
     const color = entity.role === 'player' ? tokens.color.primary : tokens.color.accentAlt
     const fragSize = entity.radius * 0.35
 
-    for (let i = 0; i < FRAG_COUNT; i++) {
-      const angle = (i / FRAG_COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.5
+    const fragCount = balance.death.fragmentCount
+    for (let i = 0; i < fragCount; i++) {
+      const angle = (i / fragCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.5
       const speed = 70 + Math.random() * 110
       const g = new Graphics()
       if (entity.role === 'player') {
@@ -291,7 +290,7 @@ export function createGameScene(
         vy: Math.sin(angle) * speed,
         spin: entity.role === 'player' ? 0 : (Math.random() - 0.5) * 9,
         age: 0,
-        maxAge: FRAG_LIFETIME + Math.random() * 300,
+        maxAge: balance.death.fragmentLifetime + Math.random() * 300,
       })
     }
   }
@@ -359,7 +358,7 @@ export function createGameScene(
     // Schedule enemy respawn (game is still unpaused at this point)
     enemySpawnTimeout = setTimeout(() => {
       if (!destroyed) spawnEnemies()
-    }, ENEMY_SPAWN_DELAY_MS)
+    }, balance.wave.spawnDelay)
   }
 
   function mountDeathModal(): () => void {
@@ -385,13 +384,22 @@ export function createGameScene(
     if (!app || enemiesSpawned) return
     enemiesSpawned = true
     const baseAngle = Math.random() * Math.PI * 2
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < balance.wave.count; i++) {
       const angle = baseAngle + i * Math.PI + (Math.random() - 0.5) * 0.8
-      const dist = SPAWN_DISTANCE + Math.random() * 100
+      const dist = balance.wave.spawnDistance + Math.random() * 100
       const enemy = createEnemyEntity(
         `enemy-${i + 1}`,
         playerEntity.x + Math.cos(angle) * dist,
         playerEntity.y + Math.sin(angle) * dist,
+        'enemyA',
+        balance.enemyA.radius,
+        {
+          moveSpeed:    balance.enemyA.moveSpeed,
+          maxLife:      balance.enemyA.maxLife,
+          attackSpeed:  balance.enemyA.attackSpeed,
+          attackDamage: balance.enemyA.attackDamage,
+          attackRange:  balance.enemyA.attackRange * balance.player.radius,
+        },
       )
       entities.push(enemy)
       createEntityBody(enemy)
@@ -474,8 +482,8 @@ export function createGameScene(
           const stopDist = entity.attackRange + target.radius
           if (dist > stopDist) {
             Matter.Body.setVelocity(body, {
-              x: (dx / dist) * ENTITY_SPEED * dt,
-              y: (dy / dist) * ENTITY_SPEED * dt,
+              x: (dx / dist) * entity.moveSpeed * dt,
+              y: (dy / dist) * entity.moveSpeed * dt,
             })
           } else {
             Matter.Body.setVelocity(body, { x: 0, y: 0 })
