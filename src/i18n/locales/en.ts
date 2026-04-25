@@ -4,6 +4,9 @@ export interface TranslationSchema {
     subtitle: string
     deathTitle: string
     deathRebirth: string
+    actionSelectTitle: string
+    weaponsTab: string
+    spellsTab: string
   }
   menu: {
     continue: string
@@ -42,6 +45,9 @@ export const en: TranslationSchema = {
     subtitle: 'Forge your path',
     deathTitle: 'You have died',
     deathRebirth: 'Rebirth',
+    actionSelectTitle: 'Actions',
+    weaponsTab: 'Weapons',
+    spellsTab: 'Spells',
   },
   menu: {
     continue: 'Continue',

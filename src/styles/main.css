@@ -272,6 +272,125 @@ body {
   color: var(--color-primary);
 }
 
+.game-action-btn--action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: auto;
+  min-width: 72px;
+  padding: 0 var(--space-md);
+  font-size: 0.65rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.game-action-btn--action:hover,
+.game-action-btn--action:focus-visible {
+  color: var(--color-text);
+}
+
+.game-action-btn--action svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.75;
+  color: var(--color-primary);
+}
+
+/* ── Action selection modal ── */
+
+.action-select-panel {
+  width: min(440px, 94vw);
+}
+
+.action-tabs {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.action-tab {
+  flex: 1;
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.action-tab:hover {
+  background: rgba(139, 124, 248, 0.1);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.action-tab--active {
+  background: rgba(139, 124, 248, 0.15);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-sm);
+  min-height: 88px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(139, 124, 248, 0.04);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.action-card:hover {
+  background: rgba(139, 124, 248, 0.14);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.action-card--selected {
+  background: rgba(139, 124, 248, 0.2);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.action-card svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.75;
+  color: var(--color-primary);
+}
+
+.action-card-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
 /* ── Menu disabled state ── */
 
 .menu-btn:disabled {

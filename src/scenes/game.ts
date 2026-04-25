@@ -1,13 +1,13 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, ArrowLeft, Play, Pause } from 'lucide'
+import { createIcons, User, ArrowLeft, Play, Pause, Sword, Target, Flame, Zap } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState } from '../core/character'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
-import { allActions, getAction, randomAction, type ActionId } from '../config/actions'
+import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 
 const HP_BAR_H = 4
@@ -22,6 +22,13 @@ interface DeathFragment {
   spin: number
   age: number
   maxAge: number
+}
+
+interface Vfx {
+  g: Graphics
+  age: number
+  maxAge: number
+  tick: (progress: number) => void
 }
 
 export function createGameScene(
@@ -97,7 +104,10 @@ export function createGameScene(
       </div>
     </div>
     <div class="game-hud">
-      <button class="game-action-btn" data-action="cycle-action">Sword</button>
+      <button class="game-action-btn game-action-btn--action" data-action="open-action" aria-label="Select action">
+        <i data-lucide="sword" aria-hidden="true"></i>
+        <span>Sword</span>
+      </button>
       <button class="game-action-btn game-action-btn--icon" data-action="playpause" aria-label="Play">
         <i data-lucide="play" aria-hidden="true"></i>
       </button>
@@ -112,14 +122,23 @@ export function createGameScene(
   const lifeFill = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
   const playPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
-  const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="cycle-action"]')!
+  const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
+
+  function updateActionBtn(def: ActionDef): void {
+    actionBtn.querySelector('i')!.setAttribute('data-lucide', def.icon)
+    actionBtn.querySelector('span')!.textContent = def.label
+    createIcons({ icons: { Sword, Target, Flame, Zap } })
+  }
 
   actionBtn.addEventListener('click', () => {
+    if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
     const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id
-    const currentIdx = allActions.findIndex(a => a.id === currentId)
-    const next = allActions[(currentIdx + 1) % allActions.length]
-    assignAction(playerEntity, next.id)
-    actionBtn.textContent = next.label
+    modalCleanup = mountActionSelectModal(
+      el,
+      currentId,
+      (id) => { assignAction(playerEntity, id); updateActionBtn(getAction(id)) },
+      () => { modalCleanup = null },
+    )
   })
 
   function updateBars(): void {
@@ -200,6 +219,7 @@ export function createGameScene(
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
   const deathFragments: DeathFragment[] = []
+  const vfxList: Vfx[] = []
 
   const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
   charBtn.addEventListener('click', () => {
@@ -435,6 +455,65 @@ export function createGameScene(
     }
   }
 
+  // ── VFX ──────────────────────────────────────────────────────────────────
+
+  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void): void {
+    if (!app) return
+    const g = new Graphics()
+    app.stage.addChild(g)
+    vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p) })
+  }
+
+  function spawnVfx(attacker: Entity, target: Entity, action: ActionDef): void {
+    const ax = attacker.x, ay = attacker.y
+    const tx = target.x, ty = target.y
+    const tr = target.radius
+
+    if (action.id === 'sword') {
+      addVfx(200, (g, p) => {
+        g.clear()
+        const r = tr * 0.75
+        g.moveTo(tx - r, ty - r); g.lineTo(tx + r, ty + r)
+        g.moveTo(tx + r, ty - r); g.lineTo(tx - r, ty + r)
+        g.stroke({ color: 0xffffff, width: Math.max(0.5, 3 * (1 - p)), alpha: 1 - p })
+      })
+    } else if (action.id === 'bow') {
+      addVfx(180, (g, p) => {
+        g.clear()
+        const tail = Math.min(1, p * 5)
+        g.moveTo(ax + (tx - ax) * tail, ay + (ty - ay) * tail)
+        g.lineTo(tx, ty)
+        g.stroke({ color: 0xffee66, width: 2, alpha: 1 - p })
+      })
+    } else if (action.id === 'fireball') {
+      addVfx(320, (g, p) => {
+        g.clear()
+        const r = tr * (0.4 + p * 2)
+        g.circle(tx, ty, r)
+        g.fill({ color: 0xff6600, alpha: (1 - p) * 0.5 })
+        g.circle(tx, ty, r * 0.5)
+        g.fill({ color: 0xffcc00, alpha: (1 - p) * 0.8 })
+      })
+    } else if (action.id === 'zap') {
+      addVfx(110, (g, p) => {
+        g.clear()
+        const dx = tx - ax, dy = ty - ay
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        const nx = -dy / len, ny = dx / len
+        const jitter = tr * 0.45 * (1 - p * 2)
+        const segs = 5
+        g.moveTo(ax, ay)
+        for (let i = 1; i < segs; i++) {
+          const s = i / segs
+          const side = (i % 2 === 0 ? 1 : -1) * jitter
+          g.lineTo(ax + dx * s + nx * side, ay + dy * s + ny * side)
+        }
+        g.lineTo(tx, ty)
+        g.stroke({ color: 0x66ddff, width: 2, alpha: 1 - p })
+      })
+    }
+  }
+
   ;(async () => {
     try {
       const instance = new Application()
@@ -485,6 +564,13 @@ export function createGameScene(
           f.g.rotation += f.spin * dt
           f.g.alpha = 1 - progress
           f.g.scale.set(1 - progress * 0.4)
+        }
+
+        for (let i = vfxList.length - 1; i >= 0; i--) {
+          const v = vfxList[i]
+          v.age += ticker.deltaMS
+          if (v.age >= v.maxAge) { v.g.destroy(); vfxList.splice(i, 1); continue }
+          v.tick(v.age / v.maxAge)
         }
 
         if (playerDead) {
@@ -556,6 +642,7 @@ export function createGameScene(
           }
           attackCooldowns.set(entity.id, 1000 / action.speed)
           damagedIds.add(target.id)
+          spawnVfx(entity, target, action)
         }
         if (playerManaSpent) updateBars()
 
@@ -588,6 +675,8 @@ export function createGameScene(
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     for (const f of deathFragments) f.g.destroy()
     deathFragments.length = 0
+    for (const v of vfxList) v.g.destroy()
+    vfxList.length = 0
     Matter.Composite.clear(physicsEngine.world, false)
     Matter.Engine.clear(physicsEngine)
     app?.destroy(true)
@@ -626,6 +715,66 @@ function mountCharacterModal(parent: HTMLElement, onClose: () => void): () => vo
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) { backdrop.remove(); onClose() }
   })
+  return () => backdrop.remove()
+}
+
+function mountActionSelectModal(
+  parent: HTMLElement,
+  currentId: ActionId,
+  onSelect: (id: ActionId) => void,
+  onClose: () => void,
+): () => void {
+  const weaponActions = allActions.filter(a => a.kind === 'weapon')
+  const spellActions  = allActions.filter(a => a.kind === 'spell')
+
+  const buildCards = (actions: ActionDef[]) =>
+    actions.map(a => `
+      <button class="action-card${a.id === currentId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
+        <i data-lucide="${a.icon}" aria-hidden="true"></i>
+        <span class="action-card-name">${escapeHtml(a.label)}</span>
+      </button>`).join('')
+
+  const startOnWeapons = weaponActions.some(a => a.id === currentId)
+
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel action-select-panel" role="dialog" aria-modal="true" aria-labelledby="action-title">
+      <h2 class="modal-title" id="action-title">${t('game', 'actionSelectTitle')}</h2>
+      <div class="action-tabs">
+        <button class="action-tab${startOnWeapons ? ' action-tab--active' : ''}" data-tab="weapon">${t('game', 'weaponsTab')}</button>
+        <button class="action-tab${!startOnWeapons ? ' action-tab--active' : ''}" data-tab="spell">${t('game', 'spellsTab')}</button>
+      </div>
+      <div class="action-grid" data-panel="weapon"${startOnWeapons ? '' : ' hidden'}>${buildCards(weaponActions)}</div>
+      <div class="action-grid" data-panel="spell"${!startOnWeapons ? '' : ' hidden'}>${buildCards(spellActions)}</div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
+      </div>
+    </div>
+  `
+
+  const tabs   = backdrop.querySelectorAll<HTMLButtonElement>('.action-tab')
+  const panels = backdrop.querySelectorAll<HTMLElement>('[data-panel]')
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.toggle('action-tab--active', t === tab))
+    panels.forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab })
+  }))
+
+  const dismiss = () => { backdrop.remove(); onClose() }
+
+  backdrop.querySelectorAll<HTMLButtonElement>('[data-action-id]').forEach(card =>
+    card.addEventListener('click', () => {
+      onSelect(card.dataset.actionId as ActionId)
+      dismiss()
+    }),
+  )
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+
+  parent.appendChild(backdrop)
+  createIcons({ icons: { Sword, Target, Flame, Zap } })
   return () => backdrop.remove()
 }
 
