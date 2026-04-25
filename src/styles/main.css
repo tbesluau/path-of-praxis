@@ -168,12 +168,82 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 128px;
   display: flex;
-  gap: var(--space-xl);
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-md) calc(env(safe-area-inset-bottom) + var(--space-md));
+  z-index: 1;
+}
+
+.weapon-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-sm);
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.weapon-card {
+  background: rgba(26, 26, 53, 0.7);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  backdrop-filter: blur(6px);
+}
+
+.weapon-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.weapon-card-name {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.weapon-card-level {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-accent);
+}
+
+.weapon-card-bar {
+  height: 6px;
+  background: rgba(139, 124, 248, 0.15);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.weapon-card-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  border-radius: var(--radius-full);
+  transition: width var(--transition-fast);
+}
+
+.weapon-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.game-action-row {
+  display: flex;
+  gap: var(--space-md);
   align-items: center;
   justify-content: center;
-  z-index: 1;
 }
 
 .game-action-btn {
@@ -204,4 +274,24 @@ body {
 
 .game-action-btn:active {
   transform: scale(0.94);
+}
+
+.game-action-btn.game-action-die {
+  width: auto;
+  min-width: 72px;
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-md);
+  background: rgba(233, 69, 96, 0.12);
+  border-color: rgba(233, 69, 96, 0.4);
+  color: var(--color-accent-alt);
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.game-action-btn.game-action-die:hover,
+.game-action-btn.game-action-die:focus-visible {
+  background: rgba(233, 69, 96, 0.22);
+  border-color: var(--color-accent-alt);
+  box-shadow: 0 0 24px rgba(233, 69, 96, 0.35);
 }

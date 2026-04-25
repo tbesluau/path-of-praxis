@@ -4,6 +4,8 @@ export const fr: TranslationSchema = {
   game: {
     title: 'Path of Praxis',
     subtitle: 'Forge ta voie',
+    dummy: 'MANNEQUIN',
+    die: 'Mourir',
   },
   menu: {
     play: 'Jouer',
