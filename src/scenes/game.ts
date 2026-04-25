@@ -1,14 +1,18 @@
-import { Application, Graphics, Text, TextStyle } from 'pixi.js'
+import { Application, Graphics } from 'pixi.js'
 import { createIcons, User, ArrowLeft, Play, Pause } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState } from '../core/character'
+import { createPlayerEntity, createEnemyEntity } from '../core/entity'
+import type { Entity } from '../core/entity'
 import type { SceneId } from '../core/router'
 
-const CIRCLE_RADIUS = 120
+const PLAYER_RADIUS = 20
+const ENEMY_SIZE = 40
 const HUD_HEIGHT = 128
 const REGEN_RATE = 1
 const SAVE_INTERVAL_MS = 10_000
+const ENEMY_SPAWN_DELAY_MS = 2_000
 
 export function createGameScene(
   container: HTMLElement,
@@ -18,9 +22,16 @@ export function createGameScene(
   const maxLife = char?.maxLife ?? 100
   const maxMana = char?.maxMana ?? 100
 
-  let currentLife = char?.currentLife ?? 50
-  let currentMana = char?.currentMana ?? 50
+  const playerEntity = createPlayerEntity({
+    maxLife,
+    maxMana,
+    currentLife: char?.currentLife ?? 50,
+    currentMana: char?.currentMana ?? 50,
+  })
+
   let paused = true
+  let enemiesSpawned = false
+  let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
 
   const el = document.createElement('div')
   el.className = 'scene scene-game'
@@ -54,21 +65,21 @@ export function createGameScene(
   const playPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
 
   function updateBars(): void {
-    lifeFill.style.width = `${(currentLife / maxLife) * 100}%`
-    manaFill.style.width = `${(currentMana / maxMana) * 100}%`
+    lifeFill.style.width = `${(playerEntity.currentLife / playerEntity.maxLife) * 100}%`
+    manaFill.style.width = `${(playerEntity.currentMana / playerEntity.maxMana) * 100}%`
   }
 
   updateBars()
 
-  // ── Regen (start/stop so it respects pause state) ──────────────────────
+  // ── Regen ───────────────────────────────────────────────────────────────
 
   let regenTimer: ReturnType<typeof setInterval> | null = null
 
   function startRegen(): void {
     if (regenTimer !== null) return
     regenTimer = setInterval(() => {
-      currentLife = Math.min(maxLife, currentLife + REGEN_RATE)
-      currentMana = Math.min(maxMana, currentMana + REGEN_RATE)
+      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + REGEN_RATE)
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + REGEN_RATE)
       updateBars()
     }, 1000)
   }
@@ -97,6 +108,11 @@ export function createGameScene(
     } else {
       startRegen()
       app?.ticker.start()
+      if (!enemiesSpawned) {
+        enemySpawnTimeout = setTimeout(() => {
+          if (!destroyed) spawnEnemies()
+        }, ENEMY_SPAWN_DELAY_MS)
+      }
     }
     updatePlayPauseBtn()
   }
@@ -106,11 +122,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char) saveCharacterState(char.id, currentLife, currentMana)
+    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoBack(): void {
-    if (char) saveCharacterState(char.id, currentLife, currentMana)
+    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana)
     navigate('menu')
   }
 
@@ -122,6 +138,7 @@ export function createGameScene(
   let app: Application | null = null
   let destroyed = false
   let modalCleanup: (() => void) | null = null
+  const entityGraphics = new Map<string, Graphics>()
 
   const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
   charBtn.addEventListener('click', () => {
@@ -132,6 +149,55 @@ export function createGameScene(
     }
     modalCleanup = mountCharacterModal(el, () => { modalCleanup = null })
   })
+
+  function drawEntity(entity: Entity): void {
+    if (!app) return
+    let g = entityGraphics.get(entity.id)
+    if (!g) {
+      g = new Graphics()
+      app.stage.addChild(g)
+      entityGraphics.set(entity.id, g)
+    }
+    g.clear()
+    if (entity.role === 'player') {
+      g.circle(0, 0, PLAYER_RADIUS)
+      g.fill({ color: tokens.color.primary })
+    } else {
+      g.rect(-ENEMY_SIZE / 2, -ENEMY_SIZE / 2, ENEMY_SIZE, ENEMY_SIZE)
+      g.fill({ color: tokens.color.accentAlt })
+    }
+    g.position.set(entity.x, entity.y)
+  }
+
+  function repositionPlayer(): void {
+    if (!app) return
+    const { width, height } = app.screen
+    playerEntity.x = width / 2
+    playerEntity.y = (height - HUD_HEIGHT) / 2
+    drawEntity(playerEntity)
+  }
+
+  function spawnEnemies(): void {
+    if (!app || enemiesSpawned) return
+    enemiesSpawned = true
+    const { width, height } = app.screen
+    const playArea = height - HUD_HEIGHT
+    const margin = ENEMY_SIZE
+    const positions: Array<[number, number]> = [
+      [
+        margin + Math.random() * (width / 2 - margin * 2),
+        margin + Math.random() * (playArea - margin * 2),
+      ],
+      [
+        width / 2 + margin + Math.random() * (width / 2 - margin * 2),
+        margin + Math.random() * (playArea - margin * 2),
+      ],
+    ]
+    positions.forEach(([x, y], i) => {
+      const enemy = createEnemyEntity(`enemy-${i + 1}`, x, y)
+      drawEntity(enemy)
+    })
+  }
 
   ;(async () => {
     try {
@@ -149,7 +215,6 @@ export function createGameScene(
         return
       }
 
-      // Respect pause state that may have been set before init completed
       if (paused) instance.ticker.stop()
 
       app = instance
@@ -159,39 +224,8 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       el.insertBefore(wrapper, el.firstChild)
 
-      const circle = new Graphics()
-      circle.circle(0, 0, CIRCLE_RADIUS)
-      circle.fill({ color: tokens.color.surfacePanel })
-      circle.stroke({ color: tokens.color.primary, width: 3 })
-      app.stage.addChild(circle)
-
-      const label = new Text({
-        text: '',
-        style: new TextStyle({
-          fill: tokens.color.text,
-          fontSize: 72,
-          fontFamily: "'Inter', sans-serif",
-          fontWeight: '600',
-        }),
-      })
-      label.anchor.set(0.5)
-      app.stage.addChild(label)
-
-      function reposition(): void {
-        if (!app) return
-        const { width, height } = app.screen
-        circle.position.set(width / 2, (height - HUD_HEIGHT) / 2)
-        label.position.set(width / 2, (height - HUD_HEIGHT) / 2)
-      }
-
-      reposition()
-      app.renderer.on('resize', reposition)
-
-      el.querySelectorAll<HTMLButtonElement>('[data-label]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          label.text = btn.dataset['label'] ?? ''
-        })
-      })
+      repositionPlayer()
+      app.renderer.on('resize', repositionPlayer)
     } catch (err) {
       console.error('[game] PixiJS init failed:', err)
     }
@@ -201,6 +235,7 @@ export function createGameScene(
     destroyed = true
     stopRegen()
     clearInterval(saveInterval)
+    if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     app?.destroy(true)
     app = null
