@@ -107,7 +107,7 @@ export function createMenuScene(
       onClose: closeModal,
       onCreate: (name) => {
         createCharacter(name)
-        closeModal()
+        navigate('game')
       },
     })
   })
@@ -157,6 +157,7 @@ function mountNewCharacterModal(
           placeholder="${t('character', 'namePlaceholder')}"
           autocomplete="off"
         />
+        <span class="modal-input-error" aria-live="polite"></span>
       </div>
       <div class="modal-actions">
         <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
@@ -170,11 +171,15 @@ function mountNewCharacterModal(
   const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
   const createBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="create"]')!
   const cancelBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
+  const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
 
   input.focus()
 
   input.addEventListener('input', () => {
-    createBtn.disabled = input.value.trim().length === 0
+    const trimmed = input.value.trim()
+    const isDuplicate = trimmed.length > 0 && getCharacters().some(c => c.name === trimmed)
+    errorMsg.textContent = isDuplicate ? t('character', 'nameTaken') : ''
+    createBtn.disabled = trimmed.length === 0 || isDuplicate
   })
 
   input.addEventListener('keydown', (e) => {

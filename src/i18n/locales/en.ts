@@ -21,6 +21,7 @@ export interface TranslationSchema {
     current: string
     emptySlot: string
     deleteLabel: string
+    nameTaken: string
   }
 }
 
@@ -47,5 +48,6 @@ export const en: TranslationSchema = {
     current: 'Current',
     emptySlot: '— Empty —',
     deleteLabel: 'Delete',
+    nameTaken: 'That name is already taken.',
   },
 }

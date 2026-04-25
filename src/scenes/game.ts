@@ -1,5 +1,7 @@
 import { Application, Graphics, Text, TextStyle } from 'pixi.js'
+import { createIcons, User } from 'lucide'
 import { tokens } from '../theme'
+import { getCurrentCharacter } from '../core/character'
 import type { SceneId } from '../core/router'
 
 const CIRCLE_RADIUS = 120
@@ -15,13 +17,27 @@ export function createGameScene(
     <div class="game-hud">
       <button class="game-action-btn" data-label="A">A</button>
       <button class="game-action-btn" data-label="B">B</button>
-      <button class="game-action-btn" data-label="C">C</button>
+      <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
+        <i data-lucide="user" aria-hidden="true"></i>
+      </button>
     </div>
   `
   container.appendChild(el)
+  createIcons({ icons: { User } })
 
   let app: Application | null = null
   let destroyed = false
+  let modalCleanup: (() => void) | null = null
+
+  const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
+  charBtn.addEventListener('click', () => {
+    if (modalCleanup) {
+      modalCleanup()
+      modalCleanup = null
+      return
+    }
+    modalCleanup = mountCharacterModal(el, () => { modalCleanup = null })
+  })
 
   ;(async () => {
     try {
@@ -74,7 +90,7 @@ export function createGameScene(
       reposition()
       app.renderer.on('resize', reposition)
 
-      el.querySelectorAll<HTMLButtonElement>('.game-action-btn').forEach(btn => {
+      el.querySelectorAll<HTMLButtonElement>('[data-label]').forEach(btn => {
         btn.addEventListener('click', () => {
           label.text = btn.dataset['label'] ?? ''
         })
@@ -86,8 +102,43 @@ export function createGameScene(
 
   return () => {
     destroyed = true
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
     app?.destroy(true)
     app = null
     el.remove()
   }
+}
+
+function mountCharacterModal(parent: HTMLElement, onClose: () => void): () => void {
+  const char = getCurrentCharacter()
+
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel char-info-panel" role="dialog" aria-modal="true" aria-labelledby="char-info-title">
+      <h2 class="modal-title" id="char-info-title">Character</h2>
+      <div class="char-info-row">
+        <span class="char-info-label">Name</span>
+        <span class="char-info-value">${char ? escapeHtml(char.name) : '—'}</span>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="close">Close</button>
+      </div>
+    </div>
+  `
+
+  parent.appendChild(backdrop)
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', () => { backdrop.remove(); onClose() })
+
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) { backdrop.remove(); onClose() }
+  })
+
+  return () => backdrop.remove()
+}
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
