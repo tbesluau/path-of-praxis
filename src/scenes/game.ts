@@ -66,7 +66,8 @@ export function createGameScene(
 
   let paused = true
   let playerDead = false
-  let enemiesSpawned = false
+  let waveScheduled = false
+  let enemyIdCounter = 0
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
 
   const el = document.createElement('div')
@@ -145,11 +146,8 @@ export function createGameScene(
     } else {
       startRegen()
       app?.ticker.start()
-      if (!enemiesSpawned) {
-        enemySpawnTimeout = setTimeout(() => {
-          if (!destroyed) spawnEnemies()
-        }, balance.wave.spawnDelay)
-      }
+      const liveEnemies = entities.filter(e => e.role === 'enemy').length
+      if (liveEnemies <= balance.wave.nextWaveThreshold) scheduleWave()
     }
     updatePlayPauseBtn()
   }
@@ -320,6 +318,9 @@ export function createGameScene(
     if (entity.role === 'player') {
       playerDead = true
       modalCleanup = mountDeathModal()
+    } else {
+      const liveEnemies = entities.filter(e => e.role === 'enemy').length
+      if (!paused && liveEnemies <= balance.wave.nextWaveThreshold) scheduleWave()
     }
   }
 
@@ -335,11 +336,12 @@ export function createGameScene(
       if (entity.role !== 'player') removeEntity(entity)
     }
 
-    // Cancel any pending enemy spawn timer
+    // Cancel any pending wave timer
     if (enemySpawnTimeout !== null) {
       clearTimeout(enemySpawnTimeout)
       enemySpawnTimeout = null
     }
+    waveScheduled = false
 
     // Reset player
     playerEntity.currentLife = playerEntity.maxLife
@@ -352,13 +354,9 @@ export function createGameScene(
     initEntityDisplay(playerEntity)
 
     playerDead = false
-    enemiesSpawned = false
     updateBars()
 
-    // Schedule enemy respawn (game is still unpaused at this point)
-    enemySpawnTimeout = setTimeout(() => {
-      if (!destroyed) spawnEnemies()
-    }, balance.wave.spawnDelay)
+    scheduleWave()
   }
 
   function mountDeathModal(): () => void {
@@ -380,15 +378,28 @@ export function createGameScene(
 
   // ── Spawn ────────────────────────────────────────────────────────────────
 
+  function scheduleWave(): void {
+    if (waveScheduled) return
+    waveScheduled = true
+    enemySpawnTimeout = setTimeout(() => {
+      if (!destroyed) spawnEnemies()
+    }, balance.wave.spawnDelay)
+  }
+
   function spawnEnemies(): void {
-    if (!app || enemiesSpawned) return
-    enemiesSpawned = true
+    if (!app) return
+    waveScheduled = false
+    enemySpawnTimeout = null
+
+    let count = balance.wave.minCount
+    while (Math.random() < balance.wave.extraChance) count++
+
     const baseAngle = Math.random() * Math.PI * 2
-    for (let i = 0; i < balance.wave.count; i++) {
-      const angle = baseAngle + i * Math.PI + (Math.random() - 0.5) * 0.8
+    for (let i = 0; i < count; i++) {
+      const angle = baseAngle + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5
       const dist = balance.wave.spawnDistance + Math.random() * 100
       const enemy = createEnemyEntity(
-        `enemy-${i + 1}`,
+        `enemy-${++enemyIdCounter}`,
         playerEntity.x + Math.cos(angle) * dist,
         playerEntity.y + Math.sin(angle) * dist,
         'enemyA',
