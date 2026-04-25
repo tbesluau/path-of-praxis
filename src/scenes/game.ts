@@ -1,5 +1,5 @@
 import { Application, Graphics, Text, TextStyle } from 'pixi.js'
-import { createIcons, User } from 'lucide'
+import { createIcons, User, ArrowLeft } from 'lucide'
 import { tokens } from '../theme'
 import { getCurrentCharacter } from '../core/character'
 import type { SceneId } from '../core/router'
@@ -9,11 +9,14 @@ const HUD_HEIGHT = 128
 
 export function createGameScene(
   container: HTMLElement,
-  _navigate: (to: SceneId) => void,
+  navigate: (to: SceneId) => void,
 ): () => void {
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
+    <button class="back-btn" aria-label="Back to menu">
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
+    </button>
     <div class="game-hud">
       <button class="game-action-btn" data-label="A">A</button>
       <button class="game-action-btn" data-label="B">B</button>
@@ -23,7 +26,10 @@ export function createGameScene(
     </div>
   `
   container.appendChild(el)
-  createIcons({ icons: { User } })
+  createIcons({ icons: { User, ArrowLeft } })
+
+  el.querySelector<HTMLButtonElement>('.back-btn')!
+    .addEventListener('click', () => navigate('menu'))
 
   let app: Application | null = null
   let destroyed = false

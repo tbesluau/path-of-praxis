@@ -4,6 +4,7 @@ import { initI18n } from './i18n'
 import { initRouter, navigate, registerScenes } from './core/router'
 import { createMenuScene } from './scenes/menu'
 import { createGameScene } from './scenes/game'
+import { mountSettingsButton } from './ui/settings'
 
 function bootstrap(): void {
   applyTheme()
@@ -13,6 +14,7 @@ function bootstrap(): void {
   registerScenes({ menu: createMenuScene, game: createGameScene })
   initRouter(app)
   navigate('menu')
+  mountSettingsButton(app)
 }
 
 bootstrap()

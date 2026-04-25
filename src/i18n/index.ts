@@ -6,14 +6,21 @@ export type Locale = 'en' | 'fr'
 const locales: Record<Locale, TranslationSchema> = { en, fr }
 
 let active: TranslationSchema = en
+let activeLocale: Locale = 'en'
 
 export function initI18n(): void {
-  const lang = navigator.language.slice(0, 2) as Locale
-  active = locales[lang] ?? en
+  const lang = navigator.language.slice(0, 2)
+  activeLocale = lang in locales ? (lang as Locale) : 'en'
+  active = locales[activeLocale]
 }
 
 export function setLocale(locale: Locale): void {
+  activeLocale = locale
   active = locales[locale]
+}
+
+export function getLocale(): Locale {
+  return activeLocale
 }
 
 export function t<S extends keyof TranslationSchema>(

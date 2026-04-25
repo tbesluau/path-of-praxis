@@ -23,6 +23,13 @@ export interface TranslationSchema {
     deleteLabel: string
     nameTaken: string
   }
+  settings: {
+    title: string
+    language: string
+    langEn: string
+    langFr: string
+    close: string
+  }
 }
 
 export const en: TranslationSchema = {
@@ -49,5 +56,12 @@ export const en: TranslationSchema = {
     emptySlot: '— Empty —',
     deleteLabel: 'Delete',
     nameTaken: 'That name is already taken.',
+  },
+  settings: {
+    title: 'Settings',
+    language: 'Language',
+    langEn: 'English',
+    langFr: 'French',
+    close: 'Close',
   },
 }
