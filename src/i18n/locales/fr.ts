@@ -6,6 +6,9 @@ export const fr: TranslationSchema = {
     subtitle: 'Forge ta voie',
     deathTitle: 'Vous êtes mort',
     deathRebirth: 'Renaissance',
+    actionSelectTitle: 'Actions',
+    weaponsTab: 'Armes',
+    spellsTab: 'Sorts',
   },
   menu: {
     continue: 'Continuer',
