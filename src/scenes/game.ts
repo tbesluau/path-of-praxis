@@ -2,13 +2,13 @@ import { Application, Graphics, Text, TextStyle } from 'pixi.js'
 import { createIcons, User, ArrowLeft } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter } from '../core/character'
+import { getCurrentCharacter, saveCharacterState } from '../core/character'
 import type { SceneId } from '../core/router'
 
 const CIRCLE_RADIUS = 120
 const HUD_HEIGHT = 128
 const REGEN_RATE = 1
-const STARTING_VALUE = 50
+const SAVE_INTERVAL_MS = 10_000
 
 export function createGameScene(
   container: HTMLElement,
@@ -18,8 +18,8 @@ export function createGameScene(
   const maxLife = char?.maxLife ?? 100
   const maxMana = char?.maxMana ?? 100
 
-  let currentLife = STARTING_VALUE
-  let currentMana = STARTING_VALUE
+  let currentLife = char?.currentLife ?? 50
+  let currentMana = char?.currentMana ?? 50
 
   const el = document.createElement('div')
   el.className = 'scene scene-game'
@@ -62,8 +62,17 @@ export function createGameScene(
     updateBars()
   }, 1000)
 
+  const saveInterval = setInterval(() => {
+    if (char) saveCharacterState(char.id, currentLife, currentMana)
+  }, SAVE_INTERVAL_MS)
+
+  function saveAndGoBack(): void {
+    if (char) saveCharacterState(char.id, currentLife, currentMana)
+    navigate('menu')
+  }
+
   el.querySelector<HTMLButtonElement>('.back-btn')!
-    .addEventListener('click', () => navigate('menu'))
+    .addEventListener('click', saveAndGoBack)
 
   let app: Application | null = null
   let destroyed = false
@@ -143,6 +152,7 @@ export function createGameScene(
   return () => {
     destroyed = true
     clearInterval(regenInterval)
+    clearInterval(saveInterval)
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     app?.destroy(true)
     app = null

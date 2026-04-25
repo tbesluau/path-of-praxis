@@ -7,6 +7,8 @@ export interface Character {
   createdAt: number
   maxLife: number
   maxMana: number
+  currentLife: number
+  currentMana: number
 }
 
 interface SaveData {
@@ -15,7 +17,19 @@ interface SaveData {
 }
 
 function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'createdAt'>): Character {
-  return { maxLife: 100, maxMana: 100, ...c }
+  const maxLife = c.maxLife ?? 100
+  const maxMana = c.maxMana ?? 100
+  return {
+    id: c.id,
+    name: c.name,
+    createdAt: c.createdAt,
+    maxLife,
+    maxMana,
+    // Legacy saves without current values default to full — new characters
+    // are explicitly set to 50 in createCharacter.
+    currentLife: c.currentLife ?? maxLife,
+    currentMana: c.currentMana ?? maxMana,
+  }
 }
 
 function read(): SaveData {
@@ -63,6 +77,8 @@ export function createCharacter(name: string): Character {
     createdAt: Date.now(),
     maxLife: 100,
     maxMana: 100,
+    currentLife: 50,
+    currentMana: 50,
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -81,5 +97,14 @@ export function deleteCharacter(id: string): void {
   const data = read()
   data.characters = data.characters.filter(c => c.id !== id)
   if (data.currentId === id) data.currentId = null
+  write(data)
+}
+
+export function saveCharacterState(id: string, currentLife: number, currentMana: number): void {
+  const data = read()
+  const char = data.characters.find(c => c.id === id)
+  if (!char) return
+  char.currentLife = currentLife
+  char.currentMana = currentMana
   write(data)
 }

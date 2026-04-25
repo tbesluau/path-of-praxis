@@ -14,15 +14,16 @@ describe('character', () => {
     expect(character.getCurrentCharacter()).toBeNull()
   })
 
-  it('creates a character with default stats', () => {
+  it('creates a character with default stats and 50 starting resources', () => {
     const c = character.createCharacter('Alice')
     expect(c.name).toBe('Alice')
     expect(c.id).toBeTruthy()
     expect(c.maxLife).toBe(100)
     expect(c.maxMana).toBe(100)
+    expect(c.currentLife).toBe(50)
+    expect(c.currentMana).toBe(50)
     expect(character.getCharacters()).toHaveLength(1)
     expect(character.getCurrentId()).toBe(c.id)
-    expect(character.getCurrentCharacter()?.name).toBe('Alice')
   })
 
   it('trims whitespace from name', () => {
@@ -79,11 +80,25 @@ describe('character', () => {
     expect(character.getCurrentId()).toBeNull()
   })
 
-  it('normalises legacy saves missing maxLife/maxMana', () => {
+  it('saves and restores current life and mana', () => {
+    const c = character.createCharacter('Hero')
+    character.saveCharacterState(c.id, 75, 30)
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.currentLife).toBe(75)
+    expect(restored.currentMana).toBe(30)
+  })
+
+  it('saveCharacterState is a no-op for unknown id', () => {
+    expect(() => character.saveCharacterState('ghost', 50, 50)).not.toThrow()
+  })
+
+  it('normalises legacy saves missing maxLife/maxMana/currentLife/currentMana', () => {
     const legacy = { characters: [{ id: 'x', name: 'Old', createdAt: 0 }], currentId: 'x' }
     localStorage.setItem('pop:save', JSON.stringify(legacy))
     const chars = character.getCharacters()
     expect(chars[0].maxLife).toBe(100)
     expect(chars[0].maxMana).toBe(100)
+    expect(chars[0].currentLife).toBe(100)
+    expect(chars[0].currentMana).toBe(100)
   })
 })
