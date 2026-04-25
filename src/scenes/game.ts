@@ -76,7 +76,8 @@ export function createGameScene(
   function awardXp(actionId: ActionId, amount: number): void {
     const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     let { xp, level, maxLevel } = prev
-    xp += amount
+    // Prestige accelerates XP gain: past peak level → faster leveling next life
+    xp += amount * Math.sqrt(maxLevel)
     let leveled = false
     while (xp >= level * balance.action.xpPerLevel) {
       xp -= level * balance.action.xpPerLevel
@@ -85,8 +86,8 @@ export function createGameScene(
       leveled = true
     }
     actionProgress[actionId] = { xp, level, maxLevel }
-    if (leveled && actionId === playerActionId) {
-      playerEntity.attackDamage = getAction(actionId).damage * level
+    if (actionId === playerActionId) {
+      if (leveled) playerEntity.attackDamage = getAction(actionId).damage * level
       updateActionBtn(getAction(actionId))
     }
   }
@@ -410,10 +411,10 @@ export function createGameScene(
   function rebirth(): void {
     modalCleanup = null
 
-    // Apply prestige: XP × √maxLevel, level resets to 1, maxLevel persists
+    // Rebirth: level and XP reset; maxLevel persists so prestige multiplier carries forward
     for (const id of Object.keys(actionProgress)) {
-      const p = actionProgress[id]
-      actionProgress[id] = { xp: p.xp * Math.sqrt(p.maxLevel), level: 1, maxLevel: p.maxLevel }
+      const { maxLevel } = actionProgress[id]
+      actionProgress[id] = { xp: 0, level: 1, maxLevel }
     }
 
     // Clear any in-progress fragments immediately
