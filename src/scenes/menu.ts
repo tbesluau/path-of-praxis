@@ -1,6 +1,7 @@
 import { createIcons, Play, UserPlus, FolderOpen, Trophy, Trash2 } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
+import { mountSettingsButton } from '../ui/settings'
 import type { SceneId } from '../core/router'
 import {
   getCharacters,
@@ -66,6 +67,8 @@ export function createMenuScene(
   container.appendChild(el)
   createIcons({ icons: { Play, UserPlus, FolderOpen, Trophy, Trash2 } })
 
+  const unmountSettings = mountSettingsButton(el)
+
   const canvas = el.querySelector<HTMLCanvasElement>('#menu-canvas')!
   const stopParticles = startParticles(canvas)
 
@@ -128,6 +131,7 @@ export function createMenuScene(
 
   return () => {
     stopParticles()
+    unmountSettings()
     document.removeEventListener('keydown', onEscape)
     if (modalCleanup) modalCleanup()
     el.remove()
