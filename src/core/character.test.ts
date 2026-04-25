@@ -23,6 +23,7 @@ describe('character', () => {
     expect(c.currentLife).toBe(50)
     expect(c.currentMana).toBe(50)
     expect(c.actionId).toBe('sword')
+    expect(c.actionProgress).toEqual({})
     expect(character.getCharacters()).toHaveLength(1)
     expect(character.getCurrentId()).toBe(c.id)
   })
@@ -110,5 +111,13 @@ describe('character', () => {
     expect(chars[0].currentLife).toBe(100)
     expect(chars[0].currentMana).toBe(100)
     expect(chars[0].actionId).toBe('sword')
+    expect(chars[0].actionProgress).toEqual({})
+  })
+
+  it('saveCharacterState persists actionProgress', () => {
+    const c = character.createCharacter('Hero', 'sword')
+    character.saveCharacterState(c.id, 80, 60, 'sword', { sword: { xp: 150, level: 2, maxLevel: 2 } })
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.actionProgress.sword).toEqual({ xp: 150, level: 2, maxLevel: 2 })
   })
 })

@@ -54,4 +54,9 @@ export const balance = {
     gridSize: 64,  // pixels per grid cell
   },
 
+  // ── Action XP ────────────────────────────────────────────────────────────
+  action: {
+    xpPerLevel: 100,  // XP needed for next level = currentLevel × xpPerLevel
+  },
+
 } as const
