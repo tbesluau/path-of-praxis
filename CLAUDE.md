@@ -44,6 +44,15 @@ npm run typecheck  # Type-check only, no emit
 npm run preview    # Serve dist/ locally
 ```
 
+## Git workflow
+
+- **Sync before every task**: run `git fetch origin main && git rebase origin/main` before making any changes. If the rebase reports skipped commits, that is expected (they were already squash-merged) — just continue.
+- **Working branch**: all development happens on `claude/dev`. Never commit directly to `main`.
+- **One PR per logical change**: open a PR after each push. Do not batch unrelated changes into one PR.
+- **Push**: always use `git push --force-with-lease origin claude/dev` after a rebase, never plain `--force`.
+- **Conflict resolution**: if a rebase has actual file conflicts, resolve them, `git add` the files, then `git rebase --continue`. Never use `git rebase --abort` unless explicitly asked.
+- **Never amend published commits**: create a new commit instead.
+
 ## Mobile notes
 
 - `viewport-fit=cover` + `env(safe-area-inset-*)` for notched devices
