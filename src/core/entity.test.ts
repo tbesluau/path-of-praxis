@@ -15,6 +15,23 @@ describe('entity', () => {
       expect(e.currentMana).toBe(40)
     })
 
+    it('defaults attack stats to 1 / 1 / 20', () => {
+      const e = createPlayerEntity({ maxLife: 100, maxMana: 100, currentLife: 50, currentMana: 50, radius: 20 })
+      expect(e.attackSpeed).toBe(1)
+      expect(e.attackDamage).toBe(1)
+      expect(e.attackRange).toBe(20)
+    })
+
+    it('accepts explicit attack stats', () => {
+      const e = createPlayerEntity({
+        maxLife: 100, maxMana: 100, currentLife: 100, currentMana: 100, radius: 20,
+        attackSpeed: 2, attackDamage: 5, attackRange: 40,
+      })
+      expect(e.attackSpeed).toBe(2)
+      expect(e.attackDamage).toBe(5)
+      expect(e.attackRange).toBe(40)
+    })
+
     it('starts at position (0, 0)', () => {
       const e = createPlayerEntity({ maxLife: 100, maxMana: 100, currentLife: 50, currentMana: 50, radius: 20 })
       expect(e.x).toBe(0)
@@ -33,14 +50,21 @@ describe('entity', () => {
       expect(e.y).toBe(300)
     })
 
+    it('defaults attack stats to 1 / 1 / 20', () => {
+      const e = createEnemyEntity('enemy-2', 0, 0)
+      expect(e.attackSpeed).toBe(1)
+      expect(e.attackDamage).toBe(1)
+      expect(e.attackRange).toBe(20)
+    })
+
     it('accepts an explicit team and radius', () => {
-      const e = createEnemyEntity('enemy-2', 0, 0, 'enemyB', 30)
+      const e = createEnemyEntity('enemy-3', 0, 0, 'enemyB', 30)
       expect(e.team).toBe('enemyB')
       expect(e.radius).toBe(30)
     })
 
     it('defaults enemy to full life and zero mana', () => {
-      const e = createEnemyEntity('enemy-3', 0, 0)
+      const e = createEnemyEntity('enemy-4', 0, 0)
       expect(e.maxLife).toBe(100)
       expect(e.currentLife).toBe(100)
       expect(e.maxMana).toBe(0)

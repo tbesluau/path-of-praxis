@@ -1,4 +1,4 @@
-import { Application, Graphics } from 'pixi.js'
+import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
 import { createIcons, User, ArrowLeft, Play, Pause } from 'lucide'
 import { tokens } from '../theme'
@@ -10,12 +10,14 @@ import { GRID_SIZE } from '../core/world'
 import type { SceneId } from '../core/router'
 
 const PLAYER_RADIUS = 20
+const HP_BAR_H = 4
+const HP_BAR_GAP = 4   // px between entity top and bar bottom
 const HUD_HEIGHT = 128
 const REGEN_RATE = 1
 const SAVE_INTERVAL_MS = 10_000
 const ENEMY_SPAWN_DELAY_MS = 2_000
 const ENTITY_SPEED = 80   // px/s
-const SPAWN_DISTANCE = 300 // world units from player
+const SPAWN_DISTANCE = 300
 
 export function createGameScene(
   container: HTMLElement,
@@ -35,8 +37,7 @@ export function createGameScene(
 
   const entities: Entity[] = [playerEntity]
 
-  // ── Physics (Matter.js) ─────────────────────────────────────────────────
-  // Used for collision detection and resolution; our AI drives the velocities.
+  // ── Physics ─────────────────────────────────────────────────────────────
 
   const physicsEngine = Matter.Engine.create({ gravity: { x: 0, y: 0 } })
   const entityBodies = new Map<string, Matter.Body>()
@@ -165,7 +166,13 @@ export function createGameScene(
   let worldGrid: Graphics | null = null
   let destroyed = false
   let modalCleanup: (() => void) | null = null
-  const entityGraphics = new Map<string, Graphics>()
+
+  // One Container per entity (holds sprite + optional life bar); positioned at world coords.
+  const entityContainers = new Map<string, Container>()
+  // Life bar Graphics per enemy (child of that entity's Container).
+  const lifeBarGraphics = new Map<string, Graphics>()
+  // ms remaining until each entity's next attack.
+  const attackCooldowns = new Map<string, number>()
 
   const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
   charBtn.addEventListener('click', () => {
@@ -177,20 +184,49 @@ export function createGameScene(
     modalCleanup = mountCharacterModal(el, () => { modalCleanup = null })
   })
 
-  // Draws the entity shape once and registers its graphics object.
-  function initEntityGraphics(entity: Entity): void {
-    if (!app || entityGraphics.has(entity.id)) return
-    const g = new Graphics()
-    if (entity.role === 'player') {
-      g.circle(0, 0, entity.radius)
-      g.fill({ color: tokens.color.primary })
-    } else {
-      g.rect(-entity.radius, -entity.radius, entity.radius * 2, entity.radius * 2)
-      g.fill({ color: tokens.color.accentAlt })
+  // Redraws the life bar fill for an enemy (call on spawn and after each hit).
+  function drawLifeBar(entity: Entity): void {
+    const bar = lifeBarGraphics.get(entity.id)
+    if (!bar) return
+    const barW = entity.radius * 2
+    bar.clear()
+    bar.rect(-barW / 2, 0, barW, HP_BAR_H)
+    bar.fill({ color: tokens.color.surfacePanel })
+    const pct = Math.max(0, entity.currentLife / entity.maxLife)
+    if (pct > 0) {
+      bar.rect(-barW / 2, 0, barW * pct, HP_BAR_H)
+      bar.fill({ color: tokens.color.accentAlt })
     }
-    g.position.set(entity.x, entity.y)
-    app.stage.addChild(g)
-    entityGraphics.set(entity.id, g)
+  }
+
+  // Creates the Container with sprite (and life bar for enemies) for an entity.
+  function initEntityDisplay(entity: Entity): void {
+    if (!app || entityContainers.has(entity.id)) return
+
+    const c = new Container()
+
+    const sprite = new Graphics()
+    if (entity.role === 'player') {
+      sprite.circle(0, 0, entity.radius)
+      sprite.fill({ color: tokens.color.primary })
+    } else {
+      sprite.rect(-entity.radius, -entity.radius, entity.radius * 2, entity.radius * 2)
+      sprite.fill({ color: tokens.color.accentAlt })
+    }
+    c.addChild(sprite)
+
+    if (entity.role !== 'player') {
+      const bar = new Graphics()
+      // Position bar above entity: top edge of sprite is at -radius, leave HP_BAR_GAP above
+      bar.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H))
+      c.addChild(bar)
+      lifeBarGraphics.set(entity.id, bar)
+      drawLifeBar(entity)
+    }
+
+    c.position.set(entity.x, entity.y)
+    app.stage.addChild(c)
+    entityContainers.set(entity.id, c)
   }
 
   // Redraws the world grid to cover the current viewport in world-space coordinates.
@@ -244,7 +280,7 @@ export function createGameScene(
       )
       entities.push(enemy)
       createEntityBody(enemy)
-      initEntityGraphics(enemy)
+      initEntityDisplay(enemy)
     }
   }
 
@@ -276,7 +312,7 @@ export function createGameScene(
       worldGrid = new Graphics()
       app.stage.addChild(worldGrid)
 
-      initEntityGraphics(playerEntity)
+      initEntityDisplay(playerEntity)
       drawGrid()
       updateCamera()
       app.renderer.on('resize', () => { drawGrid(); updateCamera() })
@@ -284,41 +320,66 @@ export function createGameScene(
       app.ticker.add((ticker) => {
         const dt = ticker.deltaMS / 1000
 
-        // Set velocities toward nearest cross-team target; stop at contact distance.
+        // ── Movement: advance toward target, stop when in attack range ──────
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (!body) continue
           const target = nearestTarget(entity, entities)
-          if (target) {
-            const dx = target.x - entity.x
-            const dy = target.y - entity.y
-            const distSq = dx * dx + dy * dy
-            const minDist = entity.radius + target.radius
-            if (distSq > minDist * minDist) {
-              const dist = Math.sqrt(distSq)
-              Matter.Body.setVelocity(body, {
-                x: (dx / dist) * ENTITY_SPEED * dt,
-                y: (dy / dist) * ENTITY_SPEED * dt,
-              })
-            } else {
-              Matter.Body.setVelocity(body, { x: 0, y: 0 })
-            }
+          if (!target) {
+            Matter.Body.setVelocity(body, { x: 0, y: 0 })
+            continue
+          }
+          const dx = target.x - entity.x
+          const dy = target.y - entity.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          const stopDist = entity.attackRange + target.radius
+          if (dist > stopDist) {
+            Matter.Body.setVelocity(body, {
+              x: (dx / dist) * ENTITY_SPEED * dt,
+              y: (dy / dist) * ENTITY_SPEED * dt,
+            })
           } else {
             Matter.Body.setVelocity(body, { x: 0, y: 0 })
           }
         }
 
-        // Step physics: resolves collisions and updates body positions.
+        // ── Physics step: resolves collisions ────────────────────────────────
         Matter.Engine.update(physicsEngine, ticker.deltaMS)
 
-        // Sync entity positions from physics bodies and update graphics.
+        // ── Sync entity positions from physics bodies ────────────────────────
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (body) {
             entity.x = body.position.x
             entity.y = body.position.y
-            entityGraphics.get(entity.id)?.position.set(entity.x, entity.y)
           }
+          entityContainers.get(entity.id)?.position.set(entity.x, entity.y)
+        }
+
+        // ── Attack: tick cooldowns, deal damage when in range ────────────────
+        const damagedIds = new Set<string>()
+        for (const entity of entities) {
+          const cd = (attackCooldowns.get(entity.id) ?? 0) - ticker.deltaMS
+          attackCooldowns.set(entity.id, cd)
+
+          const target = nearestTarget(entity, entities)
+          if (!target) continue
+          const dx = target.x - entity.x
+          const dy = target.y - entity.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist - target.radius <= entity.attackRange && cd <= 0) {
+            target.currentLife = Math.max(0, target.currentLife - entity.attackDamage)
+            attackCooldowns.set(entity.id, 1000 / entity.attackSpeed)
+            damagedIds.add(target.id)
+          }
+        }
+
+        // ── Update life visuals for damaged entities ─────────────────────────
+        for (const id of damagedIds) {
+          const entity = entities.find(e => e.id === id)
+          if (!entity) continue
+          if (entity.role === 'player') updateBars()
+          else drawLifeBar(entity)
         }
 
         drawGrid()
