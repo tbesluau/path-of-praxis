@@ -2,7 +2,7 @@ import { createIcons, Settings } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 
-export function mountSettingsButton(container: HTMLElement): void {
+export function mountSettingsButton(container: HTMLElement): () => void {
   const btn = document.createElement('button')
   btn.className = 'settings-btn'
   btn.setAttribute('aria-label', 'Settings')
@@ -28,6 +28,8 @@ export function mountSettingsButton(container: HTMLElement): void {
     modalCleanup = mountSettingsModal(container, closeModal)
     document.addEventListener('keydown', onEscape)
   })
+
+  return () => { closeModal(); btn.remove() }
 }
 
 function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => void {
