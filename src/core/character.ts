@@ -1,3 +1,5 @@
+import { balance } from '../config/balance'
+
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
 
@@ -17,8 +19,8 @@ interface SaveData {
 }
 
 function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'createdAt'>): Character {
-  const maxLife = c.maxLife ?? 100
-  const maxMana = c.maxMana ?? 100
+  const maxLife = c.maxLife ?? balance.player.maxLife
+  const maxMana = c.maxMana ?? balance.player.maxMana
   return {
     id: c.id,
     name: c.name,
@@ -26,7 +28,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     maxLife,
     maxMana,
     // Legacy saves without current values default to full — new characters
-    // are explicitly set to 50 in createCharacter.
+    // are explicitly set via balance.player.startingLife/startingMana.
     currentLife: c.currentLife ?? maxLife,
     currentMana: c.currentMana ?? maxMana,
   }
@@ -75,10 +77,10 @@ export function createCharacter(name: string): Character {
     id: crypto.randomUUID(),
     name: trimmed,
     createdAt: Date.now(),
-    maxLife: 100,
-    maxMana: 100,
-    currentLife: 50,
-    currentMana: 50,
+    maxLife: balance.player.maxLife,
+    maxMana: balance.player.maxMana,
+    currentLife: balance.player.startingLife,
+    currentMana: balance.player.startingMana,
   }
   data.characters.push(char)
   data.currentId = char.id

@@ -1,0 +1,61 @@
+/**
+ * Game balance configuration — edit freely to tune gameplay.
+ *
+ * Units are noted inline. attackRange is expressed in "range units"
+ * where 1 unit = player radius, so 1 = melee (touching), 2 = twice
+ * that reach, etc.
+ */
+export const balance = {
+
+  // ── Player ──────────────────────────────────────────────────────────────
+  player: {
+    radius:        20,   // pixels
+    moveSpeed:     80,   // pixels per second
+    maxLife:       100,
+    maxMana:       100,
+    startingLife:  50,   // on new character creation and after rebirth
+    startingMana:  50,
+    regenRate:     1,    // life and mana recovered per second
+    attackSpeed:   1,    // attacks per second
+    attackDamage:  1,
+    attackRange:   1,    // range units (1 unit = player radius)
+  },
+
+  // ── Enemy teams ─────────────────────────────────────────────────────────
+  enemyA: {
+    radius:        20,   // pixels
+    moveSpeed:     80,   // pixels per second
+    maxLife:       100,
+    attackSpeed:   1,    // attacks per second
+    attackDamage:  1,
+    attackRange:   1,    // range units (1 unit = player radius)
+  },
+
+  enemyB: {
+    radius:        20,   // pixels
+    moveSpeed:     80,   // pixels per second
+    maxLife:       100,
+    attackSpeed:   1,    // attacks per second
+    attackDamage:  1,
+    attackRange:   1,    // range units (1 unit = player radius)
+  },
+
+  // ── Enemy waves ─────────────────────────────────────────────────────────
+  wave: {
+    spawnDelay:    2000, // ms after first unpause before enemies appear
+    spawnDistance: 300,  // pixels from player center at spawn
+    count:         2,    // enemies per wave
+  },
+
+  // ── Death animation ──────────────────────────────────────────────────────
+  death: {
+    fragmentCount:    8,   // shards per entity
+    fragmentLifetime: 750, // ms (each shard has ±300 ms variance on top)
+  },
+
+  // ── World ────────────────────────────────────────────────────────────────
+  world: {
+    gridSize: 64,  // pixels per grid cell
+  },
+
+} as const
