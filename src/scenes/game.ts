@@ -3,7 +3,7 @@ import { createIcons, User, ArrowLeft, Play, Pause } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState } from '../core/character'
-import { createPlayerEntity, createEnemyEntity } from '../core/entity'
+import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import type { SceneId } from '../core/router'
 
@@ -13,6 +13,8 @@ const HUD_HEIGHT = 128
 const REGEN_RATE = 1
 const SAVE_INTERVAL_MS = 10_000
 const ENEMY_SPAWN_DELAY_MS = 2_000
+const ENTITY_SPEED = 80   // px/s
+const SPAWN_DISTANCE = 300 // world units from player
 
 export function createGameScene(
   container: HTMLElement,
@@ -29,6 +31,7 @@ export function createGameScene(
     currentMana: char?.currentMana ?? 50,
   })
 
+  const entities: Entity[] = [playerEntity]
   let paused = true
   let enemiesSpawned = false
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
@@ -150,15 +153,10 @@ export function createGameScene(
     modalCleanup = mountCharacterModal(el, () => { modalCleanup = null })
   })
 
-  function drawEntity(entity: Entity): void {
-    if (!app) return
-    let g = entityGraphics.get(entity.id)
-    if (!g) {
-      g = new Graphics()
-      app.stage.addChild(g)
-      entityGraphics.set(entity.id, g)
-    }
-    g.clear()
+  // Draws the entity shape once and registers its graphics object.
+  function initEntityGraphics(entity: Entity): void {
+    if (!app || entityGraphics.has(entity.id)) return
+    const g = new Graphics()
     if (entity.role === 'player') {
       g.circle(0, 0, PLAYER_RADIUS)
       g.fill({ color: tokens.color.primary })
@@ -167,36 +165,36 @@ export function createGameScene(
       g.fill({ color: tokens.color.accentAlt })
     }
     g.position.set(entity.x, entity.y)
+    app.stage.addChild(g)
+    entityGraphics.set(entity.id, g)
   }
 
-  function repositionPlayer(): void {
+  // Offsets the stage so the player always appears at the visual center.
+  function updateCamera(): void {
     if (!app) return
     const { width, height } = app.screen
-    playerEntity.x = width / 2
-    playerEntity.y = (height - HUD_HEIGHT) / 2
-    drawEntity(playerEntity)
+    app.stage.position.set(
+      width / 2 - playerEntity.x,
+      (height - HUD_HEIGHT) / 2 - playerEntity.y,
+    )
   }
 
   function spawnEnemies(): void {
     if (!app || enemiesSpawned) return
     enemiesSpawned = true
-    const { width, height } = app.screen
-    const playArea = height - HUD_HEIGHT
-    const margin = ENEMY_SIZE
-    const positions: Array<[number, number]> = [
-      [
-        margin + Math.random() * (width / 2 - margin * 2),
-        margin + Math.random() * (playArea - margin * 2),
-      ],
-      [
-        width / 2 + margin + Math.random() * (width / 2 - margin * 2),
-        margin + Math.random() * (playArea - margin * 2),
-      ],
-    ]
-    positions.forEach(([x, y], i) => {
-      const enemy = createEnemyEntity(`enemy-${i + 1}`, x, y)
-      drawEntity(enemy)
-    })
+    // Place the two enemies on opposite sides of the player in world space.
+    const baseAngle = Math.random() * Math.PI * 2
+    for (let i = 0; i < 2; i++) {
+      const angle = baseAngle + i * Math.PI + (Math.random() - 0.5) * 0.8
+      const dist = SPAWN_DISTANCE + Math.random() * 100
+      const enemy = createEnemyEntity(
+        `enemy-${i + 1}`,
+        playerEntity.x + Math.cos(angle) * dist,
+        playerEntity.y + Math.sin(angle) * dist,
+      )
+      entities.push(enemy)
+      initEntityGraphics(enemy)
+    }
   }
 
   ;(async () => {
@@ -224,8 +222,26 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       el.insertBefore(wrapper, el.firstChild)
 
-      repositionPlayer()
-      app.renderer.on('resize', repositionPlayer)
+      initEntityGraphics(playerEntity)
+      updateCamera()
+      app.renderer.on('resize', updateCamera)
+
+      app.ticker.add((ticker) => {
+        const dt = ticker.deltaMS / 1000
+        for (const entity of entities) {
+          const target = nearestTarget(entity, entities)
+          if (!target) continue
+          const dx = target.x - entity.x
+          const dy = target.y - entity.y
+          const distSq = dx * dx + dy * dy
+          if (distSq < 4) continue
+          const dist = Math.sqrt(distSq)
+          entity.x += (dx / dist) * ENTITY_SPEED * dt
+          entity.y += (dy / dist) * ENTITY_SPEED * dt
+          entityGraphics.get(entity.id)?.position.set(entity.x, entity.y)
+        }
+        updateCamera()
+      })
     } catch (err) {
       console.error('[game] PixiJS init failed:', err)
     }
