@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "lucide": "^0.469.0",
+    "matter-js": "^0.20.0",
     "pixi.js": "^8.0.0"
   },
   "devDependencies": {
+    "@types/matter-js": "^0.20.2",
     "jsdom": "^26.0.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
