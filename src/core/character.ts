@@ -5,6 +5,8 @@ export interface Character {
   id: string
   name: string
   createdAt: number
+  maxLife: number
+  maxMana: number
 }
 
 interface SaveData {
@@ -12,10 +14,17 @@ interface SaveData {
   currentId: string | null
 }
 
+function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'createdAt'>): Character {
+  return { maxLife: 100, maxMana: 100, ...c }
+}
+
 function read(): SaveData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as SaveData
+    if (raw) {
+      const data = JSON.parse(raw) as { characters: Parameters<typeof normalize>[0][]; currentId: string | null }
+      return { characters: data.characters.map(normalize), currentId: data.currentId }
+    }
   } catch {
     // ignore corrupt data
   }
@@ -48,7 +57,13 @@ export function createCharacter(name: string): Character {
   if (data.characters.length >= MAX_SLOTS) throw new Error('All save slots are full')
   const trimmed = name.trim()
   if (data.characters.some(c => c.name === trimmed)) throw new Error('Name already taken')
-  const char: Character = { id: crypto.randomUUID(), name: trimmed, createdAt: Date.now() }
+  const char: Character = {
+    id: crypto.randomUUID(),
+    name: trimmed,
+    createdAt: Date.now(),
+    maxLife: 100,
+    maxMana: 100,
+  }
   data.characters.push(char)
   data.currentId = char.id
   write(data)

@@ -1,22 +1,40 @@
 import { Application, Graphics, Text, TextStyle } from 'pixi.js'
 import { createIcons, User, ArrowLeft } from 'lucide'
 import { tokens } from '../theme'
+import { t } from '../i18n'
 import { getCurrentCharacter } from '../core/character'
 import type { SceneId } from '../core/router'
 
 const CIRCLE_RADIUS = 120
 const HUD_HEIGHT = 128
+const REGEN_RATE = 1
+const STARTING_VALUE = 50
 
 export function createGameScene(
   container: HTMLElement,
   navigate: (to: SceneId) => void,
 ): () => void {
+  const char = getCurrentCharacter()
+  const maxLife = char?.maxLife ?? 100
+  const maxMana = char?.maxMana ?? 100
+
+  let currentLife = STARTING_VALUE
+  let currentMana = STARTING_VALUE
+
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
     <button class="back-btn" aria-label="Back to menu">
       <i data-lucide="arrow-left" aria-hidden="true"></i>
     </button>
+    <div class="stat-bars">
+      <div class="stat-bar stat-bar--life">
+        <div class="stat-bar-fill stat-bar-fill--life"></div>
+      </div>
+      <div class="stat-bar stat-bar--mana">
+        <div class="stat-bar-fill stat-bar-fill--mana"></div>
+      </div>
+    </div>
     <div class="game-hud">
       <button class="game-action-btn" data-label="A">A</button>
       <button class="game-action-btn" data-label="B">B</button>
@@ -27,6 +45,22 @@ export function createGameScene(
   `
   container.appendChild(el)
   createIcons({ icons: { User, ArrowLeft } })
+
+  const lifeFill = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
+  const manaFill = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
+
+  function updateBars(): void {
+    lifeFill.style.width = `${(currentLife / maxLife) * 100}%`
+    manaFill.style.width = `${(currentMana / maxMana) * 100}%`
+  }
+
+  updateBars()
+
+  const regenInterval = setInterval(() => {
+    currentLife = Math.min(maxLife, currentLife + REGEN_RATE)
+    currentMana = Math.min(maxMana, currentMana + REGEN_RATE)
+    updateBars()
+  }, 1000)
 
   el.querySelector<HTMLButtonElement>('.back-btn')!
     .addEventListener('click', () => navigate('menu'))
@@ -108,6 +142,7 @@ export function createGameScene(
 
   return () => {
     destroyed = true
+    clearInterval(regenInterval)
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     app?.destroy(true)
     app = null
@@ -122,13 +157,21 @@ function mountCharacterModal(parent: HTMLElement, onClose: () => void): () => vo
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel char-info-panel" role="dialog" aria-modal="true" aria-labelledby="char-info-title">
-      <h2 class="modal-title" id="char-info-title">Character</h2>
+      <h2 class="modal-title" id="char-info-title">${t('character', 'infoTitle')}</h2>
       <div class="char-info-row">
-        <span class="char-info-label">Name</span>
+        <span class="char-info-label">${t('character', 'nameLabel')}</span>
         <span class="char-info-value">${char ? escapeHtml(char.name) : '—'}</span>
       </div>
+      <div class="char-info-row">
+        <span class="char-info-label">${t('character', 'statMaxLife')}</span>
+        <span class="char-info-value char-info-value--life">${char?.maxLife ?? 100}</span>
+      </div>
+      <div class="char-info-row">
+        <span class="char-info-label">${t('character', 'statMaxMana')}</span>
+        <span class="char-info-value char-info-value--mana">${char?.maxMana ?? 100}</span>
+      </div>
       <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="close">Close</button>
+        <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
       </div>
     </div>
   `

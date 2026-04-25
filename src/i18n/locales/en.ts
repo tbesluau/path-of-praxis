@@ -21,6 +21,9 @@ export interface TranslationSchema {
     emptySlot: string
     deleteLabel: string
     nameTaken: string
+    infoTitle: string
+    statMaxLife: string
+    statMaxMana: string
   }
   settings: {
     title: string
@@ -54,6 +57,9 @@ export const en: TranslationSchema = {
     emptySlot: '— Empty —',
     deleteLabel: 'Delete',
     nameTaken: 'That name is already taken.',
+    infoTitle: 'Character',
+    statMaxLife: 'Max Life',
+    statMaxMana: 'Max Mana',
   },
   settings: {
     title: 'Settings',
