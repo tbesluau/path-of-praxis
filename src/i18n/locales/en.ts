@@ -8,7 +8,6 @@ export interface TranslationSchema {
     newCharacter: string
     loadCharacter: string
     ladder: string
-    options: string
     nav: string
   }
   character: {
@@ -42,7 +41,6 @@ export const en: TranslationSchema = {
     newCharacter: 'New Character',
     loadCharacter: 'Load Character',
     ladder: 'Ladder',
-    options: 'Options',
     nav: 'Main menu',
   },
   character: {
