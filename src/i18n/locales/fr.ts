@@ -6,9 +6,22 @@ export const fr: TranslationSchema = {
     subtitle: 'Forge ta voie',
   },
   menu: {
-    play: 'Jouer',
+    continue: 'Continuer',
+    newCharacter: 'Nouveau personnage',
+    loadCharacter: 'Charger un personnage',
     ladder: 'Classement',
     options: 'Options',
     nav: 'Menu principal',
+  },
+  character: {
+    newTitle: 'Nouveau personnage',
+    loadTitle: 'Charger un personnage',
+    nameLabel: 'Nom',
+    namePlaceholder: 'Entrez un nom…',
+    create: 'Créer',
+    cancel: 'Annuler',
+    current: 'Actuel',
+    emptySlot: '— Vide —',
+    deleteLabel: 'Supprimer',
   },
 }
