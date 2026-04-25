@@ -3,7 +3,7 @@ import * as Matter from 'matter-js'
 import { createIcons, User, ArrowLeft, Play, Pause, Sword, Target, Flame, Zap } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, type ActionProgress } from '../core/character'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -55,12 +55,40 @@ export function createGameScene(
   const entityActions = new Map<string, ActionId>()
   let playerActionId: ActionId = (char?.actionId as ActionId | undefined) ?? 'sword'
 
+  // Deep copy so mutations don't bleed into the cached Character object
+  const actionProgress: Record<string, ActionProgress> = JSON.parse(
+    JSON.stringify(char?.actionProgress ?? {}),
+  ) as Record<string, ActionProgress>
+
+  function getPlayerLevel(id: ActionId): number {
+    return actionProgress[id]?.level ?? 1
+  }
+
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
+    const level = entity.role === 'player' ? getPlayerLevel(id) : 1
     entity.attackSpeed  = def.speed
-    entity.attackDamage = def.damage
+    entity.attackDamage = def.damage * level
     entity.attackRange  = def.range * balance.player.radius
     entityActions.set(entity.id, id)
+  }
+
+  function awardXp(actionId: ActionId, amount: number): void {
+    const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
+    let { xp, level, maxLevel } = prev
+    xp += amount
+    let leveled = false
+    while (xp >= level * balance.action.xpPerLevel) {
+      xp -= level * balance.action.xpPerLevel
+      level++
+      if (level > maxLevel) maxLevel = level
+      leveled = true
+    }
+    actionProgress[actionId] = { xp, level, maxLevel }
+    if (leveled && actionId === playerActionId) {
+      playerEntity.attackDamage = getAction(actionId).damage * level
+      updateActionBtn(getAction(actionId))
+    }
   }
 
   assignAction(playerEntity, playerActionId)
@@ -126,7 +154,8 @@ export function createGameScene(
   const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
 
   function updateActionBtn(def: ActionDef): void {
-    actionBtn.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><span>${def.label}</span>`
+    const level = getPlayerLevel(def.id as ActionId)
+    actionBtn.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><span>${def.label}</span><small class="action-level">Lv.${level}</small>`
     createIcons({ icons: { Sword, Target, Flame, Zap } })
   }
 
@@ -142,7 +171,7 @@ export function createGameScene(
         playerActionId = id
         assignAction(playerEntity, id)
         updateActionBtn(getAction(id))
-        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id)
+        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress)
       },
       () => { modalCleanup = null },
     )
@@ -204,11 +233,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoBack(): void {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress)
     navigate('menu')
   }
 
@@ -235,7 +264,7 @@ export function createGameScene(
       modalCleanup = null
       return
     }
-    modalCleanup = mountCharacterModal(el, () => { modalCleanup = null })
+    modalCleanup = mountCharacterModal(el, () => { modalCleanup = null }, actionProgress)
   })
 
   function drawLifeBar(entity: Entity): void {
@@ -375,6 +404,12 @@ export function createGameScene(
 
   function rebirth(): void {
     modalCleanup = null
+
+    // Apply prestige: XP × √maxLevel, level resets to 1, maxLevel persists
+    for (const id of Object.keys(actionProgress)) {
+      const p = actionProgress[id]
+      actionProgress[id] = { xp: p.xp * Math.sqrt(p.maxLevel), level: 1, maxLevel: p.maxLevel }
+    }
 
     // Clear any in-progress fragments immediately
     for (const f of deathFragments) f.g.destroy()
@@ -643,11 +678,16 @@ export function createGameScene(
           if (dist - target.radius > entity.attackRange) continue
           // Mana gate — only enforced for entities with a mana pool
           if (entity.maxMana > 0 && entity.currentMana < action.manaCost) continue
-          target.currentLife = Math.max(0, target.currentLife - action.damage)
+          const level = entity.role === 'player' ? getPlayerLevel(actionId) : 1
+          const effectiveDamage = action.damage * level
+          const prevLife = target.currentLife
+          target.currentLife = Math.max(0, target.currentLife - effectiveDamage)
+          const actualDamage = prevLife - target.currentLife
           if (entity.maxMana > 0) {
             entity.currentMana = Math.max(0, entity.currentMana - action.manaCost)
             if (entity.role === 'player') playerManaSpent = true
           }
+          if (entity.role === 'player' && actualDamage > 0) awardXp(actionId, actualDamage)
           attackCooldowns.set(entity.id, 1000 / action.speed)
           damagedIds.add(target.id)
           spawnVfx(entity, target, action)
@@ -693,8 +733,21 @@ export function createGameScene(
   }
 }
 
-function mountCharacterModal(parent: HTMLElement, onClose: () => void): () => void {
+function mountCharacterModal(
+  parent: HTMLElement,
+  onClose: () => void,
+  actionProgress: Record<string, ActionProgress>,
+): () => void {
   const char = getCurrentCharacter()
+  const actionRows = allActions.map(a => {
+    const p = actionProgress[a.id]
+    if (!p || p.level === 1 && p.xp === 0) return ''
+    const xpNeeded = p.level * balance.action.xpPerLevel
+    return `<div class="char-info-row">
+        <span class="char-info-label">${escapeHtml(a.label)}</span>
+        <span class="char-info-value">Lv.${p.level} &mdash; ${Math.floor(p.xp)}/${xpNeeded} xp</span>
+      </div>`
+  }).join('')
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
@@ -712,6 +765,7 @@ function mountCharacterModal(parent: HTMLElement, onClose: () => void): () => vo
         <span class="char-info-label">${t('character', 'statMaxMana')}</span>
         <span class="char-info-value char-info-value--mana">${char?.maxMana ?? 100}</span>
       </div>
+      ${actionRows}
       <div class="modal-actions">
         <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
       </div>

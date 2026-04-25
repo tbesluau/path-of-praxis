@@ -301,6 +301,12 @@ body {
   color: var(--color-primary);
 }
 
+.action-level {
+  font-size: 0.6rem;
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+}
+
 /* ── Action selection modal ── */
 
 .action-select-panel {

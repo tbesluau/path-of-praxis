@@ -3,6 +3,12 @@ import { balance } from '../config/balance'
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
 
+export interface ActionProgress {
+  xp: number
+  level: number
+  maxLevel: number  // highest level ever reached; survives rebirth
+}
+
 export interface Character {
   id: string
   name: string
@@ -12,6 +18,7 @@ export interface Character {
   currentLife: number
   currentMana: number
   actionId: string
+  actionProgress: Record<string, ActionProgress>
 }
 
 interface SaveData {
@@ -33,6 +40,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     currentLife: c.currentLife ?? maxLife,
     currentMana: c.currentMana ?? maxMana,
     actionId: c.actionId ?? 'sword',
+    actionProgress: c.actionProgress ?? {},
   }
 }
 
@@ -84,6 +92,7 @@ export function createCharacter(name: string, actionId: string): Character {
     currentLife: balance.player.startingLife,
     currentMana: balance.player.startingMana,
     actionId,
+    actionProgress: {},
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -110,6 +119,7 @@ export function saveCharacterState(
   currentLife: number,
   currentMana: number,
   actionId?: string,
+  actionProgress?: Record<string, ActionProgress>,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -117,5 +127,6 @@ export function saveCharacterState(
   char.currentLife = currentLife
   char.currentMana = currentMana
   if (actionId !== undefined) char.actionId = actionId
+  if (actionProgress !== undefined) char.actionProgress = actionProgress
   write(data)
 }
