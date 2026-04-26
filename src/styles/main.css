@@ -674,6 +674,35 @@ body {
   color: var(--color-text);
 }
 
+.modal-btn--danger {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.modal-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: #ef4444;
+}
+
+.modal-btn--icon-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.modal-btn--icon-row svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke-width: 1.75;
+}
+
+.game-menu-actions {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 /* ── Character slots ── */
 
 .char-slot-list {

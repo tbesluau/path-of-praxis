@@ -14,14 +14,14 @@ describe('character', () => {
     expect(character.getCurrentCharacter()).toBeNull()
   })
 
-  it('creates a character with default stats and 50 starting resources', () => {
+  it('creates a character with default stats and full starting resources', () => {
     const c = character.createCharacter('Alice', 'sword')
     expect(c.name).toBe('Alice')
     expect(c.id).toBeTruthy()
     expect(c.maxLife).toBe(100)
     expect(c.maxMana).toBe(100)
-    expect(c.currentLife).toBe(50)
-    expect(c.currentMana).toBe(50)
+    expect(c.currentLife).toBe(100)
+    expect(c.currentMana).toBe(100)
     expect(c.actionId).toBe('sword')
     expect(c.actionProgress).toEqual({})
     expect(c.lifeProgress).toEqual({ xp: 0, level: 1 })
