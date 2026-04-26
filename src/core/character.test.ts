@@ -26,6 +26,7 @@ describe('character', () => {
     expect(c.actionProgress).toEqual({})
     expect(c.lifeProgress).toEqual({ xp: 0, level: 1 })
     expect(c.manaProgress).toEqual({ xp: 0, level: 1 })
+    expect(c.enemyProgress).toEqual({ xp: 0, level: 1, maxLevel: 1, autoLevel: false })
     expect(character.getCharacters()).toHaveLength(1)
     expect(character.getCurrentId()).toBe(c.id)
   })
@@ -116,6 +117,7 @@ describe('character', () => {
     expect(chars[0].actionProgress).toEqual({})
     expect(chars[0].lifeProgress).toEqual({ xp: 0, level: 1 })
     expect(chars[0].manaProgress).toEqual({ xp: 0, level: 1 })
+    expect(chars[0].enemyProgress).toEqual({ xp: 0, level: 1, maxLevel: 1, autoLevel: false })
   })
 
   it('saveCharacterState persists actionProgress', () => {
@@ -131,5 +133,12 @@ describe('character', () => {
     const restored = character.getCharacters().find(x => x.id === c.id)!
     expect(restored.lifeProgress).toEqual({ xp: 75, level: 2 })
     expect(restored.manaProgress).toEqual({ xp: 50, level: 3 })
+  })
+
+  it('saveCharacterState persists enemyProgress', () => {
+    const c = character.createCharacter('Hunter', 'sword')
+    character.saveCharacterState(c.id, 80, 60, undefined, undefined, undefined, undefined, { xp: 500, level: 2, maxLevel: 3, autoLevel: true })
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.enemyProgress).toEqual({ xp: 500, level: 2, maxLevel: 3, autoLevel: true })
   })
 })

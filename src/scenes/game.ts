@@ -1,9 +1,9 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, ArrowLeft, Play, Pause, Sword, Target, Flame, Zap } from 'lucide'
+import { createIcons, User, ArrowLeft, Play, Pause, Sword, Target, Flame, Zap, ChevronLeft, ChevronRight } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress } from '../core/character'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -44,6 +44,15 @@ export function createGameScene(
   let manaProgress: StatProgress = JSON.parse(
     JSON.stringify(char?.manaProgress ?? { xp: 0, level: 1 }),
   ) as StatProgress
+
+  // Enemy level progression
+  let enemyProgress: EnemyProgress = JSON.parse(
+    JSON.stringify(char?.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false }),
+  ) as EnemyProgress
+
+  function enemyScale(): number {
+    return Math.pow(balance.enemyLevel.statMultiplier, enemyProgress.level - 1)
+  }
 
   function statBonus(level: number): number {
     return 1 + (level - 1) * balance.stat.bonusPerLevel
@@ -160,6 +169,20 @@ export function createGameScene(
     <button class="pause-btn" data-action="playpause" aria-label="Pause">
       <i data-lucide="pause" aria-hidden="true"></i>
     </button>
+    <div class="enemy-level-ctrl">
+      <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">
+        <i data-lucide="chevron-left" aria-hidden="true"></i>
+      </button>
+      <span class="enemy-level-display">1 / 1</span>
+      <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">
+        <i data-lucide="chevron-right" aria-hidden="true"></i>
+      </button>
+      <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
+        <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
+        <span class="enemy-autolevel-track"></span>
+        <span class="enemy-autolevel-label">Auto</span>
+      </label>
+    </div>
     <div class="stat-bars">
       <div class="stat-bar-row">
         <div class="stat-bar stat-bar--life">
@@ -185,7 +208,7 @@ export function createGameScene(
     </div>
   `
   container.appendChild(el)
-  createIcons({ icons: { User, ArrowLeft, Play, Pause } })
+  createIcons({ icons: { User, ArrowLeft, Play, Pause, ChevronLeft, ChevronRight } })
 
   const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill     = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
@@ -196,6 +219,42 @@ export function createGameScene(
     lifeLevelEl.textContent = `Lv.${lifeProgress.level}`
     manaLevelEl.textContent = `Lv.${manaProgress.level}`
   }
+
+  const enemyLevelDisplay   = el.querySelector<HTMLElement>('.enemy-level-display')!
+  const enemyLevelDownBtn   = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-down"]')!
+  const enemyLevelUpBtn     = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-up"]')!
+  const enemyAutoLevelInput = el.querySelector<HTMLInputElement>('.enemy-autolevel-input')!
+
+  function updateEnemyLevelUI(): void {
+    enemyLevelDisplay.textContent = `${enemyProgress.level} / ${enemyProgress.maxLevel}`
+    enemyLevelDownBtn.disabled = enemyProgress.level <= 1
+    enemyLevelUpBtn.disabled   = enemyProgress.level >= enemyProgress.maxLevel
+    enemyAutoLevelInput.checked = enemyProgress.autoLevel
+  }
+
+  enemyLevelDownBtn.addEventListener('click', () => {
+    if (enemyProgress.level > 1) { enemyProgress.level--; updateEnemyLevelUI() }
+  })
+  enemyLevelUpBtn.addEventListener('click', () => {
+    if (enemyProgress.level < enemyProgress.maxLevel) { enemyProgress.level++; updateEnemyLevelUI() }
+  })
+  enemyAutoLevelInput.addEventListener('change', () => {
+    enemyProgress.autoLevel = enemyAutoLevelInput.checked
+    if (enemyProgress.autoLevel) { enemyProgress.level = enemyProgress.maxLevel; updateEnemyLevelUI() }
+  })
+
+  function awardEnemyXp(amount: number): void {
+    enemyProgress.xp += amount
+    while (enemyProgress.xp >= enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel) {
+      enemyProgress.xp -= enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel
+      enemyProgress.maxLevel++
+      if (enemyProgress.autoLevel) enemyProgress.level = enemyProgress.maxLevel
+    }
+    updateEnemyLevelUI()
+  }
+
+  updateEnemyLevelUI()
+
   const playPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
   const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
 
@@ -221,7 +280,7 @@ export function createGameScene(
         playerActionId = id
         assignAction(playerEntity, id)
         updateActionBtn(getAction(id))
-        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress)
+        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress, enemyProgress)
       },
       () => { modalCleanup = null },
       actionProgress,
@@ -285,11 +344,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoBack(): void {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress)
     navigate('menu')
   }
 
@@ -543,15 +602,17 @@ export function createGameScene(
     for (let i = 0; i < count; i++) {
       const angle = baseAngle + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5
       const dist = balance.wave.spawnDistance + Math.random() * 100
+      const scale = enemyScale()
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
         playerEntity.x + Math.cos(angle) * dist,
         playerEntity.y + Math.sin(angle) * dist,
         'enemyA',
         balance.enemyA.radius,
-        { moveSpeed: balance.enemyA.moveSpeed, maxLife: balance.enemyA.maxLife },
+        { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * scale) },
       )
       assignAction(enemy, randomAction().id)
+      enemy.attackDamage *= scale
       entities.push(enemy)
       createEntityBody(enemy)
       initEntityDisplay(enemy)
@@ -754,7 +815,10 @@ export function createGameScene(
               if (action.manaCost > 0) awardStatXp('mana', action.manaCost)
             }
           }
-          if (entity.role === 'player' && actualDamage > 0) awardXp(actionId, actualDamage)
+          if (entity.role === 'player' && actualDamage > 0) {
+            awardXp(actionId, actualDamage)
+            awardEnemyXp(actualDamage)
+          }
           if (target.role === 'player' && actualDamage > 0) awardStatXp('life', actualDamage)
           attackCooldowns.set(entity.id, 1000 / action.speed)
           damagedIds.add(target.id)
