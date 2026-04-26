@@ -637,10 +637,10 @@ export function createGameScene(
   }
 
   function mountDeathModal(): () => void {
-    type SummaryRow = { label: string; fromLv: number; toLv: number; fromMult: string; toMult: string }
+    type SummaryRow = { label: string; fromLv: number; toLv: number; fromMult?: string; toMult?: string }
     const rows: SummaryRow[] = []
 
-    const fmt = (n: number) => `×${n.toFixed(1)}`
+    const fmt = (n: number) => `${n.toFixed(1)}xp`
 
     for (const a of allActions) {
       const fromMax = runSnapshot.actionMaxLevels[a.id] ?? 1
@@ -663,10 +663,7 @@ export function createGameScene(
         toMult:   fmt(1 + (manaProgress.level - 1) * b) })
     }
     if (enemyProgress.maxLevel > runSnapshot.enemyMaxLevel) {
-      const m = balance.enemyLevel.statMultiplier
-      rows.push({ label: 'Enemies', fromLv: runSnapshot.enemyMaxLevel, toLv: enemyProgress.maxLevel,
-        fromMult: fmt(Math.pow(m, runSnapshot.enemyMaxLevel - 1)),
-        toMult:   fmt(Math.pow(m, enemyProgress.maxLevel - 1)) })
+      rows.push({ label: 'Enemies', fromLv: runSnapshot.enemyMaxLevel, toLv: enemyProgress.maxLevel })
     }
 
     const summaryHtml = rows.length === 0 ? '' : `
@@ -675,7 +672,7 @@ export function createGameScene(
           <div class="death-summary-row">
             <span class="death-summary-label">${escapeHtml(r.label)}</span>
             <span class="death-summary-levels">Lv.${r.fromLv}&thinsp;→&thinsp;Lv.${r.toLv}</span>
-            <span class="death-summary-mult">${r.fromMult}&thinsp;→&thinsp;${r.toMult}</span>
+            ${r.fromMult !== undefined ? `<span class="death-summary-mult">${r.fromMult}&thinsp;→&thinsp;${r.toMult}</span>` : ''}
           </div>`).join('')}
       </div>`
 
@@ -1102,7 +1099,7 @@ function mountActionSelectModal(
       const level = p?.level ?? 1
       const maxLevel = p?.maxLevel ?? 1
       const meta = maxLevel > 1
-        ? `Lv.${level} · ×${Math.sqrt(maxLevel).toFixed(1)}`
+        ? `Lv.${level} · ${Math.sqrt(maxLevel).toFixed(1)}xp`
         : `Lv.${level}`
       return `
         <button class="action-card${a.id === currentId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
