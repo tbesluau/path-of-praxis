@@ -3,6 +3,8 @@ import { balance } from '../config/balance'
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
 
+export type TargetingMode = 'nearest' | 'weakest' | 'strongest' | 'random'
+
 export interface StatProgress {
   xp: number
   level: number
@@ -34,6 +36,7 @@ export interface Character {
   lifeProgress: StatProgress
   manaProgress: StatProgress
   enemyProgress: EnemyProgress
+  targetingMode: TargetingMode
 }
 
 interface SaveData {
@@ -59,6 +62,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     lifeProgress: c.lifeProgress ?? { xp: 0, level: 1 },
     manaProgress: c.manaProgress ?? { xp: 0, level: 1 },
     enemyProgress: c.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
+    targetingMode: c.targetingMode ?? 'nearest',
   }
 }
 
@@ -114,6 +118,7 @@ export function createCharacter(name: string, actionId: string): Character {
     lifeProgress: { xp: 0, level: 1 },
     manaProgress: { xp: 0, level: 1 },
     enemyProgress: { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
+    targetingMode: 'nearest',
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -144,6 +149,7 @@ export function saveCharacterState(
   lifeProgress?: StatProgress,
   manaProgress?: StatProgress,
   enemyProgress?: EnemyProgress,
+  targetingMode?: TargetingMode,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -155,5 +161,6 @@ export function saveCharacterState(
   if (lifeProgress !== undefined) char.lifeProgress = lifeProgress
   if (manaProgress !== undefined) char.manaProgress = manaProgress
   if (enemyProgress !== undefined) char.enemyProgress = enemyProgress
+  if (targetingMode !== undefined) char.targetingMode = targetingMode
   write(data)
 }

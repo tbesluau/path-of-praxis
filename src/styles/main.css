@@ -445,39 +445,36 @@ body {
   color: var(--color-primary);
 }
 
-.game-action-btn--action {
+/* ── Battle config wrap (HUD bottom-left) ── */
+
+.battle-config-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  width: auto;
-  min-width: 72px;
-  padding: 0 var(--space-md);
-  font-size: 0.65rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
+}
+
+.action-bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
   background: linear-gradient(
     to right,
     rgba(139, 124, 248, 0.22) var(--xp-pct, 0%),
     rgba(139, 124, 248, 0.08) var(--xp-pct, 0%)
   );
+  border: 1.5px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  pointer-events: none;
 }
 
-.game-action-btn--action:hover,
-.game-action-btn--action:focus-visible {
-  color: var(--color-text);
-  background: linear-gradient(
-    to right,
-    rgba(139, 124, 248, 0.32) var(--xp-pct, 0%),
-    rgba(139, 124, 248, 0.18) var(--xp-pct, 0%)
-  );
-}
-
-.game-action-btn--action svg {
-  width: 26px;
-  height: 26px;
+.action-bubble svg {
+  width: 18px;
+  height: 18px;
   stroke-width: 1.75;
   color: var(--color-primary);
 }
@@ -488,11 +485,53 @@ body {
   letter-spacing: 0.04em;
 }
 
-/* ── Action selection modal ── */
+/* ── Battle configuration modal ── */
 
-.action-select-panel {
+.battle-config-panel {
   width: min(440px, 94vw);
 }
+
+.battle-tabs {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.battle-tab {
+  flex: 1;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.battle-tab:hover {
+  background: rgba(139, 124, 248, 0.1);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.battle-tab--active {
+  background: rgba(139, 124, 248, 0.15);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.battle-tab svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
+}
+
+/* ── Action sub-tabs ── */
 
 .action-tabs {
   display: flex;
@@ -584,6 +623,75 @@ body {
   font-size: 0.65rem;
   opacity: 0.55;
   letter-spacing: 0.04em;
+}
+
+/* ── Targeting options ── */
+
+.targeting-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.targeting-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-sm);
+  min-height: 80px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(139, 124, 248, 0.04);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.targeting-opt:hover {
+  background: rgba(139, 124, 248, 0.14);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.targeting-opt--active {
+  background: rgba(139, 124, 248, 0.2);
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.targeting-opt svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.75;
+  color: var(--color-primary);
+}
+
+.targeting-opt-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.targeting-opt-desc {
+  font-size: 0.62rem;
+  opacity: 0.55;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+.wip-notice {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  padding: var(--space-xl) var(--space-md);
+  opacity: 0.6;
 }
 
 /* ── Menu disabled state ── */
