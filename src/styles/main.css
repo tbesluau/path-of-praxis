@@ -794,25 +794,12 @@ body {
   stroke-width: 1.75;
 }
 
-/* ── Top-left control group (game scene) ── */
-
-.game-top-left {
-  position: absolute;
-  top: var(--space-md);
-  left: var(--space-md);
-  display: flex;
-  gap: var(--space-sm);
-  z-index: 2;
-}
-
-.game-top-left .back-btn {
-  position: static;
-  top: unset;
-  left: unset;
-  z-index: unset;
-}
+/* ── Pause button (game scene, top-right) ── */
 
 .pause-btn {
+  position: absolute;
+  top: var(--space-md);
+  right: calc(var(--space-md) * 2 + 44px); /* left of the settings button */
   width: 44px;
   height: 44px;
   background: rgba(0, 0, 0, 0.35);
@@ -823,6 +810,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 2;
   backdrop-filter: blur(6px);
   transition:
     background var(--transition-fast),
