@@ -40,7 +40,7 @@ export const balance = {
     spawnDistance:       300, // pixels from player center at spawn
     nextWaveThreshold:     0, // spawn next wave when live enemy count reaches this
     minCount:              1, // guaranteed enemies per wave
-    extraChance:         0.5, // probability to add one more enemy (re-rolled repeatedly)
+    extraChance:         0.3, // probability to add one more enemy (re-rolled repeatedly)
   },
 
   // ── Death animation ──────────────────────────────────────────────────────

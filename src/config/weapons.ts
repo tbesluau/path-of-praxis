@@ -21,6 +21,6 @@ export interface WeaponDef {
 }
 
 export const weapons: Record<WeaponId, WeaponDef> = {
-  sword: { id: 'sword', kind: 'weapon', label: 'Sword',  icon: 'sword',  range: 1, damage: 4,   speed: 1,   manaCost: 1 },
-  bow:   { id: 'bow',   kind: 'weapon', label: 'Bow',    icon: 'target', range: 5, damage: 4,   speed: 0.6, manaCost: 2 },
+  sword: { id: 'sword', kind: 'weapon', label: 'Sword',  icon: 'sword',  range: 1, damage: 2,   speed: 1,   manaCost: 1 },
+  bow:   { id: 'bow',   kind: 'weapon', label: 'Bow',    icon: 'target', range: 5, damage: 2,   speed: 0.6, manaCost: 2 },
 }
