@@ -164,14 +164,30 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <div class="speed-ctrl">
-      <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
-        <i data-lucide="pause" aria-hidden="true"></i>
-      </button>
-      <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
-      <button class="speed-opt" data-speed="2">×2</button>
-      <button class="speed-opt" data-speed="5">×5</button>
-      <button class="speed-opt" data-speed="10">×10</button>
+    <div class="bottom-panel">
+      <div class="speed-ctrl">
+        <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
+          <i data-lucide="pause" aria-hidden="true"></i>
+        </button>
+        <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
+        <button class="speed-opt" data-speed="2">×2</button>
+        <button class="speed-opt" data-speed="5">×5</button>
+        <button class="speed-opt" data-speed="10">×10</button>
+      </div>
+      <div class="stat-bars">
+        <div class="stat-bar-row">
+          <div class="stat-bar stat-bar--life">
+            <div class="stat-bar-fill stat-bar-fill--life"></div>
+          </div>
+          <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+        </div>
+        <div class="stat-bar-row">
+          <div class="stat-bar stat-bar--mana">
+            <div class="stat-bar-fill stat-bar-fill--mana"></div>
+          </div>
+          <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+        </div>
+      </div>
     </div>
     <div class="enemy-level-ctrl">
       <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">
@@ -186,20 +202,6 @@ export function createGameScene(
         <span class="enemy-autolevel-track"></span>
         <span class="enemy-autolevel-label">Auto</span>
       </label>
-    </div>
-    <div class="stat-bars">
-      <div class="stat-bar-row">
-        <div class="stat-bar stat-bar--life">
-          <div class="stat-bar-fill stat-bar-fill--life"></div>
-        </div>
-        <small class="stat-level stat-level--life">Lv.1</small>
-      </div>
-      <div class="stat-bar-row">
-        <div class="stat-bar stat-bar--mana">
-          <div class="stat-bar-fill stat-bar-fill--mana"></div>
-        </div>
-        <small class="stat-level stat-level--mana">Lv.1</small>
-      </div>
     </div>
     <div class="game-hud">
       <button class="game-action-btn game-action-btn--action" data-action="open-action" aria-label="Select action">
@@ -223,8 +225,12 @@ export function createGameScene(
   const manaLevelEl  = el.querySelector<HTMLElement>('.stat-level--mana')!
 
   function updateStatLevels(): void {
-    lifeLevelEl.textContent = `Lv.${lifeProgress.level}`
-    manaLevelEl.textContent = `Lv.${manaProgress.level}`
+    const lifePct = Math.round(lifeProgress.xp / (lifeProgress.level * balance.stat.xpPerLevel) * 100)
+    lifeLevelEl.style.setProperty('--xp-pct', `${lifePct}%`)
+    lifeLevelEl.querySelector('span')!.textContent = `Lv.${lifeProgress.level}`
+    const manaPct = Math.round(manaProgress.xp / (manaProgress.level * balance.stat.xpPerLevel) * 100)
+    manaLevelEl.style.setProperty('--xp-pct', `${manaPct}%`)
+    manaLevelEl.querySelector('span')!.textContent = `Lv.${manaProgress.level}`
   }
 
   const enemyLevelCtrl     = el.querySelector<HTMLElement>('.enemy-level-ctrl')!
