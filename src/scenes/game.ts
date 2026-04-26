@@ -3,7 +3,7 @@ import * as Matter from 'matter-js'
 import { createIcons, User, ArrowLeft, Play, Pause, Sword, Target, Flame, Zap } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, type ActionProgress } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress } from '../core/character'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -36,12 +36,22 @@ export function createGameScene(
   navigate: (to: SceneId) => void,
 ): () => void {
   const char = getCurrentCharacter()
-  const maxLife = char?.maxLife ?? 100
-  const maxMana = char?.maxMana ?? 100
+
+  // Stat progress — life and mana level independently
+  let lifeProgress: StatProgress = JSON.parse(
+    JSON.stringify(char?.lifeProgress ?? { xp: 0, level: 1 }),
+  ) as StatProgress
+  let manaProgress: StatProgress = JSON.parse(
+    JSON.stringify(char?.manaProgress ?? { xp: 0, level: 1 }),
+  ) as StatProgress
+
+  function statBonus(level: number): number {
+    return 1 + (level - 1) * balance.stat.bonusPerLevel
+  }
 
   const playerEntity = createPlayerEntity({
-    maxLife,
-    maxMana,
+    maxLife:  balance.player.maxLife  * statBonus(lifeProgress.level),
+    maxMana:  balance.player.maxMana  * statBonus(manaProgress.level),
     currentLife: char?.currentLife ?? balance.player.startingLife,
     currentMana: char?.currentMana ?? balance.player.startingMana,
     radius: balance.player.radius,
@@ -92,6 +102,28 @@ export function createGameScene(
     }
   }
 
+  function awardStatXp(stat: 'life' | 'mana', amount: number): void {
+    let prog = stat === 'life' ? lifeProgress : manaProgress
+    let { xp, level } = prog
+    xp += amount
+    let leveled = false
+    while (xp >= level * balance.stat.xpPerLevel) {
+      xp -= level * balance.stat.xpPerLevel
+      level++
+      leveled = true
+    }
+    prog = { xp, level }
+    if (stat === 'life') {
+      lifeProgress = prog
+      if (leveled) playerEntity.maxLife = balance.player.maxLife * statBonus(level)
+    } else {
+      manaProgress = prog
+      if (leveled) playerEntity.maxMana = balance.player.maxMana * statBonus(level)
+    }
+    updateBars()
+    updateStatLevels()
+  }
+
   assignAction(playerEntity, playerActionId)
 
   // ── Physics ─────────────────────────────────────────────────────────────
@@ -126,11 +158,17 @@ export function createGameScene(
       <i data-lucide="arrow-left" aria-hidden="true"></i>
     </button>
     <div class="stat-bars">
-      <div class="stat-bar stat-bar--life">
-        <div class="stat-bar-fill stat-bar-fill--life"></div>
+      <div class="stat-bar-row">
+        <div class="stat-bar stat-bar--life">
+          <div class="stat-bar-fill stat-bar-fill--life"></div>
+        </div>
+        <small class="stat-level stat-level--life">Lv.1</small>
       </div>
-      <div class="stat-bar stat-bar--mana">
-        <div class="stat-bar-fill stat-bar-fill--mana"></div>
+      <div class="stat-bar-row">
+        <div class="stat-bar stat-bar--mana">
+          <div class="stat-bar-fill stat-bar-fill--mana"></div>
+        </div>
+        <small class="stat-level stat-level--mana">Lv.1</small>
       </div>
     </div>
     <div class="game-hud">
@@ -149,8 +187,15 @@ export function createGameScene(
   container.appendChild(el)
   createIcons({ icons: { User, ArrowLeft, Play, Pause } })
 
-  const lifeFill = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
-  const manaFill = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
+  const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
+  const manaFill     = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
+  const lifeLevelEl  = el.querySelector<HTMLElement>('.stat-level--life')!
+  const manaLevelEl  = el.querySelector<HTMLElement>('.stat-level--mana')!
+
+  function updateStatLevels(): void {
+    lifeLevelEl.textContent = `Lv.${lifeProgress.level}`
+    manaLevelEl.textContent = `Lv.${manaProgress.level}`
+  }
   const playPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
   const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
 
@@ -176,7 +221,7 @@ export function createGameScene(
         playerActionId = id
         assignAction(playerEntity, id)
         updateActionBtn(getAction(id))
-        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress)
+        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress)
       },
       () => { modalCleanup = null },
       actionProgress,
@@ -189,6 +234,7 @@ export function createGameScene(
   }
 
   updateBars()
+  updateStatLevels()
 
   // ── Regen ───────────────────────────────────────────────────────────────
 
@@ -198,8 +244,8 @@ export function createGameScene(
     if (regenTimer !== null) return
     regenTimer = setInterval(() => {
       if (playerDead) return
-      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate)
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate)
+      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate * statBonus(lifeProgress.level))
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level))
       updateBars()
     }, 1000)
   }
@@ -239,11 +285,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoBack(): void {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress)
     navigate('menu')
   }
 
@@ -270,7 +316,7 @@ export function createGameScene(
       modalCleanup = null
       return
     }
-    modalCleanup = mountCharacterModal(el, () => { modalCleanup = null }, actionProgress)
+    modalCleanup = mountCharacterModal(el, () => { modalCleanup = null }, actionProgress, lifeProgress, manaProgress)
   })
 
   function drawLifeBar(entity: Entity): void {
@@ -411,11 +457,17 @@ export function createGameScene(
   function rebirth(): void {
     modalCleanup = null
 
-    // Rebirth: level and XP reset; maxLevel persists so prestige multiplier carries forward
+    // Action XP reset; maxLevel persists so prestige multiplier carries forward
     for (const id of Object.keys(actionProgress)) {
       const { maxLevel } = actionProgress[id]
       actionProgress[id] = { xp: 0, level: 1, maxLevel }
     }
+
+    // Life/mana levels reset; maxLife/maxMana return to base
+    lifeProgress = { xp: 0, level: 1 }
+    manaProgress = { xp: 0, level: 1 }
+    playerEntity.maxLife = balance.player.maxLife
+    playerEntity.maxMana = balance.player.maxMana
 
     // Clear any in-progress fragments immediately
     for (const f of deathFragments) f.g.destroy()
@@ -446,6 +498,7 @@ export function createGameScene(
 
     playerDead = false
     updateBars()
+    updateStatLevels()
     updateActionBtn(getAction(playerActionId))
 
     scheduleWave()
@@ -692,9 +745,13 @@ export function createGameScene(
           const actualDamage = prevLife - target.currentLife
           if (entity.maxMana > 0) {
             entity.currentMana = Math.max(0, entity.currentMana - action.manaCost)
-            if (entity.role === 'player') playerManaSpent = true
+            if (entity.role === 'player') {
+              playerManaSpent = true
+              if (action.manaCost > 0) awardStatXp('mana', action.manaCost)
+            }
           }
           if (entity.role === 'player' && actualDamage > 0) awardXp(actionId, actualDamage)
+          if (target.role === 'player' && actualDamage > 0) awardStatXp('life', actualDamage)
           attackCooldowns.set(entity.id, 1000 / action.speed)
           damagedIds.add(target.id)
           spawnVfx(entity, target, action)
@@ -744,8 +801,23 @@ function mountCharacterModal(
   parent: HTMLElement,
   onClose: () => void,
   actionProgress: Record<string, ActionProgress>,
+  lifeProgress: StatProgress,
+  manaProgress: StatProgress,
 ): () => void {
   const char = getCurrentCharacter()
+
+  function statDetailRow(label: string, prog: StatProgress, baseMax: number, cssClass: string): string {
+    const effectiveMax = Math.round(baseMax * (1 + (prog.level - 1) * balance.stat.bonusPerLevel))
+    const xpNeeded = prog.level * balance.stat.xpPerLevel
+    const detail = prog.level > 1 || prog.xp > 0
+      ? `Lv.${prog.level} &mdash; ${Math.floor(prog.xp)}/${xpNeeded} xp &middot; ${effectiveMax} max`
+      : `${effectiveMax}`
+    return `<div class="char-info-row">
+      <span class="char-info-label">${label}</span>
+      <span class="char-info-value ${cssClass}">${detail}</span>
+    </div>`
+  }
+
   const actionRows = allActions.map(a => {
     const p = actionProgress[a.id]
     if (!p || p.level === 1 && p.xp === 0) return ''
@@ -764,14 +836,8 @@ function mountCharacterModal(
         <span class="char-info-label">${t('character', 'nameLabel')}</span>
         <span class="char-info-value">${char ? escapeHtml(char.name) : '—'}</span>
       </div>
-      <div class="char-info-row">
-        <span class="char-info-label">${t('character', 'statMaxLife')}</span>
-        <span class="char-info-value char-info-value--life">${char?.maxLife ?? 100}</span>
-      </div>
-      <div class="char-info-row">
-        <span class="char-info-label">${t('character', 'statMaxMana')}</span>
-        <span class="char-info-value char-info-value--mana">${char?.maxMana ?? 100}</span>
-      </div>
+      ${statDetailRow(t('character', 'statMaxLife'), lifeProgress, balance.player.maxLife, 'char-info-value--life')}
+      ${statDetailRow(t('character', 'statMaxMana'), manaProgress, balance.player.maxMana, 'char-info-value--mana')}
       ${actionRows}
       <div class="modal-actions">
         <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>

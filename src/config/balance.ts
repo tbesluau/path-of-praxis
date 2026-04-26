@@ -59,4 +59,10 @@ export const balance = {
     xpPerLevel: 100,  // XP needed for next level = currentLevel × xpPerLevel
   },
 
+  // ── Stat XP (life / mana leveling) ──────────────────────────────────────
+  stat: {
+    xpPerLevel:    100,   // XP needed for next level = currentLevel × xpPerLevel
+    bonusPerLevel: 0.10,  // non-multiplicative +10% of base per level above 1
+  },
+
 } as const
