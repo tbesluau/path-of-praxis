@@ -42,7 +42,9 @@ export const balance = {
     spawnDepthVariance:   80, // additional random px beyond spawnMargin
     nextWaveThreshold:     0, // spawn next wave when live enemy count reaches this
     minCount:              1, // guaranteed enemies per wave
-    extraChance:         0.3, // probability to add one more enemy (re-rolled repeatedly)
+    extraChanceBase:    0.20, // base probability of spawning one additional enemy
+    extraChancePerLevel:0.01, // added per enemy level (so level 1 = 20%, level 51 = 70%)
+    extraChanceCap:     0.70, // maximum spawn-chain probability
   },
 
   // ── Death animation ──────────────────────────────────────────────────────
@@ -58,7 +60,8 @@ export const balance = {
 
   // ── Action XP ────────────────────────────────────────────────────────────
   action: {
-    xpPerLevel: 100,  // XP needed for next level = currentLevel × xpPerLevel
+    xpPerLevel: 100,  // XP required for level 1 → 2
+    xpGrowth:   1.5,  // each subsequent level costs xpGrowth× the previous
   },
 
   // ── Stat XP (life / mana leveling) ──────────────────────────────────────

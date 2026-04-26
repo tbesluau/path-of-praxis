@@ -110,8 +110,8 @@ export function createGameScene(
     // Prestige accelerates XP gain: past peak level → faster leveling next life
     xp += amount * Math.sqrt(maxLevel)
     let leveled = false
-    while (xp >= level * balance.action.xpPerLevel) {
-      xp -= level * balance.action.xpPerLevel
+    while (xp >= actionXpNeeded(level)) {
+      xp -= actionXpNeeded(level)
       level++
       if (level > maxLevel) maxLevel = level
       leveled = true
@@ -295,7 +295,7 @@ export function createGameScene(
     const id = def.id as ActionId
     const p = actionProgress[id]
     const level = p?.level ?? 1
-    const xpPct = p ? Math.round((p.xp / (p.level * balance.action.xpPerLevel)) * 100) : 0
+    const xpPct = p ? Math.round((p.xp / actionXpNeeded(p.level)) * 100) : 0
     actionBtn.style.setProperty('--xp-pct', `${xpPct}%`)
     actionBtn.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><span>${def.label}</span><small class="action-level">Lv.${level}</small>`
     createIcons({ icons: { Sword, Target, Flame, Zap } })
@@ -637,10 +637,10 @@ export function createGameScene(
   }
 
   function mountDeathModal(): () => void {
-    type SummaryRow = { label: string; fromLv: number; toLv: number; fromMult: string; toMult: string }
+    type SummaryRow = { label: string; fromLv: number; toLv: number; fromMult?: string; toMult?: string }
     const rows: SummaryRow[] = []
 
-    const fmt = (n: number) => `×${n.toFixed(1)}`
+    const fmt = (n: number) => `${n.toFixed(1)}xp`
 
     for (const a of allActions) {
       const fromMax = runSnapshot.actionMaxLevels[a.id] ?? 1
@@ -663,10 +663,7 @@ export function createGameScene(
         toMult:   fmt(1 + (manaProgress.level - 1) * b) })
     }
     if (enemyProgress.maxLevel > runSnapshot.enemyMaxLevel) {
-      const m = balance.enemyLevel.statMultiplier
-      rows.push({ label: 'Enemies', fromLv: runSnapshot.enemyMaxLevel, toLv: enemyProgress.maxLevel,
-        fromMult: fmt(Math.pow(m, runSnapshot.enemyMaxLevel - 1)),
-        toMult:   fmt(Math.pow(m, enemyProgress.maxLevel - 1)) })
+      rows.push({ label: 'Enemies', fromLv: runSnapshot.enemyMaxLevel, toLv: enemyProgress.maxLevel })
     }
 
     const summaryHtml = rows.length === 0 ? '' : `
@@ -675,7 +672,7 @@ export function createGameScene(
           <div class="death-summary-row">
             <span class="death-summary-label">${escapeHtml(r.label)}</span>
             <span class="death-summary-levels">Lv.${r.fromLv}&thinsp;→&thinsp;Lv.${r.toLv}</span>
-            <span class="death-summary-mult">${r.fromMult}&thinsp;→&thinsp;${r.toMult}</span>
+            ${r.fromMult !== undefined ? `<span class="death-summary-mult">${r.fromMult}&thinsp;→&thinsp;${r.toMult}</span>` : ''}
           </div>`).join('')}
       </div>`
 
@@ -712,7 +709,11 @@ export function createGameScene(
     enemySpawnTimeout = null
 
     let count = balance.wave.minCount
-    while (Math.random() < balance.wave.extraChance) count++
+    const extraChance = Math.min(
+      balance.wave.extraChanceCap,
+      balance.wave.extraChanceBase + (enemyProgress.level - 1) * balance.wave.extraChancePerLevel,
+    )
+    while (Math.random() < extraChance) count++
 
     const halfW = app.screen.width / 2
     const halfH = (app.screen.height - HUD_HEIGHT) / 2
@@ -1054,7 +1055,7 @@ function mountCharacterModal(
   const actionRows = allActions.map(a => {
     const p = actionProgress[a.id]
     if (!p || p.level === 1 && p.xp === 0) return ''
-    const xpNeeded = p.level * balance.action.xpPerLevel
+    const xpNeeded = actionXpNeeded(p.level)
     return `<div class="char-info-row">
         <span class="char-info-label">${escapeHtml(a.label)}</span>
         <span class="char-info-value">Lv.${p.level} &mdash; ${Math.floor(p.xp)}/${xpNeeded} xp</span>
@@ -1102,7 +1103,7 @@ function mountActionSelectModal(
       const level = p?.level ?? 1
       const maxLevel = p?.maxLevel ?? 1
       const meta = maxLevel > 1
-        ? `Lv.${level} · ×${Math.sqrt(maxLevel).toFixed(1)}`
+        ? `Lv.${level} · ${Math.sqrt(maxLevel).toFixed(1)}xp`
         : `Lv.${level}`
       return `
         <button class="action-card${a.id === currentId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
@@ -1158,6 +1159,10 @@ function mountActionSelectModal(
   parent.appendChild(backdrop)
   createIcons({ icons: { Sword, Target, Flame, Zap } })
   return () => backdrop.remove()
+}
+
+function actionXpNeeded(level: number): number {
+  return Math.round(balance.action.xpPerLevel * Math.pow(balance.action.xpGrowth, level - 1))
 }
 
 function escapeHtml(str: string): string {
