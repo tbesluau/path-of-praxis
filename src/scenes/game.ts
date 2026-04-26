@@ -677,7 +677,7 @@ export function createGameScene(
         { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * scale) },
       )
       assignAction(enemy, randomAction().id)
-      enemy.attackDamage *= scale
+      enemy.attackDamage *= scale * balance.enemyA.damageMultiplier
       entities.push(enemy)
       createEntityBody(enemy)
       initEntityDisplay(enemy)
