@@ -46,12 +46,18 @@ npm run preview    # Serve dist/ locally
 
 ## Git workflow
 
-- **Sync before every task**: run `git fetch origin main && git rebase origin/main` before making any changes. If the rebase reports skipped commits, that is expected (they were already squash-merged) — just continue.
-- **Working branch**: all development happens on `claude/dev`. Never commit directly to `main`.
-- **One PR per logical change**: open a PR after each push. Do not batch unrelated changes into one PR.
-- **Push**: always use `git push --force-with-lease origin claude/dev` after a rebase, never plain `--force`.
-- **Conflict resolution**: if a rebase has actual file conflicts, resolve them, `git add` the files, then `git rebase --continue`. Never use `git rebase --abort` unless explicitly asked.
-- **Never amend published commits**: create a new commit instead.
+Every user request must follow these steps in order. No exceptions.
+
+1. **Rebase first — always**: run `git fetch origin main && git rebase origin/main` before writing a single line of code. Skipped commits are expected (squash-merged) — just continue. This must happen at the start of every task, not just at the start of a session.
+2. **Working branch**: all development happens on `claude/dev`. Never commit directly to `main`.
+3. **Implement**: make the changes, run `npm run typecheck && npm test`, fix any failures.
+4. **Commit**: one logical commit per request with a clear message.
+5. **Push**: `git push --force-with-lease origin claude/dev` (never plain `--force`).
+6. **One PR per request**: open a new pull request after every push. Never bundle multiple user requests into one PR. If PR #N is still open from a previous request, the rebase in step 1 will have brought those commits in; push and open a fresh PR for the new work only — do not add to an already-open PR from a prior request.
+7. **Conflict resolution**: if the rebase has real file conflicts, resolve them, `git add`, then `git rebase --continue`. Never `git rebase --abort` unless explicitly asked.
+8. **Never amend published commits**: create a new commit instead.
+
+The goal of this workflow is that each user request produces exactly one conflict-free PR that CI can auto-squash-merge and deploy independently.
 
 ## Mobile notes
 
