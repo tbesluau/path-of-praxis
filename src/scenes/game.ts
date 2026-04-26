@@ -110,8 +110,8 @@ export function createGameScene(
     // Prestige accelerates XP gain: past peak level → faster leveling next life
     xp += amount * Math.sqrt(maxLevel)
     let leveled = false
-    while (xp >= level * balance.action.xpPerLevel) {
-      xp -= level * balance.action.xpPerLevel
+    while (xp >= actionXpNeeded(level)) {
+      xp -= actionXpNeeded(level)
       level++
       if (level > maxLevel) maxLevel = level
       leveled = true
@@ -295,7 +295,7 @@ export function createGameScene(
     const id = def.id as ActionId
     const p = actionProgress[id]
     const level = p?.level ?? 1
-    const xpPct = p ? Math.round((p.xp / (p.level * balance.action.xpPerLevel)) * 100) : 0
+    const xpPct = p ? Math.round((p.xp / actionXpNeeded(p.level)) * 100) : 0
     actionBtn.style.setProperty('--xp-pct', `${xpPct}%`)
     actionBtn.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><span>${def.label}</span><small class="action-level">Lv.${level}</small>`
     createIcons({ icons: { Sword, Target, Flame, Zap } })
@@ -709,7 +709,11 @@ export function createGameScene(
     enemySpawnTimeout = null
 
     let count = balance.wave.minCount
-    while (Math.random() < balance.wave.extraChance) count++
+    const extraChance = Math.min(
+      balance.wave.extraChanceCap,
+      balance.wave.extraChanceBase + (enemyProgress.level - 1) * balance.wave.extraChancePerLevel,
+    )
+    while (Math.random() < extraChance) count++
 
     const halfW = app.screen.width / 2
     const halfH = (app.screen.height - HUD_HEIGHT) / 2
@@ -1051,7 +1055,7 @@ function mountCharacterModal(
   const actionRows = allActions.map(a => {
     const p = actionProgress[a.id]
     if (!p || p.level === 1 && p.xp === 0) return ''
-    const xpNeeded = p.level * balance.action.xpPerLevel
+    const xpNeeded = actionXpNeeded(p.level)
     return `<div class="char-info-row">
         <span class="char-info-label">${escapeHtml(a.label)}</span>
         <span class="char-info-value">Lv.${p.level} &mdash; ${Math.floor(p.xp)}/${xpNeeded} xp</span>
@@ -1155,6 +1159,10 @@ function mountActionSelectModal(
   parent.appendChild(backdrop)
   createIcons({ icons: { Sword, Target, Flame, Zap } })
   return () => backdrop.remove()
+}
+
+function actionXpNeeded(level: number): number {
+  return Math.round(balance.action.xpPerLevel * Math.pow(balance.action.xpGrowth, level - 1))
 }
 
 function escapeHtml(str: string): string {
