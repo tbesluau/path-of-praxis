@@ -154,14 +154,12 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <div class="game-top-left">
-      <button class="back-btn" aria-label="Back to menu">
-        <i data-lucide="arrow-left" aria-hidden="true"></i>
-      </button>
-      <button class="pause-btn" data-action="playpause" aria-label="Pause">
-        <i data-lucide="pause" aria-hidden="true"></i>
-      </button>
-    </div>
+    <button class="back-btn" aria-label="Back to menu">
+      <i data-lucide="arrow-left" aria-hidden="true"></i>
+    </button>
+    <button class="pause-btn" data-action="playpause" aria-label="Pause">
+      <i data-lucide="pause" aria-hidden="true"></i>
+    </button>
     <div class="stat-bars">
       <div class="stat-bar-row">
         <div class="stat-bar stat-bar--life">
@@ -237,8 +235,6 @@ export function createGameScene(
 
   updateBars()
   updateStatLevels()
-  startRegen()
-  scheduleWave()
 
   // ── Regen ───────────────────────────────────────────────────────────────
 
@@ -620,6 +616,10 @@ export function createGameScene(
       })
     }
   }
+
+  // Start immediately — paused=false so regen and wave timer kick off now
+  startRegen()
+  scheduleWave()
 
   ;(async () => {
     try {
