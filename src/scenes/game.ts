@@ -155,6 +155,7 @@ export function createGameScene(
   createEntityBody(playerEntity)
 
   let paused = false
+  let gameSpeed = 1
   let playerDead = false
   let waveScheduled = false
   let enemyIdCounter = 0
@@ -163,9 +164,15 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <button class="pause-btn" data-action="playpause" aria-label="Pause">
-      <i data-lucide="pause" aria-hidden="true"></i>
-    </button>
+    <div class="speed-ctrl">
+      <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
+        <i data-lucide="pause" aria-hidden="true"></i>
+      </button>
+      <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
+      <button class="speed-opt" data-speed="2">×2</button>
+      <button class="speed-opt" data-speed="5">×5</button>
+      <button class="speed-opt" data-speed="10">×10</button>
+    </div>
     <div class="enemy-level-ctrl">
       <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">
         <i data-lucide="chevron-left" aria-hidden="true"></i>
@@ -262,7 +269,8 @@ export function createGameScene(
 
   updateEnemyLevelUI()
 
-  const playPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
+  const speedPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
+  const speedOptBtns = el.querySelectorAll<HTMLButtonElement>('.speed-opt')
   const actionBtn = el.querySelector<HTMLButtonElement>('[data-action="open-action"]')!
 
   function updateActionBtn(def: ActionDef): void {
@@ -310,8 +318,8 @@ export function createGameScene(
     if (regenTimer !== null) return
     regenTimer = setInterval(() => {
       if (playerDead) return
-      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate * statBonus(lifeProgress.level))
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level))
+      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate * statBonus(lifeProgress.level) * gameSpeed)
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level) * gameSpeed)
       updateBars()
     }, 1000)
   }
@@ -323,30 +331,50 @@ export function createGameScene(
     }
   }
 
-  // ── Play / Pause ────────────────────────────────────────────────────────
+  // ── Play / Pause / Speed ─────────────────────────────────────────────────
 
-  function updatePlayPauseBtn(): void {
+  function updateSpeedUI(): void {
     const icon = paused ? 'play' : 'pause'
-    playPauseBtn.setAttribute('aria-label', paused ? 'Play' : 'Pause')
-    playPauseBtn.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`
+    speedPauseBtn.setAttribute('aria-label', paused ? 'Play' : 'Pause')
+    speedPauseBtn.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`
     createIcons({ icons: { Play, Pause } })
+    speedOptBtns.forEach(btn => {
+      btn.classList.toggle('speed-opt--active', !paused && Number(btn.dataset.speed) === gameSpeed)
+    })
+  }
+
+  function setSpeed(speed: number): void {
+    gameSpeed = speed
+    if (paused) {
+      paused = false
+      startRegen()
+      if (app) {
+        app.ticker.speed = gameSpeed
+        app.ticker.start()
+      }
+      const liveEnemies = entities.filter(e => e.role === 'enemy').length
+      if (liveEnemies <= balance.wave.nextWaveThreshold) scheduleWave()
+    } else {
+      if (app) app.ticker.speed = gameSpeed
+    }
+    updateSpeedUI()
   }
 
   function togglePause(): void {
-    paused = !paused
-    if (paused) {
+    if (!paused) {
+      paused = true
       stopRegen()
       app?.ticker.stop()
+      updateSpeedUI()
     } else {
-      startRegen()
-      app?.ticker.start()
-      const liveEnemies = entities.filter(e => e.role === 'enemy').length
-      if (liveEnemies <= balance.wave.nextWaveThreshold) scheduleWave()
+      setSpeed(gameSpeed)
     }
-    updatePlayPauseBtn()
   }
 
-  playPauseBtn.addEventListener('click', togglePause)
+  speedPauseBtn.addEventListener('click', togglePause)
+  speedOptBtns.forEach(btn => {
+    btn.addEventListener('click', () => setSpeed(Number(btn.dataset.speed)))
+  })
 
   // ── Auto-save ───────────────────────────────────────────────────────────
 
@@ -724,6 +752,7 @@ export function createGameScene(
         return
       }
 
+      instance.ticker.speed = gameSpeed
       if (paused) instance.ticker.stop()
 
       app = instance
