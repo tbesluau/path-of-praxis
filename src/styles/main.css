@@ -958,42 +958,83 @@ body {
   stroke-width: 1.75;
 }
 
-/* ── Pause button (game scene, top-right) ── */
+/* ── Speed control (game scene, top-right) ── */
 
-.pause-btn {
+.speed-ctrl {
   position: absolute;
   top: var(--space-md);
   right: calc(var(--space-md) * 2 + 44px); /* left of the settings button */
-  width: 44px;
+  display: flex;
+  align-items: center;
   height: 44px;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  z-index: 2;
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.speed-pause-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--color-border);
   color: var(--color-text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
-  backdrop-filter: blur(6px);
   transition:
     background var(--transition-fast),
-    border-color var(--transition-fast),
     color var(--transition-fast);
 }
 
-.pause-btn:hover,
-.pause-btn:focus-visible {
+.speed-pause-btn:hover,
+.speed-pause-btn:focus-visible {
   background: rgba(139, 124, 248, 0.15);
-  border-color: var(--color-primary);
   color: var(--color-text);
   outline: none;
 }
 
-.pause-btn svg {
+.speed-pause-btn svg {
   width: 20px;
   height: 20px;
   stroke-width: 1.75;
+}
+
+.speed-opt {
+  height: 44px;
+  min-width: 30px;
+  padding: 0 var(--space-xs);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.speed-opt:last-child {
+  border-right: none;
+}
+
+.speed-opt:hover:not(.speed-opt--active) {
+  background: rgba(139, 124, 248, 0.1);
+  color: var(--color-text);
+}
+
+.speed-opt--active {
+  background: rgba(139, 124, 248, 0.2);
+  color: var(--color-primary);
 }
 
 /* ── Settings button (persistent, top-right) ── */
