@@ -8,6 +8,13 @@ export interface StatProgress {
   level: number
 }
 
+export interface EnemyProgress {
+  xp: number
+  level: number    // currently selected enemy level (1 ≤ level ≤ maxLevel)
+  maxLevel: number // highest unlocked max level
+  autoLevel: boolean
+}
+
 export interface ActionProgress {
   xp: number
   level: number
@@ -26,6 +33,7 @@ export interface Character {
   actionProgress: Record<string, ActionProgress>
   lifeProgress: StatProgress
   manaProgress: StatProgress
+  enemyProgress: EnemyProgress
 }
 
 interface SaveData {
@@ -50,6 +58,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     actionProgress: c.actionProgress ?? {},
     lifeProgress: c.lifeProgress ?? { xp: 0, level: 1 },
     manaProgress: c.manaProgress ?? { xp: 0, level: 1 },
+    enemyProgress: c.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
   }
 }
 
@@ -104,6 +113,7 @@ export function createCharacter(name: string, actionId: string): Character {
     actionProgress: {},
     lifeProgress: { xp: 0, level: 1 },
     manaProgress: { xp: 0, level: 1 },
+    enemyProgress: { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -133,6 +143,7 @@ export function saveCharacterState(
   actionProgress?: Record<string, ActionProgress>,
   lifeProgress?: StatProgress,
   manaProgress?: StatProgress,
+  enemyProgress?: EnemyProgress,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -143,5 +154,6 @@ export function saveCharacterState(
   if (actionProgress !== undefined) char.actionProgress = actionProgress
   if (lifeProgress !== undefined) char.lifeProgress = lifeProgress
   if (manaProgress !== undefined) char.manaProgress = manaProgress
+  if (enemyProgress !== undefined) char.enemyProgress = enemyProgress
   write(data)
 }

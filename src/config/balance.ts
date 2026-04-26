@@ -65,4 +65,10 @@ export const balance = {
     bonusPerLevel: 0.10,  // non-multiplicative +10% of base per level above 1
   },
 
+  // ── Enemy leveling ────────────────────────────────────────────────────────
+  enemyLevel: {
+    xpPerMaxLevel:  1000, // damage needed to raise max level = currentMaxLevel × xpPerMaxLevel
+    statMultiplier: 1.2,  // multiplicative per-level bonus on enemy HP and damage
+  },
+
 } as const
