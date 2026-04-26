@@ -145,7 +145,7 @@ export function createGameScene(
 
   createEntityBody(playerEntity)
 
-  let paused = true
+  let paused = false
   let playerDead = false
   let waveScheduled = false
   let enemyIdCounter = 0
@@ -154,9 +154,14 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <button class="back-btn" aria-label="Back to menu">
-      <i data-lucide="arrow-left" aria-hidden="true"></i>
-    </button>
+    <div class="game-top-left">
+      <button class="back-btn" aria-label="Back to menu">
+        <i data-lucide="arrow-left" aria-hidden="true"></i>
+      </button>
+      <button class="pause-btn" data-action="playpause" aria-label="Pause">
+        <i data-lucide="pause" aria-hidden="true"></i>
+      </button>
+    </div>
     <div class="stat-bars">
       <div class="stat-bar-row">
         <div class="stat-bar stat-bar--life">
@@ -175,9 +180,6 @@ export function createGameScene(
       <button class="game-action-btn game-action-btn--action" data-action="open-action" aria-label="Select action">
         <i data-lucide="sword" aria-hidden="true"></i>
         <span>Sword</span>
-      </button>
-      <button class="game-action-btn game-action-btn--icon" data-action="playpause" aria-label="Play">
-        <i data-lucide="play" aria-hidden="true"></i>
       </button>
       <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
         <i data-lucide="user" aria-hidden="true"></i>
@@ -235,6 +237,8 @@ export function createGameScene(
 
   updateBars()
   updateStatLevels()
+  startRegen()
+  scheduleWave()
 
   // ── Regen ───────────────────────────────────────────────────────────────
 
