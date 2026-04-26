@@ -396,7 +396,7 @@ export function createGameScene(
           for (const entity of [...entities]) {
             if (entity.role !== 'player') removeEntity(entity)
           }
-          scheduleWave()
+          scheduleWave(balance.wave.spawnDelay)
         },
         onDie: () => {
           playerEntity.currentLife = 0
@@ -614,7 +614,7 @@ export function createGameScene(
     updateStatLevels()
     updateActionBtn(getAction(playerActionId))
 
-    scheduleWave()
+    scheduleWave(balance.wave.spawnDelay)
   }
 
   function mountDeathModal(): () => void {
@@ -636,12 +636,12 @@ export function createGameScene(
 
   // ── Spawn ────────────────────────────────────────────────────────────────
 
-  function scheduleWave(): void {
+  function scheduleWave(delay = 0): void {
     if (waveScheduled) return
     waveScheduled = true
     enemySpawnTimeout = setTimeout(() => {
       if (!destroyed) spawnEnemies()
-    }, balance.wave.spawnDelay)
+    }, delay)
   }
 
   function spawnEnemies(): void {
@@ -652,10 +652,15 @@ export function createGameScene(
     let count = balance.wave.minCount
     while (Math.random() < balance.wave.extraChance) count++
 
-    const baseAngle = Math.random() * Math.PI * 2
+    const halfW = app.screen.width / 2
+    const halfH = (app.screen.height - HUD_HEIGHT) / 2
+    const clusterAngle = Math.random() * Math.PI * 2
     for (let i = 0; i < count; i++) {
-      const angle = baseAngle + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5
-      const dist = balance.wave.spawnDistance + Math.random() * 100
+      const angle = clusterAngle + (Math.random() - 0.5) * balance.wave.clusterSpread
+      const cosA = Math.abs(Math.cos(angle))
+      const sinA = Math.abs(Math.sin(angle))
+      const edgeDist = Math.min(halfW / (cosA || 0.001), halfH / (sinA || 0.001))
+      const dist = edgeDist + balance.wave.spawnMargin + Math.random() * balance.wave.spawnDepthVariance
       const scale = enemyScale()
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
@@ -734,7 +739,7 @@ export function createGameScene(
 
   // Start immediately — paused=false so regen and wave timer kick off now
   startRegen()
-  scheduleWave()
+  scheduleWave(balance.wave.spawnDelay)
 
   ;(async () => {
     try {

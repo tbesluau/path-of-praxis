@@ -36,8 +36,10 @@ export const balance = {
 
   // ── Enemy waves ─────────────────────────────────────────────────────────
   wave: {
-    spawnDelay:         2000, // ms between wave clear and next wave appearing
-    spawnDistance:       300, // pixels from player center at spawn
+    spawnDelay:         2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
+    clusterSpread:       1.0, // total angular span (radians) of each enemy cluster
+    spawnMargin:          60, // px beyond screen edge enemies appear
+    spawnDepthVariance:   80, // additional random px beyond spawnMargin
     nextWaveThreshold:     0, // spawn next wave when live enemy count reaches this
     minCount:              1, // guaranteed enemies per wave
     extraChance:         0.3, // probability to add one more enemy (re-rolled repeatedly)
