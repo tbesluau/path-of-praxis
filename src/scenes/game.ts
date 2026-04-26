@@ -1,6 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, ArrowLeft, Play, Pause, Sword, Target, Flame, Zap, ChevronLeft, ChevronRight } from 'lucide'
+import { createIcons, User, Play, Pause, Sword, Target, Flame, Zap, ChevronLeft, ChevronRight, Menu, Home, LogOut, Skull } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress } from '../core/character'
@@ -163,9 +163,6 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <button class="back-btn" aria-label="Back to menu">
-      <i data-lucide="arrow-left" aria-hidden="true"></i>
-    </button>
     <button class="pause-btn" data-action="playpause" aria-label="Pause">
       <i data-lucide="pause" aria-hidden="true"></i>
     </button>
@@ -202,13 +199,16 @@ export function createGameScene(
         <i data-lucide="sword" aria-hidden="true"></i>
         <span>Sword</span>
       </button>
+      <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
+        <i data-lucide="menu" aria-hidden="true"></i>
+      </button>
       <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
         <i data-lucide="user" aria-hidden="true"></i>
       </button>
     </div>
   `
   container.appendChild(el)
-  createIcons({ icons: { User, ArrowLeft, Play, Pause, ChevronLeft, ChevronRight } })
+  createIcons({ icons: { User, Play, Pause, ChevronLeft, ChevronRight, Menu } })
 
   const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill     = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
@@ -354,13 +354,28 @@ export function createGameScene(
     if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress)
   }, SAVE_INTERVAL_MS)
 
-  function saveAndGoBack(): void {
+  function saveAndGoHome(): void {
     if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress)
     navigate('menu')
   }
 
-  el.querySelector<HTMLButtonElement>('.back-btn')!
-    .addEventListener('click', saveAndGoBack)
+  el.querySelector<HTMLButtonElement>('[data-action="open-menu"]')!
+    .addEventListener('click', () => {
+      if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
+      modalCleanup = mountGameMenuModal(el, () => { modalCleanup = null }, {
+        onHome: saveAndGoHome,
+        onFlee: () => {
+          for (const entity of [...entities]) {
+            if (entity.role !== 'player') removeEntity(entity)
+          }
+          scheduleWave()
+        },
+        onDie: () => {
+          playerEntity.currentLife = 0
+          killEntity(playerEntity)
+        },
+      })
+    })
 
   // ── PixiJS ──────────────────────────────────────────────────────────────
 
@@ -874,6 +889,42 @@ export function createGameScene(
     app = null
     el.remove()
   }
+}
+
+function mountGameMenuModal(
+  parent: HTMLElement,
+  onClose: () => void,
+  actions: { onHome: () => void; onFlee: () => void; onDie: () => void },
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel game-menu-panel" role="dialog" aria-modal="true" aria-labelledby="game-menu-title">
+      <h2 class="modal-title" id="game-menu-title">Menu</h2>
+      <div class="modal-actions game-menu-actions">
+        <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="home">
+          <i data-lucide="home" aria-hidden="true"></i><span>Home Screen</span>
+        </button>
+        <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="flee">
+          <i data-lucide="log-out" aria-hidden="true"></i><span>Flee</span>
+        </button>
+        <button class="modal-btn modal-btn--danger modal-btn--icon-row" data-action="die">
+          <i data-lucide="skull" aria-hidden="true"></i><span>Die</span>
+        </button>
+      </div>
+    </div>
+  `
+  parent.appendChild(backdrop)
+  createIcons({ icons: { Home, LogOut, Skull } })
+  const dismiss = () => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="home"]')!
+    .addEventListener('click', () => { dismiss(); actions.onHome() })
+  backdrop.querySelector<HTMLButtonElement>('[data-action="flee"]')!
+    .addEventListener('click', () => { dismiss(); actions.onFlee() })
+  backdrop.querySelector<HTMLButtonElement>('[data-action="die"]')!
+    .addEventListener('click', () => { dismiss(); actions.onDie() })
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) dismiss() })
+  return dismiss
 }
 
 function mountCharacterModal(
