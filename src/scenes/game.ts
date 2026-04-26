@@ -220,12 +220,15 @@ export function createGameScene(
     manaLevelEl.textContent = `Lv.${manaProgress.level}`
   }
 
+  const enemyLevelCtrl     = el.querySelector<HTMLElement>('.enemy-level-ctrl')!
   const enemyLevelDisplay   = el.querySelector<HTMLElement>('.enemy-level-display')!
   const enemyLevelDownBtn   = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-down"]')!
   const enemyLevelUpBtn     = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-up"]')!
   const enemyAutoLevelInput = el.querySelector<HTMLInputElement>('.enemy-autolevel-input')!
 
   function updateEnemyLevelUI(): void {
+    const xpPct = Math.round((enemyProgress.xp / (enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel)) * 100)
+    enemyLevelCtrl.style.setProperty('--enemy-xp-pct', `${xpPct}%`)
     enemyLevelDisplay.textContent = `${enemyProgress.level} / ${enemyProgress.maxLevel}`
     enemyLevelDownBtn.disabled = enemyProgress.level <= 1
     enemyLevelUpBtn.disabled   = enemyProgress.level >= enemyProgress.maxLevel
@@ -233,7 +236,11 @@ export function createGameScene(
   }
 
   enemyLevelDownBtn.addEventListener('click', () => {
-    if (enemyProgress.level > 1) { enemyProgress.level--; updateEnemyLevelUI() }
+    if (enemyProgress.level > 1) {
+      enemyProgress.level--
+      enemyProgress.autoLevel = false
+      updateEnemyLevelUI()
+    }
   })
   enemyLevelUpBtn.addEventListener('click', () => {
     if (enemyProgress.level < enemyProgress.maxLevel) { enemyProgress.level++; updateEnemyLevelUI() }
@@ -528,6 +535,10 @@ export function createGameScene(
     playerEntity.maxLife = balance.player.maxLife
     playerEntity.maxMana = balance.player.maxMana
 
+    // Enemy: max level persists; selected level and auto-level reset
+    enemyProgress = { ...enemyProgress, level: 1, autoLevel: false }
+    updateEnemyLevelUI()
+
     // Clear any in-progress fragments immediately
     for (const f of deathFragments) f.g.destroy()
     deathFragments.length = 0
@@ -817,7 +828,7 @@ export function createGameScene(
           }
           if (entity.role === 'player' && actualDamage > 0) {
             awardXp(actionId, actualDamage)
-            awardEnemyXp(actualDamage)
+            if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
           }
           if (target.role === 'player' && actualDamage > 0) awardStatXp('life', actualDamage)
           attackCooldowns.set(entity.id, 1000 / action.speed)
