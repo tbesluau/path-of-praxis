@@ -829,8 +829,7 @@ export function createGameScene(
           if (dist - target.radius > entity.attackRange) continue
           // Mana gate — only enforced for entities with a mana pool
           if (entity.maxMana > 0 && entity.currentMana < action.manaCost) continue
-          const level = entity.role === 'player' ? getPlayerLevel(actionId) : 1
-          const effectiveDamage = action.damage * level
+          const effectiveDamage = entity.attackDamage
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - effectiveDamage)
           const actualDamage = prevLife - target.currentLife
@@ -906,10 +905,18 @@ function mountGameMenuModal(
           <i data-lucide="home" aria-hidden="true"></i><span>Home Screen</span>
         </button>
         <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="flee">
-          <i data-lucide="log-out" aria-hidden="true"></i><span>Flee</span>
+          <i data-lucide="log-out" aria-hidden="true"></i>
+          <span class="menu-btn-text">
+            <span class="menu-btn-title">Flee</span>
+            <small class="menu-btn-desc">Despawn enemies, start next wave</small>
+          </span>
         </button>
         <button class="modal-btn modal-btn--danger modal-btn--icon-row" data-action="die">
-          <i data-lucide="skull" aria-hidden="true"></i><span>Die</span>
+          <i data-lucide="skull" aria-hidden="true"></i>
+          <span class="menu-btn-text">
+            <span class="menu-btn-title">Die</span>
+            <small class="menu-btn-desc">Trigger death and rebirth now</small>
+          </span>
         </button>
       </div>
     </div>

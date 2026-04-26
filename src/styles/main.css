@@ -703,6 +703,24 @@ body {
   align-items: stretch;
 }
 
+.menu-btn-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.menu-btn-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.menu-btn-desc {
+  font-size: 0.7rem;
+  opacity: 0.55;
+  font-weight: 400;
+}
+
 /* ── Character slots ── */
 
 .char-slot-list {
