@@ -21,17 +21,17 @@ export const balance = {
 
   // ── Enemy teams ─────────────────────────────────────────────────────────
   enemyA: {
-    radius:        20,   // pixels
-    moveSpeed:     80,   // pixels per second
-    maxLife:       50,
-    // attack stats are defined per-action in src/config/weapons.ts and spells.ts
+    radius:           20,   // pixels
+    moveSpeed:        80,   // pixels per second
+    maxLife:          50,
+    damageMultiplier: 0.5,  // applied on top of the action's base damage
   },
 
   enemyB: {
-    radius:        20,   // pixels
-    moveSpeed:     80,   // pixels per second
-    maxLife:       50,
-    // attack stats are defined per-action in src/config/weapons.ts and spells.ts
+    radius:           20,   // pixels
+    moveSpeed:        80,   // pixels per second
+    maxLife:          50,
+    damageMultiplier: 0.5,
   },
 
   // ── Enemy waves ─────────────────────────────────────────────────────────
