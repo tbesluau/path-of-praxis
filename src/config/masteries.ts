@@ -1,3 +1,5 @@
+import { balance } from './balance'
+
 export type ActionTag = 'weapon' | 'spell' | 'physical' | 'fire' | 'lightning'
 
 export type MasteryId =
@@ -52,5 +54,5 @@ export const masteryCategories: MasteryCategoryDef[] = [
 export const allMasteries = masteryCategories.flatMap(c => c.masteries)
 
 export function masteryXpNeeded(level: number): number {
-  return Math.round(1000 * Math.pow(1.5, level - 1))
+  return Math.round(balance.mastery.xpPerLevel * Math.pow(balance.mastery.xpGrowth, level - 1))
 }

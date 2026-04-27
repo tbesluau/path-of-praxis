@@ -445,36 +445,38 @@ body {
   color: var(--color-primary);
 }
 
-/* ── Battle config wrap (HUD bottom-left) ── */
+/* ── Battle config wrap (HUD bottom-left) — fused pill ── */
 
 .battle-config-wrap {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  flex-direction: row;
+  align-items: stretch;
+  height: 72px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-border);
+  overflow: hidden;
+  background: rgba(139, 124, 248, 0.1);
 }
 
 .action-bubble {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(
-    to right,
-    rgba(139, 124, 248, 0.22) var(--xp-pct, 0%),
-    rgba(139, 124, 248, 0.08) var(--xp-pct, 0%)
-  );
-  border: 1.5px solid var(--color-border);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
+  padding: 0 14px;
+  border-right: 1px solid var(--color-border);
   pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(139, 124, 248, 0.22) var(--xp-pct, 0%),
+    transparent var(--xp-pct, 0%)
+  );
 }
 
 .action-bubble svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   stroke-width: 1.75;
   color: var(--color-primary);
 }
@@ -483,6 +485,14 @@ body {
   font-size: 0.6rem;
   opacity: 0.6;
   letter-spacing: 0.04em;
+}
+
+.battle-config-wrap > .game-action-btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  height: 100%;
+  width: 72px;
 }
 
 /* ── Battle configuration modal ── */
@@ -1411,4 +1421,50 @@ body {
   text-transform: uppercase;
   color: var(--color-text-muted);
   padding-top: var(--space-xs);
+}
+
+/* ── Death modal — wider to fit mastery bars ── */
+
+.death-modal-panel {
+  width: min(440px, 94vw);
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+
+.death-mastery-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* ── Mastery bar — layered (blue existing + green gain) ── */
+
+.mastery-bar--layered {
+  background: linear-gradient(
+    to right,
+    var(--color-primary) 0%,
+    var(--color-primary) var(--old-pct, 0%),
+    #22c55e var(--old-pct, 0%),
+    #22c55e calc(var(--old-pct, 0%) + var(--gain-pct, 0%)),
+    rgba(255, 255, 255, 0.06) calc(var(--old-pct, 0%) + var(--gain-pct, 0%))
+  );
+}
+
+/* ── Mastery gain annotations ── */
+
+.mastery-level--gain {
+  color: #22c55e;
+}
+
+.mastery-gain-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: var(--radius-full);
+  padding: 1px 5px;
+  min-width: 1.6rem;
+  text-align: center;
 }

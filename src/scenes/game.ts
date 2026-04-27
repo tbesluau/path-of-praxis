@@ -729,35 +729,57 @@ export function createGameScene(
           </div>`).join('')}
       </div>`
 
-    // Compute mastery level-ups for this run (applied on rebirth)
+    // Compute mastery gains for this run (applied on rebirth)
     const pendingGains = computeMasteryGains()
-    const masteryLevelUps: Array<{ label: string; fromLv: number; toLv: number }> = []
-    for (const { id, xpGain } of pendingGains) {
-      const prog = masteryProgress[id] ?? { xp: 0, level: 1 }
-      const fromLv = prog.level
-      let { xp, level } = prog
-      xp += xpGain
-      while (xp >= masteryXpNeeded(level)) { xp -= masteryXpNeeded(level); level++ }
-      if (level > fromLv) {
-        const def = allMasteries.find(m => m.id === id)!
-        masteryLevelUps.push({ label: def.label + ' Mastery', fromLv, toLv: level })
-      }
-    }
+    const gainById = new Map(pendingGains.map(g => [g.id, g.xpGain]))
 
-    const masterySummaryHtml = masteryLevelUps.length === 0 ? '' : `
-      <div class="death-summary">
+    const masteryCatsHtml = masteryCategories.map(cat => {
+      const rowsHtml = cat.masteries.map(m => {
+        const xpGain = gainById.get(m.id) ?? 0
+        if (xpGain <= 0) return ''
+        const prog = masteryProgress[m.id] ?? { xp: 0, level: 1 }
+        const fromLv = prog.level
+        let xp = prog.xp
+        let level = prog.level
+        xp += xpGain
+        while (xp >= masteryXpNeeded(level)) { xp -= masteryXpNeeded(level); level++ }
+        const levelsGained = level - fromLv
+        const neededNow = masteryXpNeeded(level)
+        let oldPct: number
+        let gainPct: number
+        if (levelsGained > 0) {
+          oldPct = 0
+          gainPct = Math.round((xp / neededNow) * 100)
+        } else {
+          oldPct = Math.round((prog.xp / neededNow) * 100)
+          gainPct = Math.min(Math.round((xpGain / neededNow) * 100), 100 - oldPct)
+        }
+        return `
+          <div class="mastery-row">
+            <div class="mastery-bar mastery-bar--layered" style="--old-pct:${oldPct}%;--gain-pct:${gainPct}%"></div>
+            <span class="mastery-label">${escapeHtml(m.label)}</span>
+            <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${level}</span>
+            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
+          </div>`
+      }).join('')
+      if (!rowsHtml.trim()) return ''
+      return `
+        <div class="mastery-category">
+          <div class="mastery-category-label">${escapeHtml(cat.label)}</div>
+          ${rowsHtml}
+        </div>`
+    }).join('')
+
+    const masterySummaryHtml = masteryCatsHtml.trim() === '' ? '' : `
+      <div class="death-mastery-summary">
         <div class="death-summary-section-label">Mastery gains</div>
-        ${masteryLevelUps.map(r => `
-          <div class="death-summary-row">
-            <span class="death-summary-label">${escapeHtml(r.label)}</span>
-            <span class="death-summary-levels">Lv.${r.fromLv}&thinsp;→&thinsp;Lv.${r.toLv}</span>
-          </div>`).join('')}
+        <div class="mastery-categories">${masteryCatsHtml}</div>
       </div>`
 
     const backdrop = document.createElement('div')
     backdrop.className = 'modal-backdrop'
     backdrop.innerHTML = `
-      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="death-title">
+      <div class="modal-panel death-modal-panel" role="dialog" aria-modal="true" aria-labelledby="death-title">
         <h2 class="modal-title" id="death-title">${t('game', 'deathTitle')}</h2>
         ${summaryHtml}
         ${masterySummaryHtml}
@@ -781,7 +803,7 @@ export function createGameScene(
       const def = getAction(actionId as ActionId)
       for (const tag of def.tags) {
         const mastery = allMasteries.find(m => m.tag === tag)
-        if (mastery) gainMap.set(mastery.id, (gainMap.get(mastery.id) ?? 0) + xp)
+        if (mastery) gainMap.set(mastery.id, (gainMap.get(mastery.id) ?? 0) + xp * balance.mastery.actionXpMultiplier)
       }
     }
     if (runLifeXp > 0) gainMap.set('life', runLifeXp)
@@ -1095,7 +1117,7 @@ export function createGameScene(
             awardXp(actionId, actualDamage)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
           }
-          if (target.role === 'player' && actualDamage > 0) awardStatXp('life', actualDamage)
+          if (target.role === 'player' && actualDamage > 0) awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage)
           attackCooldowns.set(entity.id, 1000 / action.speed)
           damagedIds.add(target.id)
           spawnVfx(entity, target, action)

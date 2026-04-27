@@ -66,8 +66,16 @@ export const balance = {
 
   // ── Stat XP (life / mana leveling) ──────────────────────────────────────
   stat: {
-    xpPerLevel:    100,   // XP needed for next level = currentLevel × xpPerLevel
-    bonusPerLevel: 0.10,  // non-multiplicative +10% of base per level above 1
+    xpPerLevel:       100,   // XP needed for next level = currentLevel × xpPerLevel
+    bonusPerLevel:    0.10,  // non-multiplicative +10% of base per level above 1
+    lifeXpFromDamage: 2,     // multiplier on life XP earned from taking damage
+  },
+
+  // ── Mastery leveling ──────────────────────────────────────────────────────
+  mastery: {
+    xpPerLevel:         1000, // XP required for mastery level 1 → 2
+    xpGrowth:           1.5,  // each subsequent level costs xpGrowth× the previous
+    actionXpMultiplier: 0.2,  // fraction of run action XP that feeds tag masteries
   },
 
   // ── Enemy leveling ────────────────────────────────────────────────────────
