@@ -1,9 +1,15 @@
 import { balance } from '../config/balance'
+import type { MasteryId } from '../config/masteries'
 
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
 
 export type TargetingMode = 'nearest' | 'weakest' | 'strongest' | 'random'
+
+export interface MasteryProgress {
+  xp: number
+  level: number
+}
 
 export interface StatProgress {
   xp: number
@@ -37,6 +43,7 @@ export interface Character {
   manaProgress: StatProgress
   enemyProgress: EnemyProgress
   targetingMode: TargetingMode
+  masteryProgress: Partial<Record<MasteryId, MasteryProgress>>
 }
 
 interface SaveData {
@@ -63,6 +70,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     manaProgress: c.manaProgress ?? { xp: 0, level: 1 },
     enemyProgress: c.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
     targetingMode: c.targetingMode ?? 'nearest',
+    masteryProgress: c.masteryProgress ?? {},
   }
 }
 
@@ -119,6 +127,7 @@ export function createCharacter(name: string, actionId: string): Character {
     manaProgress: { xp: 0, level: 1 },
     enemyProgress: { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
     targetingMode: 'nearest',
+    masteryProgress: {},
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -150,6 +159,7 @@ export function saveCharacterState(
   manaProgress?: StatProgress,
   enemyProgress?: EnemyProgress,
   targetingMode?: TargetingMode,
+  masteryProgress?: Partial<Record<MasteryId, MasteryProgress>>,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -162,5 +172,6 @@ export function saveCharacterState(
   if (manaProgress !== undefined) char.manaProgress = manaProgress
   if (enemyProgress !== undefined) char.enemyProgress = enemyProgress
   if (targetingMode !== undefined) char.targetingMode = targetingMode
+  if (masteryProgress !== undefined) char.masteryProgress = masteryProgress
   write(data)
 }

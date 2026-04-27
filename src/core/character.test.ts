@@ -28,6 +28,7 @@ describe('character', () => {
     expect(c.manaProgress).toEqual({ xp: 0, level: 1 })
     expect(c.enemyProgress).toEqual({ xp: 0, level: 1, maxLevel: 1, autoLevel: false })
     expect(c.targetingMode).toBe('nearest')
+    expect(c.masteryProgress).toEqual({})
     expect(character.getCharacters()).toHaveLength(1)
     expect(character.getCurrentId()).toBe(c.id)
   })
@@ -120,6 +121,7 @@ describe('character', () => {
     expect(chars[0].manaProgress).toEqual({ xp: 0, level: 1 })
     expect(chars[0].enemyProgress).toEqual({ xp: 0, level: 1, maxLevel: 1, autoLevel: false })
     expect(chars[0].targetingMode).toBe('nearest')
+    expect(chars[0].masteryProgress).toEqual({})
   })
 
   it('saveCharacterState persists actionProgress', () => {
