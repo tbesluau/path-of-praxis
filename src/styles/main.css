@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Pro:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
 *,
 *::before,
@@ -90,7 +90,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter: drop-shadow(0 0 28px rgba(139, 124, 248, 0.45));
+  filter: drop-shadow(0 0 32px rgba(200, 146, 42, 0.55)) drop-shadow(0 2px 10px rgba(0, 0, 0, 0.9));
 }
 
 .game-subtitle {
@@ -116,16 +116,17 @@ body {
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
   min-height: 52px;
-  background: rgba(139, 124, 248, 0.08);
+  background: linear-gradient(180deg, rgba(200, 146, 42, 0.12) 0%, rgba(200, 146, 42, 0.05) 100%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text);
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 500;
   letter-spacing: 0.04em;
   cursor: pointer;
   width: 100%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 2px 6px rgba(0, 0, 0, 0.35);
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
@@ -135,15 +136,15 @@ body {
 
 .menu-btn:hover,
 .menu-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.18);
+  background: linear-gradient(180deg, rgba(200, 146, 42, 0.22) 0%, rgba(200, 146, 42, 0.12) 100%);
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-glow);
+  box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   outline: none;
 }
 
 .menu-btn:active {
   transform: scale(0.97);
-  background: rgba(139, 124, 248, 0.28);
+  background: rgba(200, 146, 42, 0.28);
 }
 
 .menu-btn svg {
@@ -295,7 +296,7 @@ body {
 
 .enemy-level-btn:hover:not(:disabled) {
   color: var(--color-text);
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
 }
 
 .enemy-level-btn:disabled {
@@ -406,13 +407,14 @@ body {
   width: 72px;
   height: 72px;
   border-radius: var(--radius-full);
-  background: rgba(139, 124, 248, 0.1);
+  background: linear-gradient(180deg, rgba(200, 146, 42, 0.14) 0%, rgba(200, 146, 42, 0.07) 100%);
   border: 2px solid var(--color-border);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 1.25rem;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 3px 8px rgba(0, 0, 0, 0.4);
   transition:
     background var(--transition-fast),
     border-color var(--transition-fast),
@@ -422,9 +424,9 @@ body {
 
 .game-action-btn:hover,
 .game-action-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.2);
+  background: linear-gradient(180deg, rgba(200, 146, 42, 0.26) 0%, rgba(200, 146, 42, 0.14) 100%);
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-glow);
+  box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   outline: none;
 }
 
@@ -455,7 +457,7 @@ body {
   border-radius: var(--radius-full);
   border: 2px solid var(--color-border);
   overflow: hidden;
-  background: rgba(139, 124, 248, 0.1);
+  background: rgba(200, 146, 42, 0.1);
 }
 
 .action-bubble {
@@ -469,7 +471,7 @@ body {
   pointer-events: none;
   background: linear-gradient(
     to right,
-    rgba(139, 124, 248, 0.22) var(--xp-pct, 0%),
+    rgba(200, 146, 42, 0.22) var(--xp-pct, 0%),
     transparent var(--xp-pct, 0%)
   );
 }
@@ -524,13 +526,13 @@ body {
 }
 
 .battle-tab:hover {
-  background: rgba(139, 124, 248, 0.1);
+  background: rgba(200, 146, 42, 0.1);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
 
 .battle-tab--active {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
@@ -566,13 +568,13 @@ body {
 }
 
 .action-tab:hover {
-  background: rgba(139, 124, 248, 0.1);
+  background: rgba(200, 146, 42, 0.1);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
 
 .action-tab--active {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
@@ -593,7 +595,7 @@ body {
   min-height: 88px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: rgba(139, 124, 248, 0.04);
+  background: rgba(200, 146, 42, 0.04);
   color: var(--color-text-muted);
   font-family: var(--font-body);
   cursor: pointer;
@@ -604,13 +606,13 @@ body {
 }
 
 .action-card:hover {
-  background: rgba(139, 124, 248, 0.14);
+  background: rgba(200, 146, 42, 0.14);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
 
 .action-card--selected {
-  background: rgba(139, 124, 248, 0.2);
+  background: rgba(200, 146, 42, 0.2);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
@@ -653,7 +655,7 @@ body {
   min-height: 80px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: rgba(139, 124, 248, 0.04);
+  background: rgba(200, 146, 42, 0.04);
   color: var(--color-text-muted);
   font-family: var(--font-body);
   cursor: pointer;
@@ -664,13 +666,13 @@ body {
 }
 
 .targeting-opt:hover {
-  background: rgba(139, 124, 248, 0.14);
+  background: rgba(200, 146, 42, 0.14);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
 
 .targeting-opt--active {
-  background: rgba(139, 124, 248, 0.2);
+  background: rgba(200, 146, 42, 0.2);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
@@ -732,7 +734,7 @@ body {
 }
 
 .modal-panel {
-  background: var(--color-surface);
+  background: linear-gradient(160deg, var(--color-surface-panel) 0%, var(--color-surface-elevated) 100%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
@@ -740,7 +742,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(200, 146, 42, 0.18), inset 0 0 0 1px rgba(200, 146, 42, 0.06);
 }
 
 .modal-title {
@@ -781,7 +783,7 @@ body {
 
 .modal-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(139, 124, 248, 0.3);
+  box-shadow: 0 0 0 2px rgba(200, 146, 42, 0.3);
 }
 
 .modal-actions {
@@ -842,14 +844,18 @@ body {
 }
 
 .modal-btn--primary {
-  background: var(--color-primary);
+  background: linear-gradient(180deg, var(--color-primary-hover) 0%, var(--color-primary-active) 100%);
   border: 1px solid var(--color-primary);
-  color: #fff;
+  color: #1a0e00;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .modal-btn--primary:hover:not(:disabled) {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: linear-gradient(180deg, #f0c040 0%, var(--color-primary) 100%);
+  border-color: var(--color-primary-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 10px rgba(200, 146, 42, 0.4);
 }
 
 .modal-btn--primary:disabled {
@@ -941,18 +947,18 @@ body {
 }
 
 .char-slot--selectable {
-  background: rgba(139, 124, 248, 0.06);
+  background: rgba(200, 146, 42, 0.06);
   cursor: pointer;
   transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .char-slot--selectable:hover {
-  background: rgba(139, 124, 248, 0.16);
+  background: rgba(200, 146, 42, 0.16);
   border-color: var(--color-primary);
 }
 
 .char-slot--current {
-  background: rgba(139, 124, 248, 0.12);
+  background: rgba(200, 146, 42, 0.12);
   border-color: var(--color-primary);
 }
 
@@ -1059,7 +1065,7 @@ body {
 
 .settings-btn:hover,
 .settings-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
   outline: none;
@@ -1103,13 +1109,13 @@ body {
 }
 
 .lang-option:hover {
-  background: rgba(139, 124, 248, 0.1);
+  background: rgba(200, 146, 42, 0.1);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
 
 .lang-option--active {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
@@ -1140,7 +1146,7 @@ body {
 
 .back-btn:hover,
 .back-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
   outline: none;
@@ -1185,7 +1191,7 @@ body {
 
 .speed-pause-btn:hover,
 .speed-pause-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   color: var(--color-text);
   outline: none;
 }
@@ -1219,12 +1225,12 @@ body {
 }
 
 .speed-opt:hover:not(.speed-opt--active) {
-  background: rgba(139, 124, 248, 0.1);
+  background: rgba(200, 146, 42, 0.1);
   color: var(--color-text);
 }
 
 .speed-opt--active {
-  background: rgba(139, 124, 248, 0.2);
+  background: rgba(200, 146, 42, 0.2);
   color: var(--color-primary);
 }
 
@@ -1254,7 +1260,7 @@ body {
 
 .settings-btn:hover,
 .settings-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
   outline: none;
@@ -1298,13 +1304,13 @@ body {
 }
 
 .lang-option:hover {
-  background: rgba(139, 124, 248, 0.1);
+  background: rgba(200, 146, 42, 0.1);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
 
 .lang-option--active {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
 }
@@ -1335,7 +1341,7 @@ body {
 
 .back-btn:hover,
 .back-btn:focus-visible {
-  background: rgba(139, 124, 248, 0.15);
+  background: rgba(200, 146, 42, 0.15);
   border-color: var(--color-primary);
   color: var(--color-text);
   outline: none;
@@ -1392,7 +1398,7 @@ body {
 
 .mastery-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, rgba(139, 124, 248, 0.6), var(--color-primary));
+  background: linear-gradient(90deg, rgba(200, 146, 42, 0.6), var(--color-primary));
   border-radius: var(--radius-full);
 }
 

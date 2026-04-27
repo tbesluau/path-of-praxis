@@ -17,8 +17,8 @@ describe('theme tokens', () => {
     expect(tokens.font.display).toContain('Cinzel')
   })
 
-  it('includes Inter in body font stack', () => {
-    expect(tokens.font.body).toContain('Inter')
+  it('includes a serif body font', () => {
+    expect(tokens.font.body).toContain('serif')
   })
 
   it('exports spacing values as px strings', () => {
