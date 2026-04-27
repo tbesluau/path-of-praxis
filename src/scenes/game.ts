@@ -1,9 +1,10 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, Play, Pause, Sword, Target, Flame, Zap, ChevronLeft, ChevronRight, Menu, Home, LogOut, Skull, Settings2, Crosshair, TrendingDown, TrendingUp, Shuffle, Timer } from 'lucide'
+import { createIcons, User, Play, Pause, Sword, Target, Flame, Zap, ChevronLeft, ChevronRight, Menu, Home, LogOut, Skull, Settings2, Crosshair, TrendingDown, TrendingUp, Shuffle, Timer, Award } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
+import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -108,7 +109,9 @@ export function createGameScene(
     const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     let { xp, level, maxLevel } = prev
     // Prestige accelerates XP gain: past peak level → faster leveling next life
-    xp += amount * Math.sqrt(maxLevel)
+    const scaledXp = amount * Math.sqrt(maxLevel)
+    xp += scaledXp
+    runActionXp[actionId] = (runActionXp[actionId] ?? 0) + scaledXp
     let leveled = false
     while (xp >= actionXpNeeded(level)) {
       xp -= actionXpNeeded(level)
@@ -124,6 +127,8 @@ export function createGameScene(
   }
 
   function awardStatXp(stat: 'life' | 'mana', amount: number): void {
+    if (stat === 'life') runLifeXp += amount
+    else runManaXp += amount
     let prog = stat === 'life' ? lifeProgress : manaProgress
     let { xp, level } = prog
     xp += amount
@@ -174,6 +179,19 @@ export function createGameScene(
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
   let playerRandomTargetId: string | null = null
   let targetingMode: TargetingMode = char?.targetingMode ?? 'nearest'
+
+  let masteryProgress: Partial<Record<MasteryId, MasteryProgress>> = JSON.parse(
+    JSON.stringify(char?.masteryProgress ?? {}),
+  ) as Partial<Record<MasteryId, MasteryProgress>>
+
+  // Per-rebirth XP accumulators — reset in rebirth()
+  let runActionXp: Record<string, number> = {}
+  let runLifeXp = 0
+  let runManaXp = 0
+  let runEnemyXp = 0
+  let runDistancePx = 0
+  let playerPrevX = 0
+  let playerPrevY = 0
 
   const el = document.createElement('div')
   el.className = 'scene scene-game'
@@ -227,6 +245,9 @@ export function createGameScene(
           <i data-lucide="settings-2" aria-hidden="true"></i>
         </button>
       </div>
+      <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries">
+        <i data-lucide="award" aria-hidden="true"></i>
+      </button>
       <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
         <i data-lucide="menu" aria-hidden="true"></i>
       </button>
@@ -236,7 +257,7 @@ export function createGameScene(
     </div>
   `
   container.appendChild(el)
-  createIcons({ icons: { User, Play, Pause, ChevronLeft, ChevronRight, Menu, Settings2 } })
+  createIcons({ icons: { User, Play, Pause, ChevronLeft, ChevronRight, Menu, Settings2, Award } })
 
   const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill     = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
@@ -283,6 +304,7 @@ export function createGameScene(
   })
 
   function awardEnemyXp(amount: number): void {
+    runEnemyXp += amount
     enemyProgress.xp += amount
     while (enemyProgress.xp >= enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel) {
       enemyProgress.xp -= enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel
@@ -322,12 +344,12 @@ export function createGameScene(
         playerActionId = id
         assignAction(playerEntity, id)
         updateActionBtn(getAction(id))
-        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode)
+        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
       },
       (mode) => {
         targetingMode = mode
         playerRandomTargetId = null
-        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, mode)
+        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, mode, masteryProgress)
       },
       () => { modalCleanup = null },
       actionProgress,
@@ -411,11 +433,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoHome(): void {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode)
+    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
     navigate('menu')
   }
 
@@ -459,6 +481,12 @@ export function createGameScene(
     }
     modalCleanup = mountCharacterModal(el, () => { modalCleanup = null }, actionProgress, lifeProgress, manaProgress)
   })
+
+  el.querySelector<HTMLButtonElement>('[data-action="open-mastery"]')!
+    .addEventListener('click', () => {
+      if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
+      modalCleanup = mountMasteryModal(el, masteryProgress, () => { modalCleanup = null })
+    })
 
   function drawLifeBar(entity: Entity): void {
     const bar = lifeBarGraphics.get(entity.id)
@@ -647,7 +675,17 @@ export function createGameScene(
     updateStatLevels()
     updateActionBtn(getAction(playerActionId))
 
+    // Reset per-rebirth trackers
+    runActionXp = {}
+    runLifeXp = 0
+    runManaXp = 0
+    runEnemyXp = 0
+    runDistancePx = 0
+    playerPrevX = playerEntity.x
+    playerPrevY = playerEntity.y
+
     runSnapshot = captureRunSnapshot()
+    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
     scheduleWave(balance.wave.spawnDelay)
   }
 
@@ -691,21 +729,80 @@ export function createGameScene(
           </div>`).join('')}
       </div>`
 
+    // Compute mastery level-ups for this run (applied on rebirth)
+    const pendingGains = computeMasteryGains()
+    const masteryLevelUps: Array<{ label: string; fromLv: number; toLv: number }> = []
+    for (const { id, xpGain } of pendingGains) {
+      const prog = masteryProgress[id] ?? { xp: 0, level: 1 }
+      const fromLv = prog.level
+      let { xp, level } = prog
+      xp += xpGain
+      while (xp >= masteryXpNeeded(level)) { xp -= masteryXpNeeded(level); level++ }
+      if (level > fromLv) {
+        const def = allMasteries.find(m => m.id === id)!
+        masteryLevelUps.push({ label: def.label + ' Mastery', fromLv, toLv: level })
+      }
+    }
+
+    const masterySummaryHtml = masteryLevelUps.length === 0 ? '' : `
+      <div class="death-summary">
+        <div class="death-summary-section-label">Mastery gains</div>
+        ${masteryLevelUps.map(r => `
+          <div class="death-summary-row">
+            <span class="death-summary-label">${escapeHtml(r.label)}</span>
+            <span class="death-summary-levels">Lv.${r.fromLv}&thinsp;→&thinsp;Lv.${r.toLv}</span>
+          </div>`).join('')}
+      </div>`
+
     const backdrop = document.createElement('div')
     backdrop.className = 'modal-backdrop'
     backdrop.innerHTML = `
       <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="death-title">
         <h2 class="modal-title" id="death-title">${t('game', 'deathTitle')}</h2>
         ${summaryHtml}
+        ${masterySummaryHtml}
         <div class="modal-actions">
           <button class="modal-btn modal-btn--primary" data-action="rebirth">${t('game', 'deathRebirth')}</button>
         </div>
       </div>
     `
     backdrop.querySelector<HTMLButtonElement>('[data-action="rebirth"]')!
-      .addEventListener('click', () => { backdrop.remove(); rebirth() })
+      .addEventListener('click', () => { applyMasteryGains(pendingGains); backdrop.remove(); rebirth() })
     el.appendChild(backdrop)
     return () => backdrop.remove()
+  }
+
+  // ── Mastery ──────────────────────────────────────────────────────────────
+
+  function computeMasteryGains(): Array<{ id: MasteryId; xpGain: number }> {
+    const gainMap = new Map<MasteryId, number>()
+    for (const [actionId, xp] of Object.entries(runActionXp)) {
+      if (xp <= 0) continue
+      const def = getAction(actionId as ActionId)
+      for (const tag of def.tags) {
+        const mastery = allMasteries.find(m => m.tag === tag)
+        if (mastery) gainMap.set(mastery.id, (gainMap.get(mastery.id) ?? 0) + xp)
+      }
+    }
+    if (runLifeXp > 0) gainMap.set('life', runLifeXp)
+    if (runManaXp > 0) gainMap.set('mana', runManaXp)
+    if (runEnemyXp > 0) gainMap.set('enemy', runEnemyXp)
+    const movementXp = Math.floor(runDistancePx / 50)
+    if (movementXp > 0) gainMap.set('movement', movementXp)
+    return Array.from(gainMap.entries()).map(([id, xpGain]) => ({ id, xpGain }))
+  }
+
+  function applyMasteryGains(gains: Array<{ id: MasteryId; xpGain: number }>): void {
+    for (const { id, xpGain } of gains) {
+      const prog = masteryProgress[id] ?? { xp: 0, level: 1 }
+      let { xp, level } = prog
+      xp += xpGain
+      while (xp >= masteryXpNeeded(level)) {
+        xp -= masteryXpNeeded(level)
+        level++
+      }
+      masteryProgress[id] = { xp, level }
+    }
   }
 
   // ── Targeting ────────────────────────────────────────────────────────────
@@ -957,6 +1054,13 @@ export function createGameScene(
           }
           entityContainers.get(entity.id)?.position.set(entity.x, entity.y)
         }
+
+        // Track player movement for movement mastery
+        const moveDx = playerEntity.x - playerPrevX
+        const moveDy = playerEntity.y - playerPrevY
+        runDistancePx += Math.sqrt(moveDx * moveDx + moveDy * moveDy)
+        playerPrevX = playerEntity.x
+        playerPrevY = playerEntity.y
 
         // ── Attacks ─────────────────────────────────────────────────────────
         const damagedIds = new Set<string>()
@@ -1261,6 +1365,47 @@ function mountBattleConfigModal(
 
   parent.appendChild(backdrop)
   createIcons({ icons: { Sword, Target, Flame, Zap, Crosshair, TrendingDown, TrendingUp, Shuffle, Timer } })
+  return () => backdrop.remove()
+}
+
+function mountMasteryModal(
+  parent: HTMLElement,
+  masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
+  onClose: () => void,
+): () => void {
+  const categoriesHtml = masteryCategories.map(cat => {
+    const rows = cat.masteries.map(m => {
+      const prog = masteryProgress[m.id] ?? { xp: 0, level: 1 }
+      const xpPct = Math.round((prog.xp / masteryXpNeeded(prog.level)) * 100)
+      return `
+        <div class="mastery-row">
+          <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
+          <span class="mastery-label">${escapeHtml(m.label)}</span>
+          <span class="mastery-level">Lv.${prog.level}</span>
+        </div>`
+    }).join('')
+    return `
+      <div class="mastery-category">
+        <div class="mastery-category-label">${escapeHtml(cat.label)}</div>
+        ${rows}
+      </div>`
+  }).join('')
+
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel mastery-panel" role="dialog" aria-modal="true" aria-labelledby="mastery-title">
+      <h2 class="modal-title" id="mastery-title">Masteries</h2>
+      <div class="mastery-categories">${categoriesHtml}</div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="close">Close</button>
+      </div>
+    </div>
+  `
+  parent.appendChild(backdrop)
+  const dismiss = () => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
   return () => backdrop.remove()
 }
 
