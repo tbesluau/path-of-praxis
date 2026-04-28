@@ -15,7 +15,7 @@ export interface SpellDef {
   id: SpellId
   kind: 'spell'
   label: string
-  icon: string     // lucide icon name (kebab-case)
+  icon: string     // game icon key (gi-*)
   range: number
   damage: number
   speed: number
@@ -24,6 +24,6 @@ export interface SpellDef {
 }
 
 export const spells: Record<SpellId, SpellDef> = {
-  fireball: { id: 'fireball', kind: 'spell', label: 'Fireball', icon: 'flame', range: 5, damage: 1,   speed: 1.2, manaCost: 3, tags: ['spell', 'fire']      },
-  zap:      { id: 'zap',      kind: 'spell', label: 'Zap',      icon: 'zap',   range: 1, damage: 1.2, speed: 1.8, manaCost: 1, tags: ['spell', 'lightning'] },
+  fireball: { id: 'fireball', kind: 'spell', label: 'Fireball', icon: 'gi-fireball', range: 5, damage: 1,   speed: 1.2, manaCost: 3, tags: ['spell', 'fire']      },
+  zap:      { id: 'zap',      kind: 'spell', label: 'Zap',      icon: 'gi-zap',      range: 1, damage: 1.2, speed: 1.8, manaCost: 1, tags: ['spell', 'lightning'] },
 }

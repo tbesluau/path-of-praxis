@@ -15,7 +15,7 @@ export interface WeaponDef {
   id: WeaponId
   kind: 'weapon'
   label: string
-  icon: string     // lucide icon name (kebab-case)
+  icon: string     // game icon key (gi-*)
   range: number
   damage: number
   speed: number
@@ -24,6 +24,6 @@ export interface WeaponDef {
 }
 
 export const weapons: Record<WeaponId, WeaponDef> = {
-  sword: { id: 'sword', kind: 'weapon', label: 'Sword', icon: 'sword',  range: 1, damage: 2,   speed: 1,   manaCost: 1, tags: ['weapon', 'physical'] },
-  bow:   { id: 'bow',   kind: 'weapon', label: 'Bow',   icon: 'target', range: 5, damage: 2,   speed: 0.6, manaCost: 2, tags: ['weapon', 'physical'] },
+  sword: { id: 'sword', kind: 'weapon', label: 'Sword', icon: 'gi-sword', range: 1, damage: 2,   speed: 1,   manaCost: 1, tags: ['weapon', 'physical'] },
+  bow:   { id: 'bow',   kind: 'weapon', label: 'Bow',   icon: 'gi-bow',   range: 5, damage: 2,   speed: 0.6, manaCost: 2, tags: ['weapon', 'physical'] },
 }
