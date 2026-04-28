@@ -1,6 +1,7 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, Play, Pause, Sword, Target, Flame, Zap, ChevronLeft, ChevronRight, Menu, Home, LogOut, Skull, Settings2, Crosshair, TrendingDown, TrendingUp, Shuffle, Timer, Award } from 'lucide'
+import { createIcons, User, Play, Pause, ChevronLeft, ChevronRight, Menu, Home, LogOut, Settings2, Timer, Award } from 'lucide'
+import { renderGameIcons } from '../ui/game-icons'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
@@ -238,7 +239,7 @@ export function createGameScene(
     <div class="game-hud">
       <div class="battle-config-wrap">
         <div class="action-bubble">
-          <i data-lucide="sword" aria-hidden="true"></i>
+          <i data-game-icon="gi-sword" aria-hidden="true"></i>
           <small class="action-level">Lv.1</small>
         </div>
         <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
@@ -258,6 +259,7 @@ export function createGameScene(
   `
   container.appendChild(el)
   createIcons({ icons: { User, Play, Pause, ChevronLeft, ChevronRight, Menu, Settings2, Award } })
+  renderGameIcons(el)
 
   const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill     = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
@@ -327,8 +329,8 @@ export function createGameScene(
     const level = p?.level ?? 1
     const xpPct = p ? Math.round((p.xp / actionXpNeeded(p.level)) * 100) : 0
     actionBubble.style.setProperty('--xp-pct', `${xpPct}%`)
-    actionBubble.innerHTML = `<i data-lucide="${def.icon}" aria-hidden="true"></i><small class="action-level">Lv.${level}</small>`
-    createIcons({ icons: { Sword, Target, Flame, Zap } })
+    actionBubble.innerHTML = `<i data-game-icon="${def.icon}" aria-hidden="true"></i><small class="action-level">Lv.${level}</small>`
+    renderGameIcons(actionBubble)
   }
 
   updateActionBtn(getAction(playerActionId))
@@ -1185,7 +1187,7 @@ function mountGameMenuModal(
           </span>
         </button>
         <button class="modal-btn modal-btn--danger modal-btn--icon-row" data-action="die">
-          <i data-lucide="skull" aria-hidden="true"></i>
+          <i data-game-icon="gi-skull" aria-hidden="true"></i>
           <span class="menu-btn-text">
             <span class="menu-btn-title">Die</span>
             <small class="menu-btn-desc">Trigger death and rebirth now</small>
@@ -1195,7 +1197,8 @@ function mountGameMenuModal(
     </div>
   `
   parent.appendChild(backdrop)
-  createIcons({ icons: { Home, LogOut, Skull } })
+  createIcons({ icons: { Home, LogOut } })
+  renderGameIcons(backdrop)
   const dismiss = () => { backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="home"]')!
     .addEventListener('click', () => { dismiss(); actions.onHome() })
@@ -1285,7 +1288,7 @@ function mountBattleConfigModal(
         : `Lv.${level}`
       return `
         <button class="action-card${a.id === currentActionId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
-          <i data-lucide="${a.icon}" aria-hidden="true"></i>
+          <i data-game-icon="${a.icon}" aria-hidden="true"></i>
           <span class="action-card-name">${escapeHtml(a.label)}</span>
           <span class="action-card-meta">${meta}</span>
         </button>`
@@ -1294,10 +1297,10 @@ function mountBattleConfigModal(
   const startOnWeapons = weaponActions.some(a => a.id === currentActionId)
 
   const targetingOpts: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
-    { mode: 'nearest',   icon: 'crosshair',    label: 'Nearest',   desc: 'Attack closest enemy' },
-    { mode: 'weakest',   icon: 'trending-down', label: 'Weakest',   desc: 'Focus low HP' },
-    { mode: 'strongest', icon: 'trending-up',   label: 'Strongest', desc: 'Focus high HP' },
-    { mode: 'random',    icon: 'shuffle',       label: 'Random',    desc: 'Pick random target' },
+    { mode: 'nearest',   icon: 'gi-crosshair',       label: 'Nearest',   desc: 'Attack closest enemy' },
+    { mode: 'weakest',   icon: 'gi-health-decrease', label: 'Weakest',   desc: 'Focus low HP' },
+    { mode: 'strongest', icon: 'gi-health-increase', label: 'Strongest', desc: 'Focus high HP' },
+    { mode: 'random',    icon: 'gi-dice',            label: 'Random',    desc: 'Pick random target' },
   ]
 
   const backdrop = document.createElement('div')
@@ -1306,10 +1309,10 @@ function mountBattleConfigModal(
     <div class="modal-panel battle-config-panel" role="dialog" aria-modal="true">
       <div class="battle-tabs">
         <button class="battle-tab battle-tab--active" data-btab="action" aria-label="Actions">
-          <i data-lucide="sword" aria-hidden="true"></i>
+          <i data-game-icon="gi-sword" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="targeting" aria-label="Targeting">
-          <i data-lucide="crosshair" aria-hidden="true"></i>
+          <i data-game-icon="gi-crosshair" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="effects" aria-label="Effects">
           <i data-lucide="timer" aria-hidden="true"></i>
@@ -1327,7 +1330,7 @@ function mountBattleConfigModal(
         <div class="targeting-options">
           ${targetingOpts.map(o => `
             <button class="targeting-opt${currentTargeting === o.mode ? ' targeting-opt--active' : ''}" data-targeting="${o.mode}">
-              <i data-lucide="${o.icon}" aria-hidden="true"></i>
+              <i data-game-icon="${o.icon}" aria-hidden="true"></i>
               <span class="targeting-opt-name">${o.label}</span>
               <small class="targeting-opt-desc">${o.desc}</small>
             </button>`).join('')}
@@ -1386,7 +1389,8 @@ function mountBattleConfigModal(
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
   parent.appendChild(backdrop)
-  createIcons({ icons: { Sword, Target, Flame, Zap, Crosshair, TrendingDown, TrendingUp, Shuffle, Timer } })
+  createIcons({ icons: { Timer } })
+  renderGameIcons(backdrop)
   return () => backdrop.remove()
 }
 
