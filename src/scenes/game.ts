@@ -239,7 +239,7 @@ export function createGameScene(
     <div class="game-hud">
       <div class="battle-config-wrap">
         <div class="action-bubble">
-          <i data-game-icon="gi-sword" aria-hidden="true"></i>
+          <i data-game-icon="broadsword" aria-hidden="true"></i>
           <small class="action-level">Lv.1</small>
         </div>
         <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
@@ -1187,7 +1187,7 @@ function mountGameMenuModal(
           </span>
         </button>
         <button class="modal-btn modal-btn--danger modal-btn--icon-row" data-action="die">
-          <i data-game-icon="gi-skull" aria-hidden="true"></i>
+          <i data-game-icon="skull" aria-hidden="true"></i>
           <span class="menu-btn-text">
             <span class="menu-btn-title">Die</span>
             <small class="menu-btn-desc">Trigger death and rebirth now</small>
@@ -1286,9 +1286,10 @@ function mountBattleConfigModal(
       const meta = maxLevel > 1
         ? `Lv.${level} · ${Math.sqrt(maxLevel).toFixed(1)}xp`
         : `Lv.${level}`
+      const iconAttr = a.iconSystem === 'game' ? `data-game-icon="${a.icon}"` : `data-lucide="${a.icon}"`
       return `
         <button class="action-card${a.id === currentActionId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
-          <i data-game-icon="${a.icon}" aria-hidden="true"></i>
+          <i ${iconAttr} aria-hidden="true"></i>
           <span class="action-card-name">${escapeHtml(a.label)}</span>
           <span class="action-card-meta">${meta}</span>
         </button>`
@@ -1297,10 +1298,10 @@ function mountBattleConfigModal(
   const startOnWeapons = weaponActions.some(a => a.id === currentActionId)
 
   const targetingOpts: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
-    { mode: 'nearest',   icon: 'gi-crosshair',       label: 'Nearest',   desc: 'Attack closest enemy' },
-    { mode: 'weakest',   icon: 'gi-health-decrease', label: 'Weakest',   desc: 'Focus low HP' },
-    { mode: 'strongest', icon: 'gi-health-increase', label: 'Strongest', desc: 'Focus high HP' },
-    { mode: 'random',    icon: 'gi-dice',            label: 'Random',    desc: 'Pick random target' },
+    { mode: 'nearest',   icon: 'crosshair',      label: 'Nearest',   desc: 'Attack closest enemy' },
+    { mode: 'weakest',   icon: 'health-decrease', label: 'Weakest',   desc: 'Focus low HP' },
+    { mode: 'strongest', icon: 'health-increase', label: 'Strongest', desc: 'Focus high HP' },
+    { mode: 'random',    icon: 'dice-random',     label: 'Random',    desc: 'Pick random target' },
   ]
 
   const backdrop = document.createElement('div')
@@ -1309,10 +1310,10 @@ function mountBattleConfigModal(
     <div class="modal-panel battle-config-panel" role="dialog" aria-modal="true">
       <div class="battle-tabs">
         <button class="battle-tab battle-tab--active" data-btab="action" aria-label="Actions">
-          <i data-game-icon="gi-sword" aria-hidden="true"></i>
+          <i data-game-icon="broadsword" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="targeting" aria-label="Targeting">
-          <i data-game-icon="gi-crosshair" aria-hidden="true"></i>
+          <i data-game-icon="crosshair" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="effects" aria-label="Effects">
           <i data-lucide="timer" aria-hidden="true"></i>

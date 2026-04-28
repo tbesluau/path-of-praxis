@@ -68,6 +68,7 @@ export function createMenuScene(
 
   container.appendChild(el)
   createIcons({ icons: { Play, UserPlus, FolderOpen, Trophy, Trash2 } })
+  renderGameIcons(el)
 
   const unmountSettings = mountSettingsButton(el)
 
@@ -148,11 +149,14 @@ function mountNewCharacterModal(
   const spellActions  = allActions.filter((a): a is ActionDef & { kind: 'spell'  } => a.kind === 'spell')
 
   const buildCards = (actions: ActionDef[], selected: ActionId) =>
-    actions.map(a => `
+    actions.map(a => {
+      const iconAttr = a.iconSystem === 'game' ? `data-game-icon="${a.icon}"` : `data-lucide="${a.icon}"`
+      return `
       <button class="action-card${a.id === selected ? ' action-card--selected' : ''}" data-action-id="${a.id}">
-        <i data-game-icon="${a.icon}" aria-hidden="true"></i>
+        <i ${iconAttr} aria-hidden="true"></i>
         <span class="action-card-name">${a.label}</span>
-      </button>`).join('')
+      </button>`
+    }).join('')
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
