@@ -17,6 +17,7 @@
     "pixi.js": "^8.0.0"
   },
   "devDependencies": {
+    "@iconify-json/game-icons": "^1.2.4",
     "@types/matter-js": "^0.20.2",
     "jsdom": "^26.0.0",
     "typescript": "^5.7.2",
