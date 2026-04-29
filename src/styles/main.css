@@ -135,11 +135,12 @@ body {
 .menu-btn:hover,
 .menu-btn:focus-visible {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+  transform: translateY(2px);
   outline: none;
 }
 
 .menu-btn:active {
-  transform: scale(0.97);
+  transform: translateY(2px) scale(0.97);
 }
 
 .menu-btn svg {
@@ -170,8 +171,8 @@ body {
   flex: 1;
   position: relative;
   min-height: 0;
-  border: 22px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panelInset_brown.png') 22 stretch;
+  border: 25px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_brown.png') 25 stretch;
   border-radius: 0;
   overflow: hidden;
 }
@@ -332,18 +333,17 @@ body {
   justify-content: center;
   border-radius: 0;
   padding: 0;
-}
-
-.enemy-level-btn img {
-  width: 14px;
-  height: auto;
-  display: block;
-  pointer-events: none;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: var(--font-body);
+  line-height: 1;
+  transition: transform var(--transition-fast);
 }
 
 .enemy-level-btn:hover:not(:disabled),
 .enemy-level-btn:focus-visible:not(:disabled) {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
   outline: none;
 }
 
@@ -380,10 +380,10 @@ body {
 }
 
 .enemy-autolevel-track {
-  width: 26px;
-  height: 14px;
-  background: rgba(0, 0, 0, 0.18);
-  border-radius: 7px;
+  width: 36px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
   position: relative;
   flex-shrink: 0;
   transition: background var(--transition-fast);
@@ -396,22 +396,23 @@ body {
 .enemy-autolevel-track::after {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
   background: #fff;
   border-radius: 50%;
   transition: transform var(--transition-fast);
 }
 
 .enemy-autolevel-input:checked ~ .enemy-autolevel-track::after {
-  transform: translateX(12px);
+  transform: translateX(16px);
 }
 
 .enemy-autolevel-label {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.04em;
   user-select: none;
 }
@@ -472,11 +473,12 @@ body {
 .game-action-btn:hover,
 .game-action-btn:focus-visible {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
   outline: none;
 }
 
 .game-action-btn:active {
-  transform: scale(0.94);
+  transform: translateY(2px) scale(0.94);
 }
 
 .game-action-btn--icon {
@@ -515,10 +517,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform var(--transition-fast);
 }
 
-.battle-tab:hover {
+.battle-tab:hover:not(.battle-tab--active) {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
 }
 
 .battle-tab--active {
@@ -551,10 +555,12 @@ body {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
+  transition: transform var(--transition-fast);
 }
 
-.action-tab:hover {
+.action-tab:hover:not(.action-tab--active) {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+  transform: translateY(2px);
 }
 
 .action-tab--active {
@@ -722,19 +728,25 @@ body {
   position: relative;
   background: transparent;
   border: 25px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_beige.png') 25 fill stretch;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_brown.png') 25 fill stretch;
   border-radius: 0;
   padding: var(--space-xl);
   width: min(380px, 92vw);
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  box-shadow: 0 0 0 4px #6b3a18, 0 24px 64px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
   color: #1a0a02;
 }
 
+/* Beige parchment inner frame — sits inside the brown raised border */
 .modal-panel::before {
-  display: none;
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 25px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_beige.png') 25 fill stretch;
+  pointer-events: none;
 }
 
 .modal-panel > * {
@@ -884,10 +896,12 @@ body {
   border-radius: 0;
   color: #fff;
   font-weight: 600;
+  transition: transform var(--transition-fast);
 }
 
 .modal-btn--primary:hover:not(:disabled) {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+  transform: translateY(2px);
 }
 
 .modal-btn--primary:disabled {
@@ -902,11 +916,12 @@ body {
   border-radius: 0;
   color: #2a1a08;
   font-weight: 500;
+  transition: transform var(--transition-fast);
 }
 
 .modal-btn--ghost:hover {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_beige_pressed.png');
-  filter: brightness(1.05);
+  transform: translateY(2px);
 }
 
 .modal-btn--danger {
@@ -1103,6 +1118,7 @@ body {
 .settings-btn:hover,
 .settings-btn:focus-visible {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
   outline: none;
 }
 
@@ -1138,10 +1154,12 @@ body {
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+  transition: transform var(--transition-fast);
 }
 
-.lang-option:hover {
+.lang-option:hover:not(.lang-option--active) {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+  transform: translateY(2px);
 }
 
 .lang-option--active {
@@ -1171,6 +1189,7 @@ body {
 .back-btn:hover,
 .back-btn:focus-visible {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
   outline: none;
 }
 
@@ -1188,8 +1207,8 @@ body {
   display: flex;
   align-items: stretch;
   gap: 0;
-  border: 25px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 25 fill stretch;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
   border-radius: 0;
   background: transparent;
   height: 64px;
