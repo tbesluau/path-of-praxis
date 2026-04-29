@@ -121,9 +121,8 @@ export function createGameScene(
       leveled = true
     }
     actionProgress[actionId] = { xp, level, maxLevel }
-    if (actionId === playerActionId) {
-      if (leveled) playerEntity.attackDamage = getAction(actionId).damage * level
-      updateActionBtn(getAction(actionId))
+    if (actionId === playerActionId && leveled) {
+      playerEntity.attackDamage = getAction(actionId).damage * level
     }
   }
 
@@ -227,24 +226,20 @@ export function createGameScene(
       </div>
     </div>
     <div class="game-hud">
-      <div class="battle-config-wrap">
-        <div class="action-bubble">
-          <i data-game-icon="broadsword" aria-hidden="true"></i>
-          <small class="action-level">Lv.1</small>
-        </div>
+      <div class="game-hud-buttons">
         <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
           <i data-lucide="settings-2" aria-hidden="true"></i>
         </button>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries">
+          <i data-lucide="award" aria-hidden="true"></i>
+        </button>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
+          <i data-lucide="menu" aria-hidden="true"></i>
+        </button>
+        <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
+          <i data-lucide="user" aria-hidden="true"></i>
+        </button>
       </div>
-      <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries">
-        <i data-lucide="award" aria-hidden="true"></i>
-      </button>
-      <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
-        <i data-lucide="menu" aria-hidden="true"></i>
-      </button>
-      <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
-        <i data-lucide="user" aria-hidden="true"></i>
-      </button>
       <div class="speed-ctrl">
         <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
           <i data-lucide="pause" aria-hidden="true"></i>
@@ -275,15 +270,12 @@ export function createGameScene(
     manaLevelEl.querySelector('span')!.textContent = `Lv.${manaProgress.level}`
   }
 
-  const enemyLevelCtrl     = el.querySelector<HTMLElement>('.enemy-level-ctrl')!
   const enemyLevelDisplay   = el.querySelector<HTMLElement>('.enemy-level-display')!
   const enemyLevelDownBtn   = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-down"]')!
   const enemyLevelUpBtn     = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-up"]')!
   const enemyAutoLevelInput = el.querySelector<HTMLInputElement>('.enemy-autolevel-input')!
 
   function updateEnemyLevelUI(): void {
-    const xpPct = Math.round((enemyProgress.xp / (enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel)) * 100)
-    enemyLevelCtrl.style.setProperty('--enemy-xp-pct', `${xpPct}%`)
     enemyLevelDisplay.textContent = `${enemyProgress.level} / ${enemyProgress.maxLevel}`
     enemyLevelDownBtn.disabled = enemyProgress.level <= 1
     enemyLevelUpBtn.disabled   = enemyProgress.level >= enemyProgress.maxLevel
@@ -320,20 +312,7 @@ export function createGameScene(
 
   const speedPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
   const speedOptBtns = el.querySelectorAll<HTMLButtonElement>('.speed-opt')
-  const actionBubble = el.querySelector<HTMLElement>('.action-bubble')!
   const battleConfigBtn = el.querySelector<HTMLButtonElement>('[data-action="open-config"]')!
-
-  function updateActionBtn(def: ActionDef): void {
-    const id = def.id as ActionId
-    const p = actionProgress[id]
-    const level = p?.level ?? 1
-    const xpPct = p ? Math.round((p.xp / actionXpNeeded(p.level)) * 100) : 0
-    actionBubble.style.setProperty('--xp-pct', `${xpPct}%`)
-    actionBubble.innerHTML = `<i data-game-icon="${def.icon}" aria-hidden="true"></i><small class="action-level">Lv.${level}</small>`
-    renderGameIcons(actionBubble)
-  }
-
-  updateActionBtn(getAction(playerActionId))
 
   battleConfigBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
@@ -345,7 +324,6 @@ export function createGameScene(
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
-        updateActionBtn(getAction(id))
         if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
       },
       (mode) => {
@@ -675,7 +653,6 @@ export function createGameScene(
     playerDead = false
     updateBars()
     updateStatLevels()
-    updateActionBtn(getAction(playerActionId))
 
     // Reset per-rebirth trackers
     runActionXp = {}
