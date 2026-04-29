@@ -162,6 +162,7 @@ function mountNewCharacterModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-new-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="modal-new-title">${t('character', 'newTitle')}</h2>
       <div class="modal-field">
         <label class="modal-label" for="char-name-input">${t('character', 'nameLabel')}</label>
@@ -196,6 +197,8 @@ function mountNewCharacterModal(
 
   const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
   const createBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="create"]')!
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', onClose)
   const cancelBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
   const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
 
@@ -253,11 +256,9 @@ function mountLoadCharacterModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-load-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="modal-load-title">${t('character', 'loadTitle')}</h2>
       <div class="char-slot-list"></div>
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
-      </div>
     </div>
   `
 
@@ -321,8 +322,8 @@ function mountLoadCharacterModal(
 
   renderSlots()
 
-  backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
-    .addEventListener('click', onClose)
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', () => { backdrop.remove(); onClose() })
 
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) onClose()

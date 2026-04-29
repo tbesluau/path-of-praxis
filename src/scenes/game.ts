@@ -1,6 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, Play, Pause, ChevronLeft, ChevronRight, Menu, Home, LogOut, Settings2, Timer, Award } from 'lucide'
+import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award } from 'lucide'
 import { renderGameIcons } from '../ui/game-icons'
 import { tokens } from '../theme'
 import { t } from '../i18n'
@@ -14,7 +14,7 @@ import type { SceneId } from '../core/router'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
-const HUD_HEIGHT = 128
+const HUD_HEIGHT = 0
 const SAVE_INTERVAL_MS = 10_000
 
 interface DeathFragment {
@@ -197,7 +197,36 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <div class="bottom-panel">
+    <div class="enemy-level-ctrl">
+      <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">
+        <img src="/ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" width="22" height="21" alt="" aria-hidden="true">
+      </button>
+      <span class="enemy-level-display">1 / 1</span>
+      <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">
+        <img src="/ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png" width="22" height="21" alt="" aria-hidden="true">
+      </button>
+      <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
+        <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
+        <span class="enemy-autolevel-track"></span>
+        <span class="enemy-autolevel-label">Auto</span>
+      </label>
+    </div>
+    <div class="game-viewport"></div>
+    <div class="stat-bars">
+      <div class="stat-bar-row">
+        <div class="stat-bar stat-bar--life">
+          <div class="stat-bar-fill stat-bar-fill--life"></div>
+        </div>
+        <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+      </div>
+      <div class="stat-bar-row">
+        <div class="stat-bar stat-bar--mana">
+          <div class="stat-bar-fill stat-bar-fill--mana"></div>
+        </div>
+        <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+      </div>
+    </div>
+    <div class="game-hud">
       <div class="speed-ctrl">
         <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
           <i data-lucide="pause" aria-hidden="true"></i>
@@ -207,36 +236,6 @@ export function createGameScene(
         <button class="speed-opt" data-speed="5">×5</button>
         <button class="speed-opt" data-speed="10">×10</button>
       </div>
-      <div class="stat-bars">
-        <div class="stat-bar-row">
-          <div class="stat-bar stat-bar--life">
-            <div class="stat-bar-fill stat-bar-fill--life"></div>
-          </div>
-          <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
-        </div>
-        <div class="stat-bar-row">
-          <div class="stat-bar stat-bar--mana">
-            <div class="stat-bar-fill stat-bar-fill--mana"></div>
-          </div>
-          <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="enemy-level-ctrl">
-      <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">
-        <i data-lucide="chevron-left" aria-hidden="true"></i>
-      </button>
-      <span class="enemy-level-display">1 / 1</span>
-      <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">
-        <i data-lucide="chevron-right" aria-hidden="true"></i>
-      </button>
-      <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
-        <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
-        <span class="enemy-autolevel-track"></span>
-        <span class="enemy-autolevel-label">Auto</span>
-      </label>
-    </div>
-    <div class="game-hud">
       <div class="battle-config-wrap">
         <div class="action-bubble">
           <i data-game-icon="broadsword" aria-hidden="true"></i>
@@ -258,7 +257,8 @@ export function createGameScene(
     </div>
   `
   container.appendChild(el)
-  createIcons({ icons: { User, Play, Pause, ChevronLeft, ChevronRight, Menu, Settings2, Award } })
+  const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
+  createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award } })
   renderGameIcons(el)
 
   const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
@@ -758,7 +758,10 @@ export function createGameScene(
         }
         return `
           <div class="mastery-row">
-            <div class="mastery-bar mastery-bar--layered" style="--old-pct:${oldPct}%;--gain-pct:${gainPct}%"></div>
+            <div class="mastery-bar">
+              ${oldPct > 0 ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>` : ''}
+              <div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>
+            </div>
             <span class="mastery-label">${escapeHtml(m.label)}</span>
             <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${level}</span>
             ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
@@ -980,7 +983,7 @@ export function createGameScene(
       const instance = new Application()
       await instance.init({
         background: tokens.color.surface,
-        resizeTo: el,
+        resizeTo: viewportEl,
         antialias: true,
         resolution: devicePixelRatio,
         autoDensity: true,
@@ -999,7 +1002,7 @@ export function createGameScene(
       const wrapper = document.createElement('div')
       wrapper.className = 'game-canvas-wrapper'
       wrapper.appendChild(app.canvas)
-      el.insertBefore(wrapper, el.firstChild)
+      viewportEl.appendChild(wrapper)
 
       worldGrid = new Graphics()
       app.stage.addChild(worldGrid)
@@ -1174,6 +1177,7 @@ function mountGameMenuModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel game-menu-panel" role="dialog" aria-modal="true" aria-labelledby="game-menu-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="game-menu-title">Menu</h2>
       <div class="modal-actions game-menu-actions">
         <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="home">
@@ -1200,6 +1204,8 @@ function mountGameMenuModal(
   createIcons({ icons: { Home, LogOut } })
   renderGameIcons(backdrop)
   const dismiss = () => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', dismiss)
   backdrop.querySelector<HTMLButtonElement>('[data-action="home"]')!
     .addEventListener('click', () => { dismiss(); actions.onHome() })
   backdrop.querySelector<HTMLButtonElement>('[data-action="flee"]')!
@@ -1244,6 +1250,7 @@ function mountCharacterModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel char-info-panel" role="dialog" aria-modal="true" aria-labelledby="char-info-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="char-info-title">${t('character', 'infoTitle')}</h2>
       <div class="char-info-row">
         <span class="char-info-label">${t('character', 'nameLabel')}</span>
@@ -1252,9 +1259,6 @@ function mountCharacterModal(
       ${statDetailRow(t('character', 'statMaxLife'), lifeProgress, balance.player.maxLife, 'char-info-value--life')}
       ${statDetailRow(t('character', 'statMaxMana'), manaProgress, balance.player.maxMana, 'char-info-value--mana')}
       ${actionRows}
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
-      </div>
     </div>
   `
   parent.appendChild(backdrop)
@@ -1308,6 +1312,7 @@ function mountBattleConfigModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel battle-config-panel" role="dialog" aria-modal="true">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <div class="battle-tabs">
         <button class="battle-tab battle-tab--active" data-btab="action" aria-label="Actions">
           <i data-game-icon="broadsword" aria-hidden="true"></i>
@@ -1339,9 +1344,6 @@ function mountBattleConfigModal(
       </div>
       <div data-bpanel="effects" hidden>
         <p class="wip-notice">Timed &amp; automatic effects &mdash; coming soon</p>
-      </div>
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
       </div>
     </div>
   `
@@ -1422,11 +1424,9 @@ function mountMasteryModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-panel" role="dialog" aria-modal="true" aria-labelledby="mastery-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="mastery-title">Masteries</h2>
       <div class="mastery-categories">${categoriesHtml}</div>
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="close">Close</button>
-      </div>
     </div>
   `
   parent.appendChild(backdrop)
