@@ -40,6 +40,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
     const locale = getLocale()
     backdrop.innerHTML = `
       <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
         <h2 class="modal-title" id="settings-title">${t('settings', 'title')}</h2>
         <div class="modal-field">
           <span class="modal-label">${t('settings', 'language')}</span>
@@ -51,9 +52,6 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
               ${t('settings', 'langFr')}
             </button>
           </div>
-        </div>
-        <div class="modal-actions">
-          <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
         </div>
       </div>
     `
