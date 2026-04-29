@@ -1,5 +1,4 @@
-import { createIcons, Play, UserPlus, FolderOpen, Trophy, Trash2 } from 'lucide'
-import { renderGameIcons } from '../ui/game-icons'
+import { createIcons, Play, UserPlus, FolderOpen, Trophy, Trash2, Sword, Crosshair, Flame, Zap } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import { mountSettingsButton } from '../ui/settings'
@@ -68,7 +67,6 @@ export function createMenuScene(
 
   container.appendChild(el)
   createIcons({ icons: { Play, UserPlus, FolderOpen, Trophy, Trash2 } })
-  renderGameIcons(el)
 
   const unmountSettings = mountSettingsButton(el)
 
@@ -150,7 +148,7 @@ function mountNewCharacterModal(
 
   const buildCards = (actions: ActionDef[], selected: ActionId) =>
     actions.map(a => {
-      const iconAttr = a.iconSystem === 'game' ? `data-game-icon="${a.icon}"` : `data-lucide="${a.icon}"`
+      const iconAttr = `data-lucide="${a.icon}"`
       return `
       <button class="action-card${a.id === selected ? ' action-card--selected' : ''}" data-action-id="${a.id}">
         <i ${iconAttr} aria-hidden="true"></i>
@@ -193,7 +191,7 @@ function mountNewCharacterModal(
   `
 
   parent.appendChild(backdrop)
-  renderGameIcons(backdrop)
+  createIcons({ icons: { Sword, Crosshair, Flame, Zap } })
 
   const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
   const createBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="create"]')!
