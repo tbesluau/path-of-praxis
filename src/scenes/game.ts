@@ -199,11 +199,11 @@ export function createGameScene(
   el.innerHTML = `
     <div class="enemy-level-ctrl">
       <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">
-        <img src="/ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" width="22" height="21" alt="" aria-hidden="true">
+        <img src="/ui/kenney_ui-pack-rpg-expansion/PNG/arrowBrown_left.png" width="22" height="21" alt="" aria-hidden="true">
       </button>
       <span class="enemy-level-display">1 / 1</span>
       <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">
-        <img src="/ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png" width="22" height="21" alt="" aria-hidden="true">
+        <img src="/ui/kenney_ui-pack-rpg-expansion/PNG/arrowBrown_right.png" width="22" height="21" alt="" aria-hidden="true">
       </button>
       <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
         <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
@@ -227,15 +227,6 @@ export function createGameScene(
       </div>
     </div>
     <div class="game-hud">
-      <div class="speed-ctrl">
-        <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
-          <i data-lucide="pause" aria-hidden="true"></i>
-        </button>
-        <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
-        <button class="speed-opt" data-speed="2">×2</button>
-        <button class="speed-opt" data-speed="5">×5</button>
-        <button class="speed-opt" data-speed="10">×10</button>
-      </div>
       <div class="battle-config-wrap">
         <div class="action-bubble">
           <i data-game-icon="broadsword" aria-hidden="true"></i>
@@ -254,6 +245,15 @@ export function createGameScene(
       <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
         <i data-lucide="user" aria-hidden="true"></i>
       </button>
+      <div class="speed-ctrl">
+        <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
+          <i data-lucide="pause" aria-hidden="true"></i>
+        </button>
+        <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
+        <button class="speed-opt" data-speed="2">×2</button>
+        <button class="speed-opt" data-speed="5">×5</button>
+        <button class="speed-opt" data-speed="10">×10</button>
+      </div>
     </div>
   `
   container.appendChild(el)
