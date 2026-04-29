@@ -1,7 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award } from 'lucide'
-import { renderGameIcons } from '../ui/game-icons'
+import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
@@ -121,8 +120,9 @@ export function createGameScene(
       leveled = true
     }
     actionProgress[actionId] = { xp, level, maxLevel }
-    if (actionId === playerActionId && leveled) {
-      playerEntity.attackDamage = getAction(actionId).damage * level
+    if (actionId === playerActionId) {
+      if (leveled) playerEntity.attackDamage = getAction(actionId).damage * level
+      updateActionBar()
     }
   }
 
@@ -197,14 +197,19 @@ export function createGameScene(
   el.className = 'scene scene-game'
   el.innerHTML = `
     <div class="enemy-level-ctrl">
-      <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">&lt;</button>
-      <span class="enemy-level-display">1 / 1</span>
-      <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">&gt;</button>
-      <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
-        <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
-        <span class="enemy-autolevel-track"></span>
-        <span class="enemy-autolevel-label">Auto</span>
-      </label>
+      <div class="enemy-level-main">
+        <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">&lt;</button>
+        <span class="enemy-level-display">1 / 1</span>
+        <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">&gt;</button>
+        <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
+          <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
+          <span class="enemy-autolevel-track"></span>
+          <span class="enemy-autolevel-label">Auto</span>
+        </label>
+      </div>
+      <div class="enemy-xp-bar">
+        <div class="enemy-xp-bar-fill"></div>
+      </div>
     </div>
     <div class="game-viewport"></div>
     <div class="stat-bars">
@@ -219,6 +224,12 @@ export function createGameScene(
           <div class="stat-bar-fill stat-bar-fill--mana"></div>
         </div>
         <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+      </div>
+      <div class="stat-bar-row stat-bar-row--action">
+        <div class="action-icon-wrap"><i data-lucide="sword" aria-hidden="true"></i></div>
+        <div class="stat-bar stat-bar--action">
+          <div class="stat-bar-fill stat-bar-fill--action"></div>
+        </div>
       </div>
     </div>
     <div class="game-hud">
@@ -249,13 +260,15 @@ export function createGameScene(
   `
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
-  createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award } })
-  renderGameIcons(el)
+  createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword } })
 
-  const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
-  const manaFill     = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
-  const lifeLevelEl  = el.querySelector<HTMLElement>('.stat-level--life')!
-  const manaLevelEl  = el.querySelector<HTMLElement>('.stat-level--mana')!
+  const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
+  const manaFill        = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
+  const lifeLevelEl     = el.querySelector<HTMLElement>('.stat-level--life')!
+  const manaLevelEl     = el.querySelector<HTMLElement>('.stat-level--mana')!
+  const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
+  const actionBarFill   = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
+  const actionIconWrap  = el.querySelector<HTMLElement>('.action-icon-wrap')!
 
   function updateStatLevels(): void {
     const lifePct = Math.round(lifeProgress.xp / (lifeProgress.level * balance.stat.xpPerLevel) * 100)
@@ -264,6 +277,18 @@ export function createGameScene(
     const manaPct = Math.round(manaProgress.xp / (manaProgress.level * balance.stat.xpPerLevel) * 100)
     manaLevelEl.style.setProperty('--xp-pct', `${manaPct}%`)
     manaLevelEl.querySelector('span')!.textContent = `Lv.${manaProgress.level}`
+  }
+
+  function updateActionBar(): void {
+    const prog = actionProgress[playerActionId] ?? { xp: 0, level: 1, maxLevel: 1 }
+    const pct = Math.min(100, Math.round(prog.xp / actionXpNeeded(prog.level) * 100))
+    actionBarFill.style.width = `${pct}%`
+  }
+
+  function updateActionIcon(): void {
+    const action = getAction(playerActionId)
+    actionIconWrap.innerHTML = `<i data-lucide="${action.icon}" aria-hidden="true"></i>`
+    createIcons({ icons: { Sword, Crosshair, Flame, Zap } })
   }
 
   const enemyLevelDisplay   = el.querySelector<HTMLElement>('.enemy-level-display')!
@@ -276,6 +301,8 @@ export function createGameScene(
     enemyLevelDownBtn.disabled = enemyProgress.level <= 1
     enemyLevelUpBtn.disabled   = enemyProgress.level >= enemyProgress.maxLevel
     enemyAutoLevelInput.checked = enemyProgress.autoLevel
+    const xpMax = enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel
+    enemyXpBarFill.style.width = `${Math.min(100, Math.round(enemyProgress.xp / xpMax * 100))}%`
   }
 
   enemyLevelDownBtn.addEventListener('click', () => {
@@ -320,6 +347,8 @@ export function createGameScene(
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
+        updateActionBar()
+        updateActionIcon()
         if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
       },
       (mode) => {
@@ -339,6 +368,8 @@ export function createGameScene(
 
   updateBars()
   updateStatLevels()
+  updateActionBar()
+  updateActionIcon()
 
   // ── Regen ───────────────────────────────────────────────────────────────
 
@@ -649,6 +680,8 @@ export function createGameScene(
     playerDead = false
     updateBars()
     updateStatLevels()
+    updateActionBar()
+    updateActionIcon()
 
     // Reset per-rebirth trackers
     runActionXp = {}
@@ -1164,7 +1197,7 @@ function mountGameMenuModal(
           </span>
         </button>
         <button class="modal-btn modal-btn--danger modal-btn--icon-row" data-action="die">
-          <i data-game-icon="skull" aria-hidden="true"></i>
+          <i data-lucide="skull" aria-hidden="true"></i>
           <span class="menu-btn-text">
             <span class="menu-btn-title">Die</span>
             <small class="menu-btn-desc">Trigger death and rebirth now</small>
@@ -1174,8 +1207,7 @@ function mountGameMenuModal(
     </div>
   `
   parent.appendChild(backdrop)
-  createIcons({ icons: { Home, LogOut } })
-  renderGameIcons(backdrop)
+  createIcons({ icons: { Home, LogOut, Skull } })
   const dismiss = () => { backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
@@ -1263,7 +1295,7 @@ function mountBattleConfigModal(
       const meta = maxLevel > 1
         ? `Lv.${level} · ${Math.sqrt(maxLevel).toFixed(1)}xp`
         : `Lv.${level}`
-      const iconAttr = a.iconSystem === 'game' ? `data-game-icon="${a.icon}"` : `data-lucide="${a.icon}"`
+      const iconAttr = `data-lucide="${a.icon}"`
       return `
         <button class="action-card${a.id === currentActionId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
           <i ${iconAttr} aria-hidden="true"></i>
@@ -1275,10 +1307,10 @@ function mountBattleConfigModal(
   const startOnWeapons = weaponActions.some(a => a.id === currentActionId)
 
   const targetingOpts: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
-    { mode: 'nearest',   icon: 'crosshair',      label: 'Nearest',   desc: 'Attack closest enemy' },
-    { mode: 'weakest',   icon: 'health-decrease', label: 'Weakest',   desc: 'Focus low HP' },
-    { mode: 'strongest', icon: 'health-increase', label: 'Strongest', desc: 'Focus high HP' },
-    { mode: 'random',    icon: 'dice-random',     label: 'Random',    desc: 'Pick random target' },
+    { mode: 'nearest',   icon: 'crosshair',    label: 'Nearest',   desc: 'Attack closest enemy' },
+    { mode: 'weakest',   icon: 'trending-down', label: 'Weakest',   desc: 'Focus low HP' },
+    { mode: 'strongest', icon: 'trending-up',   label: 'Strongest', desc: 'Focus high HP' },
+    { mode: 'random',    icon: 'shuffle',       label: 'Random',    desc: 'Pick random target' },
   ]
 
   const backdrop = document.createElement('div')
@@ -1288,10 +1320,10 @@ function mountBattleConfigModal(
       <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <div class="battle-tabs">
         <button class="battle-tab battle-tab--active" data-btab="action" aria-label="Actions">
-          <i data-game-icon="broadsword" aria-hidden="true"></i>
+          <i data-lucide="sword" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="targeting" aria-label="Targeting">
-          <i data-game-icon="crosshair" aria-hidden="true"></i>
+          <i data-lucide="crosshair" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="effects" aria-label="Effects">
           <i data-lucide="timer" aria-hidden="true"></i>
@@ -1309,7 +1341,7 @@ function mountBattleConfigModal(
         <div class="targeting-options">
           ${targetingOpts.map(o => `
             <button class="targeting-opt${currentTargeting === o.mode ? ' targeting-opt--active' : ''}" data-targeting="${o.mode}">
-              <i data-game-icon="${o.icon}" aria-hidden="true"></i>
+              <i data-lucide="${o.icon}" aria-hidden="true"></i>
               <span class="targeting-opt-name">${o.label}</span>
               <small class="targeting-opt-desc">${o.desc}</small>
             </button>`).join('')}
@@ -1365,8 +1397,7 @@ function mountBattleConfigModal(
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
   parent.appendChild(backdrop)
-  createIcons({ icons: { Timer } })
-  renderGameIcons(backdrop)
+  createIcons({ icons: { Timer, Sword, Crosshair, Flame, Zap, TrendingDown, TrendingUp, Shuffle } })
   return () => backdrop.remove()
 }
 
