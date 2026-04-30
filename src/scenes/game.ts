@@ -632,8 +632,9 @@ export function createGameScene(
   let worldGrid: Graphics | null = null
   let floorContainer: Container | null = null
   let wallContainer: Container | null = null
-  let floorTextures: Texture[] = []
-  let wallTextures:  Texture[] = []
+  let floorOptions:       { tex: Texture; w: number }[] = []
+  let largeObstOptions:   { tex: Texture; w: number }[] = []
+  let smallFillerOptions: { tex: Texture; w: number }[] = []
   let zapTex: Texture | null = null
   const floorSprites: Sprite[] = []
   const wallSprites: Sprite[] = []
@@ -709,6 +710,15 @@ export function createGameScene(
     entityContainers.set(entity.id, c)
   }
 
+  function countBlockedNeighbors(tx: number, ty: number): number {
+    let n = 0
+    if (blockedTiles.has(`${tx + 1},${ty}`)) n++
+    if (blockedTiles.has(`${tx - 1},${ty}`)) n++
+    if (blockedTiles.has(`${tx},${ty + 1}`)) n++
+    if (blockedTiles.has(`${tx},${ty - 1}`)) n++
+    return n
+  }
+
   function drawGrid(): void {
     if (!app || !worldGrid) return
     const { width, height } = app.screen
@@ -730,7 +740,7 @@ export function createGameScene(
     const tEndY   = Math.ceil(bottom / gs)
     let floorIdx = 0
     let wallIdx = 0
-    if (floorContainer && wallContainer && floorTextures.length && wallTextures.length) {
+    if (floorContainer && wallContainer && floorOptions.length && largeObstOptions.length) {
       for (let ty = tStartY; ty <= tEndY; ty++) {
         for (let tx = tStartX; tx <= tEndX; tx++) {
           const fSprite = floorSprites[floorIdx] ?? (() => {
@@ -741,13 +751,15 @@ export function createGameScene(
             floorSprites.push(s)
             return s
           })()
-          fSprite.texture = pickTileTex(tx, ty, floorTextures)
+          fSprite.texture = pickWeighted(tx, ty, floorOptions)
           fSprite.x = tx * gs
           fSprite.y = ty * gs
           fSprite.visible = true
           floorIdx++
 
           if (blockedTiles.has(`${tx},${ty}`)) {
+            const isLarge = countBlockedNeighbors(tx, ty) >= 2
+            const opts = isLarge ? largeObstOptions : smallFillerOptions
             const wSprite = wallSprites[wallIdx] ?? (() => {
               const s = new Sprite()
               s.width = gs
@@ -756,7 +768,7 @@ export function createGameScene(
               wallSprites.push(s)
               return s
             })()
-            wSprite.texture = pickTileTex(tx, ty, wallTextures)
+            wSprite.texture = pickWeighted(tx, ty, opts)
             wSprite.x = tx * gs
             wSprite.y = ty * gs
             wSprite.visible = true
@@ -1263,20 +1275,17 @@ export function createGameScene(
       )
       sheet.source.scaleMode = 'nearest'
       const TILE = 16
-      const tileTex = (col: number, row: number) =>
-        new Texture({ source: sheet.source, frame: new Rectangle(col * TILE, row * TILE, TILE, TILE) })
-      // Floor variants (orange dirt, verified from Kenney's own sampleMap.tmx):
-      //   plain at (0,0), (0,4)–(4,4); slightly decorated at (5,4).
-      floorTextures = [
-        tileTex(0, 0), tileTex(0, 4), tileTex(1, 4),
-        tileTex(2, 4), tileTex(3, 4), tileTex(4, 4),
-        tileTex(5, 4),  // decorated — lower weight via pickTileTex
-      ]
-      // Obstacle variants — decorative single-tile props (row 5 right half):
-      //   barrel, crate, skull pile, stone column.
-      wallTextures = [
-        tileTex(7, 5), tileTex(8, 5), tileTex(9, 5), tileTex(10, 5),
-      ]
+      // N = tile number (0-indexed), col = N%12, row = floor(N/12).
+      // See src/assets/tile-notes.md for full rationale.
+      const t = (N: number) => new Texture({
+        source: sheet.source,
+        frame: new Rectangle((N % 12) * TILE, Math.floor(N / 12) * TILE, TILE, TILE),
+      })
+      const w = (N: number, wt: number) => ({ tex: t(N), w: wt })
+      floorOptions       = [ w(48, 100), w(49, 25), w(42, 2) ]
+      largeObstOptions   = [ w(40, 100), w(28, 10), w(29, 1) ]
+      smallFillerOptions = [ w(54, 1), w(55, 1), w(63, 1), w(64, 1), w(65, 1),
+                             w(72, 1), w(74, 1), w(82, 1), w(89, 1) ]
       zapTex   = await iconTexture('chain-lightning', 128)
 
       if (destroyed) return
@@ -1765,17 +1774,15 @@ function tileHash(tx: number, ty: number): number {
   return s / 0x100000000
 }
 
-// Pick a texture variant for (tx, ty), weighting earlier entries higher.
-// Weight scheme: textures[0] gets N, textures[1] gets N-1, ..., textures[N-1] gets 1.
-function pickTileTex(tx: number, ty: number, textures: Texture[]): Texture {
-  const n = textures.length
-  const total = (n * (n + 1)) / 2
-  let r = Math.floor(tileHash(tx, ty) * total)
-  for (let i = 0; i < n; i++) {
-    r -= (n - i)
-    if (r < 0) return textures[i]
+// Pick a texture from a weighted list, deterministically by tile coordinate.
+function pickWeighted(tx: number, ty: number, options: { tex: Texture; w: number }[]): Texture {
+  const total = options.reduce((s, o) => s + o.w, 0)
+  let r = tileHash(tx, ty) * total
+  for (const o of options) {
+    r -= o.w
+    if (r < 0) return o.tex
   }
-  return textures[n - 1]
+  return options[options.length - 1].tex
 }
 
 // Deterministic per-chunk PRNG (mulberry32 variant). Negative coords handled
