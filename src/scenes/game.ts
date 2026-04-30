@@ -330,6 +330,7 @@ export function createGameScene(
   let gameSpeed = 1
   let playerDead = false
   let waveScheduled = false
+  let lastWaveAngle: number | null = null
   let enemyIdCounter = 0
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
   let playerRandomTargetId: string | null = null
@@ -849,6 +850,7 @@ export function createGameScene(
       enemySpawnTimeout = null
     }
     waveScheduled = false
+    lastWaveAngle = null
 
     // Reset player
     playerEntity.currentLife = playerEntity.maxLife
@@ -1081,7 +1083,10 @@ export function createGameScene(
 
     const halfW = app.screen.width / 2
     const halfH = (app.screen.height - HUD_HEIGHT) / 2
-    const clusterAngle = Math.random() * Math.PI * 2
+    const clusterAngle = lastWaveAngle === null
+      ? Math.random() * Math.PI * 2
+      : lastWaveAngle + gaussian() * balance.wave.directionStdDev
+    lastWaveAngle = clusterAngle
     for (let i = 0; i < count; i++) {
       const angle = clusterAngle + (Math.random() - 0.5) * balance.wave.clusterSpread
       const cosA = Math.abs(Math.cos(angle))
@@ -1668,6 +1673,13 @@ function mountMasteryModal(
 
 function actionXpNeeded(level: number): number {
   return Math.round(balance.action.xpPerLevel * Math.pow(balance.action.xpGrowth, level - 1))
+}
+
+// Box-Muller transform: standard normal sample (mean 0, variance 1).
+function gaussian(): number {
+  const u = 1 - Math.random()
+  const v = Math.random()
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
 }
 
 // Deterministic per-chunk PRNG (mulberry32 variant). Negative coords handled
