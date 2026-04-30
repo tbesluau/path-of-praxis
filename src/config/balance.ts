@@ -56,6 +56,14 @@ export const balance = {
   // ── World ────────────────────────────────────────────────────────────────
   world: {
     gridSize: 64,  // pixels per grid cell
+    map: {
+      chunkSize:       16,    // tiles per chunk side
+      forgetRange:      3,    // chunks beyond this Manhattan distance are forgotten
+      blockedDensity: 0.35,   // probability of placing an obstacle at each placement-grid point
+      placementGrid:    7,    // tiles between obstacle placement centres (guarantees ≥4-tile corridors)
+      wallLengthMin:    3,    // min wall segment length in tiles
+      wallLengthMax:    6,    // max wall segment length in tiles
+    },
   },
 
   // ── Action XP ────────────────────────────────────────────────────────────
