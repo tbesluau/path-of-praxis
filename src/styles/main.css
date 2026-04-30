@@ -164,15 +164,24 @@ body {
   justify-content: flex-start;
   overflow: hidden;
   padding: 0;
-  gap: var(--space-xs);
+  gap: 2px;
+  /* Cap width so the spawn margin is always significant; centre on ultrawide */
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: 1440px;
+  transform: translateX(-50%);
+  /* Thin down the outer beige scene border */
+  border-width: 14px;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_beige.png') 14 fill stretch;
 }
 
 .game-viewport {
   flex: 1;
   position: relative;
   min-height: 0;
-  border: 25px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_brown.png') 25 stretch;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_brown.png') 14 stretch;
   border-radius: 0;
   overflow: hidden;
 }
@@ -192,8 +201,8 @@ body {
 .stat-bars {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 0 var(--space-sm);
+  gap: 2px;
+  padding: 0 var(--space-xs);
   flex-shrink: 0;
 }
 
@@ -509,7 +518,7 @@ body {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: var(--space-xs) var(--space-sm);
+  padding: 2px var(--space-sm);
   flex-shrink: 0;
 }
 
