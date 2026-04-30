@@ -312,7 +312,7 @@ body {
   border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 25 fill stretch;
   border-radius: 0;
   background: transparent;
-  padding: 2px 6px 4px;
+  padding: 0 6px 2px;
 }
 
 .enemy-level-main {
@@ -650,7 +650,7 @@ body {
   border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panelInset_beige.png') 22 fill stretch;
   border-radius: 0;
   background: transparent;
-  color: #3a2008;
+  color: #2a2a2a;
   font-family: var(--font-body);
   cursor: pointer;
   transition:
@@ -658,24 +658,25 @@ body {
     color var(--transition-fast);
 }
 
-.action-card:hover {
+.action-card:hover:not(.action-card--selected) {
   filter: brightness(1.05);
 }
 
 .action-card--selected {
-  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panelInset_brown.png');
-  color: var(--color-text);
+  border-width: 25px;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 25 fill stretch;
+  color: #fff;
 }
 
 .action-card svg {
   width: 28px;
   height: 28px;
   stroke-width: 1.75;
-  color: #5a3010;
+  color: #444;
 }
 
 .action-card--selected svg {
-  color: var(--color-primary);
+  color: #fff;
 }
 
 .action-card-name {
@@ -711,7 +712,7 @@ body {
   border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panelInset_beige.png') 22 fill stretch;
   border-radius: 0;
   background: transparent;
-  color: #3a2008;
+  color: #2a2a2a;
   font-family: var(--font-body);
   cursor: pointer;
   transition:
@@ -719,24 +720,25 @@ body {
     color var(--transition-fast);
 }
 
-.targeting-opt:hover {
+.targeting-opt:hover:not(.targeting-opt--active) {
   filter: brightness(1.05);
 }
 
 .targeting-opt--active {
-  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panelInset_brown.png');
-  color: var(--color-text);
+  border-width: 25px;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 25 fill stretch;
+  color: #fff;
 }
 
 .targeting-opt svg {
   width: 24px;
   height: 24px;
   stroke-width: 1.75;
-  color: #5a3010;
+  color: #444;
 }
 
 .targeting-opt--active svg {
-  color: var(--color-primary);
+  color: #fff;
 }
 
 .targeting-opt-name {
