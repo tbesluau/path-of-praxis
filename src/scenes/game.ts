@@ -171,6 +171,133 @@ export function createGameScene(
 
   createEntityBody(playerEntity)
 
+  // ── Tile map ─────────────────────────────────────────────────────────────
+
+  const blockedTiles    = new Set<string>()
+  const generatedChunks = new Set<string>()
+  const chunkBodies     = new Map<string, Matter.Body[]>()
+  let lastPlayerChunkX  = NaN
+  let lastPlayerChunkY  = NaN
+
+  function isTileBlocked(worldX: number, worldY: number): boolean {
+    const gs = balance.world.gridSize
+    return blockedTiles.has(`${Math.floor(worldX / gs)},${Math.floor(worldY / gs)}`)
+  }
+
+  function generateChunk(cx: number, cy: number): void {
+    const key = `${cx},${cy}`
+    if (generatedChunks.has(key)) return
+    generatedChunks.add(key)
+
+    const { chunkSize, blockedDensity, placementGrid,
+            wallLengthMin, wallLengthMax } = balance.world.map
+    const gs  = balance.world.gridSize
+    const rng = chunkRng(cx, cy)
+    const bodies: Matter.Body[] = []
+    const originTX = cx * chunkSize
+    const originTY = cy * chunkSize
+
+    const cols = Math.ceil(chunkSize / placementGrid)
+    const rows = Math.ceil(chunkSize / placementGrid)
+
+    for (let pRow = 0; pRow < rows; pRow++) {
+      for (let pCol = 0; pCol < cols; pCol++) {
+        if (rng() >= blockedDensity) continue
+
+        const tx0 = originTX + pCol * placementGrid
+        const ty0 = originTY + pRow * placementGrid
+
+        const r = rng()
+        let w: number, h: number
+        if (r < 0.35) {
+          w = 1; h = 1
+        } else if (r < 0.55) {
+          w = 2 + Math.floor(rng() * 2)
+          h = 2 + Math.floor(rng() * 2)
+        } else if (r < 0.77) {
+          w = wallLengthMin + Math.floor(rng() * (wallLengthMax - wallLengthMin + 1))
+          h = 1
+        } else {
+          w = 1
+          h = wallLengthMin + Math.floor(rng() * (wallLengthMax - wallLengthMin + 1))
+        }
+
+        // Clamp to chunk boundary
+        const actualW = Math.min(w, originTX + chunkSize - tx0)
+        const actualH = Math.min(h, originTY + chunkSize - ty0)
+        if (actualW <= 0 || actualH <= 0) continue
+
+        // Safe zone: never block within 3 tiles of world origin
+        let overlapsOrigin = false
+        outer: for (let dy = 0; dy < actualH; dy++) {
+          for (let dx = 0; dx < actualW; dx++) {
+            if (Math.abs(tx0 + dx) <= 3 && Math.abs(ty0 + dy) <= 3) {
+              overlapsOrigin = true; break outer
+            }
+          }
+        }
+        if (overlapsOrigin) continue
+
+        for (let dy = 0; dy < actualH; dy++) {
+          for (let dx = 0; dx < actualW; dx++) {
+            blockedTiles.add(`${tx0 + dx},${ty0 + dy}`)
+          }
+        }
+
+        const bx = (tx0 + actualW / 2) * gs
+        const by = (ty0 + actualH / 2) * gs
+        const body = Matter.Bodies.rectangle(bx, by, actualW * gs, actualH * gs, {
+          isStatic: true,
+          label: 'obstacle',
+          friction: 0,
+          restitution: 0,
+        })
+        Matter.Composite.add(physicsEngine.world, body)
+        bodies.push(body)
+      }
+    }
+
+    chunkBodies.set(key, bodies)
+  }
+
+  function forgetChunk(cx: number, cy: number): void {
+    const key = `${cx},${cy}`
+    if (!generatedChunks.has(key)) return
+    for (const b of (chunkBodies.get(key) ?? [])) Matter.Composite.remove(physicsEngine.world, b)
+    chunkBodies.delete(key)
+    const { chunkSize } = balance.world.map
+    const originTX = cx * chunkSize
+    const originTY = cy * chunkSize
+    for (let dy = 0; dy < chunkSize; dy++) {
+      for (let dx = 0; dx < chunkSize; dx++) {
+        blockedTiles.delete(`${originTX + dx},${originTY + dy}`)
+      }
+    }
+    generatedChunks.delete(key)
+  }
+
+  function updateChunks(): void {
+    const gs = balance.world.gridSize
+    const { chunkSize, forgetRange } = balance.world.map
+    const pcx = Math.floor(Math.floor(playerEntity.x / gs) / chunkSize)
+    const pcy = Math.floor(Math.floor(playerEntity.y / gs) / chunkSize)
+    if (pcx === lastPlayerChunkX && pcy === lastPlayerChunkY) return
+    lastPlayerChunkX = pcx
+    lastPlayerChunkY = pcy
+
+    for (let dy = -forgetRange; dy <= forgetRange; dy++) {
+      for (let dx = -forgetRange; dx <= forgetRange; dx++) {
+        generateChunk(pcx + dx, pcy + dy)
+      }
+    }
+    for (const key of [...generatedChunks]) {
+      const [cx, cy] = key.split(',').map(Number) as [number, number]
+      if (Math.abs(cx - pcx) > forgetRange || Math.abs(cy - pcy) > forgetRange) {
+        forgetChunk(cx, cy)
+      }
+    }
+  }
+
   let paused = false
   let gameSpeed = 1
   let playerDead = false
@@ -230,6 +357,7 @@ export function createGameScene(
         <div class="stat-bar stat-bar--action">
           <div class="stat-bar-fill stat-bar-fill--action"></div>
         </div>
+        <div class="stat-level stat-level--action"><div class="stat-level-fill"></div><span>Lv.1</span></div>
       </div>
     </div>
     <div class="game-hud">
@@ -268,6 +396,7 @@ export function createGameScene(
   const manaLevelEl     = el.querySelector<HTMLElement>('.stat-level--mana')!
   const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
   const actionBarFill   = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
+  const actionLevelEl   = el.querySelector<HTMLElement>('.stat-level--action')!
   const actionIconWrap  = el.querySelector<HTMLElement>('.action-icon-wrap')!
 
   function updateStatLevels(): void {
@@ -283,6 +412,8 @@ export function createGameScene(
     const prog = actionProgress[playerActionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     const pct = Math.min(100, Math.round(prog.xp / actionXpNeeded(prog.level) * 100))
     actionBarFill.style.width = `${pct}%`
+    actionLevelEl.style.setProperty('--xp-pct', `${pct}%`)
+    actionLevelEl.querySelector('span')!.textContent = `Lv.${prog.level}`
   }
 
   function updateActionIcon(): void {
@@ -546,6 +677,22 @@ export function createGameScene(
     const startX = Math.floor(left / gs) * gs
     const startY = Math.floor(top  / gs) * gs
     worldGrid.clear()
+
+    // Blocked tiles — white filled rects
+    const tStartX = Math.floor(left  / gs)
+    const tStartY = Math.floor(top   / gs)
+    const tEndX   = Math.ceil(right  / gs)
+    const tEndY   = Math.ceil(bottom / gs)
+    for (let ty = tStartY; ty <= tEndY; ty++) {
+      for (let tx = tStartX; tx <= tEndX; tx++) {
+        if (blockedTiles.has(`${tx},${ty}`)) {
+          worldGrid.rect(tx * gs, ty * gs, gs, gs)
+          worldGrid.fill({ color: 0xffffff, alpha: 1 })
+        }
+      }
+    }
+
+    // Grid lines (faint, on top of tiles)
     for (let x = startX; x <= right;  x += gs) {
       worldGrid.moveTo(x, top)
       worldGrid.lineTo(x, bottom)
@@ -904,11 +1051,22 @@ export function createGameScene(
       const sinA = Math.abs(Math.sin(angle))
       const edgeDist = Math.min(halfW / (cosA || 0.001), halfH / (sinA || 0.001))
       const dist = edgeDist + balance.wave.spawnMargin + Math.random() * balance.wave.spawnDepthVariance
+
+      // Find a free spawn position — retry with random angles if blocked
+      let spawnX = playerEntity.x + Math.cos(angle) * dist
+      let spawnY = playerEntity.y + Math.sin(angle) * dist
+      for (let attempt = 0; attempt < 8 && isTileBlocked(spawnX, spawnY); attempt++) {
+        const a = Math.random() * Math.PI * 2
+        spawnX = playerEntity.x + Math.cos(a) * dist
+        spawnY = playerEntity.y + Math.sin(a) * dist
+      }
+      if (isTileBlocked(spawnX, spawnY)) continue
+
       const scale = enemyScale()
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
-        playerEntity.x + Math.cos(angle) * dist,
-        playerEntity.y + Math.sin(angle) * dist,
+        spawnX,
+        spawnY,
         'enemyA',
         balance.enemyA.radius,
         { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * scale) },
@@ -980,6 +1138,9 @@ export function createGameScene(
     }
   }
 
+  // Generate initial chunks around the player before the first wave spawns
+  updateChunks()
+
   // Start immediately — paused=false so regen and wave timer kick off now
   startRegen()
   scheduleWave(balance.wave.spawnDelay)
@@ -1049,6 +1210,8 @@ export function createGameScene(
           updateCamera()
           return
         }
+
+        updateChunks()
 
         const dt = ticker.deltaMS / 1000
 
@@ -1166,6 +1329,9 @@ export function createGameScene(
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()
     vfxList.length = 0
+    blockedTiles.clear()
+    generatedChunks.clear()
+    chunkBodies.clear()
     Matter.Composite.clear(physicsEngine.world, false)
     Matter.Engine.clear(physicsEngine)
     app?.destroy(true)
@@ -1442,6 +1608,18 @@ function mountMasteryModal(
 
 function actionXpNeeded(level: number): number {
   return Math.round(balance.action.xpPerLevel * Math.pow(balance.action.xpGrowth, level - 1))
+}
+
+// Deterministic per-chunk PRNG (mulberry32 variant). Negative coords handled
+// by mapping integers to non-negative before hashing.
+function chunkRng(cx: number, cy: number): () => number {
+  const ux = cx >= 0 ? cx * 2 : -cx * 2 - 1
+  const uy = cy >= 0 ? cy * 2 : -cy * 2 - 1
+  let s = ((Math.imul(ux, 73856093) ^ Math.imul(uy, 19349663)) >>> 0) || 1
+  return function () {
+    s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0
+    return s / 0x100000000
+  }
 }
 
 function escapeHtml(str: string): string {

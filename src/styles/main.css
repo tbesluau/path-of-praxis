@@ -257,7 +257,8 @@ body {
 }
 
 .stat-level--life .stat-level-fill,
-.stat-level--mana .stat-level-fill {
+.stat-level--mana .stat-level-fill,
+.stat-level--action .stat-level-fill {
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
@@ -308,11 +309,11 @@ body {
   gap: 4px;
   flex-shrink: 0;
   position: relative;
-  border: 25px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 25 fill stretch;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
   border-radius: 0;
   background: transparent;
-  padding: 0 6px 2px;
+  padding: 0 4px;
 }
 
 .enemy-level-main {
@@ -468,18 +469,19 @@ body {
 }
 
 .action-icon-wrap {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.85);
+  color: #fff;
+  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCircle_blue.png') center / contain no-repeat;
 }
 
 .action-icon-wrap svg {
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   stroke-width: 1.75;
 }
 
