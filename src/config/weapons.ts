@@ -26,5 +26,5 @@ export interface WeaponDef {
 
 export const weapons: Record<WeaponId, WeaponDef> = {
   sword: { id: 'sword', kind: 'weapon', label: 'Sword', icon: 'sword',      iconSystem: 'lucide', range: 1, damage: 2,   speed: 1,   manaCost: 1, tags: ['weapon', 'physical'] },
-  bow:   { id: 'bow',   kind: 'weapon', label: 'Bow',   icon: 'crosshair',  iconSystem: 'lucide', range: 5, damage: 2,   speed: 0.6, manaCost: 2, tags: ['weapon', 'physical'] },
+  bow:   { id: 'bow',   kind: 'weapon', label: 'Bow',   icon: 'crosshair',  iconSystem: 'lucide', range: 10, damage: 2,   speed: 0.6, manaCost: 2, tags: ['weapon', 'physical'] },
 }

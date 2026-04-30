@@ -11,7 +11,6 @@ import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
-import { iconTexture } from '../assets/icons'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -635,7 +634,6 @@ export function createGameScene(
   let largeObstOptions:   { tex: Texture; w: number }[] = []
   let smallFillerOptions: { tex: Texture; w: number }[] = []
   const entityTextures = new Map<string, Texture>()
-  let zapTex: Texture | null = null
   const floorSprites: Sprite[] = []
   const wallSprites: Sprite[] = []
   let destroyed = false
@@ -1175,52 +1173,180 @@ export function createGameScene(
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const tr = target.radius
+    const baseAng = Math.atan2(ty - ay, tx - ax)
 
     if (action.id === 'sword') {
-      addVfx(200, (g, p) => {
+      addVfx(280, (g, p) => {
         g.clear()
-        const r = tr * 0.75
-        g.moveTo(tx - r, ty - r); g.lineTo(tx + r, ty + r)
-        g.moveTo(tx + r, ty - r); g.lineTo(tx - r, ty + r)
-        g.stroke({ color: 0xffffff, width: Math.max(0.5, 3 * (1 - p)), alpha: 1 - p })
+        // Three slashes fanned across the target, perpendicular to attack direction.
+        for (let i = -1; i <= 1; i++) {
+          const ang = baseAng + Math.PI / 2 + i * 0.35
+          const len = tr * (1.8 - Math.abs(i) * 0.3)
+          const dx = Math.cos(ang) * len
+          const dy = Math.sin(ang) * len
+          g.moveTo(tx - dx, ty - dy); g.lineTo(tx + dx, ty + dy)
+          g.stroke({ color: 0xffffff, width: Math.max(0.5, 5 * (1 - p)), alpha: 1 - p })
+        }
+        // Spark particles flying outward.
+        const sp = Math.min(1, p * 1.4)
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + i * 0.7
+          const d = tr * (0.3 + sp * 2.4)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3.5 * (1 - sp)))
+          g.fill({ color: i % 2 ? 0xfff0aa : 0xffffff, alpha: 1 - sp })
+        }
+        // Initial impact flash.
+        if (p < 0.35) {
+          const fp = p / 0.35
+          g.circle(tx, ty, tr * (0.6 + fp * 2.4))
+          g.fill({ color: 0xffffff, alpha: (1 - fp) * 0.6 })
+        }
       })
     } else if (action.id === 'bow') {
-      addVfx(180, (g, p) => {
-        g.clear()
-        const tail = Math.min(1, p * 5)
-        g.moveTo(ax + (tx - ax) * tail, ay + (ty - ay) * tail)
-        g.lineTo(tx, ty)
-        g.stroke({ color: 0xffee66, width: 2, alpha: 1 - p })
-      })
-    } else if (action.id === 'fireball') {
       addVfx(320, (g, p) => {
         g.clear()
-        const r = tr * (0.4 + p * 2)
-        g.circle(tx, ty, r)
-        g.fill({ color: 0xff6600, alpha: (1 - p) * 0.5 })
-        g.circle(tx, ty, r * 0.5)
-        g.fill({ color: 0xffcc00, alpha: (1 - p) * 0.8 })
+        const flightP = Math.min(1, p * 2)
+        if (flightP < 1) {
+          // Streaking arrow with glowing tail.
+          const cx = ax + (tx - ax) * flightP
+          const cy = ay + (ty - ay) * flightP
+          const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+          const trailLen = 60
+          g.moveTo(cx - cos * trailLen, cy - sin * trailLen)
+          g.lineTo(cx, cy)
+          g.stroke({ color: 0xfff0aa, width: 6, alpha: 0.35 })
+          g.moveTo(cx - cos * (trailLen * 0.6), cy - sin * (trailLen * 0.6))
+          g.lineTo(cx, cy)
+          g.stroke({ color: 0xffee66, width: 3, alpha: 0.7 })
+          // Arrow shaft.
+          g.moveTo(cx - cos * 14, cy - sin * 14)
+          g.lineTo(cx, cy)
+          g.stroke({ color: 0xffffff, width: 2.5 })
+          // Arrowhead.
+          g.moveTo(cx, cy)
+          g.lineTo(cx - cos * 6 + sin * 4, cy - sin * 6 - cos * 4)
+          g.lineTo(cx - cos * 6 - sin * 4, cy - sin * 6 + cos * 4)
+          g.closePath()
+          g.fill({ color: 0xffffff })
+        } else {
+          // Impact starburst + shockwave at target.
+          const bp = (p - 0.5) * 2
+          for (let i = 0; i < 10; i++) {
+            const a = (i / 10) * Math.PI * 2
+            const r0 = tr * 0.4
+            const r1 = tr * (0.9 + bp * 2)
+            g.moveTo(tx + Math.cos(a) * r0, ty + Math.sin(a) * r0)
+            g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
+            g.stroke({ color: 0xfff0aa, width: 2.5 * (1 - bp), alpha: 1 - bp })
+          }
+          g.circle(tx, ty, tr * (0.8 + bp * 2))
+          g.stroke({ color: 0xffee66, width: 3 * (1 - bp), alpha: (1 - bp) * 0.9 })
+          g.circle(tx, ty, tr * (1 - bp * 0.5))
+          g.fill({ color: 0xffffff, alpha: (1 - bp) * 0.5 })
+        }
+      })
+    } else if (action.id === 'fireball') {
+      addVfx(620, (g, p) => {
+        g.clear()
+        const flightP = Math.min(1, p * 1.9)
+        if (flightP < 1) {
+          // Traveling fireball with pulsing flames and smoky trail.
+          const cx = ax + (tx - ax) * flightP
+          const cy = ay + (ty - ay) * flightP
+          const pulse = 1 + 0.12 * Math.sin(p * 40)
+          const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+          // Trail layers.
+          for (let i = 0; i < 5; i++) {
+            const back = (i + 1) * 12
+            const trad = tr * (0.7 - i * 0.1)
+            g.circle(cx - cos * back, cy - sin * back, trad)
+            g.fill({ color: i < 2 ? 0xff6600 : 0x553322, alpha: 0.5 - i * 0.08 })
+          }
+          // Outer halo.
+          g.circle(cx, cy, tr * 1.2 * pulse)
+          g.fill({ color: 0xff3300, alpha: 0.45 })
+          // Mid flame.
+          g.circle(cx, cy, tr * 0.85 * pulse)
+          g.fill({ color: 0xff8800, alpha: 0.85 })
+          // Bright core.
+          g.circle(cx, cy, tr * 0.45)
+          g.fill({ color: 0xffee66, alpha: 1 })
+        } else {
+          // Massive explosion at target.
+          const ep = Math.min(1, (p - 0.526) * 2.1)
+          // Outer shockwave ring.
+          g.circle(tx, ty, tr * (0.8 + ep * 5))
+          g.stroke({ color: 0xff9900, width: 5 * (1 - ep), alpha: (1 - ep) * 0.9 })
+          // Inner shockwave.
+          g.circle(tx, ty, tr * (0.5 + ep * 4))
+          g.stroke({ color: 0xffcc00, width: 3 * (1 - ep), alpha: (1 - ep) * 0.7 })
+          // Fire body.
+          g.circle(tx, ty, tr * (1 + ep * 2.5))
+          g.fill({ color: 0xff5500, alpha: (1 - ep) * 0.55 })
+          // Bright flash core.
+          g.circle(tx, ty, tr * (0.8 + ep * 1.2))
+          g.fill({ color: 0xffee66, alpha: (1 - ep) * 0.85 })
+          // Ember particles.
+          for (let i = 0; i < 16; i++) {
+            const a = (i / 16) * Math.PI * 2 + i * 0.4
+            const d = tr * (0.6 + ep * 6) + (i % 4) * 6
+            const ex = tx + Math.cos(a) * d
+            const ey = ty + Math.sin(a) * d
+            g.circle(ex, ey, Math.max(0.5, 3.5 * (1 - ep)))
+            g.fill({ color: i % 3 === 0 ? 0xffee66 : (i % 2 ? 0xffaa00 : 0xff5500), alpha: 1 - ep })
+          }
+        }
       })
     } else if (action.id === 'zap') {
-      if (zapTex && app) {
-        const sprite = new Sprite(zapTex)
-        sprite.anchor.set(0.5, 0.5)
+      addVfx(240, (g, p) => {
+        g.clear()
         const dx = tx - ax, dy = ty - ay
         const len = Math.sqrt(dx * dx + dy * dy) || 1
-        sprite.x = (ax + tx) / 2
-        sprite.y = (ay + ty) / 2
-        sprite.rotation = Math.atan2(dy, dx)
-        sprite.width = len
-        sprite.height = tr * 1.8
-        sprite.tint = 0x66ddff
-        app.stage.addChild(sprite)
-        vfxList.push({
-          g: sprite,
-          age: 0,
-          maxAge: 110,
-          tick: (p) => { sprite.alpha = 1 - p },
-        })
-      }
+        const nx = dx / len, ny = dy / len
+        const px = -ny, py = nx
+        // Three jagged bolts re-randomized per frame for crackle.
+        const flicker = Math.floor(p * 8)
+        const segments = 10
+        for (let b = 0; b < 3; b++) {
+          const seed = b * 17 + flicker * 31
+          g.moveTo(ax, ay)
+          for (let i = 1; i <= segments; i++) {
+            const t = i / segments
+            const fade = 1 - Math.abs(t - 0.5) * 2
+            const r = Math.sin(seed + i * 12.9898) * 43758.5453
+            const noise = (r - Math.floor(r)) - 0.5
+            const off = noise * len * 0.18 * fade
+            g.lineTo(ax + dx * t + px * off, ay + dy * t + py * off)
+          }
+          g.stroke({
+            color: b === 0 ? 0xffffff : 0x66ddff,
+            width: Math.max(0.6, (4 - b * 1.2) * (1 - p * 0.6)),
+            alpha: (1 - p) * (b === 0 ? 1 : 0.7),
+          })
+          // Branching forks off the main bolt.
+          if (b === 0) {
+            for (let f = 0; f < 3; f++) {
+              const ft = 0.3 + f * 0.2
+              const fr = Math.sin(seed + f * 91.7) * 43758.5453
+              const fNoise = (fr - Math.floor(fr)) - 0.5
+              const fLen = len * 0.18
+              const startX = ax + dx * ft + px * fNoise * len * 0.08
+              const startY = ay + dy * ft + py * fNoise * len * 0.08
+              g.moveTo(startX, startY)
+              g.lineTo(startX + (px + nx * 0.3) * fLen * (fNoise > 0 ? 1 : -1),
+                       startY + (py + ny * 0.3) * fLen * (fNoise > 0 ? 1 : -1))
+              g.stroke({ color: 0x99eeff, width: 1.5, alpha: (1 - p) * 0.6 })
+            }
+          }
+        }
+        // Glow at endpoints.
+        g.circle(tx, ty, tr * (1.2 + p * 0.5))
+        g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.45 })
+        g.circle(tx, ty, tr * (0.6 + p * 0.3))
+        g.fill({ color: 0xffffff, alpha: (1 - p) * 0.85 })
+        g.circle(ax, ay, tr * 0.5)
+        g.fill({ color: 0xffffff, alpha: (1 - p) * 0.6 })
+      })
     }
   }
 
@@ -1281,7 +1407,6 @@ export function createGameScene(
       entityTextures.set('bow',      t(112))
       entityTextures.set('fireball', t(84))
       entityTextures.set('zap',      t(100))
-      zapTex   = await iconTexture('chain-lightning', 128)
 
       if (destroyed) return
 
