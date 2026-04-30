@@ -1186,10 +1186,10 @@ function mountGameMenuModal(
       <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="game-menu-title">Menu</h2>
       <div class="modal-actions game-menu-actions">
-        <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="home">
+        <button class="modal-btn modal-btn--primary modal-btn--icon-row" data-action="home">
           <i data-lucide="home" aria-hidden="true"></i><span>Home Screen</span>
         </button>
-        <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="flee">
+        <button class="modal-btn modal-btn--primary modal-btn--icon-row" data-action="flee">
           <i data-lucide="log-out" aria-hidden="true"></i>
           <span class="menu-btn-text">
             <span class="menu-btn-title">Flee</span>
