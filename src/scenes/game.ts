@@ -641,6 +641,7 @@ export function createGameScene(
     waypoints: { tx: number; ty: number }[]
     waypointIdx: number
     targetTileKey: string
+    entityTileKey: string
     lastUpdateTime: number
   }
   const entityPaths = new Map<string, EntityPath>()
@@ -1266,29 +1267,31 @@ export function createGameScene(
           const fromTx = Math.floor(entity.x / gs), fromTy = Math.floor(entity.y / gs)
           const toTx   = Math.floor(target.x / gs), toTy   = Math.floor(target.y / gs)
           const targetKey = `${toTx},${toTy}`
+          const entityKey = `${fromTx},${fromTy}`
           const now = performance.now()
-          let moveX = dx / dist, moveY = dy / dist  // default: direct
+          let moveX = dx / dist, moveY = dy / dist  // default: move directly
 
-          if (!hasTileLOS(fromTx, fromTy, toTx, toTy, blockedTiles)) {
-            let path = entityPaths.get(entity.id)
-            if (!path || path.targetTileKey !== targetKey || (path.waypoints.length === 0 && now - path.lastUpdateTime > 500)) {
-              const waypoints = astar(fromTx, fromTy, toTx, toTy, blockedTiles)
-              path = { waypoints, waypointIdx: 0, targetTileKey: targetKey, lastUpdateTime: now }
-              entityPaths.set(entity.id, path)
+          let path = entityPaths.get(entity.id)
+          const needsRepath = !path
+            || path.targetTileKey !== targetKey
+            || path.entityTileKey !== entityKey
+            || (path.waypoints.length === 0 && now - path.lastUpdateTime > 500)
+          if (needsRepath) {
+            const waypoints = astar(fromTx, fromTy, toTx, toTy, blockedTiles)
+            path = { waypoints, waypointIdx: 0, targetTileKey: targetKey, entityTileKey: entityKey, lastUpdateTime: now }
+            entityPaths.set(entity.id, path)
+          }
+          const activePath = path!
+          if (activePath.waypoints.length > 0) {
+            while (activePath.waypointIdx < activePath.waypoints.length) {
+              const wp = activePath.waypoints[activePath.waypointIdx]
+              const wpX = (wp.tx + 0.5) * gs, wpY = (wp.ty + 0.5) * gs
+              const wdx = wpX - entity.x, wdy = wpY - entity.y
+              if (wdx * wdx + wdy * wdy < (gs * 0.6) ** 2) { activePath.waypointIdx++; continue }
+              const wd = Math.sqrt(wdx * wdx + wdy * wdy)
+              moveX = wdx / wd; moveY = wdy / wd
+              break
             }
-            if (path.waypoints.length > 0) {
-              while (path.waypointIdx < path.waypoints.length) {
-                const wp = path.waypoints[path.waypointIdx]
-                const wpX = (wp.tx + 0.5) * gs, wpY = (wp.ty + 0.5) * gs
-                const wdx = wpX - entity.x, wdy = wpY - entity.y
-                if (wdx * wdx + wdy * wdy < (gs * 0.7) ** 2) { path.waypointIdx++; continue }
-                const wd = Math.sqrt(wdx * wdx + wdy * wdy)
-                moveX = wdx / wd; moveY = wdy / wd
-                break
-              }
-            }
-          } else {
-            entityPaths.delete(entity.id)
           }
 
           Matter.Body.setVelocity(body, { x: moveX * entity.moveSpeed * dt, y: moveY * entity.moveSpeed * dt })
@@ -1679,21 +1682,6 @@ function chunkRng(cx: number, cy: number): () => number {
   }
 }
 
-function hasTileLOS(tx1: number, ty1: number, tx2: number, ty2: number, blocked: Set<string>): boolean {
-  let x = tx1, y = ty1
-  const dx = Math.abs(tx2 - tx1), dy = Math.abs(ty2 - ty1)
-  const sx = tx1 < tx2 ? 1 : -1
-  const sy = ty1 < ty2 ? 1 : -1
-  let err = dx - dy
-  for (;;) {
-    if (blocked.has(`${x},${y}`)) return false
-    if (x === tx2 && y === ty2) return true
-    const e2 = 2 * err
-    if (e2 > -dy) { err -= dy; x += sx }
-    if (e2 <  dx) { err += dx; y += sy }
-  }
-}
-
 const ASTAR_PAD = 15
 
 function astar(
@@ -1709,13 +1697,31 @@ function astar(
   const w = maxX - minX + 1
   const h = maxY - minY + 1
   const grid = new PF.Grid(w, h)
+
+  // Inflate blocked tiles by 1 in all 8 directions so the entity's physics body
+  // (radius 20px) never hugs a wall edge and gets stuck on corners. With tile
+  // size 64px this gives ≥44px clearance between the entity centre and any wall.
   for (let ty = minY; ty <= maxY; ty++) {
     for (let tx = minX; tx <= maxX; tx++) {
-      if (blocked.has(`${tx},${ty}`)) grid.setWalkableAt(tx - minX, ty - minY, false)
+      if (!blocked.has(`${tx},${ty}`)) continue
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = tx + dx - minX, ny = ty + dy - minY
+          if (nx >= 0 && ny >= 0 && nx < w && ny < h) grid.setWalkableAt(nx, ny, false)
+        }
+      }
     }
   }
+
+  // Force start and end walkable — entities and targets can legitimately be
+  // adjacent to a wall and would otherwise be locked out by the inflation.
+  const sx = fromTx - minX, sy = fromTy - minY
+  const ex = toTx   - minX, ey = toTy   - minY
+  grid.setWalkableAt(sx, sy, true)
+  grid.setWalkableAt(ex, ey, true)
+
   const finder = new PF.AStarFinder({ diagonalMovement: PF.DiagonalMovement.OnlyWhenNoObstacles })
-  const raw = finder.findPath(fromTx - minX, fromTy - minY, toTx - minX, toTy - minY, grid)
+  const raw = finder.findPath(sx, sy, ex, ey, grid)
   return raw.map(([x, y]) => ({ tx: x + minX, ty: y + minY }))
 }
 
