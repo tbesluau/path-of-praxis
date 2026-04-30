@@ -190,22 +190,25 @@ export function createGameScene(
     generatedChunks.add(key)
 
     const { chunkSize, blockedDensity, placementGrid,
-            wallLengthMin, wallLengthMax } = balance.world.map
+            wallLengthMin, wallLengthMax, scatterDensity } = balance.world.map
     const gs  = balance.world.gridSize
     const rng = chunkRng(cx, cy)
     const bodies: Matter.Body[] = []
     const originTX = cx * chunkSize
     const originTY = cy * chunkSize
 
-    const cols = Math.ceil(chunkSize / placementGrid)
-    const rows = Math.ceil(chunkSize / placementGrid)
+    // Use global-aligned placement points so corridors are consistent across chunk boundaries.
+    // Per-chunk-relative offsets would produce 0-tile gaps where adjacent chunks' last/first
+    // obstacles meet at a chunk edge.
+    const pgStartX = Math.ceil(originTX / placementGrid) * placementGrid
+    const pgStartY = Math.ceil(originTY / placementGrid) * placementGrid
 
-    for (let pRow = 0; pRow < rows; pRow++) {
-      for (let pCol = 0; pCol < cols; pCol++) {
+    for (let px = pgStartX; px < originTX + chunkSize; px += placementGrid) {
+      for (let py = pgStartY; py < originTY + chunkSize; py += placementGrid) {
         if (rng() >= blockedDensity) continue
 
-        const tx0 = originTX + pCol * placementGrid
-        const ty0 = originTY + pRow * placementGrid
+        const tx0 = px
+        const ty0 = py
 
         const r = rng()
         let w: number, h: number
@@ -247,6 +250,30 @@ export function createGameScene(
         const bx = (tx0 + actualW / 2) * gs
         const by = (ty0 + actualH / 2) * gs
         const body = Matter.Bodies.rectangle(bx, by, actualW * gs, actualH * gs, {
+          isStatic: true,
+          label: 'obstacle',
+          friction: 0,
+          restitution: 0,
+        })
+        Matter.Composite.add(physicsEngine.world, body)
+        bodies.push(body)
+      }
+    }
+
+    // Scatter pass: place 1×1 tiles only in open areas with ≥3 free cardinal tiles.
+    // This adds density without ever narrowing corridors below 3 tiles.
+    for (let ty = originTY; ty < originTY + chunkSize; ty++) {
+      for (let tx = originTX; tx < originTX + chunkSize; tx++) {
+        if (blockedTiles.has(`${tx},${ty}`)) continue
+        if (Math.abs(tx) <= 3 && Math.abs(ty) <= 3) continue
+        let clear = true
+        for (let d = 1; d <= 3 && clear; d++) {
+          if (blockedTiles.has(`${tx + d},${ty}`) || blockedTiles.has(`${tx - d},${ty}`) ||
+              blockedTiles.has(`${tx},${ty + d}`) || blockedTiles.has(`${tx},${ty - d}`)) clear = false
+        }
+        if (!clear || rng() >= scatterDensity) continue
+        blockedTiles.add(`${tx},${ty}`)
+        const body = Matter.Bodies.rectangle((tx + 0.5) * gs, (ty + 0.5) * gs, gs, gs, {
           isStatic: true,
           label: 'obstacle',
           friction: 0,
@@ -610,6 +637,14 @@ export function createGameScene(
   const deathFragments: DeathFragment[] = []
   const vfxList: Vfx[] = []
 
+  interface EntityPath {
+    waypoints: { tx: number; ty: number }[]
+    waypointIdx: number
+    targetTileKey: string
+    lastUpdateTime: number
+  }
+  const entityPaths = new Map<string, EntityPath>()
+
   const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
   charBtn.addEventListener('click', () => {
     if (modalCleanup) {
@@ -760,6 +795,7 @@ export function createGameScene(
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
     entityActions.delete(entity.id)
+    entityPaths.delete(entity.id)
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     const idx = entities.indexOf(entity)
     if (idx !== -1) entities.splice(idx, 1)
@@ -1220,22 +1256,42 @@ export function createGameScene(
           const body = entityBodies.get(entity.id)
           if (!body) continue
           const target = entity.role === 'player' ? selectPlayerTarget(entities) : nearestTarget(entity, entities)
-          if (!target) {
-            Matter.Body.setVelocity(body, { x: 0, y: 0 })
-            continue
-          }
-          const dx = target.x - entity.x
-          const dy = target.y - entity.y
+          if (!target) { Matter.Body.setVelocity(body, { x: 0, y: 0 }); continue }
+          const gs = balance.world.gridSize
+          const dx = target.x - entity.x, dy = target.y - entity.y
           const dist = Math.sqrt(dx * dx + dy * dy)
           const stopDist = entity.attackRange + target.radius
-          if (dist > stopDist) {
-            Matter.Body.setVelocity(body, {
-              x: (dx / dist) * entity.moveSpeed * dt,
-              y: (dy / dist) * entity.moveSpeed * dt,
-            })
+          if (dist <= stopDist) { Matter.Body.setVelocity(body, { x: 0, y: 0 }); continue }
+
+          const fromTx = Math.floor(entity.x / gs), fromTy = Math.floor(entity.y / gs)
+          const toTx   = Math.floor(target.x / gs), toTy   = Math.floor(target.y / gs)
+          const targetKey = `${toTx},${toTy}`
+          const now = performance.now()
+          let moveX = dx / dist, moveY = dy / dist  // default: direct
+
+          if (!hasTileLOS(fromTx, fromTy, toTx, toTy, blockedTiles)) {
+            let path = entityPaths.get(entity.id)
+            if (!path || path.targetTileKey !== targetKey || (path.waypoints.length === 0 && now - path.lastUpdateTime > 500)) {
+              const waypoints = astar(fromTx, fromTy, toTx, toTy, blockedTiles)
+              path = { waypoints, waypointIdx: 0, targetTileKey: targetKey, lastUpdateTime: now }
+              entityPaths.set(entity.id, path)
+            }
+            if (path.waypoints.length > 0) {
+              while (path.waypointIdx < path.waypoints.length) {
+                const wp = path.waypoints[path.waypointIdx]
+                const wpX = (wp.tx + 0.5) * gs, wpY = (wp.ty + 0.5) * gs
+                const wdx = wpX - entity.x, wdy = wpY - entity.y
+                if (wdx * wdx + wdy * wdy < (gs * 0.7) ** 2) { path.waypointIdx++; continue }
+                const wd = Math.sqrt(wdx * wdx + wdy * wdy)
+                moveX = wdx / wd; moveY = wdy / wd
+                break
+              }
+            }
           } else {
-            Matter.Body.setVelocity(body, { x: 0, y: 0 })
+            entityPaths.delete(entity.id)
           }
+
+          Matter.Body.setVelocity(body, { x: moveX * entity.moveSpeed * dt, y: moveY * entity.moveSpeed * dt })
         }
 
         // ── Physics step ────────────────────────────────────────────────────
@@ -1332,6 +1388,7 @@ export function createGameScene(
     blockedTiles.clear()
     generatedChunks.clear()
     chunkBodies.clear()
+    entityPaths.clear()
     Matter.Composite.clear(physicsEngine.world, false)
     Matter.Engine.clear(physicsEngine)
     app?.destroy(true)
@@ -1620,6 +1677,74 @@ function chunkRng(cx: number, cy: number): () => number {
     s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0
     return s / 0x100000000
   }
+}
+
+function hasTileLOS(tx1: number, ty1: number, tx2: number, ty2: number, blocked: Set<string>): boolean {
+  let x = tx1, y = ty1
+  const dx = Math.abs(tx2 - tx1), dy = Math.abs(ty2 - ty1)
+  const sx = tx1 < tx2 ? 1 : -1
+  const sy = ty1 < ty2 ? 1 : -1
+  let err = dx - dy
+  for (;;) {
+    if (blocked.has(`${x},${y}`)) return false
+    if (x === tx2 && y === ty2) return true
+    const e2 = 2 * err
+    if (e2 > -dy) { err -= dy; x += sx }
+    if (e2 <  dx) { err += dx; y += sy }
+  }
+}
+
+function astar(
+  fromTx: number, fromTy: number,
+  toTx: number,   toTy: number,
+  blocked: Set<string>,
+  maxNodes = 300,
+): { tx: number; ty: number }[] {
+  if (fromTx === toTx && fromTy === toTy) return []
+  const hk = (x: number, y: number) => `${x},${y}`
+  const endKey   = hk(toTx, toTy)
+  const startKey = hk(fromTx, fromTy)
+  const gScore   = new Map<string, number>([[startKey, 0]])
+  const fScore   = new Map<string, number>([[startKey, Math.abs(fromTx - toTx) + Math.abs(fromTy - toTy)]])
+  const cameFrom = new Map<string, string>()
+  const closed   = new Set<string>()
+  const open: string[] = [startKey]
+  const DIRS: [number, number][] = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
+  let nodes = 0
+  while (open.length > 0 && nodes++ < maxNodes) {
+    let bestIdx = 0, bestF = fScore.get(open[0]) ?? Infinity
+    for (let i = 1; i < open.length; i++) {
+      const f = fScore.get(open[i]) ?? Infinity
+      if (f < bestF) { bestF = f; bestIdx = i }
+    }
+    const current = open[bestIdx]; open.splice(bestIdx, 1)
+    if (current === endKey) {
+      const path: { tx: number; ty: number }[] = []
+      let c = current
+      while (c !== startKey) {
+        const [tx, ty] = c.split(',').map(Number) as [number, number]
+        path.unshift({ tx, ty })
+        c = cameFrom.get(c)!
+      }
+      return path
+    }
+    closed.add(current)
+    const [cx, cy] = current.split(',').map(Number) as [number, number]
+    for (const [ndx, ndy] of DIRS) {
+      const nx = cx + ndx, ny = cy + ndy
+      const nk = hk(nx, ny)
+      if (closed.has(nk) || blocked.has(nk)) continue
+      if (ndx !== 0 && ndy !== 0 && blocked.has(hk(cx + ndx, cy)) && blocked.has(hk(cx, cy + ndy))) continue
+      const g = (gScore.get(current) ?? Infinity) + (ndx !== 0 && ndy !== 0 ? 1.414 : 1)
+      if (g < (gScore.get(nk) ?? Infinity)) {
+        cameFrom.set(nk, current)
+        gScore.set(nk, g)
+        fScore.set(nk, g + Math.abs(nx - toTx) + Math.abs(ny - toTy))
+        if (!open.includes(nk)) open.push(nk)
+      }
+    }
+  }
+  return []
 }
 
 function escapeHtml(str: string): string {

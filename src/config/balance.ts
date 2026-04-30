@@ -63,6 +63,7 @@ export const balance = {
       placementGrid:    7,    // tiles between obstacle placement centres
       wallLengthMin:    3,    // min wall segment length in tiles
       wallLengthMax:    4,    // max wall segment length (≤ placementGrid−3 keeps corridors ≥3 tiles wide)
+      scatterDensity: 0.12,  // probability of placing a 1×1 scatter tile where ≥3 cardinal tiles are free
     },
   },
 
