@@ -1255,7 +1255,9 @@ export function createGameScene(
 
       // Load Tiny Dungeon tilesheet and slice out floor + wall textures.
       // Packed sheet: 12 cols × 11 rows of 16×16 tiles, no spacing.
-      const sheet = await Assets.load<Texture>('/ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png')
+      const sheet = await Assets.load<Texture>(
+        `${import.meta.env.BASE_URL}ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png`,
+      )
       sheet.source.scaleMode = 'nearest'
       const TILE = 16
       floorTex = new Texture({ source: sheet.source, frame: new Rectangle(0, 4 * TILE, TILE, TILE) })
