@@ -527,8 +527,8 @@ export function createGameScene(
   function updateBars(): void {
     lifeFill.style.width = `${(playerEntity.currentLife / playerEntity.maxLife) * 100}%`
     manaFill.style.width = `${(playerEntity.currentMana / playerEntity.maxMana) * 100}%`
-    lifeLabel.textContent = `${Math.ceil(playerEntity.currentLife)} / ${playerEntity.maxLife}`
-    manaLabel.textContent = `${Math.ceil(playerEntity.currentMana)} / ${playerEntity.maxMana}`
+    lifeLabel.textContent = `${Math.round(playerEntity.currentLife)} / ${Math.round(playerEntity.maxLife)}`
+    manaLabel.textContent = `${Math.round(playerEntity.currentMana)} / ${Math.round(playerEntity.maxMana)}`
   }
 
   updateBars()
