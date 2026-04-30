@@ -355,9 +355,9 @@ export function createGameScene(
   el.innerHTML = `
     <div class="enemy-level-ctrl">
       <div class="enemy-level-main">
-        <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">&lt;</button>
+        <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
         <span class="enemy-level-display">1 / 1</span>
-        <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">&gt;</button>
+        <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png" alt=""></button>
         <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
           <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
           <span class="enemy-autolevel-track"></span>

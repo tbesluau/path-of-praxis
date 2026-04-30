@@ -392,6 +392,14 @@ body::after {
   cursor: not-allowed;
 }
 
+.enemy-level-arrow {
+  width: 16px;
+  height: 16px;
+  display: block;
+  pointer-events: none;
+  image-rendering: auto;
+}
+
 .enemy-level-display {
   font-size: 1rem;
   font-weight: 700;
