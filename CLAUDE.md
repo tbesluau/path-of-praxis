@@ -46,6 +46,12 @@ npm run preview    # Serve dist/ locally
 
 ## Git workflow
 
+> **Before anything else — every single task, every session start — run:**
+> ```bash
+> git fetch origin main && git rebase origin/main
+> ```
+> No exceptions. Do this before reading files, before planning, before writing a single line.
+
 Every user request must follow these steps in order. No exceptions.
 
 1. **Rebase first — always**: run `git fetch origin main && git rebase origin/main` before writing a single line of code. Skipped commits are expected (squash-merged) — just continue. This must happen at the start of every task, not just at the start of a session.
@@ -53,7 +59,7 @@ Every user request must follow these steps in order. No exceptions.
 3. **Implement**: make the changes, run `npm run typecheck && npm test`, fix any failures.
 4. **Commit**: one logical commit per request with a clear message.
 5. **Push**: `git push --force-with-lease origin claude/dev` (never plain `--force`).
-6. **One PR per request**: open a new pull request after every push. Never bundle multiple user requests into one PR. If PR #N is still open from a previous request, the rebase in step 1 will have brought those commits in; push and open a fresh PR for the new work only — do not add to an already-open PR from a prior request.
+6. **One PR per request**: open a new pull request immediately after every push — do not wait for the user to ask. Never bundle multiple user requests into one PR. If PR #N is still open from a previous request, the rebase in step 1 will have brought those commits in; push and open a fresh PR for the new work only — do not add to an already-open PR from a prior request.
 7. **Conflict resolution**: if the rebase has real file conflicts, resolve them, `git add`, then `git rebase --continue`. Never `git rebase --abort` unless explicitly asked.
 8. **Never amend published commits**: create a new commit instead.
 

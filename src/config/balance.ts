@@ -38,8 +38,9 @@ export const balance = {
   wave: {
     spawnDelay:         2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
     clusterSpread:       1.0, // total angular span (radians) of each enemy cluster
-    spawnMargin:          60, // px beyond screen edge enemies appear
-    spawnDepthVariance:   80, // additional random px beyond spawnMargin
+    directionStdDev:    Math.PI / 4, // gaussian σ (rad) of next wave's angle vs the previous one
+    spawnMargin:         120, // px beyond screen edge enemies appear
+    spawnDepthVariance:  160, // additional random px beyond spawnMargin
     nextWaveThreshold:     0, // spawn next wave when live enemy count reaches this
     minCount:              1, // guaranteed enemies per wave
     extraChanceBase:    0.20, // base probability of spawning one additional enemy
@@ -56,6 +57,15 @@ export const balance = {
   // ── World ────────────────────────────────────────────────────────────────
   world: {
     gridSize: 64,  // pixels per grid cell
+    map: {
+      chunkSize:       16,    // tiles per chunk side
+      forgetRange:      2,    // chunks beyond this Chebyshev distance are forgotten (~2× spawn dist)
+      blockedDensity: 1.00,   // probability of placing an obstacle at each placement-grid point
+      placementGrid:    7,    // tiles between obstacle placement centres
+      wallLengthMin:    3,    // min wall segment length in tiles
+      wallLengthMax:    4,    // max wall segment length (≤ placementGrid−3 keeps corridors ≥3 tiles wide)
+      scatterDensity: 0.12,  // probability of placing a 1×1 scatter tile where ≥3 cardinal tiles are free
+    },
   },
 
   // ── Action XP ────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
-import { createIcons, User, Play, Pause, ChevronLeft, ChevronRight, Menu, Home, LogOut, Settings2, Timer, Award } from 'lucide'
-import { renderGameIcons } from '../ui/game-icons'
+import * as PF from 'pathfinding'
+import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
@@ -14,7 +14,7 @@ import type { SceneId } from '../core/router'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
-const HUD_HEIGHT = 128
+const HUD_HEIGHT = 0
 const SAVE_INTERVAL_MS = 10_000
 
 interface DeathFragment {
@@ -123,7 +123,7 @@ export function createGameScene(
     actionProgress[actionId] = { xp, level, maxLevel }
     if (actionId === playerActionId) {
       if (leveled) playerEntity.attackDamage = getAction(actionId).damage * level
-      updateActionBtn(getAction(actionId))
+      updateActionBar()
     }
   }
 
@@ -172,10 +172,165 @@ export function createGameScene(
 
   createEntityBody(playerEntity)
 
+  // ── Tile map ─────────────────────────────────────────────────────────────
+
+  const blockedTiles    = new Set<string>()
+  const generatedChunks = new Set<string>()
+  const chunkBodies     = new Map<string, Matter.Body[]>()
+  let lastPlayerChunkX  = NaN
+  let lastPlayerChunkY  = NaN
+
+  function isTileBlocked(worldX: number, worldY: number): boolean {
+    const gs = balance.world.gridSize
+    return blockedTiles.has(`${Math.floor(worldX / gs)},${Math.floor(worldY / gs)}`)
+  }
+
+  function generateChunk(cx: number, cy: number): void {
+    const key = `${cx},${cy}`
+    if (generatedChunks.has(key)) return
+    generatedChunks.add(key)
+
+    const { chunkSize, blockedDensity, placementGrid,
+            wallLengthMin, wallLengthMax, scatterDensity } = balance.world.map
+    const gs  = balance.world.gridSize
+    const rng = chunkRng(cx, cy)
+    const bodies: Matter.Body[] = []
+    const originTX = cx * chunkSize
+    const originTY = cy * chunkSize
+
+    // Use global-aligned placement points so corridors are consistent across chunk boundaries.
+    // Per-chunk-relative offsets would produce 0-tile gaps where adjacent chunks' last/first
+    // obstacles meet at a chunk edge.
+    const pgStartX = Math.ceil(originTX / placementGrid) * placementGrid
+    const pgStartY = Math.ceil(originTY / placementGrid) * placementGrid
+
+    for (let px = pgStartX; px < originTX + chunkSize; px += placementGrid) {
+      for (let py = pgStartY; py < originTY + chunkSize; py += placementGrid) {
+        if (rng() >= blockedDensity) continue
+
+        const tx0 = px
+        const ty0 = py
+
+        const r = rng()
+        let w: number, h: number
+        if (r < 0.35) {
+          w = 1; h = 1
+        } else if (r < 0.55) {
+          w = 2 + Math.floor(rng() * 2)
+          h = 2 + Math.floor(rng() * 2)
+        } else if (r < 0.77) {
+          w = wallLengthMin + Math.floor(rng() * (wallLengthMax - wallLengthMin + 1))
+          h = 1
+        } else {
+          w = 1
+          h = wallLengthMin + Math.floor(rng() * (wallLengthMax - wallLengthMin + 1))
+        }
+
+        // Clamp to chunk boundary
+        const actualW = Math.min(w, originTX + chunkSize - tx0)
+        const actualH = Math.min(h, originTY + chunkSize - ty0)
+        if (actualW <= 0 || actualH <= 0) continue
+
+        // Safe zone: never block within 3 tiles of world origin
+        let overlapsOrigin = false
+        outer: for (let dy = 0; dy < actualH; dy++) {
+          for (let dx = 0; dx < actualW; dx++) {
+            if (Math.abs(tx0 + dx) <= 3 && Math.abs(ty0 + dy) <= 3) {
+              overlapsOrigin = true; break outer
+            }
+          }
+        }
+        if (overlapsOrigin) continue
+
+        for (let dy = 0; dy < actualH; dy++) {
+          for (let dx = 0; dx < actualW; dx++) {
+            blockedTiles.add(`${tx0 + dx},${ty0 + dy}`)
+          }
+        }
+
+        const bx = (tx0 + actualW / 2) * gs
+        const by = (ty0 + actualH / 2) * gs
+        const body = Matter.Bodies.rectangle(bx, by, actualW * gs, actualH * gs, {
+          isStatic: true,
+          label: 'obstacle',
+          friction: 0,
+          restitution: 0,
+        })
+        Matter.Composite.add(physicsEngine.world, body)
+        bodies.push(body)
+      }
+    }
+
+    // Scatter pass: place 1×1 tiles only in open areas with ≥3 free cardinal tiles.
+    // This adds density without ever narrowing corridors below 3 tiles.
+    for (let ty = originTY; ty < originTY + chunkSize; ty++) {
+      for (let tx = originTX; tx < originTX + chunkSize; tx++) {
+        if (blockedTiles.has(`${tx},${ty}`)) continue
+        if (Math.abs(tx) <= 3 && Math.abs(ty) <= 3) continue
+        let clear = true
+        for (let d = 1; d <= 3 && clear; d++) {
+          if (blockedTiles.has(`${tx + d},${ty}`) || blockedTiles.has(`${tx - d},${ty}`) ||
+              blockedTiles.has(`${tx},${ty + d}`) || blockedTiles.has(`${tx},${ty - d}`)) clear = false
+        }
+        if (!clear || rng() >= scatterDensity) continue
+        blockedTiles.add(`${tx},${ty}`)
+        const body = Matter.Bodies.rectangle((tx + 0.5) * gs, (ty + 0.5) * gs, gs, gs, {
+          isStatic: true,
+          label: 'obstacle',
+          friction: 0,
+          restitution: 0,
+        })
+        Matter.Composite.add(physicsEngine.world, body)
+        bodies.push(body)
+      }
+    }
+
+    chunkBodies.set(key, bodies)
+  }
+
+  function forgetChunk(cx: number, cy: number): void {
+    const key = `${cx},${cy}`
+    if (!generatedChunks.has(key)) return
+    for (const b of (chunkBodies.get(key) ?? [])) Matter.Composite.remove(physicsEngine.world, b)
+    chunkBodies.delete(key)
+    const { chunkSize } = balance.world.map
+    const originTX = cx * chunkSize
+    const originTY = cy * chunkSize
+    for (let dy = 0; dy < chunkSize; dy++) {
+      for (let dx = 0; dx < chunkSize; dx++) {
+        blockedTiles.delete(`${originTX + dx},${originTY + dy}`)
+      }
+    }
+    generatedChunks.delete(key)
+  }
+
+  function updateChunks(): void {
+    const gs = balance.world.gridSize
+    const { chunkSize, forgetRange } = balance.world.map
+    const pcx = Math.floor(Math.floor(playerEntity.x / gs) / chunkSize)
+    const pcy = Math.floor(Math.floor(playerEntity.y / gs) / chunkSize)
+    if (pcx === lastPlayerChunkX && pcy === lastPlayerChunkY) return
+    lastPlayerChunkX = pcx
+    lastPlayerChunkY = pcy
+
+    for (let dy = -forgetRange; dy <= forgetRange; dy++) {
+      for (let dx = -forgetRange; dx <= forgetRange; dx++) {
+        generateChunk(pcx + dx, pcy + dy)
+      }
+    }
+    for (const key of [...generatedChunks]) {
+      const [cx, cy] = key.split(',').map(Number) as [number, number]
+      if (Math.abs(cx - pcx) > forgetRange || Math.abs(cy - pcy) > forgetRange) {
+        forgetChunk(cx, cy)
+      }
+    }
+  }
+
   let paused = false
   let gameSpeed = 1
   let playerDead = false
   let waveScheduled = false
+  let lastWaveAngle: number | null = null
   let enemyIdCounter = 0
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
   let playerRandomTargetId: string | null = null
@@ -197,7 +352,58 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <div class="bottom-panel">
+    <div class="enemy-level-ctrl">
+      <div class="enemy-level-main">
+        <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">&lt;</button>
+        <span class="enemy-level-display">1 / 1</span>
+        <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">&gt;</button>
+        <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
+          <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
+          <span class="enemy-autolevel-track"></span>
+          <span class="enemy-autolevel-label">Auto</span>
+        </label>
+      </div>
+      <div class="enemy-xp-bar">
+        <div class="enemy-xp-bar-fill"></div>
+      </div>
+    </div>
+    <div class="game-viewport"></div>
+    <div class="stat-bars">
+      <div class="stat-bar-row">
+        <div class="stat-bar stat-bar--life">
+          <div class="stat-bar-fill stat-bar-fill--life"></div>
+        </div>
+        <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+      </div>
+      <div class="stat-bar-row">
+        <div class="stat-bar stat-bar--mana">
+          <div class="stat-bar-fill stat-bar-fill--mana"></div>
+        </div>
+        <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+      </div>
+      <div class="stat-bar-row stat-bar-row--action">
+        <div class="action-icon-wrap"><i data-lucide="sword" aria-hidden="true"></i></div>
+        <div class="stat-bar stat-bar--action">
+          <div class="stat-bar-fill stat-bar-fill--action"></div>
+          <span class="action-level-label">Lv.1</span>
+        </div>
+      </div>
+    </div>
+    <div class="game-hud">
+      <div class="game-hud-buttons">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
+          <i data-lucide="settings-2" aria-hidden="true"></i>
+        </button>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries">
+          <i data-lucide="award" aria-hidden="true"></i>
+        </button>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
+          <i data-lucide="menu" aria-hidden="true"></i>
+        </button>
+        <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
+          <i data-lucide="user" aria-hidden="true"></i>
+        </button>
+      </div>
       <div class="speed-ctrl">
         <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
           <i data-lucide="pause" aria-hidden="true"></i>
@@ -207,64 +413,20 @@ export function createGameScene(
         <button class="speed-opt" data-speed="5">×5</button>
         <button class="speed-opt" data-speed="10">×10</button>
       </div>
-      <div class="stat-bars">
-        <div class="stat-bar-row">
-          <div class="stat-bar stat-bar--life">
-            <div class="stat-bar-fill stat-bar-fill--life"></div>
-          </div>
-          <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
-        </div>
-        <div class="stat-bar-row">
-          <div class="stat-bar stat-bar--mana">
-            <div class="stat-bar-fill stat-bar-fill--mana"></div>
-          </div>
-          <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="enemy-level-ctrl">
-      <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level">
-        <i data-lucide="chevron-left" aria-hidden="true"></i>
-      </button>
-      <span class="enemy-level-display">1 / 1</span>
-      <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level">
-        <i data-lucide="chevron-right" aria-hidden="true"></i>
-      </button>
-      <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
-        <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
-        <span class="enemy-autolevel-track"></span>
-        <span class="enemy-autolevel-label">Auto</span>
-      </label>
-    </div>
-    <div class="game-hud">
-      <div class="battle-config-wrap">
-        <div class="action-bubble">
-          <i data-game-icon="broadsword" aria-hidden="true"></i>
-          <small class="action-level">Lv.1</small>
-        </div>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
-          <i data-lucide="settings-2" aria-hidden="true"></i>
-        </button>
-      </div>
-      <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries">
-        <i data-lucide="award" aria-hidden="true"></i>
-      </button>
-      <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
-        <i data-lucide="menu" aria-hidden="true"></i>
-      </button>
-      <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
-        <i data-lucide="user" aria-hidden="true"></i>
-      </button>
     </div>
   `
   container.appendChild(el)
-  createIcons({ icons: { User, Play, Pause, ChevronLeft, ChevronRight, Menu, Settings2, Award } })
-  renderGameIcons(el)
+  const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
+  createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword } })
 
-  const lifeFill     = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
-  const manaFill     = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
-  const lifeLevelEl  = el.querySelector<HTMLElement>('.stat-level--life')!
-  const manaLevelEl  = el.querySelector<HTMLElement>('.stat-level--mana')!
+  const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
+  const manaFill        = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
+  const lifeLevelEl     = el.querySelector<HTMLElement>('.stat-level--life')!
+  const manaLevelEl     = el.querySelector<HTMLElement>('.stat-level--mana')!
+  const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
+  const actionBarFill    = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
+  const actionLevelLabel = el.querySelector<HTMLElement>('.action-level-label')!
+  const actionIconWrap   = el.querySelector<HTMLElement>('.action-icon-wrap')!
 
   function updateStatLevels(): void {
     const lifePct = Math.round(lifeProgress.xp / (lifeProgress.level * balance.stat.xpPerLevel) * 100)
@@ -275,19 +437,31 @@ export function createGameScene(
     manaLevelEl.querySelector('span')!.textContent = `Lv.${manaProgress.level}`
   }
 
-  const enemyLevelCtrl     = el.querySelector<HTMLElement>('.enemy-level-ctrl')!
+  function updateActionBar(): void {
+    const prog = actionProgress[playerActionId] ?? { xp: 0, level: 1, maxLevel: 1 }
+    const pct = Math.min(100, Math.round(prog.xp / actionXpNeeded(prog.level) * 100))
+    actionBarFill.style.width = `${pct}%`
+    actionLevelLabel.textContent = `Lv.${prog.level}`
+  }
+
+  function updateActionIcon(): void {
+    const action = getAction(playerActionId)
+    actionIconWrap.innerHTML = `<i data-lucide="${action.icon}" aria-hidden="true"></i>`
+    createIcons({ icons: { Sword, Crosshair, Flame, Zap } })
+  }
+
   const enemyLevelDisplay   = el.querySelector<HTMLElement>('.enemy-level-display')!
   const enemyLevelDownBtn   = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-down"]')!
   const enemyLevelUpBtn     = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-up"]')!
   const enemyAutoLevelInput = el.querySelector<HTMLInputElement>('.enemy-autolevel-input')!
 
   function updateEnemyLevelUI(): void {
-    const xpPct = Math.round((enemyProgress.xp / (enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel)) * 100)
-    enemyLevelCtrl.style.setProperty('--enemy-xp-pct', `${xpPct}%`)
     enemyLevelDisplay.textContent = `${enemyProgress.level} / ${enemyProgress.maxLevel}`
     enemyLevelDownBtn.disabled = enemyProgress.level <= 1
     enemyLevelUpBtn.disabled   = enemyProgress.level >= enemyProgress.maxLevel
     enemyAutoLevelInput.checked = enemyProgress.autoLevel
+    const xpMax = enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel
+    enemyXpBarFill.style.width = `${Math.min(100, Math.round(enemyProgress.xp / xpMax * 100))}%`
   }
 
   enemyLevelDownBtn.addEventListener('click', () => {
@@ -320,20 +494,7 @@ export function createGameScene(
 
   const speedPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
   const speedOptBtns = el.querySelectorAll<HTMLButtonElement>('.speed-opt')
-  const actionBubble = el.querySelector<HTMLElement>('.action-bubble')!
   const battleConfigBtn = el.querySelector<HTMLButtonElement>('[data-action="open-config"]')!
-
-  function updateActionBtn(def: ActionDef): void {
-    const id = def.id as ActionId
-    const p = actionProgress[id]
-    const level = p?.level ?? 1
-    const xpPct = p ? Math.round((p.xp / actionXpNeeded(p.level)) * 100) : 0
-    actionBubble.style.setProperty('--xp-pct', `${xpPct}%`)
-    actionBubble.innerHTML = `<i data-game-icon="${def.icon}" aria-hidden="true"></i><small class="action-level">Lv.${level}</small>`
-    renderGameIcons(actionBubble)
-  }
-
-  updateActionBtn(getAction(playerActionId))
 
   battleConfigBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
@@ -345,7 +506,8 @@ export function createGameScene(
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
-        updateActionBtn(getAction(id))
+        updateActionBar()
+        updateActionIcon()
         if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
       },
       (mode) => {
@@ -365,6 +527,8 @@ export function createGameScene(
 
   updateBars()
   updateStatLevels()
+  updateActionBar()
+  updateActionIcon()
 
   // ── Regen ───────────────────────────────────────────────────────────────
 
@@ -474,6 +638,15 @@ export function createGameScene(
   const deathFragments: DeathFragment[] = []
   const vfxList: Vfx[] = []
 
+  interface EntityPath {
+    waypoints: { tx: number; ty: number }[]
+    waypointIdx: number
+    targetTileKey: string
+    entityTileKey: string
+    lastUpdateTime: number
+  }
+  const entityPaths = new Map<string, EntityPath>()
+
   const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
   charBtn.addEventListener('click', () => {
     if (modalCleanup) {
@@ -541,6 +714,22 @@ export function createGameScene(
     const startX = Math.floor(left / gs) * gs
     const startY = Math.floor(top  / gs) * gs
     worldGrid.clear()
+
+    // Blocked tiles — white filled rects
+    const tStartX = Math.floor(left  / gs)
+    const tStartY = Math.floor(top   / gs)
+    const tEndX   = Math.ceil(right  / gs)
+    const tEndY   = Math.ceil(bottom / gs)
+    for (let ty = tStartY; ty <= tEndY; ty++) {
+      for (let tx = tStartX; tx <= tEndX; tx++) {
+        if (blockedTiles.has(`${tx},${ty}`)) {
+          worldGrid.rect(tx * gs, ty * gs, gs, gs)
+          worldGrid.fill({ color: 0xffffff, alpha: 1 })
+        }
+      }
+    }
+
+    // Grid lines (faint, on top of tiles)
     for (let x = startX; x <= right;  x += gs) {
       worldGrid.moveTo(x, top)
       worldGrid.lineTo(x, bottom)
@@ -608,6 +797,7 @@ export function createGameScene(
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
     entityActions.delete(entity.id)
+    entityPaths.delete(entity.id)
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     const idx = entities.indexOf(entity)
     if (idx !== -1) entities.splice(idx, 1)
@@ -660,6 +850,7 @@ export function createGameScene(
       enemySpawnTimeout = null
     }
     waveScheduled = false
+    lastWaveAngle = null
 
     // Reset player
     playerEntity.currentLife = playerEntity.maxLife
@@ -675,7 +866,8 @@ export function createGameScene(
     playerDead = false
     updateBars()
     updateStatLevels()
-    updateActionBtn(getAction(playerActionId))
+    updateActionBar()
+    updateActionIcon()
 
     // Reset per-rebirth trackers
     runActionXp = {}
@@ -758,7 +950,10 @@ export function createGameScene(
         }
         return `
           <div class="mastery-row">
-            <div class="mastery-bar mastery-bar--layered" style="--old-pct:${oldPct}%;--gain-pct:${gainPct}%"></div>
+            <div class="mastery-bar">
+              ${oldPct > 0 ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>` : ''}
+              <div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>
+            </div>
             <span class="mastery-label">${escapeHtml(m.label)}</span>
             <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${level}</span>
             ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
@@ -888,18 +1083,32 @@ export function createGameScene(
 
     const halfW = app.screen.width / 2
     const halfH = (app.screen.height - HUD_HEIGHT) / 2
-    const clusterAngle = Math.random() * Math.PI * 2
+    const clusterAngle = lastWaveAngle === null
+      ? Math.random() * Math.PI * 2
+      : lastWaveAngle + gaussian() * balance.wave.directionStdDev
+    lastWaveAngle = clusterAngle
     for (let i = 0; i < count; i++) {
       const angle = clusterAngle + (Math.random() - 0.5) * balance.wave.clusterSpread
       const cosA = Math.abs(Math.cos(angle))
       const sinA = Math.abs(Math.sin(angle))
       const edgeDist = Math.min(halfW / (cosA || 0.001), halfH / (sinA || 0.001))
       const dist = edgeDist + balance.wave.spawnMargin + Math.random() * balance.wave.spawnDepthVariance
+
+      // Find a free spawn position — retry with random angles if blocked
+      let spawnX = playerEntity.x + Math.cos(angle) * dist
+      let spawnY = playerEntity.y + Math.sin(angle) * dist
+      for (let attempt = 0; attempt < 8 && isTileBlocked(spawnX, spawnY); attempt++) {
+        const a = Math.random() * Math.PI * 2
+        spawnX = playerEntity.x + Math.cos(a) * dist
+        spawnY = playerEntity.y + Math.sin(a) * dist
+      }
+      if (isTileBlocked(spawnX, spawnY)) continue
+
       const scale = enemyScale()
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
-        playerEntity.x + Math.cos(angle) * dist,
-        playerEntity.y + Math.sin(angle) * dist,
+        spawnX,
+        spawnY,
         'enemyA',
         balance.enemyA.radius,
         { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * scale) },
@@ -971,6 +1180,9 @@ export function createGameScene(
     }
   }
 
+  // Generate initial chunks around the player before the first wave spawns
+  updateChunks()
+
   // Start immediately — paused=false so regen and wave timer kick off now
   startRegen()
   scheduleWave(balance.wave.spawnDelay)
@@ -980,7 +1192,7 @@ export function createGameScene(
       const instance = new Application()
       await instance.init({
         background: tokens.color.surface,
-        resizeTo: el,
+        resizeTo: viewportEl,
         antialias: true,
         resolution: devicePixelRatio,
         autoDensity: true,
@@ -999,7 +1211,7 @@ export function createGameScene(
       const wrapper = document.createElement('div')
       wrapper.className = 'game-canvas-wrapper'
       wrapper.appendChild(app.canvas)
-      el.insertBefore(wrapper, el.firstChild)
+      viewportEl.appendChild(wrapper)
 
       worldGrid = new Graphics()
       app.stage.addChild(worldGrid)
@@ -1041,6 +1253,8 @@ export function createGameScene(
           return
         }
 
+        updateChunks()
+
         const dt = ticker.deltaMS / 1000
 
         // ── Movement ────────────────────────────────────────────────────────
@@ -1048,22 +1262,44 @@ export function createGameScene(
           const body = entityBodies.get(entity.id)
           if (!body) continue
           const target = entity.role === 'player' ? selectPlayerTarget(entities) : nearestTarget(entity, entities)
-          if (!target) {
-            Matter.Body.setVelocity(body, { x: 0, y: 0 })
-            continue
-          }
-          const dx = target.x - entity.x
-          const dy = target.y - entity.y
+          if (!target) { Matter.Body.setVelocity(body, { x: 0, y: 0 }); continue }
+          const gs = balance.world.gridSize
+          const dx = target.x - entity.x, dy = target.y - entity.y
           const dist = Math.sqrt(dx * dx + dy * dy)
           const stopDist = entity.attackRange + target.radius
-          if (dist > stopDist) {
-            Matter.Body.setVelocity(body, {
-              x: (dx / dist) * entity.moveSpeed * dt,
-              y: (dy / dist) * entity.moveSpeed * dt,
-            })
-          } else {
-            Matter.Body.setVelocity(body, { x: 0, y: 0 })
+          if (dist <= stopDist) { Matter.Body.setVelocity(body, { x: 0, y: 0 }); continue }
+
+          const fromTx = Math.floor(entity.x / gs), fromTy = Math.floor(entity.y / gs)
+          const toTx   = Math.floor(target.x / gs), toTy   = Math.floor(target.y / gs)
+          const targetKey = `${toTx},${toTy}`
+          const entityKey = `${fromTx},${fromTy}`
+          const now = performance.now()
+          let moveX = dx / dist, moveY = dy / dist  // default: move directly
+
+          let path = entityPaths.get(entity.id)
+          const needsRepath = !path
+            || path.targetTileKey !== targetKey
+            || path.entityTileKey !== entityKey
+            || (path.waypoints.length === 0 && now - path.lastUpdateTime > 500)
+          if (needsRepath) {
+            const waypoints = astar(fromTx, fromTy, toTx, toTy, blockedTiles)
+            path = { waypoints, waypointIdx: 0, targetTileKey: targetKey, entityTileKey: entityKey, lastUpdateTime: now }
+            entityPaths.set(entity.id, path)
           }
+          const activePath = path!
+          if (activePath.waypoints.length > 0) {
+            while (activePath.waypointIdx < activePath.waypoints.length) {
+              const wp = activePath.waypoints[activePath.waypointIdx]
+              const wpX = (wp.tx + 0.5) * gs, wpY = (wp.ty + 0.5) * gs
+              const wdx = wpX - entity.x, wdy = wpY - entity.y
+              if (wdx * wdx + wdy * wdy < (gs * 0.6) ** 2) { activePath.waypointIdx++; continue }
+              const wd = Math.sqrt(wdx * wdx + wdy * wdy)
+              moveX = wdx / wd; moveY = wdy / wd
+              break
+            }
+          }
+
+          Matter.Body.setVelocity(body, { x: moveX * entity.moveSpeed * dt, y: moveY * entity.moveSpeed * dt })
         }
 
         // ── Physics step ────────────────────────────────────────────────────
@@ -1157,6 +1393,10 @@ export function createGameScene(
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()
     vfxList.length = 0
+    blockedTiles.clear()
+    generatedChunks.clear()
+    chunkBodies.clear()
+    entityPaths.clear()
     Matter.Composite.clear(physicsEngine.world, false)
     Matter.Engine.clear(physicsEngine)
     app?.destroy(true)
@@ -1174,12 +1414,13 @@ function mountGameMenuModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel game-menu-panel" role="dialog" aria-modal="true" aria-labelledby="game-menu-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="game-menu-title">Menu</h2>
       <div class="modal-actions game-menu-actions">
-        <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="home">
+        <button class="modal-btn modal-btn--primary modal-btn--icon-row" data-action="home">
           <i data-lucide="home" aria-hidden="true"></i><span>Home Screen</span>
         </button>
-        <button class="modal-btn modal-btn--ghost modal-btn--icon-row" data-action="flee">
+        <button class="modal-btn modal-btn--primary modal-btn--icon-row" data-action="flee">
           <i data-lucide="log-out" aria-hidden="true"></i>
           <span class="menu-btn-text">
             <span class="menu-btn-title">Flee</span>
@@ -1187,7 +1428,7 @@ function mountGameMenuModal(
           </span>
         </button>
         <button class="modal-btn modal-btn--danger modal-btn--icon-row" data-action="die">
-          <i data-game-icon="skull" aria-hidden="true"></i>
+          <i data-lucide="skull" aria-hidden="true"></i>
           <span class="menu-btn-text">
             <span class="menu-btn-title">Die</span>
             <small class="menu-btn-desc">Trigger death and rebirth now</small>
@@ -1197,9 +1438,10 @@ function mountGameMenuModal(
     </div>
   `
   parent.appendChild(backdrop)
-  createIcons({ icons: { Home, LogOut } })
-  renderGameIcons(backdrop)
+  createIcons({ icons: { Home, LogOut, Skull } })
   const dismiss = () => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', dismiss)
   backdrop.querySelector<HTMLButtonElement>('[data-action="home"]')!
     .addEventListener('click', () => { dismiss(); actions.onHome() })
   backdrop.querySelector<HTMLButtonElement>('[data-action="flee"]')!
@@ -1244,6 +1486,7 @@ function mountCharacterModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel char-info-panel" role="dialog" aria-modal="true" aria-labelledby="char-info-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="char-info-title">${t('character', 'infoTitle')}</h2>
       <div class="char-info-row">
         <span class="char-info-label">${t('character', 'nameLabel')}</span>
@@ -1252,9 +1495,6 @@ function mountCharacterModal(
       ${statDetailRow(t('character', 'statMaxLife'), lifeProgress, balance.player.maxLife, 'char-info-value--life')}
       ${statDetailRow(t('character', 'statMaxMana'), manaProgress, balance.player.maxMana, 'char-info-value--mana')}
       ${actionRows}
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
-      </div>
     </div>
   `
   parent.appendChild(backdrop)
@@ -1286,7 +1526,7 @@ function mountBattleConfigModal(
       const meta = maxLevel > 1
         ? `Lv.${level} · ${Math.sqrt(maxLevel).toFixed(1)}xp`
         : `Lv.${level}`
-      const iconAttr = a.iconSystem === 'game' ? `data-game-icon="${a.icon}"` : `data-lucide="${a.icon}"`
+      const iconAttr = `data-lucide="${a.icon}"`
       return `
         <button class="action-card${a.id === currentActionId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
           <i ${iconAttr} aria-hidden="true"></i>
@@ -1298,22 +1538,23 @@ function mountBattleConfigModal(
   const startOnWeapons = weaponActions.some(a => a.id === currentActionId)
 
   const targetingOpts: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
-    { mode: 'nearest',   icon: 'crosshair',      label: 'Nearest',   desc: 'Attack closest enemy' },
-    { mode: 'weakest',   icon: 'health-decrease', label: 'Weakest',   desc: 'Focus low HP' },
-    { mode: 'strongest', icon: 'health-increase', label: 'Strongest', desc: 'Focus high HP' },
-    { mode: 'random',    icon: 'dice-random',     label: 'Random',    desc: 'Pick random target' },
+    { mode: 'nearest',   icon: 'crosshair',    label: 'Nearest',   desc: 'Attack closest enemy' },
+    { mode: 'weakest',   icon: 'trending-down', label: 'Weakest',   desc: 'Focus low HP' },
+    { mode: 'strongest', icon: 'trending-up',   label: 'Strongest', desc: 'Focus high HP' },
+    { mode: 'random',    icon: 'shuffle',       label: 'Random',    desc: 'Pick random target' },
   ]
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel battle-config-panel" role="dialog" aria-modal="true">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <div class="battle-tabs">
         <button class="battle-tab battle-tab--active" data-btab="action" aria-label="Actions">
-          <i data-game-icon="broadsword" aria-hidden="true"></i>
+          <i data-lucide="sword" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="targeting" aria-label="Targeting">
-          <i data-game-icon="crosshair" aria-hidden="true"></i>
+          <i data-lucide="crosshair" aria-hidden="true"></i>
         </button>
         <button class="battle-tab" data-btab="effects" aria-label="Effects">
           <i data-lucide="timer" aria-hidden="true"></i>
@@ -1331,7 +1572,7 @@ function mountBattleConfigModal(
         <div class="targeting-options">
           ${targetingOpts.map(o => `
             <button class="targeting-opt${currentTargeting === o.mode ? ' targeting-opt--active' : ''}" data-targeting="${o.mode}">
-              <i data-game-icon="${o.icon}" aria-hidden="true"></i>
+              <i data-lucide="${o.icon}" aria-hidden="true"></i>
               <span class="targeting-opt-name">${o.label}</span>
               <small class="targeting-opt-desc">${o.desc}</small>
             </button>`).join('')}
@@ -1339,9 +1580,6 @@ function mountBattleConfigModal(
       </div>
       <div data-bpanel="effects" hidden>
         <p class="wip-notice">Timed &amp; automatic effects &mdash; coming soon</p>
-      </div>
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="close">${t('settings', 'close')}</button>
       </div>
     </div>
   `
@@ -1390,8 +1628,7 @@ function mountBattleConfigModal(
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
   parent.appendChild(backdrop)
-  createIcons({ icons: { Timer } })
-  renderGameIcons(backdrop)
+  createIcons({ icons: { Timer, Sword, Crosshair, Flame, Zap, TrendingDown, TrendingUp, Shuffle } })
   return () => backdrop.remove()
 }
 
@@ -1422,11 +1659,9 @@ function mountMasteryModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-panel" role="dialog" aria-modal="true" aria-labelledby="mastery-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="mastery-title">Masteries</h2>
       <div class="mastery-categories">${categoriesHtml}</div>
-      <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="close">Close</button>
-      </div>
     </div>
   `
   parent.appendChild(backdrop)
@@ -1438,6 +1673,59 @@ function mountMasteryModal(
 
 function actionXpNeeded(level: number): number {
   return Math.round(balance.action.xpPerLevel * Math.pow(balance.action.xpGrowth, level - 1))
+}
+
+// Box-Muller transform: standard normal sample (mean 0, variance 1).
+function gaussian(): number {
+  const u = 1 - Math.random()
+  const v = Math.random()
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
+}
+
+// Deterministic per-chunk PRNG (mulberry32 variant). Negative coords handled
+// by mapping integers to non-negative before hashing.
+function chunkRng(cx: number, cy: number): () => number {
+  const ux = cx >= 0 ? cx * 2 : -cx * 2 - 1
+  const uy = cy >= 0 ? cy * 2 : -cy * 2 - 1
+  let s = ((Math.imul(ux, 73856093) ^ Math.imul(uy, 19349663)) >>> 0) || 1
+  return function () {
+    s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0
+    return s / 0x100000000
+  }
+}
+
+const ASTAR_PAD = 20
+
+function astar(
+  fromTx: number, fromTy: number,
+  toTx: number,   toTy: number,
+  blocked: Set<string>,
+): { tx: number; ty: number }[] {
+  if (fromTx === toTx && fromTy === toTy) return []
+  const minX = Math.min(fromTx, toTx) - ASTAR_PAD
+  const minY = Math.min(fromTy, toTy) - ASTAR_PAD
+  const maxX = Math.max(fromTx, toTx) + ASTAR_PAD
+  const maxY = Math.max(fromTy, toTy) + ASTAR_PAD
+  const w = maxX - minX + 1
+  const h = maxY - minY + 1
+  const grid = new PF.Grid(w, h)
+
+  for (let ty = minY; ty <= maxY; ty++) {
+    for (let tx = minX; tx <= maxX; tx++) {
+      if (blocked.has(`${tx},${ty}`)) grid.setWalkableAt(tx - minX, ty - minY, false)
+    }
+  }
+
+  // Force start/end walkable so entities that physics has pushed slightly
+  // adjacent to a wall can still initiate a path.
+  const sx = fromTx - minX, sy = fromTy - minY
+  const ex = toTx   - minX, ey = toTy   - minY
+  grid.setWalkableAt(sx, sy, true)
+  grid.setWalkableAt(ex, ey, true)
+
+  const finder = new PF.AStarFinder({ diagonalMovement: PF.DiagonalMovement.OnlyWhenNoObstacles })
+  const raw = finder.findPath(sx, sy, ex, ey, grid)
+  return raw.map(([x, y]) => ({ tx: x + minX, ty: y + minY }))
 }
 
 function escapeHtml(str: string): string {
