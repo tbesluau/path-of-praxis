@@ -383,8 +383,8 @@ export function createGameScene(
         <div class="action-icon-wrap"><i data-lucide="sword" aria-hidden="true"></i></div>
         <div class="stat-bar stat-bar--action">
           <div class="stat-bar-fill stat-bar-fill--action"></div>
+          <span class="action-level-label">Lv.1</span>
         </div>
-        <div class="stat-level stat-level--action"><div class="stat-level-fill"></div><span>Lv.1</span></div>
       </div>
     </div>
     <div class="game-hud">
@@ -422,9 +422,9 @@ export function createGameScene(
   const lifeLevelEl     = el.querySelector<HTMLElement>('.stat-level--life')!
   const manaLevelEl     = el.querySelector<HTMLElement>('.stat-level--mana')!
   const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
-  const actionBarFill   = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
-  const actionLevelEl   = el.querySelector<HTMLElement>('.stat-level--action')!
-  const actionIconWrap  = el.querySelector<HTMLElement>('.action-icon-wrap')!
+  const actionBarFill    = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
+  const actionLevelLabel = el.querySelector<HTMLElement>('.action-level-label')!
+  const actionIconWrap   = el.querySelector<HTMLElement>('.action-icon-wrap')!
 
   function updateStatLevels(): void {
     const lifePct = Math.round(lifeProgress.xp / (lifeProgress.level * balance.stat.xpPerLevel) * 100)
@@ -439,8 +439,7 @@ export function createGameScene(
     const prog = actionProgress[playerActionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     const pct = Math.min(100, Math.round(prog.xp / actionXpNeeded(prog.level) * 100))
     actionBarFill.style.width = `${pct}%`
-    actionLevelEl.style.setProperty('--xp-pct', `${pct}%`)
-    actionLevelEl.querySelector('span')!.textContent = `Lv.${prog.level}`
+    actionLevelLabel.textContent = `Lv.${prog.level}`
   }
 
   function updateActionIcon(): void {
