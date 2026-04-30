@@ -629,7 +629,6 @@ export function createGameScene(
   // ── PixiJS ──────────────────────────────────────────────────────────────
 
   let app: Application | null = null
-  let worldGrid: Graphics | null = null
   let floorContainer: Container | null = null
   let wallContainer: Container | null = null
   let floorOptions:       { tex: Texture; w: number }[] = []
@@ -720,7 +719,7 @@ export function createGameScene(
   }
 
   function drawGrid(): void {
-    if (!app || !worldGrid) return
+    if (!app) return
     const { width, height } = app.screen
     const gs = balance.world.gridSize
     const halfW = width / 2
@@ -729,9 +728,6 @@ export function createGameScene(
     const right  = playerEntity.x + halfW   + gs
     const top    = playerEntity.y - halfH   - gs
     const bottom = playerEntity.y + halfH   + gs
-    const startX = Math.floor(left / gs) * gs
-    const startY = Math.floor(top  / gs) * gs
-    worldGrid.clear()
 
     // Tilemap sprites — floor under every tile, obstacle on top of blocked ones.
     const tStartX = Math.floor(left  / gs)
@@ -745,6 +741,7 @@ export function createGameScene(
         for (let tx = tStartX; tx <= tEndX; tx++) {
           const fSprite = floorSprites[floorIdx] ?? (() => {
             const s = new Sprite()
+            s.roundPixels = true
             floorContainer!.addChild(s)
             floorSprites.push(s)
             return s
@@ -762,6 +759,7 @@ export function createGameScene(
             const opts = isLarge ? largeObstOptions : smallFillerOptions
             const wSprite = wallSprites[wallIdx] ?? (() => {
               const s = new Sprite()
+              s.roundPixels = true
               wallContainer!.addChild(s)
               wallSprites.push(s)
               return s
@@ -779,17 +777,6 @@ export function createGameScene(
       for (let i = floorIdx; i < floorSprites.length; i++) floorSprites[i].visible = false
       for (let i = wallIdx;  i < wallSprites.length;  i++) wallSprites[i].visible = false
     }
-
-    // Grid lines (faint, on top of tiles)
-    for (let x = startX; x <= right;  x += gs) {
-      worldGrid.moveTo(x, top)
-      worldGrid.lineTo(x, bottom)
-    }
-    for (let y = startY; y <= bottom; y += gs) {
-      worldGrid.moveTo(left, y)
-      worldGrid.lineTo(right, y)
-    }
-    worldGrid.stroke({ color: tokens.color.primary, width: 1, alpha: 0.1 })
   }
 
   function updateCamera(): void {
@@ -1294,9 +1281,6 @@ export function createGameScene(
       wallContainer  = new Container()
       app.stage.addChild(floorContainer)
       app.stage.addChild(wallContainer)
-
-      worldGrid = new Graphics()
-      app.stage.addChild(worldGrid)
 
       initEntityDisplay(playerEntity)
       drawGrid()
