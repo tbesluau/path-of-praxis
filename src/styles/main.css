@@ -497,6 +497,11 @@ body {
   flex: 1;
 }
 
+.stat-bar-row--action {
+  align-self: flex-start;
+  width: 33%;
+}
+
 .action-level-label {
   position: absolute;
   inset: 0;

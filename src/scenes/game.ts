@@ -1,5 +1,6 @@
 import { Application, Container, Graphics } from 'pixi.js'
 import * as Matter from 'matter-js'
+import * as PF from 'pathfinding'
 import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
@@ -1693,57 +1694,29 @@ function hasTileLOS(tx1: number, ty1: number, tx2: number, ty2: number, blocked:
   }
 }
 
+const ASTAR_PAD = 15
+
 function astar(
   fromTx: number, fromTy: number,
   toTx: number,   toTy: number,
   blocked: Set<string>,
-  maxNodes = 300,
 ): { tx: number; ty: number }[] {
   if (fromTx === toTx && fromTy === toTy) return []
-  const hk = (x: number, y: number) => `${x},${y}`
-  const endKey   = hk(toTx, toTy)
-  const startKey = hk(fromTx, fromTy)
-  const gScore   = new Map<string, number>([[startKey, 0]])
-  const fScore   = new Map<string, number>([[startKey, Math.abs(fromTx - toTx) + Math.abs(fromTy - toTy)]])
-  const cameFrom = new Map<string, string>()
-  const closed   = new Set<string>()
-  const open: string[] = [startKey]
-  const DIRS: [number, number][] = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
-  let nodes = 0
-  while (open.length > 0 && nodes++ < maxNodes) {
-    let bestIdx = 0, bestF = fScore.get(open[0]) ?? Infinity
-    for (let i = 1; i < open.length; i++) {
-      const f = fScore.get(open[i]) ?? Infinity
-      if (f < bestF) { bestF = f; bestIdx = i }
-    }
-    const current = open[bestIdx]; open.splice(bestIdx, 1)
-    if (current === endKey) {
-      const path: { tx: number; ty: number }[] = []
-      let c = current
-      while (c !== startKey) {
-        const [tx, ty] = c.split(',').map(Number) as [number, number]
-        path.unshift({ tx, ty })
-        c = cameFrom.get(c)!
-      }
-      return path
-    }
-    closed.add(current)
-    const [cx, cy] = current.split(',').map(Number) as [number, number]
-    for (const [ndx, ndy] of DIRS) {
-      const nx = cx + ndx, ny = cy + ndy
-      const nk = hk(nx, ny)
-      if (closed.has(nk) || blocked.has(nk)) continue
-      if (ndx !== 0 && ndy !== 0 && blocked.has(hk(cx + ndx, cy)) && blocked.has(hk(cx, cy + ndy))) continue
-      const g = (gScore.get(current) ?? Infinity) + (ndx !== 0 && ndy !== 0 ? 1.414 : 1)
-      if (g < (gScore.get(nk) ?? Infinity)) {
-        cameFrom.set(nk, current)
-        gScore.set(nk, g)
-        fScore.set(nk, g + Math.abs(nx - toTx) + Math.abs(ny - toTy))
-        if (!open.includes(nk)) open.push(nk)
-      }
+  const minX = Math.min(fromTx, toTx) - ASTAR_PAD
+  const minY = Math.min(fromTy, toTy) - ASTAR_PAD
+  const maxX = Math.max(fromTx, toTx) + ASTAR_PAD
+  const maxY = Math.max(fromTy, toTy) + ASTAR_PAD
+  const w = maxX - minX + 1
+  const h = maxY - minY + 1
+  const grid = new PF.Grid(w, h)
+  for (let ty = minY; ty <= maxY; ty++) {
+    for (let tx = minX; tx <= maxX; tx++) {
+      if (blocked.has(`${tx},${ty}`)) grid.setWalkableAt(tx - minX, ty - minY, false)
     }
   }
-  return []
+  const finder = new PF.AStarFinder({ diagonalMovement: PF.DiagonalMovement.OnlyWhenNoObstacles })
+  const raw = finder.findPath(fromTx - minX, fromTy - minY, toTx - minX, toTy - minY, grid)
+  return raw.map(([x, y]) => ({ tx: x + minX, ty: y + minY }))
 }
 
 function escapeHtml(str: string): string {
