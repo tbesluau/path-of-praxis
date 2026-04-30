@@ -1,4 +1,4 @@
-import { Application, Container, Graphics } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
 import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
@@ -11,6 +11,7 @@ import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
+import { iconTexture } from '../assets/icons'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -27,7 +28,7 @@ interface DeathFragment {
 }
 
 interface Vfx {
-  g: Graphics
+  g: Container
   age: number
   maxAge: number
   tick: (progress: number) => void
@@ -629,6 +630,13 @@ export function createGameScene(
 
   let app: Application | null = null
   let worldGrid: Graphics | null = null
+  let floorContainer: Container | null = null
+  let wallContainer: Container | null = null
+  let floorTex: Texture | null = null
+  let wallTex: Texture | null = null
+  let zapTex: Texture | null = null
+  const floorSprites: Sprite[] = []
+  const wallSprites: Sprite[] = []
   let destroyed = false
   let modalCleanup: (() => void) | null = null
 
@@ -715,18 +723,47 @@ export function createGameScene(
     const startY = Math.floor(top  / gs) * gs
     worldGrid.clear()
 
-    // Blocked tiles — white filled rects
+    // Tilemap sprites — floor under every tile, wall over blocked ones.
     const tStartX = Math.floor(left  / gs)
     const tStartY = Math.floor(top   / gs)
     const tEndX   = Math.ceil(right  / gs)
     const tEndY   = Math.ceil(bottom / gs)
-    for (let ty = tStartY; ty <= tEndY; ty++) {
-      for (let tx = tStartX; tx <= tEndX; tx++) {
-        if (blockedTiles.has(`${tx},${ty}`)) {
-          worldGrid.rect(tx * gs, ty * gs, gs, gs)
-          worldGrid.fill({ color: 0xffffff, alpha: 1 })
+    let floorIdx = 0
+    let wallIdx = 0
+    if (floorContainer && wallContainer && floorTex && wallTex) {
+      for (let ty = tStartY; ty <= tEndY; ty++) {
+        for (let tx = tStartX; tx <= tEndX; tx++) {
+          const fSprite = floorSprites[floorIdx] ?? (() => {
+            const s = new Sprite(floorTex!)
+            s.width = gs
+            s.height = gs
+            floorContainer!.addChild(s)
+            floorSprites.push(s)
+            return s
+          })()
+          fSprite.x = tx * gs
+          fSprite.y = ty * gs
+          fSprite.visible = true
+          floorIdx++
+
+          if (blockedTiles.has(`${tx},${ty}`)) {
+            const wSprite = wallSprites[wallIdx] ?? (() => {
+              const s = new Sprite(wallTex!)
+              s.width = gs
+              s.height = gs
+              wallContainer!.addChild(s)
+              wallSprites.push(s)
+              return s
+            })()
+            wSprite.x = tx * gs
+            wSprite.y = ty * gs
+            wSprite.visible = true
+            wallIdx++
+          }
         }
       }
+      for (let i = floorIdx; i < floorSprites.length; i++) floorSprites[i].visible = false
+      for (let i = wallIdx;  i < wallSprites.length;  i++) wallSprites[i].visible = false
     }
 
     // Grid lines (faint, on top of tiles)
@@ -1161,22 +1198,25 @@ export function createGameScene(
         g.fill({ color: 0xffcc00, alpha: (1 - p) * 0.8 })
       })
     } else if (action.id === 'zap') {
-      addVfx(110, (g, p) => {
-        g.clear()
+      if (zapTex && app) {
+        const sprite = new Sprite(zapTex)
+        sprite.anchor.set(0.5, 0.5)
         const dx = tx - ax, dy = ty - ay
         const len = Math.sqrt(dx * dx + dy * dy) || 1
-        const nx = -dy / len, ny = dx / len
-        const jitter = tr * 0.45 * (1 - p * 2)
-        const segs = 5
-        g.moveTo(ax, ay)
-        for (let i = 1; i < segs; i++) {
-          const s = i / segs
-          const side = (i % 2 === 0 ? 1 : -1) * jitter
-          g.lineTo(ax + dx * s + nx * side, ay + dy * s + ny * side)
-        }
-        g.lineTo(tx, ty)
-        g.stroke({ color: 0x66ddff, width: 2, alpha: 1 - p })
-      })
+        sprite.x = (ax + tx) / 2
+        sprite.y = (ay + ty) / 2
+        sprite.rotation = Math.atan2(dy, dx)
+        sprite.width = len
+        sprite.height = tr * 1.8
+        sprite.tint = 0x66ddff
+        app.stage.addChild(sprite)
+        vfxList.push({
+          g: sprite,
+          age: 0,
+          maxAge: 110,
+          tick: (p) => { sprite.alpha = 1 - p },
+        })
+      }
     }
   }
 
@@ -1212,6 +1252,22 @@ export function createGameScene(
       wrapper.className = 'game-canvas-wrapper'
       wrapper.appendChild(app.canvas)
       viewportEl.appendChild(wrapper)
+
+      // Load Tiny Dungeon tilesheet and slice out floor + wall textures.
+      // Packed sheet: 12 cols × 11 rows of 16×16 tiles, no spacing.
+      const sheet = await Assets.load<Texture>('/ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png')
+      sheet.source.scaleMode = 'nearest'
+      const TILE = 16
+      floorTex = new Texture({ source: sheet.source, frame: new Rectangle(0, 4 * TILE, TILE, TILE) })
+      wallTex  = new Texture({ source: sheet.source, frame: new Rectangle(0,         0, TILE, TILE) })
+      zapTex   = await iconTexture('chain-lightning', 128)
+
+      if (destroyed) return
+
+      floorContainer = new Container()
+      wallContainer  = new Container()
+      app.stage.addChild(floorContainer)
+      app.stage.addChild(wallContainer)
 
       worldGrid = new Graphics()
       app.stage.addChild(worldGrid)
