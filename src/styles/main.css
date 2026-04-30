@@ -257,7 +257,8 @@ body {
 }
 
 .stat-level--life .stat-level-fill,
-.stat-level--mana .stat-level-fill {
+.stat-level--mana .stat-level-fill,
+.stat-level--action .stat-level-fill {
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
@@ -468,18 +469,19 @@ body {
 }
 
 .action-icon-wrap {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.85);
+  color: #fff;
+  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCircle_blue.png') center / contain no-repeat;
 }
 
 .action-icon-wrap svg {
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   stroke-width: 1.75;
 }
 
