@@ -308,11 +308,11 @@ body {
   gap: 4px;
   flex-shrink: 0;
   position: relative;
-  border: 25px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 25 fill stretch;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
   border-radius: 0;
   background: transparent;
-  padding: 0 6px 2px;
+  padding: 0 4px;
 }
 
 .enemy-level-main {
