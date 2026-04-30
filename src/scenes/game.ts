@@ -632,8 +632,8 @@ export function createGameScene(
   let worldGrid: Graphics | null = null
   let floorContainer: Container | null = null
   let wallContainer: Container | null = null
-  let floorTex: Texture | null = null
-  let wallTex: Texture | null = null
+  let floorTextures: Texture[] = []
+  let wallTextures:  Texture[] = []
   let zapTex: Texture | null = null
   const floorSprites: Sprite[] = []
   const wallSprites: Sprite[] = []
@@ -723,24 +723,25 @@ export function createGameScene(
     const startY = Math.floor(top  / gs) * gs
     worldGrid.clear()
 
-    // Tilemap sprites — floor under every tile, wall over blocked ones.
+    // Tilemap sprites — floor under every tile, obstacle on top of blocked ones.
     const tStartX = Math.floor(left  / gs)
     const tStartY = Math.floor(top   / gs)
     const tEndX   = Math.ceil(right  / gs)
     const tEndY   = Math.ceil(bottom / gs)
     let floorIdx = 0
     let wallIdx = 0
-    if (floorContainer && wallContainer && floorTex && wallTex) {
+    if (floorContainer && wallContainer && floorTextures.length && wallTextures.length) {
       for (let ty = tStartY; ty <= tEndY; ty++) {
         for (let tx = tStartX; tx <= tEndX; tx++) {
           const fSprite = floorSprites[floorIdx] ?? (() => {
-            const s = new Sprite(floorTex!)
+            const s = new Sprite()
             s.width = gs
             s.height = gs
             floorContainer!.addChild(s)
             floorSprites.push(s)
             return s
           })()
+          fSprite.texture = pickTileTex(tx, ty, floorTextures)
           fSprite.x = tx * gs
           fSprite.y = ty * gs
           fSprite.visible = true
@@ -748,13 +749,14 @@ export function createGameScene(
 
           if (blockedTiles.has(`${tx},${ty}`)) {
             const wSprite = wallSprites[wallIdx] ?? (() => {
-              const s = new Sprite(wallTex!)
+              const s = new Sprite()
               s.width = gs
               s.height = gs
               wallContainer!.addChild(s)
               wallSprites.push(s)
               return s
             })()
+            wSprite.texture = pickTileTex(tx, ty, wallTextures)
             wSprite.x = tx * gs
             wSprite.y = ty * gs
             wSprite.visible = true
@@ -1253,15 +1255,28 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       viewportEl.appendChild(wrapper)
 
-      // Load Tiny Dungeon tilesheet and slice out floor + wall textures.
-      // Packed sheet: 12 cols × 11 rows of 16×16 tiles, no spacing.
+      // Load Tiny Dungeon tilesheet and slice tile variants.
+      // Packed sheet: 12 cols × 11 rows of 16×16 px tiles, no spacing.
+      // Tile (col, row) lives at pixel (col*16, row*16).
       const sheet = await Assets.load<Texture>(
         `${import.meta.env.BASE_URL}ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png`,
       )
       sheet.source.scaleMode = 'nearest'
       const TILE = 16
-      floorTex = new Texture({ source: sheet.source, frame: new Rectangle(0, 4 * TILE, TILE, TILE) })
-      wallTex  = new Texture({ source: sheet.source, frame: new Rectangle(0,         0, TILE, TILE) })
+      const tileTex = (col: number, row: number) =>
+        new Texture({ source: sheet.source, frame: new Rectangle(col * TILE, row * TILE, TILE, TILE) })
+      // Floor variants (orange dirt, verified from Kenney's own sampleMap.tmx):
+      //   plain at (0,0), (0,4)–(4,4); slightly decorated at (5,4).
+      floorTextures = [
+        tileTex(0, 0), tileTex(0, 4), tileTex(1, 4),
+        tileTex(2, 4), tileTex(3, 4), tileTex(4, 4),
+        tileTex(5, 4),  // decorated — lower weight via pickTileTex
+      ]
+      // Obstacle variants — decorative single-tile props (row 5 right half):
+      //   barrel, crate, skull pile, stone column.
+      wallTextures = [
+        tileTex(7, 5), tileTex(8, 5), tileTex(9, 5), tileTex(10, 5),
+      ]
       zapTex   = await iconTexture('chain-lightning', 128)
 
       if (destroyed) return
@@ -1738,6 +1753,29 @@ function gaussian(): number {
   const u = 1 - Math.random()
   const v = Math.random()
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
+}
+
+// One-shot deterministic hash for a tile coordinate, returns [0, 1).
+// Uses the same mulberry32 pattern as chunkRng but evaluates a single step.
+function tileHash(tx: number, ty: number): number {
+  const ux = tx >= 0 ? tx * 2 : -tx * 2 - 1
+  const uy = ty >= 0 ? ty * 2 : -ty * 2 - 1
+  let s = ((Math.imul(ux, 73856093) ^ Math.imul(uy, 19349663)) >>> 0) || 1
+  s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0
+  return s / 0x100000000
+}
+
+// Pick a texture variant for (tx, ty), weighting earlier entries higher.
+// Weight scheme: textures[0] gets N, textures[1] gets N-1, ..., textures[N-1] gets 1.
+function pickTileTex(tx: number, ty: number, textures: Texture[]): Texture {
+  const n = textures.length
+  const total = (n * (n + 1)) / 2
+  let r = Math.floor(tileHash(tx, ty) * total)
+  for (let i = 0; i < n; i++) {
+    r -= (n - i)
+    if (r < 0) return textures[i]
+  }
+  return textures[n - 1]
 }
 
 // Deterministic per-chunk PRNG (mulberry32 variant). Negative coords handled
