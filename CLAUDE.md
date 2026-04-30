@@ -46,6 +46,12 @@ npm run preview    # Serve dist/ locally
 
 ## Git workflow
 
+> **Before anything else — every single task, every session start — run:**
+> ```bash
+> git fetch origin main && git rebase origin/main
+> ```
+> No exceptions. Do this before reading files, before planning, before writing a single line.
+
 Every user request must follow these steps in order. No exceptions.
 
 1. **Rebase first — always**: run `git fetch origin main && git rebase origin/main` before writing a single line of code. Skipped commits are expected (squash-merged) — just continue. This must happen at the start of every task, not just at the start of a session.
