@@ -1682,7 +1682,7 @@ function chunkRng(cx: number, cy: number): () => number {
   }
 }
 
-const ASTAR_PAD = 15
+const ASTAR_PAD = 20
 
 function astar(
   fromTx: number, fromTy: number,
@@ -1698,23 +1698,14 @@ function astar(
   const h = maxY - minY + 1
   const grid = new PF.Grid(w, h)
 
-  // Inflate blocked tiles by 1 in all 8 directions so the entity's physics body
-  // (radius 20px) never hugs a wall edge and gets stuck on corners. With tile
-  // size 64px this gives ≥44px clearance between the entity centre and any wall.
   for (let ty = minY; ty <= maxY; ty++) {
     for (let tx = minX; tx <= maxX; tx++) {
-      if (!blocked.has(`${tx},${ty}`)) continue
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const nx = tx + dx - minX, ny = ty + dy - minY
-          if (nx >= 0 && ny >= 0 && nx < w && ny < h) grid.setWalkableAt(nx, ny, false)
-        }
-      }
+      if (blocked.has(`${tx},${ty}`)) grid.setWalkableAt(tx - minX, ty - minY, false)
     }
   }
 
-  // Force start and end walkable — entities and targets can legitimately be
-  // adjacent to a wall and would otherwise be locked out by the inflation.
+  // Force start/end walkable so entities that physics has pushed slightly
+  // adjacent to a wall can still initiate a path.
   const sx = fromTx - minX, sy = fromTy - minY
   const ex = toTx   - minX, ey = toTy   - minY
   grid.setWalkableAt(sx, sy, true)
