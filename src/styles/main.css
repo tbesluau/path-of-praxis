@@ -338,6 +338,23 @@ body::after {
   background-size: 9px 18px, 9px 18px, calc(100% - 16px) 18px;
 }
 
+/* ── Stat bar text labels ── */
+
+.stat-bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  letter-spacing: 0.03em;
+}
+
 /* ── Enemy level control (top-center) ── */
 
 .enemy-level-ctrl {

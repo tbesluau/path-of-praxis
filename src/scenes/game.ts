@@ -372,12 +372,14 @@ export function createGameScene(
       <div class="stat-bar-row">
         <div class="stat-bar stat-bar--life">
           <div class="stat-bar-fill stat-bar-fill--life"></div>
+          <span class="stat-bar-label stat-bar-label--life"></span>
         </div>
         <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
       </div>
       <div class="stat-bar-row">
         <div class="stat-bar stat-bar--mana">
           <div class="stat-bar-fill stat-bar-fill--mana"></div>
+          <span class="stat-bar-label stat-bar-label--mana"></span>
         </div>
         <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
       </div>
@@ -421,6 +423,8 @@ export function createGameScene(
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill        = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
+  const lifeLabel       = el.querySelector<HTMLElement>('.stat-bar-label--life')!
+  const manaLabel       = el.querySelector<HTMLElement>('.stat-bar-label--mana')!
   const lifeLevelEl     = el.querySelector<HTMLElement>('.stat-level--life')!
   const manaLevelEl     = el.querySelector<HTMLElement>('.stat-level--mana')!
   const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
@@ -523,6 +527,8 @@ export function createGameScene(
   function updateBars(): void {
     lifeFill.style.width = `${(playerEntity.currentLife / playerEntity.maxLife) * 100}%`
     manaFill.style.width = `${(playerEntity.currentMana / playerEntity.maxMana) * 100}%`
+    lifeLabel.textContent = `${Math.ceil(playerEntity.currentLife)} / ${playerEntity.maxLife}`
+    manaLabel.textContent = `${Math.ceil(playerEntity.currentMana)} / ${playerEntity.maxMana}`
   }
 
   updateBars()
@@ -680,7 +686,7 @@ export function createGameScene(
     const pct = Math.max(0, entity.currentLife / entity.maxLife)
     if (pct > 0) {
       bar.rect(-barW / 2, 0, barW * pct, HP_BAR_H)
-      bar.fill({ color: tokens.color.accentAlt })
+      bar.fill({ color: 0xdd2222 })
     }
   }
 
