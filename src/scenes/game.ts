@@ -634,6 +634,7 @@ export function createGameScene(
   let floorOptions:       { tex: Texture; w: number }[] = []
   let largeObstOptions:   { tex: Texture; w: number }[] = []
   let smallFillerOptions: { tex: Texture; w: number }[] = []
+  const entityTextures = new Map<string, Texture>()
   let zapTex: Texture | null = null
   const floorSprites: Sprite[] = []
   const wallSprites: Sprite[] = []
@@ -688,15 +689,17 @@ export function createGameScene(
   function initEntityDisplay(entity: Entity): void {
     if (!app || entityContainers.has(entity.id)) return
     const c = new Container()
-    const sprite = new Graphics()
-    if (entity.role === 'player') {
-      sprite.circle(0, 0, entity.radius)
-      sprite.fill({ color: tokens.color.primary })
-    } else {
-      sprite.rect(-entity.radius, -entity.radius, entity.radius * 2, entity.radius * 2)
-      sprite.fill({ color: tokens.color.accentAlt })
+    const texKey = entity.role === 'player' ? 'player' : (entityActions.get(entity.id) ?? 'sword')
+    const tex = entityTextures.get(texKey)
+    if (tex) {
+      const s = new Sprite(tex)
+      s.anchor.set(0.5)
+      s.roundPixels = true
+      const size = entity.radius * 2
+      s.width = size
+      s.height = size
+      c.addChild(s)
     }
-    c.addChild(sprite)
     if (entity.role !== 'player') {
       const bar = new Graphics()
       bar.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H))
@@ -1273,6 +1276,11 @@ export function createGameScene(
       largeObstOptions   = [ w(40, 100), w(28, 10), w(29, 1) ]
       smallFillerOptions = [ w(54, 1), w(55, 1), w(63, 1), w(64, 1), w(65, 1),
                              w(72, 1), w(74, 1), w(82, 1), w(89, 1) ]
+      entityTextures.set('player',   t(108))
+      entityTextures.set('sword',    t(97))
+      entityTextures.set('bow',      t(112))
+      entityTextures.set('fireball', t(84))
+      entityTextures.set('zap',      t(100))
       zapTex   = await iconTexture('chain-lightning', 128)
 
       if (destroyed) return
