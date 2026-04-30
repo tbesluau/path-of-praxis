@@ -38,6 +38,7 @@ export const balance = {
   wave: {
     spawnDelay:         2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
     clusterSpread:       1.0, // total angular span (radians) of each enemy cluster
+    directionStdDev:    Math.PI / 4, // gaussian σ (rad) of next wave's angle vs the previous one
     spawnMargin:         120, // px beyond screen edge enemies appear
     spawnDepthVariance:  160, // additional random px beyond spawnMargin
     nextWaveThreshold:     0, // spawn next wave when live enemy count reaches this
