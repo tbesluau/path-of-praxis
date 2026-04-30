@@ -745,32 +745,32 @@ export function createGameScene(
         for (let tx = tStartX; tx <= tEndX; tx++) {
           const fSprite = floorSprites[floorIdx] ?? (() => {
             const s = new Sprite()
-            s.width = gs
-            s.height = gs
             floorContainer!.addChild(s)
             floorSprites.push(s)
             return s
           })()
           fSprite.texture = pickWeighted(tx, ty, floorOptions)
-          fSprite.x = tx * gs
-          fSprite.y = ty * gs
+          fSprite.x = Math.round(tx * gs)
+          fSprite.y = Math.round(ty * gs)
+          fSprite.width = gs + 1
+          fSprite.height = gs + 1
           fSprite.visible = true
           floorIdx++
 
           if (blockedTiles.has(`${tx},${ty}`)) {
-            const isLarge = countBlockedNeighbors(tx, ty) >= 2
+            const isLarge = countBlockedNeighbors(tx, ty) >= 1
             const opts = isLarge ? largeObstOptions : smallFillerOptions
             const wSprite = wallSprites[wallIdx] ?? (() => {
               const s = new Sprite()
-              s.width = gs
-              s.height = gs
               wallContainer!.addChild(s)
               wallSprites.push(s)
               return s
             })()
             wSprite.texture = pickWeighted(tx, ty, opts)
-            wSprite.x = tx * gs
-            wSprite.y = ty * gs
+            wSprite.x = Math.round(tx * gs)
+            wSprite.y = Math.round(ty * gs)
+            wSprite.width = gs + 1
+            wSprite.height = gs + 1
             wSprite.visible = true
             wallIdx++
           }
