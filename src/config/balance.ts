@@ -36,16 +36,25 @@ export const balance = {
 
   // ── Enemy waves ─────────────────────────────────────────────────────────
   wave: {
-    spawnDelay:         2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
-    clusterSpread:       1.0, // total angular span (radians) of each enemy cluster
-    directionStdDev:    Math.PI / 4, // gaussian σ (rad) of next wave's angle vs the previous one
-    spawnMargin:         120, // px beyond screen edge enemies appear
-    spawnDepthVariance:  160, // additional random px beyond spawnMargin
-    nextWaveThreshold:     0, // spawn next wave when live enemy count reaches this
-    minCount:              1, // guaranteed enemies per wave
-    extraChanceBase:    0.20, // base probability of spawning one additional enemy
-    extraChancePerLevel:0.01, // added per enemy level (so level 1 = 20%, level 51 = 70%)
-    extraChanceCap:     0.70, // maximum spawn-chain probability
+    spawnDelay:        2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
+    clusterSpread:      1.0, // total angular span (radians) of each enemy cluster
+    directionStdDev:   Math.PI / 4, // gaussian σ (rad) of next wave's angle vs the previous one
+    spawnMargin:        120, // px beyond screen edge enemies appear
+    spawnDepthVariance: 160, // additional random px beyond spawnMargin
+    nextWaveThreshold:    0, // spawn next wave when live enemy count reaches this
+    // +1 extra enemy: 15% chance; +2 extra enemies: 5% chance (independent rolls)
+    extraOneChance:    0.15,
+    extraTwoChance:    0.05,
+  },
+
+  // ── Per-enemy stat variance ───────────────────────────────────────────────
+  enemyVariance: {
+    lifeMin:   0.8,  lifeMax:   1.2,  // normal life multiplier range
+    damageMin: 0.8,  damageMax: 1.2,  // normal damage multiplier range
+    strongChance:    0.10,             // probability of spawning as "strong"
+    strongLifeMin:   1.0,  strongLifeMax:   1.8,
+    strongDamageMin: 1.0,  strongDamageMax: 1.8,
+    strongSpeedMult: 1.2,
   },
 
   // ── Death animation ──────────────────────────────────────────────────────
