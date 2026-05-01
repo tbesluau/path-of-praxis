@@ -101,7 +101,7 @@ export function createGameScene(
     const def = getAction(id)
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
     entity.attackSpeed  = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
-    entity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1)
+    entity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
     entity.attackRange  = def.range * balance.player.radius
     entityActions.set(entity.id, id)
   }
@@ -124,7 +124,7 @@ export function createGameScene(
     if (actionId === playerActionId) {
       if (leveled) {
         const def = getAction(actionId)
-        playerEntity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1)
+        playerEntity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
         playerEntity.attackSpeed  = def.speed  * (1 + (level - 1) * balance.action.speedBonusPerLevel)
       }
       updateActionBar()
