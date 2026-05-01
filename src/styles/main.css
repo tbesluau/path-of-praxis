@@ -289,7 +289,7 @@ body::after {
   left: 0;
   height: 18px;
   width: var(--xp-pct, 0%);
-  min-width: 0;
+  min-width: 18px;
   z-index: 1;
   background-position: 0 center, 100% center, 9px center;
   background-repeat: no-repeat;
@@ -506,7 +506,7 @@ body::after {
   top: 0;
   left: 0;
   height: 18px;
-  min-width: 0;
+  min-width: 18px;
   z-index: 1;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
@@ -1326,8 +1326,10 @@ body::after {
 }
 
 .lang-option-flag {
-  font-size: 1.4rem;
-  line-height: 1;
+  width: 1.8em;
+  height: 1.35em;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 .lang-option-name {
@@ -1371,9 +1373,17 @@ body::after {
   stroke-width: 1.75;
 }
 
-.settings-flag {
-  font-size: 1.5rem;
-  line-height: 1;
+.discord-icon {
+  width: 24px;
+  height: 24px;
+  display: block;
+  filter: brightness(0) invert(1);
+}
+
+.settings-flag-icon {
+  width: 28px;
+  height: 21px;
+  font-size: 1rem;
 }
 
 /* ── Settings: damage-numbers toggle ── */

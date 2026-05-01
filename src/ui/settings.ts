@@ -1,15 +1,12 @@
-import { createIcons, Settings, BookOpen, MessageCircle } from 'lucide'
+import 'flag-icons/css/flag-icons.min.css'
+import { createIcons, Settings, BookOpen } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref } from '../core/prefs'
 
-const LOCALE_FLAGS: Record<Locale, string> = {
-  en: '\u{1F1EC}\u{1F1E7}',
-  fr: '\u{1F1EB}\u{1F1F7}',
-}
-
-function flagFor(locale: Locale): string {
-  return LOCALE_FLAGS[locale]
+const LOCALE_FLAG_CLASS: Record<Locale, string> = {
+  en: 'fi fi-gb',
+  fr: 'fi fi-fr',
 }
 
 export function mountSettingsButton(container: HTMLElement): () => void {
@@ -54,6 +51,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
   function render(): void {
     const locale = getLocale()
     const prefs = getPrefs()
+    const baseUrl = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL
     backdrop.innerHTML = `
       <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
@@ -62,11 +60,11 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
           <button class="settings-top-btn" data-action="guide" aria-label="${t('settings', 'guide')}">
             <i data-lucide="book-open" aria-hidden="true"></i>
           </button>
-          <button class="settings-top-btn" data-action="discord" aria-label="${t('settings', 'discord')}">
-            <i data-lucide="message-circle" aria-hidden="true"></i>
+          <button class="settings-top-btn settings-top-btn--discord" data-action="discord" aria-label="${t('settings', 'discord')}">
+            <img src="${baseUrl}ui/discord-mark.svg" alt="" aria-hidden="true" class="discord-icon">
           </button>
-          <button class="settings-top-btn settings-top-btn--flag" data-action="language" aria-label="${t('settings', 'languageTitle')}">
-            <span class="settings-flag" aria-hidden="true">${flagFor(locale)}</span>
+          <button class="settings-top-btn" data-action="language" aria-label="${t('settings', 'languageTitle')}">
+            <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${locale === 'en' ? t('settings', 'langEn') : t('settings', 'langFr')}"></span>
           </button>
         </div>
         <div class="modal-field">
@@ -78,7 +76,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
         </div>
       </div>
     `
-    createIcons({ icons: { BookOpen, MessageCircle } })
+    createIcons({ icons: { BookOpen } })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
       .addEventListener('click', () => { closeSub(); backdrop.remove(); onClose() })
@@ -89,16 +87,13 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
         subCleanup = mountGuideModal(parent, () => { subCleanup = null })
       })
 
-    // Discord button is intentionally not wired — placeholder for future link.
     backdrop.querySelector<HTMLButtonElement>('[data-action="discord"]')!
-      .addEventListener('click', () => { /* not wired */ })
+      .addEventListener('click', () => { /* not wired — placeholder for future link */ })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="language"]')!
       .addEventListener('click', () => {
         closeSub()
-        subCleanup = mountLanguageModal(parent, () => { subCleanup = null }, () => {
-          render()
-        })
+        subCleanup = mountLanguageModal(parent, () => { subCleanup = null }, () => { render() })
       })
 
     backdrop.querySelector<HTMLInputElement>('[data-pref="showDamageNumbers"]')!
@@ -107,8 +102,9 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
       })
   }
 
-  render()
+  // Append to DOM before render so createIcons can find elements in the document.
   parent.appendChild(backdrop)
+  render()
 
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) { closeSub(); backdrop.remove(); onClose() }
@@ -134,7 +130,7 @@ function mountLanguageModal(
       <div class="lang-options">
         ${langs.map(l => `
           <button class="lang-option${l === locale ? ' lang-option--active' : ''}" data-locale="${l}">
-            <span class="lang-option-flag" aria-hidden="true">${flagFor(l)}</span>
+            <span class="${LOCALE_FLAG_CLASS[l]} lang-option-flag" role="img" aria-label="${l === 'en' ? 'English' : 'Français'}"></span>
             <span class="lang-option-name">${t('settings', l === 'en' ? 'langEn' : 'langFr')}</span>
           </button>
         `).join('')}
