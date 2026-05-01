@@ -1010,7 +1010,7 @@ export function createGameScene(
           <div class="mastery-row">
             <div class="mastery-bar">
               ${oldPct > 0 ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>` : ''}
-              <div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>
+              ${gainPct > 0 ? `<div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>` : ''}
             </div>
             <span class="mastery-label">${escapeHtml(m.label)}</span>
             <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${level}</span>
