@@ -257,11 +257,23 @@ function mountMasteryTreeModal(
   panel.innerHTML = `
     <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
     <h2 class="modal-title" id="tree-modal-title">${def.label}</h2>
+    <p class="mastery-tree-points"></p>
     <div class="mastery-trees-list"></div>
   `
   backdrop.appendChild(panel)
 
+  const pointsEl = panel.querySelector<HTMLElement>('.mastery-tree-points')!
   const list = panel.querySelector<HTMLElement>('.mastery-trees-list')!
+
+  function updatePointsSummary(): void {
+    const freshP = prog(masteryProgress, def.id)
+    const available = masteryPointsAvailable(freshP)
+    const earned = Math.max(0, freshP.level - 1)
+    pointsEl.textContent = `You have ${available} / ${earned} mastery point${earned !== 1 ? 's' : ''} to assign`
+  }
+
+  updatePointsSummary()
+
   def.trees.forEach((treeDef, treeIdx) => {
     const entry = document.createElement('div')
     entry.className = 'mastery-tree-entry'
@@ -291,7 +303,6 @@ function mountMasteryTreeModal(
       () => {
         onAssign(detail.treeIdx, detail.nodeIdx)
         subCleanup = null
-        // Rebuild tree rows to reflect new assignment
         rebuildTrees()
       },
       () => { subCleanup = null },
@@ -311,6 +322,7 @@ function mountMasteryTreeModal(
       entry.appendChild(buildTreeNodes(def, treeDef, freshP, treeIdx))
       list.appendChild(entry)
     })
+    updatePointsSummary()
   }
 
   const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
@@ -335,10 +347,10 @@ export function mountMasteryModal(
       const pts = masteryPointsAvailable(p)
       return `
         <div class="mastery-row">
-          <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
           <button class="mastery-name-btn" data-mastery="${m.id}">
             ${m.label}${pts > 0 ? '<span class="notif-dot"></span>' : ''}
           </button>
+          <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
           <span class="mastery-level">Lv.${p.level}</span>
         </div>`
     }).join('')

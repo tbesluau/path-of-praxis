@@ -130,7 +130,9 @@ body::after {
 .lang-option,
 .settings-btn,
 .back-btn,
-.char-slot--selectable {
+.char-slot--selectable,
+.mastery-name-btn,
+.modal-close-btn {
   will-change: transform;
 }
 
@@ -901,37 +903,36 @@ body::after {
 
 .modal-close-btn {
   position: absolute;
-  top: -16px;
-  right: -16px;
-  width: 32px;
-  height: 32px;
+  top: -22px;
+  right: -22px;
+  width: 44px;
+  height: 44px;
   background: transparent;
-  border: none;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') 14 fill stretch;
+  border-radius: 0;
   cursor: pointer;
   padding: 0;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: filter var(--transition-fast);
-}
-
-.modal-close-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCircle_grey.png') center / contain no-repeat;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
 }
 
 .modal-close-btn::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCross_blue.png') center / contain no-repeat;
+  content: '×';
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .modal-close-btn:hover {
-  filter: brightness(1.15);
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
+  filter: brightness(1.1);
 }
 
 .modal-title {
@@ -1565,6 +1566,8 @@ body::after {
 
 .mastery-panel {
   width: min(400px, 94vw);
+  max-height: 85dvh;
+  overflow-y: auto;
 }
 
 .mastery-categories {
@@ -1734,21 +1737,27 @@ body::after {
 .mastery-name-btn {
   position: relative;
   background: transparent;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: inherit;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  border-radius: 0;
+  padding: 0 var(--space-sm);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
   cursor: pointer;
-  text-decoration: underline dotted rgba(26, 10, 2, 0.4);
-  text-underline-offset: 2px;
-  min-width: 5rem;
-  text-align: left;
-  font-size: 0.78rem;
-  font-weight: 500;
+  min-width: 7rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  transition: transform var(--transition-fast);
 }
 
 .mastery-name-btn:hover {
-  text-decoration-color: #1a0a02;
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+  transform: translateY(2px);
 }
 
 /* ── Notification dot ── */
@@ -1773,6 +1782,7 @@ body::after {
   width: min(860px, 96vw);
   max-height: 90dvh;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .mastery-trees-list {
@@ -1793,6 +1803,14 @@ body::after {
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: #3a2008;
+}
+
+.mastery-tree-points {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #3a2008;
+  text-align: center;
+  margin-top: calc(-1 * var(--space-xs));
 }
 
 .mastery-tree-nodes {
