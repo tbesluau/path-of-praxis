@@ -3,6 +3,7 @@ import { createIcons, Settings, BookOpen } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref } from '../core/prefs'
+import guideContent from '../config/guide.md?raw'
 
 const LOCALE_FLAG_CLASS: Record<Locale, string> = {
   en: 'fi fi-gb',
@@ -165,20 +166,100 @@ function mountLanguageModal(
   return () => backdrop.remove()
 }
 
+// ── Guide helpers ─────────────────────────────────────────────────────────
+
+function parseGuideSections(md: string): { title: string; body: string }[] {
+  const sections: { title: string; body: string }[] = []
+  let currentTitle = ''
+  let bodyLines: string[] = []
+  for (const line of md.split('\n')) {
+    if (line.startsWith('## ')) {
+      if (currentTitle) sections.push({ title: currentTitle, body: bodyLines.join('\n').trim() })
+      currentTitle = line.slice(3).trim()
+      bodyLines = []
+    } else if (currentTitle) {
+      bodyLines.push(line)
+    }
+  }
+  if (currentTitle) sections.push({ title: currentTitle, body: bodyLines.join('\n').trim() })
+  return sections
+}
+
+function renderGuideBody(md: string): string {
+  return md
+    .split(/\n\n+/)
+    .map(block => {
+      const trimmed = block.trim()
+      if (!trimmed) return ''
+      const lines = trimmed.split('\n')
+      if (lines.every(l => l.startsWith('- '))) {
+        const items = lines.map(l => `<li>${inline(l.slice(2))}</li>`).join('')
+        return `<ul>${items}</ul>`
+      }
+      return `<p>${inline(trimmed.replace(/\n/g, ' '))}</p>`
+    })
+    .filter(Boolean)
+    .join('')
+}
+
+function inline(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+}
+
+// ── Guide modal ────────────────────────────────────────────────────────────
+
 function mountGuideModal(parent: HTMLElement, onClose: () => void): () => void {
+  const baseUrl = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL
+  const arrowSrc = `${baseUrl}ui/kenney_ui-pack-rpg-expansion/PNG/arrowBlue_right.png`
+  const sections = parseGuideSections(guideContent)
+
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop settings-submodal-backdrop'
-  backdrop.innerHTML = `
-    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="guide-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <h2 class="modal-title" id="guide-title">${t('guide', 'title')}</h2>
-      <p class="guide-empty">${t('guide', 'comingSoon')}</p>
-    </div>
+
+  const panel = document.createElement('div')
+  panel.className = 'modal-panel guide-panel'
+  panel.setAttribute('role', 'dialog')
+  panel.setAttribute('aria-modal', 'true')
+  panel.setAttribute('aria-labelledby', 'guide-title')
+  panel.innerHTML = `
+    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+    <h2 class="modal-title" id="guide-title">${t('guide', 'title')}</h2>
+    <div class="guide-sections"></div>
   `
 
+  const sectionsEl = panel.querySelector<HTMLElement>('.guide-sections')!
+  sections.forEach(({ title, body }) => {
+    const section = document.createElement('div')
+    section.className = 'guide-section'
+
+    const btn = document.createElement('button')
+    btn.className = 'guide-section-btn'
+    btn.setAttribute('aria-expanded', 'false')
+    btn.innerHTML = `
+      <span class="guide-section-title">${title}</span>
+      <img class="guide-section-arrow" src="${arrowSrc}" alt="" aria-hidden="true">
+    `
+
+    const bodyEl = document.createElement('div')
+    bodyEl.className = 'guide-section-body'
+    bodyEl.hidden = true
+    bodyEl.innerHTML = renderGuideBody(body)
+
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-expanded') === 'true'
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true')
+      bodyEl.hidden = open
+    })
+
+    section.append(btn, bodyEl)
+    sectionsEl.appendChild(section)
+  })
+
+  backdrop.appendChild(panel)
   parent.appendChild(backdrop)
 
-  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+  panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', () => { backdrop.remove(); onClose() })
 
   backdrop.addEventListener('click', (e) => {
