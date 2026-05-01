@@ -648,6 +648,7 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
+  const strongEntities = new Set<string>()
   const deathFragments: DeathFragment[] = []
   const vfxList: Vfx[] = []
 
@@ -710,6 +711,13 @@ export function createGameScene(
       c.addChild(bar)
       lifeBarGraphics.set(entity.id, bar)
       drawLifeBar(entity)
+      if (strongEntities.has(entity.id)) {
+        const diamond = new Graphics()
+        diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
+        diamond.fill({ color: 0x4499ff })
+        diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
+        c.addChild(diamond)
+      }
     }
     c.position.set(entity.x, entity.y)
     app.stage.addChild(c)
@@ -841,6 +849,7 @@ export function createGameScene(
     }
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
+    strongEntities.delete(entity.id)
     entityActions.delete(entity.id)
     entityPaths.delete(entity.id)
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
@@ -1119,12 +1128,10 @@ export function createGameScene(
     waveScheduled = false
     enemySpawnTimeout = null
 
-    let count = balance.wave.minCount
-    const extraChance = Math.min(
-      balance.wave.extraChanceCap,
-      balance.wave.extraChanceBase + (enemyProgress.level - 1) * balance.wave.extraChancePerLevel,
-    )
-    while (Math.random() < extraChance) count++
+    // Guaranteed: 1 at level 1, +1 every 5 levels (level 5→2, level 10→3, …)
+    let count = 1 + Math.floor(enemyProgress.level / 5)
+    if (Math.random() < balance.wave.extraOneChance) count++
+    if (Math.random() < balance.wave.extraTwoChance) count += 2
 
     const halfW = app.screen.width / 2
     const halfH = (app.screen.height - HUD_HEIGHT) / 2
@@ -1132,6 +1139,8 @@ export function createGameScene(
       ? Math.random() * Math.PI * 2
       : lastWaveAngle + gaussian() * balance.wave.directionStdDev
     lastWaveAngle = clusterAngle
+
+    const ev = balance.enemyVariance
     for (let i = 0; i < count; i++) {
       const angle = clusterAngle + (Math.random() - 0.5) * balance.wave.clusterSpread
       const cosA = Math.abs(Math.cos(angle))
@@ -1150,16 +1159,27 @@ export function createGameScene(
       if (isTileBlocked(spawnX, spawnY)) continue
 
       const scale = enemyScale()
+      const isStrong = Math.random() < ev.strongChance
+      const lifeMult = isStrong
+        ? ev.strongLifeMin  + Math.random() * (ev.strongLifeMax  - ev.strongLifeMin)
+        : ev.lifeMin        + Math.random() * (ev.lifeMax        - ev.lifeMin)
+      const dmgMult = isStrong
+        ? ev.strongDamageMin + Math.random() * (ev.strongDamageMax - ev.strongDamageMin)
+        : ev.damageMin       + Math.random() * (ev.damageMax       - ev.damageMin)
+
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
-        spawnX,
-        spawnY,
+        spawnX, spawnY,
         'enemyA',
         balance.enemyA.radius,
-        { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * scale) },
+        { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * scale * lifeMult) },
       )
       assignAction(enemy, randomAction().id)
-      enemy.attackDamage *= scale * balance.enemyA.damageMultiplier
+      enemy.attackDamage *= scale * balance.enemyA.damageMultiplier * dmgMult
+      if (isStrong) {
+        enemy.attackSpeed *= ev.strongSpeedMult
+        strongEntities.add(enemy.id)
+      }
       entities.push(enemy)
       createEntityBody(enemy)
       initEntityDisplay(enemy)
