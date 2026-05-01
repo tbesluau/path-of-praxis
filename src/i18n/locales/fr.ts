@@ -35,8 +35,16 @@ export const fr: TranslationSchema = {
   settings: {
     title: 'Paramètres',
     language: 'Langue',
+    languageTitle: 'Langue',
     langEn: 'Anglais',
     langFr: 'Français',
     close: 'Fermer',
+    guide: 'Guide',
+    discord: 'Discord',
+    showDamageNumbers: 'Afficher les dégâts',
+  },
+  guide: {
+    title: 'Guide',
+    comingSoon: 'Bientôt disponible…',
   },
 }

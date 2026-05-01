@@ -1311,6 +1311,140 @@ body::after {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
 }
 
+.lang-options {
+  flex-direction: column;
+}
+
+.lang-option {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-md);
+  padding: 0 var(--space-md);
+  text-align: left;
+}
+
+.lang-option-flag {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.lang-option-name {
+  font-size: 1rem;
+}
+
+/* ── Settings modal: top buttons row (guide / discord / flag) ── */
+
+.settings-top-buttons {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.settings-top-btn {
+  width: 56px;
+  height: 56px;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') 14 fill stretch;
+  border-radius: 0;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-fast);
+  will-change: transform;
+}
+
+.settings-top-btn:hover,
+.settings-top-btn:focus-visible {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
+  outline: none;
+}
+
+.settings-top-btn svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.75;
+}
+
+.settings-flag {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+/* ── Settings: damage-numbers toggle ── */
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.settings-toggle-row .modal-label {
+  flex: 1;
+}
+
+.settings-toggle-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settings-toggle-track {
+  position: relative;
+  width: 42px;
+  height: 22px;
+  border-radius: 11px;
+  background: #4a2810;
+  border: 2px solid #3a1f0a;
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.settings-toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #d8c0a0;
+  transition: transform var(--transition-fast);
+}
+
+.settings-toggle-input:checked + .settings-toggle-track {
+  background: #3a7a3a;
+}
+
+.settings-toggle-input:checked + .settings-toggle-track::after {
+  transform: translateX(20px);
+}
+
+.settings-toggle-input:focus-visible + .settings-toggle-track {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* ── Settings: sub-modal (language / guide) layered above main modal ── */
+
+.settings-submodal-backdrop {
+  z-index: 50;
+}
+
+.guide-empty {
+  font-style: italic;
+  color: #5a3010;
+  text-align: center;
+  padding: var(--space-md) 0;
+}
+
 /* ── Back button (game scene, top-left) ── */
 
 .back-btn {
