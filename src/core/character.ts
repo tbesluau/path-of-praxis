@@ -9,6 +9,17 @@ export type TargetingMode = 'nearest' | 'weakest' | 'strongest' | 'random'
 export interface MasteryProgress {
   xp: number
   level: number
+  nodes: number[][]  // [treeIdx 0-4][...assigned nodeIdx 0-15]
+}
+
+export function masteryPointsAvailable(prog: MasteryProgress): number {
+  const earned = Math.max(0, prog.level - 1)
+  const spent = prog.nodes.reduce((s, t) => s + t.length, 0)
+  return earned - spent
+}
+
+export function defaultMasteryNodes(): number[][] {
+  return [[], [], [], [], []]
 }
 
 export interface StatProgress {
@@ -70,7 +81,12 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     manaProgress: c.manaProgress ?? { xp: 0, level: 1 },
     enemyProgress: c.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
     targetingMode: c.targetingMode ?? 'nearest',
-    masteryProgress: c.masteryProgress ?? {},
+    masteryProgress: Object.fromEntries(
+      Object.entries(c.masteryProgress ?? {}).map(([k, v]) => [
+        k,
+        { xp: v.xp, level: v.level, nodes: v.nodes ?? defaultMasteryNodes() },
+      ]),
+    ) as Partial<Record<MasteryId, MasteryProgress>>,
   }
 }
 

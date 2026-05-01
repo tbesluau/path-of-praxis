@@ -4,8 +4,9 @@ import * as PF from 'pathfinding'
 import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
+import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -402,8 +403,9 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
           <i data-lucide="settings-2" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries" style="position:relative">
           <i data-lucide="award" aria-hidden="true"></i>
+          <span class="notif-dot mastery-notif-dot" hidden></span>
         </button>
         <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
           <i data-lucide="menu" aria-hidden="true"></i>
@@ -682,7 +684,12 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="open-mastery"]')!
     .addEventListener('click', () => {
       if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
-      modalCleanup = mountMasteryModal(el, masteryProgress, () => { modalCleanup = null })
+      modalCleanup = mountMasteryModal(
+        el,
+        masteryProgress,
+        () => { modalCleanup = null },
+        (id, treeIdx, nodeIdx) => { assignMasteryNode(id, treeIdx, nodeIdx) },
+      )
     })
 
   function drawLifeBar(entity: Entity): void {
@@ -993,7 +1000,7 @@ export function createGameScene(
       const rowsHtml = cat.masteries.map(m => {
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
-        const prog = masteryProgress[m.id] ?? { xp: 0, level: 1 }
+        const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
         const fromLv = prog.level
         let xp = prog.xp
         let level = prog.level
@@ -1075,15 +1082,37 @@ export function createGameScene(
 
   function applyMasteryGains(gains: Array<{ id: MasteryId; xpGain: number }>): void {
     for (const { id, xpGain } of gains) {
-      const prog = masteryProgress[id] ?? { xp: 0, level: 1 }
-      let { xp, level } = prog
+      const existing = masteryProgress[id]
+      const nodes = existing?.nodes ?? defaultMasteryNodes()
+      let { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
       xp += xpGain
       while (xp >= masteryXpNeeded(level)) {
         xp -= masteryXpNeeded(level)
         level++
       }
-      masteryProgress[id] = { xp, level }
+      masteryProgress[id] = { xp, level, nodes }
     }
+    refreshMasteryDot()
+  }
+
+  function refreshMasteryDot(): void {
+    const dot = el.querySelector<HTMLElement>('.mastery-notif-dot')
+    if (!dot) return
+    const hasUnspent = allMasteries.some(m => {
+      const p = masteryProgress[m.id]
+      return p ? masteryPointsAvailable(p) > 0 : false
+    })
+    dot.hidden = !hasUnspent
+  }
+
+  function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {
+    const existing = masteryProgress[id]
+    if (!existing) return
+    const nodes = existing.nodes.map(t => [...t])
+    if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
+    masteryProgress[id] = { ...existing, nodes }
+    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
+    refreshMasteryDot()
   }
 
   // ── Targeting ────────────────────────────────────────────────────────────
@@ -1896,45 +1925,6 @@ function mountBattleConfigModal(
 
   parent.appendChild(backdrop)
   createIcons({ icons: { Timer, Sword, Crosshair, Flame, Zap, TrendingDown, TrendingUp, Shuffle } })
-  return () => backdrop.remove()
-}
-
-function mountMasteryModal(
-  parent: HTMLElement,
-  masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
-  onClose: () => void,
-): () => void {
-  const categoriesHtml = masteryCategories.map(cat => {
-    const rows = cat.masteries.map(m => {
-      const prog = masteryProgress[m.id] ?? { xp: 0, level: 1 }
-      const xpPct = Math.round((prog.xp / masteryXpNeeded(prog.level)) * 100)
-      return `
-        <div class="mastery-row">
-          <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
-          <span class="mastery-label">${escapeHtml(m.label)}</span>
-          <span class="mastery-level">Lv.${prog.level}</span>
-        </div>`
-    }).join('')
-    return `
-      <div class="mastery-category">
-        <div class="mastery-category-label">${escapeHtml(cat.label)}</div>
-        ${rows}
-      </div>`
-  }).join('')
-
-  const backdrop = document.createElement('div')
-  backdrop.className = 'modal-backdrop'
-  backdrop.innerHTML = `
-    <div class="modal-panel mastery-panel" role="dialog" aria-modal="true" aria-labelledby="mastery-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <h2 class="modal-title" id="mastery-title">Masteries</h2>
-      <div class="mastery-categories">${categoriesHtml}</div>
-    </div>
-  `
-  parent.appendChild(backdrop)
-  const dismiss = () => { backdrop.remove(); onClose() }
-  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
   return () => backdrop.remove()
 }
 
