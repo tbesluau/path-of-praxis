@@ -1380,13 +1380,13 @@ export function createGameScene(
     }
   }
 
-  function spawnDamageNumber(wx: number, wy: number, damage: number): void {
+  function spawnDamageNumber(wx: number, wy: number, damage: number, color: number): void {
     if (!app) return
     const text = new Text({
       text: String(Math.round(damage * 10) / 10),
       style: {
-        fill: 0xff3333,
-        fontSize: 13,
+        fill: color,
+        fontSize: 16,
         fontWeight: 'bold',
         dropShadow: { color: 0x000000, blur: 3, angle: Math.PI / 2, distance: 1 },
       },
@@ -1395,16 +1395,15 @@ export function createGameScene(
     text.x = wx
     text.y = wy
     app.stage.addChild(text)
-    // 500ms static, then 1000ms drift-up + fade (total 1500ms)
+    // Drift up + fade over 2000ms, no static phase.
     const originY = wy
     vfxList.push({
       g: text,
       age: 0,
-      maxAge: 1500,
+      maxAge: 2000,
       tick: (p) => {
-        const drift = Math.max(0, (p - 1 / 3) / (2 / 3))  // 0→1 over the final 1000ms
-        text.y = originY - drift * 32
-        text.alpha = drift === 0 ? 1 : 1 - drift
+        text.y = originY - p * 40
+        text.alpha = 1 - p
       },
     })
   }
@@ -1612,9 +1611,12 @@ export function createGameScene(
           if (entity.role === 'player' && actualDamage > 0) {
             awardXp(actionId, actualDamage)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
-            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage)
+            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
           }
-          if (target.role === 'player' && actualDamage > 0) awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage)
+          if (target.role === 'player' && actualDamage > 0) {
+            awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage)
+            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
+          }
           attackCooldowns.set(entity.id, 1000 / action.speed)
           damagedIds.add(target.id)
           spawnVfx(entity, target, action)
