@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
 import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
@@ -1380,6 +1380,35 @@ export function createGameScene(
     }
   }
 
+  function spawnDamageNumber(wx: number, wy: number, damage: number): void {
+    if (!app) return
+    const text = new Text({
+      text: String(Math.round(damage * 10) / 10),
+      style: {
+        fill: 0xff3333,
+        fontSize: 13,
+        fontWeight: 'bold',
+        dropShadow: { color: 0x000000, blur: 3, angle: Math.PI / 2, distance: 1 },
+      },
+    })
+    text.anchor.set(0.5)
+    text.x = wx
+    text.y = wy
+    app.stage.addChild(text)
+    // 500ms static, then 1000ms drift-up + fade (total 1500ms)
+    const originY = wy
+    vfxList.push({
+      g: text,
+      age: 0,
+      maxAge: 1500,
+      tick: (p) => {
+        const drift = Math.max(0, (p - 1 / 3) / (2 / 3))  // 0→1 over the final 1000ms
+        text.y = originY - drift * 32
+        text.alpha = drift === 0 ? 1 : 1 - drift
+      },
+    })
+  }
+
   // Generate initial chunks around the player before the first wave spawns
   updateChunks()
 
@@ -1583,6 +1612,7 @@ export function createGameScene(
           if (entity.role === 'player' && actualDamage > 0) {
             awardXp(actionId, actualDamage)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
+            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage)
           }
           if (target.role === 'player' && actualDamage > 0) awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage)
           attackCooldowns.set(entity.id, 1000 / action.speed)
