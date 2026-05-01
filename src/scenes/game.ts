@@ -11,6 +11,8 @@ import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
+import { mountSettingsButton } from '../ui/settings'
+import { getPrefs } from '../core/prefs'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -424,6 +426,8 @@ export function createGameScene(
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
   createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword } })
+
+  const unmountSettings = mountSettingsButton(el)
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill        = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
@@ -1382,6 +1386,7 @@ export function createGameScene(
 
   function spawnDamageNumber(wx: number, wy: number, damage: number, color: number): void {
     if (!app) return
+    if (!getPrefs().showDamageNumbers) return
     const text = new Text({
       text: String(Math.round(damage * 10) / 10),
       style: {
@@ -1650,6 +1655,7 @@ export function createGameScene(
     clearInterval(saveInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    unmountSettings()
     for (const f of deathFragments) f.g.destroy()
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()

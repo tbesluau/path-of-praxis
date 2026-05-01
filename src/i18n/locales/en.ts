@@ -33,9 +33,17 @@ export interface TranslationSchema {
   settings: {
     title: string
     language: string
+    languageTitle: string
     langEn: string
     langFr: string
     close: string
+    guide: string
+    discord: string
+    showDamageNumbers: string
+  }
+  guide: {
+    title: string
+    comingSoon: string
   }
 }
 
@@ -74,8 +82,16 @@ export const en: TranslationSchema = {
   settings: {
     title: 'Settings',
     language: 'Language',
+    languageTitle: 'Language',
     langEn: 'English',
     langFr: 'French',
     close: 'Close',
+    guide: 'Guide',
+    discord: 'Discord',
+    showDamageNumbers: 'Show damage numbers',
+  },
+  guide: {
+    title: 'Guide',
+    comingSoon: 'Coming soon…',
   },
 }
