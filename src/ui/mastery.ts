@@ -96,6 +96,20 @@ function mountNodeDetailModal(
 
 // ── Tree Row Builder ───────────────────────────────────────────────────────
 
+// Half-width (and half-height) of a node by index — used to extend bars
+// center-to-center so the bar's ends sit hidden under the adjacent nodes.
+function nodeHalfSize(nodeIdx: number): number {
+  switch (nodeType(nodeIdx)) {
+    case 'small':  return 12  // 24/2
+    case 'strong': return 22  // 44/2
+    case 'major':  return 36  // 72/2
+    case 'key':    return 22  // 44/2
+  }
+}
+
+const H_BAR_GAP = 20  // distance between adjacent node edges
+const V_BAR_GAP = 16  // distance between major and key edges
+
 // Returns whether the h-bar to the right of lineIdx should be filled.
 // A bar is filled when the node to its left is assigned.
 function hBarFilled(p: MasteryProgress, treeIdx: number, leftLineIdx: number): boolean {
@@ -134,8 +148,14 @@ function buildTreeNodes(
       keyA.setAttribute('tabindex', '0')
       keyA.textContent = '+'
 
+      const keyHalf = nodeHalfSize(keyAIdx)
+      const majorHalf = nodeHalfSize(lineIdx)
+
       const vBarA = document.createElement('div')
       vBarA.className = `tree-bar--v${majorAssigned ? ' tree-bar--filled' : ''}`
+      vBarA.style.height = `${keyHalf + V_BAR_GAP + majorHalf}px`
+      vBarA.style.marginTop = `-${keyHalf}px`
+      vBarA.style.marginBottom = `-${majorHalf}px`
 
       const majorNode = document.createElement('div')
       majorNode.className = `tree-node tree-node--major${majorAssigned ? ' tree-node--assigned' : ''}`
@@ -147,6 +167,9 @@ function buildTreeNodes(
 
       const vBarB = document.createElement('div')
       vBarB.className = `tree-bar--v${majorAssigned ? ' tree-bar--filled' : ''}`
+      vBarB.style.height = `${majorHalf + V_BAR_GAP + keyHalf}px`
+      vBarB.style.marginTop = `-${majorHalf}px`
+      vBarB.style.marginBottom = `-${keyHalf}px`
 
       const keyB = document.createElement('div')
       keyB.className = `tree-node tree-node--key${keyBAssigned ? ' tree-node--assigned' : ''}`
@@ -169,10 +192,18 @@ function buildTreeNodes(
       container.appendChild(node)
     }
 
-    // Add h-bar between this node and the next (not after the last)
+    // Add h-bar between this node and the next (not after the last).
+    // Bar extends center-to-center: layout width is H_BAR_GAP, but the bar
+    // visually grows past it (overlapping into adjacent nodes) via negative
+    // margins; nodes' z-index covers the overlap.
     if (lineIdx < 11) {
+      const leftHalf = nodeHalfSize(lineIdx)
+      const rightHalf = nodeHalfSize(lineIdx + 1)
       const bar = document.createElement('div')
       bar.className = `tree-bar--h${hBarFilled(p, treeIdx, lineIdx) ? ' tree-bar--filled' : ''}`
+      bar.style.width = `${leftHalf + H_BAR_GAP + rightHalf}px`
+      bar.style.marginLeft = `-${leftHalf}px`
+      bar.style.marginRight = `-${rightHalf}px`
       container.appendChild(bar)
     }
   }

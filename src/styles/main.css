@@ -1809,7 +1809,7 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCircle_blue.png') center / contain no-repeat;
+  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') center / 100% 100% no-repeat;
   background-color: transparent;
   border: none;
   padding: 0;
@@ -1829,7 +1829,7 @@ body::after {
 }
 
 .tree-node--assigned {
-  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCircle_grey.png');
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_grey.png');
   color: #1a0a02;
 }
 
@@ -1851,22 +1851,14 @@ body::after {
 
 .tree-bar--h {
   flex-shrink: 0;
-  width: 20px;
   height: 14px;
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
-  background-size: 7px 100%, 7px 100%, auto 100%;
-  background-position: left, right, center;
-  background-repeat: no-repeat, no-repeat, repeat-x;
+  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png') center / auto 100% repeat-x;
+  position: relative;
+  z-index: 0;
 }
 
 .tree-bar--h.tree-bar--filled {
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
 }
 
 /* ── Vertical connector bar between major and key nodes ── */
@@ -1874,21 +1866,13 @@ body::after {
 .tree-bar--v {
   flex-shrink: 0;
   width: 14px;
-  height: 16px;
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_verticalTop.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_verticalBottom.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_verticalMid.png');
-  background-size: 100% 7px, 100% 7px, 100% auto;
-  background-position: top, bottom, center;
-  background-repeat: no-repeat, no-repeat, repeat-y;
+  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_verticalMid.png') center / 100% auto repeat-y;
+  position: relative;
+  z-index: 0;
 }
 
 .tree-bar--v.tree-bar--filled {
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_verticalTop.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_verticalBottom.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_verticalMid.png');
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_verticalMid.png');
 }
 
 /* ── Node detail sub-modal ── */
