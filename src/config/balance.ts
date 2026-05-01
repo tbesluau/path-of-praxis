@@ -79,8 +79,10 @@ export const balance = {
 
   // ── Action XP ────────────────────────────────────────────────────────────
   action: {
-    xpPerLevel: 100,  // XP required for level 1 → 2
-    xpGrowth:   1.5,  // each subsequent level costs xpGrowth× the previous
+    xpPerLevel:          100,  // XP required for level 1 → 2
+    xpGrowth:            1.5,  // each subsequent level costs xpGrowth× the previous
+    damageMult:          1.1,  // multiplicative damage bonus per level (1.1^(level-1))
+    speedBonusPerLevel:  0.01, // additive attack-speed bonus per level above 1
   },
 
   // ── Stat XP (life / mana leveling) ──────────────────────────────────────
