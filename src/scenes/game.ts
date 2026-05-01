@@ -1047,8 +1047,10 @@ export function createGameScene(
     backdrop.innerHTML = `
       <div class="modal-panel death-modal-panel" role="dialog" aria-modal="true" aria-labelledby="death-title">
         <h2 class="modal-title" id="death-title">${t('game', 'deathTitle')}</h2>
-        ${summaryHtml}
-        ${masterySummaryHtml}
+        <div class="death-modal-scroll">
+          ${summaryHtml}
+          ${masterySummaryHtml}
+        </div>
         <div class="modal-actions">
           <button class="modal-btn modal-btn--primary" data-action="rebirth">${t('game', 'deathRebirth')}</button>
         </div>

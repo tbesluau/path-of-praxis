@@ -903,8 +903,8 @@ body::after {
 
 .modal-close-btn {
   position: absolute;
-  top: -22px;
-  right: -22px;
+  top: -47px;
+  right: -47px;
   width: 44px;
   height: 44px;
   background: transparent;
@@ -913,7 +913,7 @@ body::after {
   border-radius: 0;
   cursor: pointer;
   padding: 0;
-  z-index: 10;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1567,13 +1567,15 @@ body::after {
 .mastery-panel {
   width: min(400px, 94vw);
   max-height: 85dvh;
-  overflow-y: auto;
 }
 
 .mastery-categories {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .mastery-category {
@@ -1703,7 +1705,15 @@ body::after {
 .death-modal-panel {
   width: min(440px, 94vw);
   max-height: 85dvh;
+}
+
+.death-modal-scroll {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .death-mastery-summary {
@@ -1781,14 +1791,16 @@ body::after {
 .mastery-tree-panel {
   width: min(860px, 96vw);
   max-height: 90dvh;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .mastery-trees-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .mastery-tree-entry {
