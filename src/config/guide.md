@@ -1,3 +1,7 @@
+[//]: # (Localization note: do not localize this file for now.)
+[//]: # (The guide content will change frequently as the game evolves,)
+[//]: # (making translation a poor use of effort until the game is stable.)
+
 ## Actions & Action Levels
 
 Every character performs actions during battle — either weapon attacks or spell casts. Each action has its own level that rises as you use it.
