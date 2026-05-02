@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, type SpellBonuses, type LifeBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -111,6 +111,10 @@ export function createGameScene(
 
   function getLifeBonuses(): LifeBonuses {
     return computeLifeBonuses(masteryProgress['life']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getManaBonuses(): ManaBonuses {
+    return computeManaBonuses(masteryProgress['mana']?.nodes ?? [[], [], [], [], []])
   }
 
   function computePlayerMaxLife(): number {
@@ -602,7 +606,8 @@ export function createGameScene(
     regenTimer = setInterval(() => {
       if (playerDead) return
       playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate * statBonus(lifeProgress.level) * gameSpeed * REGEN_TICK)
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level) * gameSpeed * REGEN_TICK)
+      const manaRegenMult = 1 + getManaBonuses().regenIncrease / 100
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level) * manaRegenMult * gameSpeed * REGEN_TICK)
       updateBars()
     }, REGEN_INTERVAL_MS)
   }
@@ -1827,10 +1832,17 @@ export function createGameScene(
 
           // Pay mana and award mana XP (based on actual amount paid)
           if (entity.maxMana > 0) {
-            entity.currentMana = Math.max(0, entity.currentMana - paidCost)
+            const mb = entity.role === 'player' ? getManaBonuses() : null
+            const replenish = mb && mb.replenishChance > 0 && paidCost > 0
+              && Math.random() * 100 < mb.replenishChance
+            if (replenish) {
+              entity.currentMana = Math.min(entity.maxMana, entity.currentMana + paidCost)
+            } else {
+              entity.currentMana = Math.max(0, entity.currentMana - paidCost)
+            }
             if (entity.role === 'player') {
               playerManaSpent = true
-              if (paidCost > 0) {
+              if (!replenish && paidCost > 0) {
                 const eLevel = enemyLevels.get(target.id) ?? 1
                 const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
                 const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
