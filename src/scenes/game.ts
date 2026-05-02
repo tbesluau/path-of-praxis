@@ -4,7 +4,7 @@ import * as PF from 'pathfinding'
 import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
 import { computeSpellBonuses, type SpellBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
@@ -353,12 +353,39 @@ export function createGameScene(
   let playerRandomTargetId: string | null = null
   let targetingMode: TargetingMode = char?.targetingMode ?? 'nearest'
 
-  // Per-rebirth XP accumulators — reset in rebirth()
-  let runActionXp: Record<string, number> = {}
-  let runLifeXp = 0
-  let runManaXp = 0
-  let runEnemyXp = 0
-  let runDistancePx = 0
+  // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
+  let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
+  let runLifeXp = char?.runProgress?.lifeXp ?? 0
+  let runManaXp = char?.runProgress?.manaXp ?? 0
+  let runEnemyXp = char?.runProgress?.enemyXp ?? 0
+  let runDistancePx = char?.runProgress?.distancePx ?? 0
+
+  function currentRunProgress(): RunProgress {
+    return {
+      actionXp: { ...runActionXp },
+      lifeXp: runLifeXp,
+      manaXp: runManaXp,
+      enemyXp: runEnemyXp,
+      distancePx: runDistancePx,
+    }
+  }
+
+  function persistState(): void {
+    if (!char) return
+    saveCharacterState(
+      char.id,
+      playerEntity.currentLife,
+      playerEntity.currentMana,
+      playerActionId,
+      actionProgress,
+      lifeProgress,
+      manaProgress,
+      enemyProgress,
+      targetingMode,
+      masteryProgress,
+      currentRunProgress(),
+    )
+  }
   let playerPrevX = 0
   let playerPrevY = 0
 
@@ -528,12 +555,12 @@ export function createGameScene(
         assignAction(playerEntity, id)
         updateActionBar()
         updateActionIcon()
-        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, id, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
+        persistState()
       },
       (mode) => {
         targetingMode = mode
         playerRandomTargetId = null
-        if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, mode, masteryProgress)
+        persistState()
       },
       () => { modalCleanup = null },
       actionProgress,
@@ -621,11 +648,11 @@ export function createGameScene(
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
+    if (!playerDead) persistState()
   }, SAVE_INTERVAL_MS)
 
   function saveAndGoHome(): void {
-    if (char && !playerDead) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
+    if (!playerDead) persistState()
     navigate('menu')
   }
 
@@ -958,7 +985,7 @@ export function createGameScene(
     playerPrevY = playerEntity.y
 
     runSnapshot = captureRunSnapshot()
-    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
+    persistState()
     scheduleWave(balance.wave.spawnDelay)
   }
 
@@ -1135,7 +1162,7 @@ export function createGameScene(
     if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
       assignAction(playerEntity, playerActionId)
     }
-    if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
+    persistState()
     refreshMasteryDot()
   }
 
