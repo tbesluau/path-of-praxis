@@ -23,6 +23,7 @@ function isNodeAssigned(p: MasteryProgress, treeIdx: number, nodeIdx: number): b
 // Returns null if assignable, or a string reason why not.
 function assignBlockReason(
   p: MasteryProgress,
+  treeDef: MasteryTreeDef,
   treeIdx: number,
   nodeIdx: number,
 ): string | null {
@@ -37,6 +38,8 @@ function assignBlockReason(
   } else {
     // Key node: determine parent major (node 5 or 11) and sibling
     const majorLineIdx = nodeIdx <= 13 ? 5 : 11
+    // Short trees don't have a second major; key nodes 14/15 are invalid
+    if (treeDef.short && majorLineIdx === 11) return 'node not available'
     if (!assigned.includes(majorLineIdx)) return 'complete previous nodes first'
     // Mutual exclusion: sibling key
     const siblingIdx = nodeIdx % 2 === 0 ? nodeIdx + 1 : nodeIdx - 1
@@ -126,8 +129,11 @@ function buildTreeNodes(
   const container = document.createElement('div')
   container.className = 'mastery-tree-nodes'
 
-  // Build 12 line elements, inserting bars and major clusters at the right spots
-  for (let lineIdx = 0; lineIdx < 12; lineIdx++) {
+  // Short trees end after the first major (line nodes 0-5; key nodes 12-13 only).
+  const lastLineIdx = treeDef.short ? 5 : 11
+
+  // Build line elements, inserting bars and major clusters at the right spots
+  for (let lineIdx = 0; lineIdx <= lastLineIdx; lineIdx++) {
     const type = nodeType(lineIdx)
 
     if (type === 'major') {
@@ -197,7 +203,7 @@ function buildTreeNodes(
     // Bar extends center-to-center: layout width is H_BAR_GAP, but the bar
     // visually grows past it (overlapping into adjacent nodes) via negative
     // margins; nodes' z-index covers the overlap.
-    if (lineIdx < 11) {
+    if (lineIdx < lastLineIdx) {
       const leftHalf = nodeHalfSize(lineIdx)
       const rightHalf = nodeHalfSize(lineIdx + 1)
       const bar = document.createElement('div')
@@ -213,7 +219,7 @@ function buildTreeNodes(
   container.querySelectorAll<HTMLElement>('.tree-node').forEach(nodeEl => {
     const handleActivate = (): void => {
       const nodeIdx = parseInt(nodeEl.dataset['node']!, 10)
-      const reason = assignBlockReason(p, treeIdx, nodeIdx)
+      const reason = assignBlockReason(p, treeDef, treeIdx, nodeIdx)
       const isAssigned = isNodeAssigned(p, treeIdx, nodeIdx)
       nodeEl.dispatchEvent(new CustomEvent('node-detail', {
         bubbles: true,

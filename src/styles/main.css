@@ -218,6 +218,35 @@ body::after {
   overflow: hidden;
 }
 
+/* Buff / Debuff bar — anchored to the top-left of the map view */
+.buff-bar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+.buff-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.buff-icon--buff   { background: #2d8a3e; }
+.buff-icon--debuff { background: #c43c3c; }
+.buff-icon svg {
+  stroke: #fff;
+  width: 20px;
+  height: 20px;
+}
+
 .game-canvas-wrapper {
   position: absolute;
   inset: 0;
