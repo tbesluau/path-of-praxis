@@ -40,6 +40,18 @@ export interface ActionProgress {
   maxLevel: number  // highest level ever reached; survives rebirth
 }
 
+export interface RunProgress {
+  actionXp: Record<string, number>
+  lifeXp: number
+  manaXp: number
+  enemyXp: number
+  distancePx: number
+}
+
+export function defaultRunProgress(): RunProgress {
+  return { actionXp: {}, lifeXp: 0, manaXp: 0, enemyXp: 0, distancePx: 0 }
+}
+
 export interface Character {
   id: string
   name: string
@@ -55,6 +67,7 @@ export interface Character {
   enemyProgress: EnemyProgress
   targetingMode: TargetingMode
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>
+  runProgress: RunProgress
 }
 
 interface SaveData {
@@ -87,6 +100,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
         { xp: v.xp, level: v.level, nodes: v.nodes ?? defaultMasteryNodes() },
       ]),
     ) as Partial<Record<MasteryId, MasteryProgress>>,
+    runProgress: c.runProgress ?? defaultRunProgress(),
   }
 }
 
@@ -144,6 +158,7 @@ export function createCharacter(name: string, actionId: string): Character {
     enemyProgress: { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
     targetingMode: 'nearest',
     masteryProgress: {},
+    runProgress: defaultRunProgress(),
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -176,6 +191,7 @@ export function saveCharacterState(
   enemyProgress?: EnemyProgress,
   targetingMode?: TargetingMode,
   masteryProgress?: Partial<Record<MasteryId, MasteryProgress>>,
+  runProgress?: RunProgress,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -189,5 +205,6 @@ export function saveCharacterState(
   if (enemyProgress !== undefined) char.enemyProgress = enemyProgress
   if (targetingMode !== undefined) char.targetingMode = targetingMode
   if (masteryProgress !== undefined) char.masteryProgress = masteryProgress
+  if (runProgress !== undefined) char.runProgress = runProgress
   write(data)
 }
