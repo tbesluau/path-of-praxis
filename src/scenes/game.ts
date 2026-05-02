@@ -659,6 +659,7 @@ export function createGameScene(
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
   const strongEntities = new Set<string>()
+  const enemyLevels = new Map<string, number>()  // enemy entity id → enemy level at spawn time
   const deathFragments: DeathFragment[] = []
   const vfxList: Vfx[] = []
 
@@ -865,6 +866,7 @@ export function createGameScene(
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
     strongEntities.delete(entity.id)
+    enemyLevels.delete(entity.id)
     entityActions.delete(entity.id)
     entityPaths.delete(entity.id)
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
@@ -1076,7 +1078,6 @@ export function createGameScene(
     }
     if (runLifeXp > 0) gainMap.set('life', runLifeXp)
     if (runManaXp > 0) gainMap.set('mana', runManaXp)
-    if (runEnemyXp > 0) gainMap.set('enemy', runEnemyXp)
     const movementXp = Math.floor(runDistancePx / 50)
     if (movementXp > 0) gainMap.set('movement', movementXp)
     return Array.from(gainMap.entries()).map(([id, xpGain]) => ({ id, xpGain }))
@@ -1093,6 +1094,16 @@ export function createGameScene(
         level++
       }
       masteryProgress[id] = { xp, level, nodes }
+    }
+    // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
+    const existingEnemy = masteryProgress['enemy']
+    const newEnemyLevel = enemyProgress.maxLevel
+    if (!existingEnemy || newEnemyLevel > existingEnemy.level) {
+      masteryProgress['enemy'] = {
+        xp: 0,
+        level: newEnemyLevel,
+        nodes: existingEnemy?.nodes ?? defaultMasteryNodes(),
+      }
     }
     refreshMasteryDot()
   }
@@ -1219,6 +1230,7 @@ export function createGameScene(
         enemy.attackSpeed *= ev.strongSpeedMult
         strongEntities.add(enemy.id)
       }
+      enemyLevels.set(enemy.id, enemyProgress.level)
       entities.push(enemy)
       createEntityBody(enemy)
       initEntityDisplay(enemy)
@@ -1641,16 +1653,24 @@ export function createGameScene(
             entity.currentMana = Math.max(0, entity.currentMana - action.manaCost)
             if (entity.role === 'player') {
               playerManaSpent = true
-              if (action.manaCost > 0) awardStatXp('mana', action.manaCost)
+              if (action.manaCost > 0) {
+                const eLevel = enemyLevels.get(target.id) ?? 1
+                const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1)
+                awardStatXp('mana', action.manaCost * balance.stat.manaXpMultiplier * xpMult)
+              }
             }
           }
           if (entity.role === 'player' && actualDamage > 0) {
-            awardXp(actionId, actualDamage)
+            const eLevel = enemyLevels.get(target.id) ?? 1
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1)
+            awardXp(actionId, actualDamage * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
           }
           if (target.role === 'player' && actualDamage > 0) {
-            awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage)
+            const eLevel = enemyLevels.get(entity.id) ?? 1
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1)
+            awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
           attackCooldowns.set(entity.id, 1000 / action.speed)
