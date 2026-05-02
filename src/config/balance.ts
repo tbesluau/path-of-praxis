@@ -37,8 +37,8 @@ export const balance = {
   // ── Enemy waves ─────────────────────────────────────────────────────────
   wave: {
     spawnDelay:        2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
-    clusterSpread:      1.0, // total angular span (radians) of each enemy cluster
-    directionStdDev:   Math.PI / 4, // gaussian σ (rad) of next wave's angle vs the previous one
+    clusterSpread:      0.3, // total angular span (radians) of each enemy cluster
+    directionStdDev:   Math.PI / 12, // gaussian σ (rad) of next wave's angle vs the previous one
     spawnMargin:        120, // px beyond screen edge enemies appear
     spawnDepthVariance: 160, // additional random px beyond spawnMargin
     nextWaveThreshold:    0, // spawn next wave when live enemy count reaches this
@@ -55,6 +55,7 @@ export const balance = {
     strongLifeMin:   1.0,  strongLifeMax:   1.8,
     strongDamageMin: 1.0,  strongDamageMax: 1.8,
     strongSpeedMult: 1.2,
+    strongXpMultiplier: 2,            // XP multiplier for action/life/mana XP from strong enemies
   },
 
   // ── Death animation ──────────────────────────────────────────────────────

@@ -583,14 +583,17 @@ export function createGameScene(
 
   let regenTimer: ReturnType<typeof setInterval> | null = null
 
+  const REGEN_INTERVAL_MS = 100
+  const REGEN_TICK = REGEN_INTERVAL_MS / 1000  // fraction of per-second rate per tick
+
   function startRegen(): void {
     if (regenTimer !== null) return
     regenTimer = setInterval(() => {
       if (playerDead) return
-      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate * statBonus(lifeProgress.level) * gameSpeed)
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level) * gameSpeed)
+      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate * statBonus(lifeProgress.level) * gameSpeed * REGEN_TICK)
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level) * gameSpeed * REGEN_TICK)
       updateBars()
-    }, 1000)
+    }, REGEN_INTERVAL_MS)
   }
 
   function stopRegen(): void {
@@ -1488,7 +1491,7 @@ export function createGameScene(
       age: 0,
       maxAge: 2000,
       tick: (p) => {
-        text.y = originY - p * 40
+        text.y = originY - p * 80
         text.alpha = 1 - p
       },
     })
@@ -1698,21 +1701,24 @@ export function createGameScene(
               playerManaSpent = true
               if (action.manaCost > 0) {
                 const eLevel = enemyLevels.get(target.id) ?? 1
-                const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1)
+                const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
+                const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
                 awardStatXp('mana', action.manaCost * balance.stat.manaXpMultiplier * xpMult)
               }
             }
           }
           if (entity.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(target.id) ?? 1
-            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1)
+            const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
             awardXp(actionId, actualDamage * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
           }
           if (target.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(entity.id) ?? 1
-            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1)
+            const strongMult = strongEntities.has(entity.id) ? balance.enemyVariance.strongXpMultiplier : 1
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
             awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
