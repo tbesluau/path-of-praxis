@@ -22,6 +22,13 @@ export interface NodeEffect {
   spellNoManaCostChance?: number           // additive %; chance for spell to cost 0 mana (gate still applies)
   spellManaCostRandomReductionMax?: number // additive % cap; per-cast random reduction in [0, cap]
   spellRepeatNoMana?: boolean              // when true, repeated casts (e.g. double cast) skip the mana gate
+
+  // Life mastery effects
+  lifeMaxIncrease?: number       // additive %; stacks before the 'more' multiplier
+  lifeMoreMax?: number           // 'more' %; applied as × (1 + sum/100) after increased
+  lifePhysicalResistance?: number  // additive %; reduces damage from physical-tagged hits
+  lifeRotResistance?: number       // additive %; reduces damage from rot-tagged hits
+  lifeElementalResistance?: number // additive %; reduces damage from fire/lightning/cold hits
 }
 
 export interface SpellBonuses {
@@ -41,6 +48,14 @@ export interface SpellBonuses {
   noManaCostChance: number
   manaCostRandomReductionMax: number
   repeatNoMana: boolean
+}
+
+export interface LifeBonuses {
+  maxLifeIncrease: number       // total additive %
+  moreMaxLife: number           // total 'more' %
+  physicalResistance: number    // total additive %
+  rotResistance: number         // total additive %
+  elementalResistance: number   // total additive %
 }
 
 // ── Spell mastery node effects ─────────────────────────────────────────────
@@ -139,6 +154,51 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
   return b
 }
 
+// ── Life mastery node effects ──────────────────────────────────────────────
+// Tree 0: Maximum Life  Tree 1-4: not yet implemented
+
+const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Maximum Life
+    0:  { lifeMaxIncrease: 5 },
+    1:  { lifePhysicalResistance: 5, lifeRotResistance: 5 },
+    2:  { lifeMaxIncrease: 12 },
+    3:  { lifeMaxIncrease: 5 },
+    4:  { lifeElementalResistance: 5 },
+    5:  { lifeMoreMax: 30 },
+    6:  { lifeMaxIncrease: 5 },
+    7:  { lifePhysicalResistance: 5, lifeRotResistance: 5 },
+    8:  { lifePhysicalResistance: 7, lifeRotResistance: 7, lifeElementalResistance: 7 },
+    9:  { lifeMaxIncrease: 5 },
+    10: { lifeElementalResistance: 5 },
+    11: { lifeMoreMax: 30 },
+  },
+}
+
+export function getLifeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return LIFE_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
+  const b: LifeBonuses = {
+    maxLifeIncrease: 0,
+    moreMaxLife: 0,
+    physicalResistance: 0,
+    rotResistance: 0,
+    elementalResistance: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getLifeNodeEffect(treeIdx, nodeIdx)
+      b.maxLifeIncrease += eff.lifeMaxIncrease ?? 0
+      b.moreMaxLife += eff.lifeMoreMax ?? 0
+      b.physicalResistance += eff.lifePhysicalResistance ?? 0
+      b.rotResistance += eff.lifeRotResistance ?? 0
+      b.elementalResistance += eff.lifeElementalResistance ?? 0
+    }
+  }
+  return b
+}
+
 // ── Node description text (shown in the node detail modal) ─────────────────
 
 const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -188,6 +248,23 @@ const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
   },
 }
 
+const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0:  '+5% increased maximum life',
+    1:  '+5% physical resistance · +5% rot resistance',
+    2:  '+12% increased maximum life',
+    3:  '+5% increased maximum life',
+    4:  '+5% elemental resistance',
+    5:  '+30% more maximum life',
+    6:  '+5% increased maximum life',
+    7:  '+5% physical resistance · +5% rot resistance',
+    8:  '+7% physical resistance · +7% rot resistance · +7% elemental resistance',
+    9:  '+5% increased maximum life',
+    10: '+5% elemental resistance',
+    11: '+30% more maximum life',
+  },
+}
+
 const TYPE_LABEL: Record<string, string> = {
   small: 'Small node', strong: 'Strong node', major: 'Major node', key: 'Key node',
 }
@@ -200,6 +277,10 @@ export function getNodeDescription(
 ): string {
   if (masteryId === 'spell') {
     const desc = SPELL_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
+  if (masteryId === 'life') {
+    const desc = LIFE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`

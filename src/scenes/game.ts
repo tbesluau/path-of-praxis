@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, type SpellBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, type SpellBonuses, type LifeBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -69,7 +69,7 @@ export function createGameScene(
   }
 
   const playerEntity = createPlayerEntity({
-    maxLife:  balance.player.maxLife  * statBonus(lifeProgress.level),
+    maxLife:  computePlayerMaxLife(),
     maxMana:  balance.player.maxMana  * statBonus(manaProgress.level),
     currentLife: char?.currentLife ?? balance.player.startingLife,
     currentMana: char?.currentMana ?? balance.player.startingMana,
@@ -107,6 +107,17 @@ export function createGameScene(
 
   function getSpellBonuses(): SpellBonuses {
     return computeSpellBonuses(masteryProgress['spell']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getLifeBonuses(): LifeBonuses {
+    return computeLifeBonuses(masteryProgress['life']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function computePlayerMaxLife(): number {
+    const lb = getLifeBonuses()
+    return balance.player.maxLife * statBonus(lifeProgress.level)
+      * (1 + lb.maxLifeIncrease / 100)
+      * (1 + lb.moreMaxLife / 100)
   }
 
   function assignAction(entity: Entity, id: ActionId): void {
@@ -159,7 +170,7 @@ export function createGameScene(
     prog = { xp, level }
     if (stat === 'life') {
       lifeProgress = prog
-      if (leveled) playerEntity.maxLife = balance.player.maxLife * statBonus(level)
+      if (leveled) playerEntity.maxLife = computePlayerMaxLife()
     } else {
       manaProgress = prog
       if (leveled) playerEntity.maxMana = balance.player.maxMana * statBonus(level)
@@ -986,10 +997,10 @@ export function createGameScene(
       actionProgress[id] = { xp: 0, level: 1, maxLevel }
     }
 
-    // Life/mana levels reset; maxLife/maxMana return to base
+    // Life/mana levels reset; maxLife/maxMana return to base (mastery bonuses still apply)
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
-    playerEntity.maxLife = balance.player.maxLife
+    playerEntity.maxLife = computePlayerMaxLife()
     playerEntity.maxMana = balance.player.maxMana
 
     // Enemy: max level persists; selected level and auto-level reset
@@ -1216,6 +1227,9 @@ export function createGameScene(
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
       assignAction(playerEntity, playerActionId)
+    }
+    if (id === 'life') {
+      playerEntity.maxLife = computePlayerMaxLife()
     }
     persistState()
     refreshMasteryDot()
@@ -1727,8 +1741,20 @@ export function createGameScene(
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
         const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId): void => {
+          let finalDamage = damage
+          if (target.role === 'player') {
+            const lb = getLifeBonuses()
+            let totalResistance = 0
+            if (action.tags.includes('physical')) totalResistance += lb.physicalResistance
+            if (action.tags.includes('rot'))      totalResistance += lb.rotResistance
+            if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) {
+              totalResistance += lb.elementalResistance
+            }
+            totalResistance = Math.max(0, Math.min(100, totalResistance))
+            finalDamage = damage * (1 - totalResistance / 100)
+          }
           const prevLife = target.currentLife
-          target.currentLife = Math.max(0, target.currentLife - damage)
+          target.currentLife = Math.max(0, target.currentLife - finalDamage)
           const actualDamage = prevLife - target.currentLife
           if (attacker.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(target.id) ?? 1
