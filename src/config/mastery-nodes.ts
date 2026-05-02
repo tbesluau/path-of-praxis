@@ -33,6 +33,14 @@ export interface NodeEffect {
   // Mana mastery effects
   manaRegenIncrease?: number    // additive %; increases mana regen rate
   manaReplenishChance?: number  // additive %; chance for a spell cast to add mana instead of spending it
+
+  // Fire mastery effects (Burning tree)
+  fireBurnApplyChance?: number          // additive %; added to base apply chance for fire-tagged hits
+  fireBurnDamageIncrease?: number       // additive %; stacks before the 'more' multiplier
+  fireBurnDurationIncrease?: number     // additive %; extends burn duration
+  fireBurnMoreDamage?: number           // 'more' %; multiplies burn dps after increased
+  fireBurningTakeIncreased?: number     // additive %; burning enemies take more damage from all sources
+  fireBurnSplashFraction?: number       // additive %; non-burning neighbors take this share of burn dps
 }
 
 export interface SpellBonuses {
@@ -65,6 +73,15 @@ export interface LifeBonuses {
 export interface ManaBonuses {
   regenIncrease: number    // total additive %
   replenishChance: number  // total additive %
+}
+
+export interface FireBonuses {
+  burnApplyChance: number       // total additive %
+  burnDamageIncrease: number    // total additive %
+  burnDurationIncrease: number  // total additive %
+  burnMoreDamage: number        // total 'more' %
+  burningTakeIncreased: number  // total additive %; damage taken by burning enemies from any source
+  burnSplashFraction: number    // total additive %; share of burn dps that splashes to non-burning neighbors
 }
 
 // ── Spell mastery node effects ─────────────────────────────────────────────
@@ -239,6 +256,54 @@ export function computeManaBonuses(nodes: number[][]): ManaBonuses {
   return b
 }
 
+// ── Fire mastery node effects ──────────────────────────────────────────────
+// Tree 0: Burning (full-length tree)  Tree 1-4: not yet implemented
+
+const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Burning
+    0:  { fireBurnApplyChance: 5 },
+    1:  { fireBurnDamageIncrease: 5 },
+    2:  { fireBurnDamageIncrease: 10, fireBurnDurationIncrease: 10 },
+    3:  { fireBurnApplyChance: 5 },
+    4:  { fireBurnDamageIncrease: 5 },
+    5:  { fireBurnMoreDamage: 30 },
+    6:  { fireBurnApplyChance: 5 },
+    7:  { fireBurnDamageIncrease: 5 },
+    8:  { fireBurningTakeIncreased: 10 },
+    9:  { fireBurnApplyChance: 5 },
+    10: { fireBurnDamageIncrease: 5 },
+    11: { fireBurnSplashFraction: 50 },
+    // 12-15: key nodes — not yet defined
+  },
+}
+
+export function getFireNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return FIRE_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeFireBonuses(nodes: number[][]): FireBonuses {
+  const b: FireBonuses = {
+    burnApplyChance: 0,
+    burnDamageIncrease: 0,
+    burnDurationIncrease: 0,
+    burnMoreDamage: 0,
+    burningTakeIncreased: 0,
+    burnSplashFraction: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getFireNodeEffect(treeIdx, nodeIdx)
+      b.burnApplyChance += eff.fireBurnApplyChance ?? 0
+      b.burnDamageIncrease += eff.fireBurnDamageIncrease ?? 0
+      b.burnDurationIncrease += eff.fireBurnDurationIncrease ?? 0
+      b.burnMoreDamage += eff.fireBurnMoreDamage ?? 0
+      b.burningTakeIncreased += eff.fireBurningTakeIncreased ?? 0
+      b.burnSplashFraction += eff.fireBurnSplashFraction ?? 0
+    }
+  }
+  return b
+}
+
 // ── Node description text (shown in the node detail modal) ─────────────────
 
 const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -320,6 +385,23 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
   },
 }
 
+const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0:  'Fire actions have +5% chance to apply burn',
+    1:  '+5% increased burn damage',
+    2:  '+10% increased burn damage · +10% increased burn duration',
+    3:  'Fire actions have +5% chance to apply burn',
+    4:  '+5% increased burn damage',
+    5:  '+30% more burn damage',
+    6:  'Fire actions have +5% chance to apply burn',
+    7:  '+5% increased burn damage',
+    8:  'Burning enemies take +10% increased damage from all sources',
+    9:  'Fire actions have +5% chance to apply burn',
+    10: '+5% increased burn damage',
+    11: 'Burning enemies splash 50% of their burn damage to nearby non-burning enemies',
+  },
+}
+
 export function getNodeDescription(
   masteryId: MasteryId,
   treeIdx: number,
@@ -336,6 +418,10 @@ export function getNodeDescription(
   }
   if (masteryId === 'mana') {
     const desc = MANA_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
+  if (masteryId === 'fire') {
+    const desc = FIRE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`

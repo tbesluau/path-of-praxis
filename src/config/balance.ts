@@ -69,6 +69,15 @@ export const balance = {
     tranceDurationMs: 3000,  // how long trance lasts after each trigger
   },
 
+  // ── Damage-type effects (burning, bleeding, electrocuted, ...) ───────────
+  effects: {
+    baseApplyChance:        5,    // % baseline chance to inflict an effect on hit
+    burnDpsFraction:        0.20, // burn dps = hit damage * this
+    burnBaseDurationMs:     5000, // base burn duration
+    burnSplashRadius:       100,  // px radius for major-node splash to non-burning neighbors
+    burnDisplayIntervalMs:  500,  // ms between accumulated burn-damage number emissions
+  },
+
   // ── World ────────────────────────────────────────────────────────────────
   world: {
     gridSize: 64,  // pixels per grid cell

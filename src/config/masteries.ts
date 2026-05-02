@@ -62,7 +62,10 @@ export const masteryCategories: MasteryCategoryDef[] = [
     label: 'Damage',
     masteries: [
       { id: 'physical',  label: 'Physical',  tag: 'physical',  trees: makeTrees('Physical')  },
-      { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: makeTrees('Fire')      },
+      { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: [
+        { index: 0, label: 'Burning' },
+        ...([2, 3, 4, 5].map(n => ({ index: n - 1, label: `Fire ${n}` }))),
+      ] },
       { id: 'lightning', label: 'Lightning', tag: 'lightning', trees: makeTrees('Lightning') },
     ],
   },
