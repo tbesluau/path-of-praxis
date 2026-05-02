@@ -1,6 +1,6 @@
 import { balance } from './balance'
 
-export type ActionTag = 'weapon' | 'spell' | 'physical' | 'fire' | 'lightning'
+export type ActionTag = 'weapon' | 'spell' | 'physical' | 'rot' | 'fire' | 'lightning' | 'cold'
 
 export type MasteryId =
   | 'weapon' | 'spell'
@@ -11,6 +11,7 @@ export type MasteryId =
 export interface MasteryTreeDef {
   index: number   // 0-4
   label: string   // e.g. "Lightning 1"
+  short?: boolean // if true, tree ends after first major (line nodes 0-5; key nodes 12-13 only)
 }
 
 export interface MasteryDef {
@@ -51,8 +52,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'spell',  label: 'Spell',  tag: 'spell',  trees: [
         { index: 0, label: 'Spell Damage' },
         { index: 1, label: 'Cast Speed' },
-        { index: 2, label: 'Trance' },
-        { index: 3, label: 'Mana Cost' },
+        { index: 2, label: 'Trance',    short: true },
+        { index: 3, label: 'Mana Cost', short: true },
         { index: 4, label: 'Spell Range' },
       ] },
     ],
@@ -68,7 +69,10 @@ export const masteryCategories: MasteryCategoryDef[] = [
   {
     label: 'Life & Mana',
     masteries: [
-      { id: 'life', label: 'Life', trees: makeTrees('Life') },
+      { id: 'life', label: 'Life', trees: [
+        { index: 0, label: 'Maximum Life' },
+        ...([2, 3, 4, 5].map(n => ({ index: n - 1, label: `Life ${n}` }))),
+      ] },
       { id: 'mana', label: 'Mana', trees: makeTrees('Mana') },
     ],
   },

@@ -10,6 +10,25 @@ export interface NodeEffect {
   spellMoreDamage?: number          // 'more' %; applied as × (1 + sum/100) after increased
   spellMoreCastSpeed?: number       // 'more' %; applied as × (1 + sum/100) after increased
   spellDoubleCastChance?: number    // additive %; chance for a second cast at 1/5 interval
+
+  // Trance effects (tree 2)
+  spellTranceTriggerChance?: number      // additive %; chance per spell cast to trigger trance buff
+  spellTranceMultiTargetChance?: number  // additive %; chance to hit an extra enemy when in trance
+  spellTranceDamageIncrease?: number     // additive %; damage bonus on casts while in trance
+  spellTranceCastSpeedIncrease?: number  // additive %; cast speed bonus on casts while in trance
+
+  // Mana cost effects (tree 3)
+  spellManaCostReduction?: number          // additive %; reduces effective mana cost
+  spellNoManaCostChance?: number           // additive %; chance for spell to cost 0 mana (gate still applies)
+  spellManaCostRandomReductionMax?: number // additive % cap; per-cast random reduction in [0, cap]
+  spellRepeatNoMana?: boolean              // when true, repeated casts (e.g. double cast) skip the mana gate
+
+  // Life mastery effects
+  lifeMaxIncrease?: number       // additive %; stacks before the 'more' multiplier
+  lifeMoreMax?: number           // 'more' %; applied as × (1 + sum/100) after increased
+  lifePhysicalResistance?: number  // additive %; reduces damage from physical-tagged hits
+  lifeRotResistance?: number       // additive %; reduces damage from rot-tagged hits
+  lifeElementalResistance?: number // additive %; reduces damage from fire/lightning/cold hits
 }
 
 export interface SpellBonuses {
@@ -19,10 +38,28 @@ export interface SpellBonuses {
   moreCastSpeed: number      // total 'more' %
   doubleDamageChance: number // total additive %
   doubleCastChance: number   // total additive %
+
+  tranceTriggerChance: number
+  tranceMultiTargetChance: number
+  tranceDamageIncrease: number
+  tranceCastSpeedIncrease: number
+
+  manaCostReduction: number
+  noManaCostChance: number
+  manaCostRandomReductionMax: number
+  repeatNoMana: boolean
+}
+
+export interface LifeBonuses {
+  maxLifeIncrease: number       // total additive %
+  moreMaxLife: number           // total 'more' %
+  physicalResistance: number    // total additive %
+  rotResistance: number         // total additive %
+  elementalResistance: number   // total additive %
 }
 
 // ── Spell mastery node effects ─────────────────────────────────────────────
-// Tree 0: Spell Damage  Tree 1: Cast Speed  Trees 2-4: not yet implemented
+// Tree 0: Spell Damage  Tree 1: Cast Speed  Tree 2: Trance  Tree 3: Mana Cost  Tree 4: not implemented
 
 type TreeEffects = Partial<Record<number, NodeEffect>>
 
@@ -57,6 +94,24 @@ const SPELL_EFFECTS: Partial<Record<number, TreeEffects>> = {
     // 11: double-cast guarantee — not yet implemented
     // 12-15: key nodes — not yet defined
   },
+  2: {  // Trance (short tree — line nodes 0-5, key nodes 12-13)
+    0: { spellTranceTriggerChance: 2 },
+    1: { spellTranceMultiTargetChance: 5, spellTranceDamageIncrease: 5, spellTranceCastSpeedIncrease: 5 },
+    2: { spellTranceTriggerChance: 5 },
+    3: { spellTranceTriggerChance: 2 },
+    4: { spellTranceMultiTargetChance: 5, spellTranceDamageIncrease: 5, spellTranceCastSpeedIncrease: 5 },
+    5: { spellTranceTriggerChance: 3, spellTranceMultiTargetChance: 8, spellTranceDamageIncrease: 8, spellTranceCastSpeedIncrease: 8 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Mana Cost (short tree — line nodes 0-5, key nodes 12-13)
+    0: { spellManaCostReduction: 10 },
+    1: { spellNoManaCostChance: 10 },
+    2: { spellManaCostRandomReductionMax: 33 },
+    3: { spellManaCostReduction: 10 },
+    4: { spellNoManaCostChance: 10 },
+    5: { spellManaCostReduction: 10, spellNoManaCostChance: 10, spellRepeatNoMana: true },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getSpellNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -68,6 +123,14 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
     damageIncrease: 0, moreDamage: 0,
     castSpeedIncrease: 0, moreCastSpeed: 0,
     doubleDamageChance: 0, doubleCastChance: 0,
+    tranceTriggerChance: 0,
+    tranceMultiTargetChance: 0,
+    tranceDamageIncrease: 0,
+    tranceCastSpeedIncrease: 0,
+    manaCostReduction: 0,
+    noManaCostChance: 0,
+    manaCostRandomReductionMax: 0,
+    repeatNoMana: false,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -78,6 +141,59 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
       b.moreCastSpeed += eff.spellMoreCastSpeed ?? 0
       b.doubleDamageChance += eff.spellDoubleDamageChance ?? 0
       b.doubleCastChance += eff.spellDoubleCastChance ?? 0
+      b.tranceTriggerChance += eff.spellTranceTriggerChance ?? 0
+      b.tranceMultiTargetChance += eff.spellTranceMultiTargetChance ?? 0
+      b.tranceDamageIncrease += eff.spellTranceDamageIncrease ?? 0
+      b.tranceCastSpeedIncrease += eff.spellTranceCastSpeedIncrease ?? 0
+      b.manaCostReduction += eff.spellManaCostReduction ?? 0
+      b.noManaCostChance += eff.spellNoManaCostChance ?? 0
+      b.manaCostRandomReductionMax += eff.spellManaCostRandomReductionMax ?? 0
+      if (eff.spellRepeatNoMana) b.repeatNoMana = true
+    }
+  }
+  return b
+}
+
+// ── Life mastery node effects ──────────────────────────────────────────────
+// Tree 0: Maximum Life  Tree 1-4: not yet implemented
+
+const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Maximum Life
+    0:  { lifeMaxIncrease: 5 },
+    1:  { lifePhysicalResistance: 5, lifeRotResistance: 5 },
+    2:  { lifeMaxIncrease: 12 },
+    3:  { lifeMaxIncrease: 5 },
+    4:  { lifeElementalResistance: 5 },
+    5:  { lifeMoreMax: 30 },
+    6:  { lifeMaxIncrease: 5 },
+    7:  { lifePhysicalResistance: 5, lifeRotResistance: 5 },
+    8:  { lifePhysicalResistance: 7, lifeRotResistance: 7, lifeElementalResistance: 7 },
+    9:  { lifeMaxIncrease: 5 },
+    10: { lifeElementalResistance: 5 },
+    11: { lifeMoreMax: 30 },
+  },
+}
+
+export function getLifeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return LIFE_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
+  const b: LifeBonuses = {
+    maxLifeIncrease: 0,
+    moreMaxLife: 0,
+    physicalResistance: 0,
+    rotResistance: 0,
+    elementalResistance: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getLifeNodeEffect(treeIdx, nodeIdx)
+      b.maxLifeIncrease += eff.lifeMaxIncrease ?? 0
+      b.moreMaxLife += eff.lifeMoreMax ?? 0
+      b.physicalResistance += eff.lifePhysicalResistance ?? 0
+      b.rotResistance += eff.lifeRotResistance ?? 0
+      b.elementalResistance += eff.lifeElementalResistance ?? 0
     }
   }
   return b
@@ -114,6 +230,39 @@ const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
     10: '+3% chance for spell to double cast',
     11: 'When double casting, the second cast is guaranteed to trigger effects',
   },
+  2: {
+    0: 'Spells have +2% chance to trigger trance',
+    1: 'Casts in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased cast speed',
+    2: 'Spells have +5% chance to trigger trance',
+    3: 'Spells have +2% chance to trigger trance',
+    4: 'Casts in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased cast speed',
+    5: 'Spells have +3% chance to trigger trance · Casts in trance: +8% chance to target an additional enemy · +8% increased damage · +8% increased cast speed',
+  },
+  3: {
+    0: '+10% reduced spell mana cost',
+    1: '+10% chance for spells to cost no mana',
+    2: 'Spells cost 0–33% reduced mana (random per cast)',
+    3: '+10% reduced spell mana cost',
+    4: '+10% chance for spells to cost no mana',
+    5: '+10% reduced spell mana cost · +10% chance for spells to cost no mana · Repeated casts ignore mana requirement',
+  },
+}
+
+const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0:  '+5% increased maximum life',
+    1:  '+5% physical resistance · +5% rot resistance',
+    2:  '+12% increased maximum life',
+    3:  '+5% increased maximum life',
+    4:  '+5% elemental resistance',
+    5:  '+30% more maximum life',
+    6:  '+5% increased maximum life',
+    7:  '+5% physical resistance · +5% rot resistance',
+    8:  '+7% physical resistance · +7% rot resistance · +7% elemental resistance',
+    9:  '+5% increased maximum life',
+    10: '+5% elemental resistance',
+    11: '+30% more maximum life',
+  },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -128,6 +277,10 @@ export function getNodeDescription(
 ): string {
   if (masteryId === 'spell') {
     const desc = SPELL_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
+  if (masteryId === 'life') {
+    const desc = LIFE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`

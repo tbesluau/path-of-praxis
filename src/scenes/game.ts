@@ -1,12 +1,12 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle } from 'lucide'
+import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, type SpellBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, type SpellBonuses, type LifeBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -69,7 +69,7 @@ export function createGameScene(
   }
 
   const playerEntity = createPlayerEntity({
-    maxLife:  balance.player.maxLife  * statBonus(lifeProgress.level),
+    maxLife:  computePlayerMaxLife(),
     maxMana:  balance.player.maxMana  * statBonus(manaProgress.level),
     currentLife: char?.currentLife ?? balance.player.startingLife,
     currentMana: char?.currentMana ?? balance.player.startingMana,
@@ -107,6 +107,17 @@ export function createGameScene(
 
   function getSpellBonuses(): SpellBonuses {
     return computeSpellBonuses(masteryProgress['spell']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getLifeBonuses(): LifeBonuses {
+    return computeLifeBonuses(masteryProgress['life']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function computePlayerMaxLife(): number {
+    const lb = getLifeBonuses()
+    return balance.player.maxLife * statBonus(lifeProgress.level)
+      * (1 + lb.maxLifeIncrease / 100)
+      * (1 + lb.moreMaxLife / 100)
   }
 
   function assignAction(entity: Entity, id: ActionId): void {
@@ -159,7 +170,7 @@ export function createGameScene(
     prog = { xp, level }
     if (stat === 'life') {
       lifeProgress = prog
-      if (leveled) playerEntity.maxLife = balance.player.maxLife * statBonus(level)
+      if (leveled) playerEntity.maxLife = computePlayerMaxLife()
     } else {
       manaProgress = prog
       if (leveled) playerEntity.maxMana = balance.player.maxMana * statBonus(level)
@@ -407,7 +418,7 @@ export function createGameScene(
         <div class="enemy-xp-bar-fill"></div>
       </div>
     </div>
-    <div class="game-viewport"></div>
+    <div class="game-viewport"><div class="buff-bar"></div></div>
     <div class="stat-bars">
       <div class="stat-bar-row">
         <div class="stat-bar stat-bar--life">
@@ -460,7 +471,7 @@ export function createGameScene(
   `
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
-  createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword } })
+  createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword, Book } })
 
   const unmountSettings = mountSettingsButton(el)
 
@@ -601,6 +612,58 @@ export function createGameScene(
       clearInterval(regenTimer)
       regenTimer = null
     }
+  }
+
+  // ── Buffs / Debuffs ──────────────────────────────────────────────────────
+  // Game-time-scaled durations: tickEffects() runs each frame with deltaMS so
+  // pause/speed work naturally. Display order: buffs (oldest first), then debuffs.
+
+  interface ActiveEffect {
+    id: string                 // unique key (e.g. 'trance')
+    iconName: string           // lucide icon name (kebab-case)
+    kind: 'buff' | 'debuff'
+    remainingMs: number
+  }
+
+  const activeEffects: ActiveEffect[] = []
+  const buffBarEl = el.querySelector<HTMLElement>('.buff-bar')!
+
+  function applyEffect(template: Omit<ActiveEffect, 'remainingMs'>, durationMs: number): void {
+    const existing = activeEffects.find(e => e.id === template.id)
+    if (existing) {
+      existing.remainingMs = durationMs
+    } else {
+      activeEffects.push({ ...template, remainingMs: durationMs })
+      renderBuffBar()
+    }
+  }
+
+  function tickEffects(deltaMs: number): void {
+    if (activeEffects.length === 0) return
+    let removed = false
+    for (let i = activeEffects.length - 1; i >= 0; i--) {
+      activeEffects[i].remainingMs -= deltaMs
+      if (activeEffects[i].remainingMs <= 0) {
+        activeEffects.splice(i, 1)
+        removed = true
+      }
+    }
+    if (removed) renderBuffBar()
+  }
+
+  function hasEffect(id: string): boolean {
+    return activeEffects.some(e => e.id === id)
+  }
+
+  function renderBuffBar(): void {
+    const ordered = [
+      ...activeEffects.filter(e => e.kind === 'buff'),
+      ...activeEffects.filter(e => e.kind === 'debuff'),
+    ]
+    buffBarEl.innerHTML = ordered.map(e =>
+      `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i></div>`
+    ).join('')
+    if (ordered.length > 0) createIcons({ icons: { Book } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -934,10 +997,10 @@ export function createGameScene(
       actionProgress[id] = { xp: 0, level: 1, maxLevel }
     }
 
-    // Life/mana levels reset; maxLife/maxMana return to base
+    // Life/mana levels reset; maxLife/maxMana return to base (mastery bonuses still apply)
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
-    playerEntity.maxLife = balance.player.maxLife
+    playerEntity.maxLife = computePlayerMaxLife()
     playerEntity.maxMana = balance.player.maxMana
 
     // Enemy: max level persists; selected level and auto-level reset
@@ -1164,6 +1227,9 @@ export function createGameScene(
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
       assignAction(playerEntity, playerActionId)
+    }
+    if (id === 'life') {
+      playerEntity.maxLife = computePlayerMaxLife()
     }
     persistState()
     refreshMasteryDot()
@@ -1599,6 +1665,7 @@ export function createGameScene(
           return
         }
 
+        tickEffects(ticker.deltaMS)
         updateChunks()
 
         const dt = ticker.deltaMS / 1000
@@ -1671,6 +1738,43 @@ export function createGameScene(
         // ── Attacks ─────────────────────────────────────────────────────────
         const damagedIds = new Set<string>()
         let playerManaSpent = false
+
+        // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
+        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId): void => {
+          let finalDamage = damage
+          if (target.role === 'player') {
+            const lb = getLifeBonuses()
+            let totalResistance = 0
+            if (action.tags.includes('physical')) totalResistance += lb.physicalResistance
+            if (action.tags.includes('rot'))      totalResistance += lb.rotResistance
+            if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) {
+              totalResistance += lb.elementalResistance
+            }
+            totalResistance = Math.max(0, Math.min(100, totalResistance))
+            finalDamage = damage * (1 - totalResistance / 100)
+          }
+          const prevLife = target.currentLife
+          target.currentLife = Math.max(0, target.currentLife - finalDamage)
+          const actualDamage = prevLife - target.currentLife
+          if (attacker.role === 'player' && actualDamage > 0) {
+            const eLevel = enemyLevels.get(target.id) ?? 1
+            const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+            awardXp(actionId, actualDamage * xpMult)
+            if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
+            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
+          }
+          if (target.role === 'player' && actualDamage > 0) {
+            const eLevel = enemyLevels.get(attacker.id) ?? 1
+            const strongMult = strongEntities.has(attacker.id) ? balance.enemyVariance.strongXpMultiplier : 1
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+            awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
+            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
+          }
+          damagedIds.add(target.id)
+          spawnVfx(attacker, target, action)
+        }
+
         for (const entity of entities) {
           const actionId = entityActions.get(entity.id)
           if (!actionId) continue
@@ -1684,54 +1788,91 @@ export function createGameScene(
           const dy = target.y - entity.y
           const dist = Math.sqrt(dx * dx + dy * dy)
           if (dist - target.radius > entity.attackRange) continue
-          // Mana gate — only enforced for entities with a mana pool
-          if (entity.maxMana > 0 && entity.currentMana < action.manaCost) continue
+
           const isPlayerSpell = entity.role === 'player' && action.tags.includes('spell')
           const spellBonuses = isPlayerSpell ? getSpellBonuses() : null
+          const isDoubleCast = pendingDoubleCast.has(entity.id)
+          const tranceActive = isPlayerSpell && hasEffect('trance')
+
+          // Compute effective mana cost (reductions + random + no-mana roll)
+          let gateCost = action.manaCost
+          let paidCost = action.manaCost
+          if (isPlayerSpell && spellBonuses && action.manaCost > 0) {
+            const reduction = spellBonuses.manaCostReduction / 100
+              + (spellBonuses.manaCostRandomReductionMax > 0
+                ? (Math.random() * spellBonuses.manaCostRandomReductionMax) / 100
+                : 0)
+            gateCost = action.manaCost * Math.max(0, 1 - reduction)
+            paidCost = gateCost
+            if (spellBonuses.noManaCostChance > 0 && Math.random() * 100 < spellBonuses.noManaCostChance) {
+              paidCost = 0
+            }
+          }
+
+          // Mana gate — repeated casts (double cast) skip the gate when repeatNoMana is set
+          const skipGate = isDoubleCast && spellBonuses?.repeatNoMana === true
+          if (entity.maxMana > 0 && !skipGate && entity.currentMana < gateCost) continue
+
+          // Compute effective damage (trance damage bonus, then double damage roll)
           let effectiveDamage = entity.attackDamage
+          if (tranceActive && spellBonuses && spellBonuses.tranceDamageIncrease > 0) {
+            effectiveDamage *= 1 + spellBonuses.tranceDamageIncrease / 100
+          }
           if (spellBonuses && spellBonuses.doubleDamageChance > 0 && Math.random() * 100 < spellBonuses.doubleDamageChance) {
             effectiveDamage *= 2
           }
-          const prevLife = target.currentLife
-          target.currentLife = Math.max(0, target.currentLife - effectiveDamage)
-          const actualDamage = prevLife - target.currentLife
+
+          // Primary hit
+          applyHit(entity, target, effectiveDamage, action, actionId)
+
+          // Pay mana and award mana XP (based on actual amount paid)
           if (entity.maxMana > 0) {
-            entity.currentMana = Math.max(0, entity.currentMana - action.manaCost)
+            entity.currentMana = Math.max(0, entity.currentMana - paidCost)
             if (entity.role === 'player') {
               playerManaSpent = true
-              if (action.manaCost > 0) {
+              if (paidCost > 0) {
                 const eLevel = enemyLevels.get(target.id) ?? 1
                 const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
                 const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
-                awardStatXp('mana', action.manaCost * balance.stat.manaXpMultiplier * xpMult)
+                awardStatXp('mana', paidCost * balance.stat.manaXpMultiplier * xpMult)
               }
             }
           }
-          if (entity.role === 'player' && actualDamage > 0) {
-            const eLevel = enemyLevels.get(target.id) ?? 1
-            const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
-            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
-            awardXp(actionId, actualDamage * xpMult)
-            if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
-            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
+
+          // Trance multi-target: hit one extra in-range enemy
+          if (tranceActive && spellBonuses && spellBonuses.tranceMultiTargetChance > 0
+              && Math.random() * 100 < spellBonuses.tranceMultiTargetChance) {
+            let extra: Entity | null = null
+            let extraDist = Infinity
+            for (const e of entities) {
+              if (e === target || e.role !== 'enemy') continue
+              const ex = e.x - entity.x, ey = e.y - entity.y
+              const d = Math.sqrt(ex * ex + ey * ey)
+              if (d - e.radius > entity.attackRange) continue
+              if (d < extraDist) { extraDist = d; extra = e }
+            }
+            if (extra) applyHit(entity, extra, effectiveDamage, action, actionId)
           }
-          if (target.role === 'player' && actualDamage > 0) {
-            const eLevel = enemyLevels.get(entity.id) ?? 1
-            const strongMult = strongEntities.has(entity.id) ? balance.enemyVariance.strongXpMultiplier : 1
-            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
-            awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
-            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
+
+          // Trance trigger roll (only on a primary cast, not on the second double cast)
+          if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.tranceTriggerChance > 0
+              && Math.random() * 100 < spellBonuses.tranceTriggerChance) {
+            applyEffect({ id: 'trance', iconName: 'book', kind: 'buff' }, balance.buffs.tranceDurationMs)
           }
-          const isDoubleCast = pendingDoubleCast.has(entity.id)
+
+          // Cooldown: trance cast speed bonus, then double cast intercept
+          const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
+            ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
+            : 1
+          const baseCooldown = (1000 / entity.attackSpeed) / tranceSpeedMult
           if (isDoubleCast) pendingDoubleCast.delete(entity.id)
-          if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0 && Math.random() * 100 < spellBonuses.doubleCastChance) {
+          if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0
+              && Math.random() * 100 < spellBonuses.doubleCastChance) {
             pendingDoubleCast.add(entity.id)
-            attackCooldowns.set(entity.id, (1000 / action.speed) / 5)
+            attackCooldowns.set(entity.id, baseCooldown / 5)
           } else {
-            attackCooldowns.set(entity.id, 1000 / action.speed)
+            attackCooldowns.set(entity.id, baseCooldown)
           }
-          damagedIds.add(target.id)
-          spawnVfx(entity, target, action)
         }
         if (playerManaSpent) updateBars()
 
