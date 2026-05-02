@@ -1,6 +1,7 @@
 import type { MasteryId } from '../config/masteries'
-import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, nodeDescription } from '../config/masteries'
+import { masteryCategories, allMasteries, masteryXpNeeded, nodeType } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
+import { getNodeDescription } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
 import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
 
@@ -117,7 +118,7 @@ function hBarFilled(p: MasteryProgress, treeIdx: number, leftLineIdx: number): b
 }
 
 function buildTreeNodes(
-  _def: MasteryDef,
+  def: MasteryDef,
   treeDef: MasteryTreeDef,
   p: MasteryProgress,
   treeIdx: number,
@@ -220,7 +221,7 @@ function buildTreeNodes(
           treeIdx,
           nodeIdx,
           treeLabel: treeDef.label,
-          desc: nodeDescription(treeDef, nodeIdx),
+          desc: getNodeDescription(def.id, treeIdx, nodeIdx, treeDef.label),
           isAssigned,
           blockReason: isAssigned ? null : reason,
         },
