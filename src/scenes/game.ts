@@ -6,6 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
+import { computeSpellBonuses, type SpellBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -100,12 +101,21 @@ export function createGameScene(
     return actionProgress[id]?.level ?? 1
   }
 
+  function getSpellBonuses(): SpellBonuses {
+    return computeSpellBonuses(masteryProgress['spell']?.nodes ?? [[], [], [], [], []])
+  }
+
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
     entity.attackSpeed  = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
     entity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
     entity.attackRange  = def.range * balance.player.radius
+    if (entity.role === 'player' && def.tags.includes('spell')) {
+      const b = getSpellBonuses()
+      entity.attackDamage *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+      entity.attackSpeed  *= (1 + b.castSpeedIncrease / 100) * (1 + b.moreCastSpeed / 100)
+    }
     entityActions.set(entity.id, id)
   }
 
@@ -125,11 +135,7 @@ export function createGameScene(
     }
     actionProgress[actionId] = { xp, level, maxLevel }
     if (actionId === playerActionId) {
-      if (leveled) {
-        const def = getAction(actionId)
-        playerEntity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
-        playerEntity.attackSpeed  = def.speed  * (1 + (level - 1) * balance.action.speedBonusPerLevel)
-      }
+      if (leveled) assignAction(playerEntity, actionId)
       updateActionBar()
     }
   }
@@ -658,6 +664,7 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
+  const pendingDoubleCast = new Set<string>()
   const strongEntities = new Set<string>()
   const enemyLevels = new Map<string, number>()  // enemy entity id → enemy level at spawn time
   const deathFragments: DeathFragment[] = []
@@ -865,6 +872,7 @@ export function createGameScene(
     }
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
+    pendingDoubleCast.delete(entity.id)
     strongEntities.delete(entity.id)
     enemyLevels.delete(entity.id)
     entityActions.delete(entity.id)
@@ -1124,6 +1132,9 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
+    if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
+      assignAction(playerEntity, playerActionId)
+    }
     if (char) saveCharacterState(char.id, playerEntity.currentLife, playerEntity.currentMana, playerActionId, actionProgress, lifeProgress, manaProgress, enemyProgress, targetingMode, masteryProgress)
     refreshMasteryDot()
   }
@@ -1645,7 +1656,12 @@ export function createGameScene(
           if (dist - target.radius > entity.attackRange) continue
           // Mana gate — only enforced for entities with a mana pool
           if (entity.maxMana > 0 && entity.currentMana < action.manaCost) continue
-          const effectiveDamage = entity.attackDamage
+          const isPlayerSpell = entity.role === 'player' && action.tags.includes('spell')
+          const spellBonuses = isPlayerSpell ? getSpellBonuses() : null
+          let effectiveDamage = entity.attackDamage
+          if (spellBonuses && spellBonuses.doubleDamageChance > 0 && Math.random() * 100 < spellBonuses.doubleDamageChance) {
+            effectiveDamage *= 2
+          }
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - effectiveDamage)
           const actualDamage = prevLife - target.currentLife
@@ -1673,7 +1689,14 @@ export function createGameScene(
             awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
-          attackCooldowns.set(entity.id, 1000 / action.speed)
+          const isDoubleCast = pendingDoubleCast.has(entity.id)
+          if (isDoubleCast) pendingDoubleCast.delete(entity.id)
+          if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0 && Math.random() * 100 < spellBonuses.doubleCastChance) {
+            pendingDoubleCast.add(entity.id)
+            attackCooldowns.set(entity.id, (1000 / action.speed) / 5)
+          } else {
+            attackCooldowns.set(entity.id, 1000 / action.speed)
+          }
           damagedIds.add(target.id)
           spawnVfx(entity, target, action)
         }

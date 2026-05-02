@@ -48,7 +48,13 @@ export const masteryCategories: MasteryCategoryDef[] = [
     label: 'Action',
     masteries: [
       { id: 'weapon', label: 'Weapon', tag: 'weapon', trees: makeTrees('Weapon') },
-      { id: 'spell',  label: 'Spell',  tag: 'spell',  trees: makeTrees('Spell')  },
+      { id: 'spell',  label: 'Spell',  tag: 'spell',  trees: [
+        { index: 0, label: 'Spell Damage' },
+        { index: 1, label: 'Cast Speed' },
+        { index: 2, label: 'Trance' },
+        { index: 3, label: 'Mana Cost' },
+        { index: 4, label: 'Spell Range' },
+      ] },
     ],
   },
   {
