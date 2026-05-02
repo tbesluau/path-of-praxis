@@ -64,6 +64,11 @@ export const balance = {
     fragmentLifetime: 750, // ms (each shard has ±300 ms variance on top)
   },
 
+  // ── Buffs / Debuffs ──────────────────────────────────────────────────────
+  buffs: {
+    tranceDurationMs: 3000,  // how long trance lasts after each trigger
+  },
+
   // ── World ────────────────────────────────────────────────────────────────
   world: {
     gridSize: 64,  // pixels per grid cell
