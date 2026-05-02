@@ -56,6 +56,10 @@ export function createGameScene(
     JSON.stringify(char?.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false }),
   ) as EnemyProgress
 
+  let masteryProgress: Partial<Record<MasteryId, MasteryProgress>> = JSON.parse(
+    JSON.stringify(char?.masteryProgress ?? {}),
+  ) as Partial<Record<MasteryId, MasteryProgress>>
+
   function enemyScale(): number {
     return Math.pow(balance.enemyLevel.statMultiplier, enemyProgress.level - 1)
   }
@@ -348,10 +352,6 @@ export function createGameScene(
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
   let playerRandomTargetId: string | null = null
   let targetingMode: TargetingMode = char?.targetingMode ?? 'nearest'
-
-  let masteryProgress: Partial<Record<MasteryId, MasteryProgress>> = JSON.parse(
-    JSON.stringify(char?.masteryProgress ?? {}),
-  ) as Partial<Record<MasteryId, MasteryProgress>>
 
   // Per-rebirth XP accumulators — reset in rebirth()
   let runActionXp: Record<string, number> = {}
