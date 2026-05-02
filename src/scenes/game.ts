@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -115,6 +115,108 @@ export function createGameScene(
 
   function getManaBonuses(): ManaBonuses {
     return computeManaBonuses(masteryProgress['mana']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getFireBonuses(): FireBonuses {
+    return computeFireBonuses(masteryProgress['fire']?.nodes ?? [[], [], [], [], []])
+  }
+
+  // ── Damage-type effects (currently: burning) ──────────────────────────────
+  // Per-entity stack list. Only the highest-dps stack ticks; the rest are
+  // silent. When the active stack expires, the next highest takes over.
+  interface BurnStack { dps: number; remainingMs: number; sourceActionId: ActionId }
+  const burnStacks = new Map<string, BurnStack[]>()
+  // Accumulator for batched orange damage numbers (avoids visual spam at high tick rates).
+  const burnAccum = new Map<string, { damage: number; timeMs: number }>()
+
+  function isBurning(entity: Entity): boolean {
+    const s = burnStacks.get(entity.id)
+    return !!s && s.length > 0
+  }
+
+  // Tick burning effect: max-dps stack damages, others tick down silently.
+  // Splashes a fraction to nearby non-burning enemies (fire mastery 11).
+  // Adds touched entity IDs to `damagedIds` so the main loop's death pass picks them up.
+  function tickBurns(deltaMs: number, damagedIds: Set<string>): void {
+    if (burnStacks.size === 0 && burnAccum.size === 0) return
+    const dts = deltaMs / 1000
+    const fb = getFireBonuses()
+    const splashFrac = fb.burnSplashFraction / 100
+
+    // Damage pass — read max-dps stack per entity, apply, accumulate, splash.
+    for (const [entityId, stacks] of burnStacks) {
+      const entity = entities.find(e => e.id === entityId)
+      if (!entity || entity.role !== 'enemy') continue
+      let maxStack = stacks[0]
+      for (const s of stacks) if (s.dps > maxStack.dps) maxStack = s
+      const tickDmg = maxStack.dps * dts
+      if (tickDmg <= 0) continue
+
+      const prev = entity.currentLife
+      entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
+      const actual = prev - entity.currentLife
+      if (actual > 0) {
+        const eLevel = enemyLevels.get(entity.id) ?? 1
+        const strongMult = strongEntities.has(entity.id) ? balance.enemyVariance.strongXpMultiplier : 1
+        const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+        awardXp(maxStack.sourceActionId, actual * xpMult)
+        if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
+        acc.damage += actual
+        burnAccum.set(entityId, acc)
+        damagedIds.add(entityId)
+      }
+
+      // Splash: 50% (or whatever) of the raw burn dps damage to nearby non-burning enemies.
+      if (splashFrac > 0) {
+        const splashRaw = tickDmg * splashFrac
+        if (splashRaw > 0) {
+          for (const other of entities) {
+            if (other === entity || other.role !== 'enemy') continue
+            if (isBurning(other)) continue
+            const dx = other.x - entity.x, dy = other.y - entity.y
+            if (Math.sqrt(dx * dx + dy * dy) > balance.effects.burnSplashRadius) continue
+            const sprev = other.currentLife
+            other.currentLife = Math.max(0, other.currentLife - splashRaw)
+            const sActual = sprev - other.currentLife
+            if (sActual > 0) {
+              const eLevel = enemyLevels.get(other.id) ?? 1
+              const strongMult = strongEntities.has(other.id) ? balance.enemyVariance.strongXpMultiplier : 1
+              const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+              awardXp(maxStack.sourceActionId, sActual * xpMult)
+              if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(sActual)
+              const acc = burnAccum.get(other.id) ?? { damage: 0, timeMs: 0 }
+              acc.damage += sActual
+              burnAccum.set(other.id, acc)
+              damagedIds.add(other.id)
+            }
+          }
+        }
+      }
+    }
+
+    // Decrement timers and drop expired stacks; clean up dead entities' state.
+    for (const [entityId, stacks] of [...burnStacks]) {
+      for (const s of stacks) s.remainingMs -= deltaMs
+      const live = stacks.filter(s => s.remainingMs > 0)
+      if (live.length === 0) burnStacks.delete(entityId)
+      else burnStacks.set(entityId, live)
+    }
+
+    // Display pass — emit one orange damage number per accumulator interval.
+    for (const [entityId, acc] of [...burnAccum]) {
+      const entity = entities.find(e => e.id === entityId)
+      if (!entity) { burnAccum.delete(entityId); continue }
+      acc.timeMs += deltaMs
+      if (acc.timeMs >= balance.effects.burnDisplayIntervalMs && acc.damage > 0) {
+        spawnDamageNumber(entity.x, entity.y - entity.radius - 8, acc.damage, 0xff8800)
+        acc.damage = 0
+        acc.timeMs = 0
+      }
+      // Drop accumulator entries for entities that no longer have any stacks
+      // and have flushed their pending damage display.
+      if (!burnStacks.has(entityId) && acc.damage === 0) burnAccum.delete(entityId)
+    }
   }
 
   function computePlayerMaxLife(): number {
@@ -975,6 +1077,8 @@ export function createGameScene(
     enemyLevels.delete(entity.id)
     entityActions.delete(entity.id)
     entityPaths.delete(entity.id)
+    burnStacks.delete(entity.id)
+    burnAccum.delete(entity.id)
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     const idx = entities.indexOf(entity)
     if (idx !== -1) entities.splice(idx, 1)
@@ -1758,6 +1862,13 @@ export function createGameScene(
             totalResistance = Math.max(0, Math.min(100, totalResistance))
             finalDamage = damage * (1 - totalResistance / 100)
           }
+          // Burning enemies take additional damage from any source (fire mastery 8)
+          if (target.role === 'enemy' && attacker.role === 'player' && isBurning(target)) {
+            const fb = getFireBonuses()
+            if (fb.burningTakeIncreased > 0) {
+              finalDamage *= 1 + fb.burningTakeIncreased / 100
+            }
+          }
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - finalDamage)
           const actualDamage = prevLife - target.currentLife
@@ -1778,6 +1889,21 @@ export function createGameScene(
           }
           damagedIds.add(target.id)
           spawnVfx(attacker, target, action)
+
+          // Burning effect: roll on fire-tagged player hits to enemy targets
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && actualDamage > 0) {
+            const fb = getFireBonuses()
+            const chance = balance.effects.baseApplyChance + fb.burnApplyChance
+            if (Math.random() * 100 < chance) {
+              const dps = damage * balance.effects.burnDpsFraction
+                * (1 + fb.burnDamageIncrease / 100)
+                * (1 + fb.burnMoreDamage / 100)
+              const duration = balance.effects.burnBaseDurationMs * (1 + fb.burnDurationIncrease / 100)
+              const list = burnStacks.get(target.id) ?? []
+              list.push({ dps, remainingMs: duration, sourceActionId: actionId })
+              burnStacks.set(target.id, list)
+            }
+          }
         }
 
         for (const entity of entities) {
@@ -1887,6 +2013,9 @@ export function createGameScene(
           }
         }
         if (playerManaSpent) updateBars()
+
+        // ── Burning effect tick (registers burned entities for death pass) ─
+        tickBurns(ticker.deltaMS, damagedIds)
 
         // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
