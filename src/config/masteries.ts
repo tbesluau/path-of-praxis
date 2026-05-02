@@ -1,6 +1,6 @@
 import { balance } from './balance'
 
-export type ActionTag = 'weapon' | 'spell' | 'physical' | 'fire' | 'lightning'
+export type ActionTag = 'weapon' | 'spell' | 'physical' | 'rot' | 'fire' | 'lightning' | 'cold'
 
 export type MasteryId =
   | 'weapon' | 'spell'
@@ -69,7 +69,10 @@ export const masteryCategories: MasteryCategoryDef[] = [
   {
     label: 'Life & Mana',
     masteries: [
-      { id: 'life', label: 'Life', trees: makeTrees('Life') },
+      { id: 'life', label: 'Life', trees: [
+        { index: 0, label: 'Maximum Life' },
+        ...([2, 3, 4, 5].map(n => ({ index: n - 1, label: `Life ${n}` }))),
+      ] },
       { id: 'mana', label: 'Mana', trees: makeTrees('Mana') },
     ],
   },
