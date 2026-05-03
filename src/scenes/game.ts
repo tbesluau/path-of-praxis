@@ -2076,8 +2076,9 @@ export function createGameScene(
           }
 
           // Trance multi-target: queue one extra in-range enemy as its own full cast iteration.
-          // Extra-target casts cannot re-roll this (prevents recursion).
-          if (!isExtraTarget && tranceActive && spellBonuses && spellBonuses.tranceMultiTargetChance > 0
+          // Only primary casts roll for this — double casts and extra-target casts cannot re-roll
+          // (prevents the cycle: double → extra → double-of-extra → extra → …)
+          if (!isExtraTarget && !isDoubleCast && tranceActive && spellBonuses && spellBonuses.tranceMultiTargetChance > 0
               && Math.random() * 100 < spellBonuses.tranceMultiTargetChance) {
             if (!pendingExtraTarget.has(entity.id)) {
               let extra: Entity | null = null
@@ -2117,9 +2118,8 @@ export function createGameScene(
           }
 
           // Cooldown: trance cast speed bonus, then pending-queue intercept.
-          // Double casts cannot queue another double cast (`!isDoubleCast` guard prevents recursion).
-          // Extra-target casts cannot queue another extra target (`!isExtraTarget` guard above prevents recursion).
-          // Both may independently queue a double cast or extra target respectively.
+          // Only primary casts queue extra targets; only non-double casts queue double casts.
+          // This caps the burst at: primary → double + extra → double-of-extra (4 total, all procs required).
           const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
             ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
             : 1
