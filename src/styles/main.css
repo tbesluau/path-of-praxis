@@ -1871,6 +1871,22 @@ body::after {
   margin-top: calc(-1 * var(--space-xs));
 }
 
+.mastery-tree-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-sm);
+}
+
+.mastery-reset-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.reset-confirm-actions {
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
 .mastery-tree-nodes {
   display: flex;
   align-items: center;

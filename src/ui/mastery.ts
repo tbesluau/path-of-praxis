@@ -48,6 +48,41 @@ function assignBlockReason(
   return null
 }
 
+// ── Reset Confirmation Modal ───────────────────────────────────────────────
+
+function mountResetConfirmModal(
+  parent: HTMLElement,
+  masteryLabel: string,
+  onConfirm: () => void,
+  onClose: () => void,
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop mastery-node-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel mastery-node-panel" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <h2 class="modal-title" id="reset-confirm-title">Reset ${masteryLabel}?</h2>
+      <p class="node-detail-desc">All assigned nodes will be cleared and you will lose 1 level in this mastery.</p>
+      <div class="node-detail-actions reset-confirm-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="cancel">Cancel</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm">Reset</button>
+      </div>
+    </div>
+  `
+  parent.appendChild(backdrop)
+
+  const dismiss = (): void => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+  backdrop.querySelector<HTMLButtonElement>('[data-action="confirm"]')!.addEventListener('click', () => {
+    onConfirm()
+    dismiss()
+  })
+
+  return () => backdrop.remove()
+}
+
 // ── Node Detail Modal ──────────────────────────────────────────────────────
 
 function mountNodeDetailModal(
@@ -249,6 +284,7 @@ function mountMasteryTreeModal(
   def: MasteryDef,
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
   onAssign: (treeIdx: number, nodeIdx: number) => void,
+  onReset: () => void,
   onClose: () => void,
 ): () => void {
   const p = prog(masteryProgress, def.id)
@@ -266,17 +302,22 @@ function mountMasteryTreeModal(
     <h2 class="modal-title" id="tree-modal-title">${def.label}</h2>
     <p class="mastery-tree-points"></p>
     <div class="mastery-trees-list"></div>
+    <div class="mastery-tree-footer">
+      <button class="modal-btn modal-btn--danger mastery-reset-btn" data-action="reset">Reset (−1 level)</button>
+    </div>
   `
   backdrop.appendChild(panel)
 
   const pointsEl = panel.querySelector<HTMLElement>('.mastery-tree-points')!
   const list = panel.querySelector<HTMLElement>('.mastery-trees-list')!
+  const resetBtn = panel.querySelector<HTMLButtonElement>('.mastery-reset-btn')!
 
   function updatePointsSummary(): void {
     const freshP = prog(masteryProgress, def.id)
     const available = masteryPointsAvailable(freshP)
     const earned = Math.max(0, freshP.level - 1)
     pointsEl.textContent = `You have ${available} / ${earned} mastery point${earned !== 1 ? 's' : ''} to assign`
+    resetBtn.disabled = freshP.level <= 1
   }
 
   updatePointsSummary()
@@ -332,6 +373,20 @@ function mountMasteryTreeModal(
     updatePointsSummary()
   }
 
+  resetBtn.addEventListener('click', () => {
+    closeSub()
+    subCleanup = mountResetConfirmModal(
+      parent,
+      def.label,
+      () => {
+        onReset()
+        subCleanup = null
+        rebuildTrees()
+      },
+      () => { subCleanup = null },
+    )
+  })
+
   const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
   panel.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
@@ -346,6 +401,7 @@ export function mountMasteryModal(
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
   onClose: () => void,
   onAssign: (id: MasteryId, treeIdx: number, nodeIdx: number) => void,
+  onReset: (id: MasteryId) => void,
 ): () => void {
   const categoriesHtml = masteryCategories.map(cat => {
     const rows = cat.masteries.map(m => {
@@ -393,6 +449,10 @@ export function mountMasteryModal(
         masteryProgress,
         (treeIdx, nodeIdx) => {
           onAssign(id, treeIdx, nodeIdx)
+          subCleanup = null
+        },
+        () => {
+          onReset(id)
           subCleanup = null
         },
         () => { subCleanup = null },
