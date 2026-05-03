@@ -125,13 +125,18 @@ export function createGameScene(
     return computeFireBonuses(masteryProgress['fire']?.nodes ?? [[], [], [], [], []])
   }
 
-  // ── Damage-type effects (currently: burning) ──────────────────────────────
+  // ── Damage-type effects (burning + immolation) ────────────────────────────
   // Per-entity stack list. Only the highest-dps stack ticks; the rest are
   // silent. When the active stack expires, the next highest takes over.
   interface BurnStack { dps: number; remainingMs: number; sourceActionId: ActionId }
   const burnStacks = new Map<string, BurnStack[]>()
   // Accumulator for batched orange damage numbers (avoids visual spam at high tick rates).
   const burnAccum = new Map<string, { damage: number; timeMs: number }>()
+
+  // Player self-burn from immolation (independent of enemy burnStacks).
+  // Duration mirrors the buff bar entry; both are refreshed together on re-trigger.
+  let playerImmolation: { dps: number; remainingMs: number } | null = null
+  let playerImmolAccum = { damage: 0, timeMs: 0 }
 
   function isBurning(entity: Entity): boolean {
     const s = burnStacks.get(entity.id)
@@ -220,6 +225,24 @@ export function createGameScene(
       // Drop accumulator entries for entities that no longer have any stacks
       // and have flushed their pending damage display.
       if (!burnStacks.has(entityId) && acc.damage === 0) burnAccum.delete(entityId)
+    }
+
+    // Player self-burn (immolation DOT — independent of burnStacks)
+    if (playerImmolation !== null && !playerDead) {
+      playerImmolation.remainingMs -= deltaMs
+      const selfDmg = playerImmolation.dps * dts
+      if (selfDmg > 0) {
+        playerEntity.currentLife = Math.max(0, playerEntity.currentLife - selfDmg)
+        damagedIds.add(playerEntity.id)
+        playerImmolAccum.damage += selfDmg
+      }
+      if (playerImmolation.remainingMs <= 0) playerImmolation = null
+    }
+    playerImmolAccum.timeMs += deltaMs
+    if (playerImmolAccum.timeMs >= balance.effects.burnDisplayIntervalMs && playerImmolAccum.damage > 0) {
+      spawnDamageNumber(playerEntity.x, playerEntity.y - playerEntity.radius - 8, playerImmolAccum.damage, 0xff8800)
+      playerImmolAccum.damage = 0
+      playerImmolAccum.timeMs = 0
     }
   }
 
@@ -711,7 +734,10 @@ export function createGameScene(
     if (regenTimer !== null) return
     regenTimer = setInterval(() => {
       if (playerDead) return
-      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + balance.player.regenRate * statBonus(lifeProgress.level) * gameSpeed * REGEN_TICK)
+      const lb = getLifeBonuses()
+      const lifeRegenBase = balance.player.regenRate * statBonus(lifeProgress.level) + lb.regenFlatBonus
+      const lifeRegenMult = 1 + lb.regenIncrease / 100
+      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * REGEN_TICK)
       const manaRegenMult = 1 + getManaBonuses().regenIncrease / 100
       playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level) * manaRegenMult * gameSpeed * REGEN_TICK)
       updateBars()
@@ -774,7 +800,7 @@ export function createGameScene(
     buffBarEl.innerHTML = ordered.map(e =>
       `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i></div>`
     ).join('')
-    if (ordered.length > 0) createIcons({ icons: { Book } })
+    if (ordered.length > 0) createIcons({ icons: { Book, Flame } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -1898,7 +1924,8 @@ export function createGameScene(
           // Burning effect: roll on fire-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && actualDamage > 0) {
             const fb = getFireBonuses()
-            const chance = balance.effects.baseApplyChance + fb.burnApplyChance
+            const immolBurnBonus = hasEffect('immolation') ? fb.immolateBurnChance : 0
+            const chance = balance.effects.baseApplyChance + fb.burnApplyChance + immolBurnBonus
             if (Math.random() * 100 < chance) {
               const dps = damage * balance.effects.burnDpsFraction
                 * (1 + fb.burnDamageIncrease / 100)
@@ -1954,6 +1981,11 @@ export function createGameScene(
           if (tranceActive && spellBonuses && spellBonuses.tranceDamageIncrease > 0) {
             effectiveDamage *= 1 + spellBonuses.tranceDamageIncrease / 100
           }
+          // Immolation fire damage bonus (mastery additive layer)
+          if (entity.role === 'player' && action.tags.includes('fire') && hasEffect('immolation')) {
+            const fb = getFireBonuses()
+            if (fb.immolateDamageBonus > 0) effectiveDamage *= 1 + fb.immolateDamageBonus / 100
+          }
           if (spellBonuses && spellBonuses.doubleDamageChance > 0 && Math.random() * 100 < spellBonuses.doubleDamageChance) {
             effectiveDamage *= 2
           }
@@ -2001,6 +2033,23 @@ export function createGameScene(
           if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.tranceTriggerChance > 0
               && Math.random() * 100 < spellBonuses.tranceTriggerChance) {
             applyEffect({ id: 'trance', iconName: 'book', kind: 'buff' }, balance.buffs.tranceDurationMs)
+          }
+
+          // Immolation trigger (player fire actions; only on primary cast)
+          if (entity.role === 'player' && action.tags.includes('fire') && !isDoubleCast) {
+            const fb = getFireBonuses()
+            if (fb.immolateChance > 0 && Math.random() * 100 < fb.immolateChance) {
+              const rawDps = effectiveDamage * balance.effects.burnDpsFraction
+                * Math.max(0, 1 - fb.immolateDamageReduction / 100)
+              const duration = balance.effects.burnBaseDurationMs * (1 + fb.burnDurationIncrease / 100)
+              if (playerImmolation) {
+                playerImmolation.dps = rawDps
+                playerImmolation.remainingMs = duration
+              } else {
+                playerImmolation = { dps: rawDps, remainingMs: duration }
+              }
+              applyEffect({ id: 'immolation', iconName: 'flame', kind: 'debuff' }, duration)
+            }
           }
 
           // Cooldown: trance cast speed bonus, then double cast intercept

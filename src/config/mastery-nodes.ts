@@ -23,12 +23,16 @@ export interface NodeEffect {
   spellManaCostRandomReductionMax?: number // additive % cap; per-cast random reduction in [0, cap]
   spellRepeatNoMana?: boolean              // when true, repeated casts (e.g. double cast) skip the mana gate
 
-  // Life mastery effects
+  // Life mastery effects (Maximum Life tree)
   lifeMaxIncrease?: number         // additive %; stacks before the 'more' multiplier
   lifeMoreMax?: number             // 'more' %; applied as × (1 + sum/100) after increased
   lifePhysicalResistance?: number  // additive %; reduces damage from physical-tagged hits
   lifeRotResistance?: number       // additive %; reduces damage from rot-tagged hits
   lifeElementalResistance?: number // additive %; reduces damage from fire/lightning/cold hits
+
+  // Life mastery effects (Life Regeneration tree)
+  lifeRegenIncrease?: number   // additive %; mastery layer — independent of level-scaling layer
+  lifeRegenFlatBonus?: number  // flat regen added after level scaling, before mastery % multiplier
 
   // Mana mastery effects
   manaRegenIncrease?: number    // additive %; increases mana regen rate
@@ -41,6 +45,12 @@ export interface NodeEffect {
   fireBurnMoreDamage?: number           // 'more' %; multiplies burn dps after increased
   fireBurningTakeIncreased?: number     // additive %; burning enemies take more damage from all sources
   fireBurnSplashFraction?: number       // additive %; non-burning neighbors take this share of burn dps
+
+  // Fire mastery effects (Immolation tree)
+  fireImmolateChance?: number          // additive %; chance to trigger immolation on fire-tagged hit
+  fireImmolateDamageBonus?: number     // additive %; fire action damage bonus while immolation is active
+  fireImmolateBurnChance?: number      // additive %; burn apply chance bonus while immolation is active
+  fireImmolateDamageReduction?: number // additive %; reduces immolation self-burn dps
 }
 
 export interface SpellBonuses {
@@ -68,6 +78,8 @@ export interface LifeBonuses {
   physicalResistance: number    // total additive %
   rotResistance: number         // total additive %
   elementalResistance: number   // total additive %
+  regenIncrease: number         // mastery-layer additive % regen multiplier
+  regenFlatBonus: number        // flat regen added after level scaling
 }
 
 export interface ManaBonuses {
@@ -82,6 +94,10 @@ export interface FireBonuses {
   burnMoreDamage: number        // total 'more' %
   burningTakeIncreased: number  // total additive %; damage taken by burning enemies from any source
   burnSplashFraction: number    // total additive %; share of burn dps that splashes to non-burning neighbors
+  immolateChance: number        // total additive %; chance to trigger immolation on fire hit
+  immolateDamageBonus: number   // total additive %; fire damage bonus while immolation is active
+  immolateBurnChance: number    // total additive %; burn apply chance bonus while immolation is active
+  immolateDamageReduction: number // total additive %; immolation self-burn dps reduction
 }
 
 // ── Spell mastery node effects ─────────────────────────────────────────────
@@ -181,7 +197,7 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
 }
 
 // ── Life mastery node effects ──────────────────────────────────────────────
-// Tree 0: Maximum Life  Tree 1-4: not yet implemented
+// Tree 0: Maximum Life  Tree 1: Life Regeneration (short)  Tree 2-4: not yet implemented
 
 const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Maximum Life
@@ -198,6 +214,15 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     10: { lifeElementalResistance: 5 },
     11: { lifeMoreMax: 30 },
   },
+  1: {  // Life Regeneration (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lifeRegenIncrease: 5 },
+    1: { lifeRegenIncrease: 5 },
+    2: { lifeRegenIncrease: 12 },
+    3: { lifeRegenIncrease: 5 },
+    4: { lifeRegenIncrease: 5 },
+    5: { lifeRegenFlatBonus: 1 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getLifeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -211,6 +236,8 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
     physicalResistance: 0,
     rotResistance: 0,
     elementalResistance: 0,
+    regenIncrease: 0,
+    regenFlatBonus: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -220,6 +247,8 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
       b.physicalResistance += eff.lifePhysicalResistance ?? 0
       b.rotResistance += eff.lifeRotResistance ?? 0
       b.elementalResistance += eff.lifeElementalResistance ?? 0
+      b.regenIncrease += eff.lifeRegenIncrease ?? 0
+      b.regenFlatBonus += eff.lifeRegenFlatBonus ?? 0
     }
   }
   return b
@@ -257,7 +286,7 @@ export function computeManaBonuses(nodes: number[][]): ManaBonuses {
 }
 
 // ── Fire mastery node effects ──────────────────────────────────────────────
-// Tree 0: Burning (full-length tree)  Tree 1-4: not yet implemented
+// Tree 0: Burning (full-length tree)  Tree 1: Immolation (short)  Tree 2-4: not yet implemented
 
 const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Burning
@@ -275,6 +304,15 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { fireBurnSplashFraction: 50 },
     // 12-15: key nodes — not yet defined
   },
+  1: {  // Immolation (short tree — line nodes 0-5, key nodes 12-13)
+    0: { fireImmolateChance: 2 },
+    1: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
+    2: { fireImmolateDamageReduction: 25 },
+    3: { fireImmolateChance: 2 },
+    4: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
+    5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageReduction: 25 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getFireNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -289,6 +327,10 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
     burnMoreDamage: 0,
     burningTakeIncreased: 0,
     burnSplashFraction: 0,
+    immolateChance: 0,
+    immolateDamageBonus: 0,
+    immolateBurnChance: 0,
+    immolateDamageReduction: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -299,6 +341,10 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
       b.burnMoreDamage += eff.fireBurnMoreDamage ?? 0
       b.burningTakeIncreased += eff.fireBurningTakeIncreased ?? 0
       b.burnSplashFraction += eff.fireBurnSplashFraction ?? 0
+      b.immolateChance += eff.fireImmolateChance ?? 0
+      b.immolateDamageBonus += eff.fireImmolateDamageBonus ?? 0
+      b.immolateBurnChance += eff.fireImmolateBurnChance ?? 0
+      b.immolateDamageReduction += eff.fireImmolateDamageReduction ?? 0
     }
   }
   return b
@@ -368,6 +414,14 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     10: '+5% elemental resistance',
     11: '+30% more maximum life',
   },
+  1: {
+    0: '+5% increased life regeneration',
+    1: '+5% increased life regeneration',
+    2: '+12% increased life regeneration',
+    3: '+5% increased life regeneration',
+    4: '+5% increased life regeneration',
+    5: '+1 base life regeneration (added after level scaling, before increased %)',
+  },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -399,6 +453,14 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  'Fire actions have +5% chance to apply burn',
     10: '+5% increased burn damage',
     11: 'Burning enemies splash 50% of their burn damage to nearby non-burning enemies',
+  },
+  1: {
+    0: 'Fire actions have +2% chance to trigger immolation',
+    1: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
+    2: 'Immolation self-burn damage reduced by 25%',
+    3: 'Fire actions have +2% chance to trigger immolation',
+    4: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
+    5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage reduced by 25%',
   },
 }
 
