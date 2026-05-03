@@ -62,6 +62,14 @@ export interface NodeEffect {
   enemyEliteChance?: number       // additive percentage points to "strong → elite" upgrade roll
   enemyMinStrongCount?: number    // additive flat: at least this many enemies in a wave are strong-or-better
   enemyMinEliteCount?: number     // additive flat: at least this many enemies in a wave are elite
+
+  // Projectile mastery effects
+  projRangeIncrease?: number      // additive %; increases range for projectile-tagged actions
+  projDamageIncrease?: number     // additive %; increases damage for projectile-tagged actions
+  projDamagePerRange?: number     // % per range unit; increased projectile damage per 1 unit of total range
+  projExtraChance?: number        // additive %; chance to fire an extra projectile at reduced damage
+  projExtraDamage?: number        // additive %; increases the damage of extra projectiles (base 50%)
+  projExtraDoubleRoll?: boolean   // when extra projectile fires, roll once more for a second extra
 }
 
 export interface SpellBonuses {
@@ -98,6 +106,15 @@ export interface ManaBonuses {
   moreMaxMana: number      // total 'more' %
   regenIncrease: number    // total additive %
   replenishChance: number  // total additive %
+}
+
+export interface ProjectileBonuses {
+  rangeIncrease: number     // total additive %
+  damageIncrease: number    // total additive %
+  damagePerRange: number    // % per range unit added to damage at attack time
+  extraChance: number       // total additive %
+  extraDamage: number       // total additive % (stacks on 50% base)
+  extraDoubleRoll: boolean
 }
 
 export interface EnemyBonuses {
@@ -437,6 +454,63 @@ export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
   return b
 }
 
+// ── Projectile mastery node effects ───────────────────────────────────────
+// Tree 0: Projectile Range (short)  Tree 1: Multiple Projectiles (full)  Tree 2-4: not yet implemented
+
+const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Projectile Range (short tree — line nodes 0-5, key nodes 12-13)
+    0: { projRangeIncrease: 5 },
+    1: { projDamageIncrease: 5 },
+    2: { projRangeIncrease: 12 },
+    3: { projRangeIncrease: 5 },
+    4: { projDamageIncrease: 5 },
+    5: { projDamagePerRange: 3 },
+    // 12-13: key nodes — not yet defined
+  },
+  1: {  // Multiple Projectiles (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { projExtraChance: 5 },
+    1:  { projExtraDamage: 5 },
+    2:  { projExtraChance: 7, projExtraDamage: 7 },
+    3:  { projExtraChance: 5 },
+    4:  { projExtraDamage: 5 },
+    5:  { projExtraChance: 15 },
+    6:  { projExtraChance: 5 },
+    7:  { projExtraDamage: 5 },
+    8:  { projExtraChance: 7, projExtraDamage: 7 },
+    9:  { projExtraChance: 5 },
+    10: { projExtraDamage: 5 },
+    11: { projExtraDoubleRoll: true },
+    // 12-15: key nodes — not yet defined
+  },
+}
+
+export function getProjectileNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return PROJ_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeProjectileBonuses(nodes: number[][]): ProjectileBonuses {
+  const b: ProjectileBonuses = {
+    rangeIncrease: 0,
+    damageIncrease: 0,
+    damagePerRange: 0,
+    extraChance: 0,
+    extraDamage: 0,
+    extraDoubleRoll: false,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getProjectileNodeEffect(treeIdx, nodeIdx)
+      b.rangeIncrease += eff.projRangeIncrease ?? 0
+      b.damageIncrease += eff.projDamageIncrease ?? 0
+      b.damagePerRange += eff.projDamagePerRange ?? 0
+      b.extraChance += eff.projExtraChance ?? 0
+      b.extraDamage += eff.projExtraDamage ?? 0
+      if (eff.projExtraDoubleRoll) b.extraDoubleRoll = true
+    }
+  }
+  return b
+}
+
 // ── Node description text (shown in the node detail modal) ─────────────────
 
 const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -604,5 +678,34 @@ export function getNodeDescription(
     const desc = ENEMY_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
+  if (masteryId === 'projectile') {
+    const desc = PROJ_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`
+}
+
+const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0: '+5% increased projectile range',
+    1: '+5% increased projectile damage',
+    2: '+12% increased projectile range',
+    3: '+5% increased projectile range',
+    4: '+5% increased projectile damage',
+    5: '+3% increased projectile damage per 1 range unit (minimum 3% at range 1)',
+  },
+  1: {
+    0:  '+5% chance to fire an additional projectile at 50% damage',
+    1:  '+5% increased additional projectile damage',
+    2:  '+7% chance to fire an additional projectile · +7% increased additional projectile damage',
+    3:  '+5% chance to fire an additional projectile',
+    4:  '+5% increased additional projectile damage',
+    5:  '+15% chance to fire an additional projectile',
+    6:  '+5% chance to fire an additional projectile',
+    7:  '+5% increased additional projectile damage',
+    8:  '+7% chance to fire an additional projectile · +7% increased additional projectile damage',
+    9:  '+5% chance to fire an additional projectile',
+    10: '+5% increased additional projectile damage',
+    11: 'When an additional projectile fires, roll once more for a second additional projectile',
+  },
 }
