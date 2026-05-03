@@ -56,6 +56,11 @@ export const balance = {
     strongDamageMin: 1.0,  strongDamageMax: 1.8,
     strongSpeedMult: 1.2,
     strongXpMultiplier: 2,            // XP multiplier for action/life/mana XP from strong enemies
+    eliteChance:        0,             // probability that a strong enemy is upgraded to "elite" (mastery-only)
+    eliteLifeMin:    1.5,  eliteLifeMax:   2.5,
+    eliteDamageMin:  1.5,  eliteDamageMax: 2.5,
+    eliteSpeedMult:  1.2,             // applied to BOTH attack speed AND move speed
+    eliteXpMultiplier:  3,
   },
 
   // ── Death animation ──────────────────────────────────────────────────────

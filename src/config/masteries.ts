@@ -100,7 +100,11 @@ export const masteryCategories: MasteryCategoryDef[] = [
   {
     label: 'World',
     masteries: [
-      { id: 'enemy',    label: 'Enemy',    trees: makeTrees('Enemy')    },
+      { id: 'enemy',    label: 'Enemy',    trees: [
+        { index: 0, label: 'Enemy Quantity', short: true },
+        { index: 1, label: 'Enemy Quality',  short: true },
+        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Enemy ${n}` }))),
+      ] },
       { id: 'movement', label: 'Movement', trees: makeTrees('Movement') },
     ],
   },

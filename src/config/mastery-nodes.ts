@@ -53,6 +53,15 @@ export interface NodeEffect {
   fireImmolateDamageBonus?: number     // additive %; fire action damage bonus while immolation is active
   fireImmolateBurnChance?: number      // additive %; burn apply chance bonus while immolation is active
   fireImmolateDamageReduction?: number // additive %; reduces immolation self-burn dps
+
+  // Enemy mastery effects
+  enemyExtraOneChance?: number    // additive percentage points to base "+1 enemy" wave roll
+  enemyExtraTwoChance?: number    // additive percentage points to base "+2 enemies" wave roll
+  enemyGuaranteedExtra?: number   // additive flat extra enemies per wave
+  enemyStrongChance?: number      // additive percentage points to per-enemy "strong" roll
+  enemyEliteChance?: number       // additive percentage points to "strong → elite" upgrade roll
+  enemyMinStrongCount?: number    // additive flat: at least this many enemies in a wave are strong-or-better
+  enemyMinEliteCount?: number     // additive flat: at least this many enemies in a wave are elite
 }
 
 export interface SpellBonuses {
@@ -89,6 +98,16 @@ export interface ManaBonuses {
   moreMaxMana: number      // total 'more' %
   regenIncrease: number    // total additive %
   replenishChance: number  // total additive %
+}
+
+export interface EnemyBonuses {
+  extraOneChance: number    // total additive percentage points
+  extraTwoChance: number    // total additive percentage points
+  guaranteedExtra: number   // total flat
+  strongChance: number      // total additive percentage points
+  eliteChance: number       // total additive percentage points
+  minStrongCount: number    // total flat (counts strong-or-elite)
+  minEliteCount: number     // total flat
 }
 
 export interface FireBonuses {
@@ -365,6 +384,59 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
   return b
 }
 
+// ── Enemy mastery node effects ─────────────────────────────────────────────
+// Tree 0: Enemy Quantity (short)  Tree 1: Enemy Quality (short)  Tree 2-4: not yet implemented
+
+const ENEMY_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Enemy Quantity (short tree — line nodes 0-5, key nodes 12-13)
+    0: { enemyExtraOneChance: 50 },
+    1: { enemyExtraTwoChance: 25 },
+    2: { enemyGuaranteedExtra: 1 },
+    3: { enemyExtraOneChance: 50 },
+    4: { enemyExtraTwoChance: 25 },
+    5: { enemyGuaranteedExtra: 2, enemyMinStrongCount: 1 },
+    // 12-13: key nodes — not yet defined
+  },
+  1: {  // Enemy Quality (short tree — line nodes 0-5, key nodes 12-13)
+    0: { enemyStrongChance: 5 },
+    1: { enemyEliteChance: 10 },
+    2: { enemyStrongChance: 12 },
+    3: { enemyStrongChance: 5 },
+    4: { enemyEliteChance: 10 },
+    5: { enemyMinStrongCount: 2, enemyMinEliteCount: 1 },
+    // 12-13: key nodes — not yet defined
+  },
+}
+
+export function getEnemyNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return ENEMY_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
+  const b: EnemyBonuses = {
+    extraOneChance: 0,
+    extraTwoChance: 0,
+    guaranteedExtra: 0,
+    strongChance: 0,
+    eliteChance: 0,
+    minStrongCount: 0,
+    minEliteCount: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getEnemyNodeEffect(treeIdx, nodeIdx)
+      b.extraOneChance += eff.enemyExtraOneChance ?? 0
+      b.extraTwoChance += eff.enemyExtraTwoChance ?? 0
+      b.guaranteedExtra += eff.enemyGuaranteedExtra ?? 0
+      b.strongChance += eff.enemyStrongChance ?? 0
+      b.eliteChance += eff.enemyEliteChance ?? 0
+      b.minStrongCount += eff.enemyMinStrongCount ?? 0
+      b.minEliteCount += eff.enemyMinEliteCount ?? 0
+    }
+  }
+  return b
+}
+
 // ── Node description text (shown in the node detail modal) ─────────────────
 
 const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -487,6 +559,25 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
   },
 }
 
+const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0: '+50% increased chance to spawn an additional enemy',
+    1: '+25% increased chance to spawn 2 additional enemies',
+    2: '+1 guaranteed enemy spawn',
+    3: '+50% increased chance to spawn an additional enemy',
+    4: '+25% increased chance to spawn 2 additional enemies',
+    5: '+2 guaranteed enemy spawns · One enemy spawn is at least strong',
+  },
+  1: {
+    0: '+5% increased chance for an enemy to be strong',
+    1: '+10% increased chance for a strong enemy to be elite',
+    2: '+12% increased chance for an enemy to be strong',
+    3: '+5% increased chance for an enemy to be strong',
+    4: '+10% increased chance for a strong enemy to be elite',
+    5: 'One enemy spawn is at least strong · One enemy spawn is at least elite',
+  },
+}
+
 export function getNodeDescription(
   masteryId: MasteryId,
   treeIdx: number,
@@ -507,6 +598,10 @@ export function getNodeDescription(
   }
   if (masteryId === 'fire') {
     const desc = FIRE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
+  if (masteryId === 'enemy') {
+    const desc = ENEMY_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`

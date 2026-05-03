@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -125,6 +125,10 @@ export function createGameScene(
     return computeFireBonuses(masteryProgress['fire']?.nodes ?? [[], [], [], [], []])
   }
 
+  function getEnemyBonuses(): EnemyBonuses {
+    return computeEnemyBonuses(masteryProgress['enemy']?.nodes ?? [[], [], [], [], []])
+  }
+
   // ── Damage-type effects (burning + immolation) ────────────────────────────
   // Per-entity stack list. Only the highest-dps stack ticks; the rest are
   // silent. When the active stack expires, the next highest takes over.
@@ -166,8 +170,7 @@ export function createGameScene(
       const actual = prev - entity.currentLife
       if (actual > 0) {
         const eLevel = enemyLevels.get(entity.id) ?? 1
-        const strongMult = strongEntities.has(entity.id) ? balance.enemyVariance.strongXpMultiplier : 1
-        const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+        const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
         awardXp(maxStack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
         const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
@@ -190,8 +193,7 @@ export function createGameScene(
             const sActual = sprev - other.currentLife
             if (sActual > 0) {
               const eLevel = enemyLevels.get(other.id) ?? 1
-              const strongMult = strongEntities.has(other.id) ? balance.enemyVariance.strongXpMultiplier : 1
-              const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+              const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(other.id)
               awardXp(maxStack.sourceActionId, sActual * xpMult)
               if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(sActual)
               const acc = burnAccum.get(other.id) ?? { damage: 0, timeMs: 0 }
@@ -953,7 +955,14 @@ export function createGameScene(
     countdown: number   // ms remaining until impact
   }
   const pendingHits = new Map<string, PendingHit>()  // keyed by attacker entity.id
-  const strongEntities = new Set<string>()
+  const strongEntities = new Set<string>()  // strong-or-elite enemies (elite is a subset)
+  const eliteEntities = new Set<string>()
+
+  function tierXpMult(entityId: string): number {
+    if (eliteEntities.has(entityId)) return balance.enemyVariance.eliteXpMultiplier
+    if (strongEntities.has(entityId)) return balance.enemyVariance.strongXpMultiplier
+    return 1
+  }
   const enemyLevels = new Map<string, number>()  // enemy entity id → enemy level at spawn time
   const deathFragments: DeathFragment[] = []
   const vfxList: Vfx[] = []
@@ -1026,7 +1035,7 @@ export function createGameScene(
       if (strongEntities.has(entity.id)) {
         const diamond = new Graphics()
         diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
-        diamond.fill({ color: 0x4499ff })
+        diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
         diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
         c.addChild(diamond)
       }
@@ -1163,6 +1172,7 @@ export function createGameScene(
     attackCooldowns.delete(entity.id)
     pendingDoubleCast.delete(entity.id)
     strongEntities.delete(entity.id)
+    eliteEntities.delete(entity.id)
     enemyLevels.delete(entity.id)
     entityActions.delete(entity.id)
     entityPaths.delete(entity.id)
@@ -1509,10 +1519,45 @@ export function createGameScene(
     waveScheduled = false
     enemySpawnTimeout = null
 
-    // Guaranteed: 1 at level 1, +1 every 3 levels (level 3→2, level 6→3, …)
-    let count = 1 + Math.floor(enemyProgress.level / 3)
-    if (Math.random() < balance.wave.extraOneChance) count++
-    if (Math.random() < balance.wave.extraTwoChance) count += 2
+    const eb = getEnemyBonuses()
+
+    // Guaranteed: 1 at level 1, +1 every 3 levels, plus any mastery flat bonus
+    let count = 1 + Math.floor(enemyProgress.level / 3) + eb.guaranteedExtra
+    const ext1Chance = Math.min(1, balance.wave.extraOneChance + eb.extraOneChance / 100)
+    const ext2Chance = Math.min(1, balance.wave.extraTwoChance + eb.extraTwoChance / 100)
+    if (Math.random() < ext1Chance) count++
+    if (Math.random() < ext2Chance) count += 2
+
+    // Determine tier per spawn (random rolls), then enforce minimum guarantees
+    type Tier = 'normal' | 'strong' | 'elite'
+    const ev = balance.enemyVariance
+    const strongRoll = Math.min(1, ev.strongChance + eb.strongChance / 100)
+    const eliteRoll = Math.min(1, ev.eliteChance + eb.eliteChance / 100)
+    const tiers: Tier[] = []
+    for (let i = 0; i < count; i++) {
+      if (Math.random() < strongRoll) {
+        tiers.push(Math.random() < eliteRoll ? 'elite' : 'strong')
+      } else {
+        tiers.push('normal')
+      }
+    }
+    // Promote to satisfy minimum elite guarantees first (prefer upgrading existing strongs)
+    let curElites = tiers.filter(t => t === 'elite').length
+    while (curElites < eb.minEliteCount) {
+      let idx = tiers.indexOf('strong')
+      if (idx < 0) idx = tiers.indexOf('normal')
+      if (idx < 0) break
+      tiers[idx] = 'elite'
+      curElites++
+    }
+    // Then promote normals to strong to satisfy minStrongCount (counts strong-or-elite)
+    let curStrongs = tiers.filter(t => t !== 'normal').length
+    while (curStrongs < eb.minStrongCount) {
+      const idx = tiers.indexOf('normal')
+      if (idx < 0) break
+      tiers[idx] = 'strong'
+      curStrongs++
+    }
 
     const halfW = app.screen.width / 2
     const halfH = (app.screen.height - HUD_HEIGHT) / 2
@@ -1521,8 +1566,8 @@ export function createGameScene(
       : lastWaveAngle + gaussian() * balance.wave.directionStdDev
     lastWaveAngle = clusterAngle
 
-    const ev = balance.enemyVariance
     for (let i = 0; i < count; i++) {
+      const tier = tiers[i]
       const angle = clusterAngle + (Math.random() - 0.5) * balance.wave.clusterSpread
       const cosA = Math.abs(Math.cos(angle))
       const sinA = Math.abs(Math.sin(angle))
@@ -1541,25 +1586,34 @@ export function createGameScene(
 
       const scale = enemyScale()
       const lifeScale = enemyLifeScale()
-      const isStrong = Math.random() < ev.strongChance
-      const lifeMult = isStrong
-        ? ev.strongLifeMin  + Math.random() * (ev.strongLifeMax  - ev.strongLifeMin)
-        : ev.lifeMin        + Math.random() * (ev.lifeMax        - ev.lifeMin)
-      const dmgMult = isStrong
-        ? ev.strongDamageMin + Math.random() * (ev.strongDamageMax - ev.strongDamageMin)
-        : ev.damageMin       + Math.random() * (ev.damageMax       - ev.damageMin)
+      let lifeMult: number, dmgMult: number
+      if (tier === 'elite') {
+        lifeMult = ev.eliteLifeMin   + Math.random() * (ev.eliteLifeMax   - ev.eliteLifeMin)
+        dmgMult  = ev.eliteDamageMin + Math.random() * (ev.eliteDamageMax - ev.eliteDamageMin)
+      } else if (tier === 'strong') {
+        lifeMult = ev.strongLifeMin  + Math.random() * (ev.strongLifeMax  - ev.strongLifeMin)
+        dmgMult  = ev.strongDamageMin + Math.random() * (ev.strongDamageMax - ev.strongDamageMin)
+      } else {
+        lifeMult = ev.lifeMin   + Math.random() * (ev.lifeMax   - ev.lifeMin)
+        dmgMult  = ev.damageMin + Math.random() * (ev.damageMax - ev.damageMin)
+      }
 
       const speedScale = 1 + balance.enemyLevel.speedAddPerLevel * (enemyProgress.level - 1)
+      const moveSpeedMult = tier === 'elite' ? ev.eliteSpeedMult : 1
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
         spawnX, spawnY,
         'enemyA',
         balance.enemyA.radius,
-        { moveSpeed: balance.enemyA.moveSpeed * speedScale, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
+        { moveSpeed: balance.enemyA.moveSpeed * speedScale * moveSpeedMult, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
       assignAction(enemy, randomAction().id)
       enemy.attackDamage *= scale * balance.enemyA.damageMultiplier * dmgMult
-      if (isStrong) {
+      if (tier === 'elite') {
+        enemy.attackSpeed *= ev.eliteSpeedMult
+        strongEntities.add(enemy.id)
+        eliteEntities.add(enemy.id)
+      } else if (tier === 'strong') {
         enemy.attackSpeed *= ev.strongSpeedMult
         strongEntities.add(enemy.id)
       }
@@ -1999,16 +2053,14 @@ export function createGameScene(
           const actualDamage = prevLife - target.currentLife
           if (attacker.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(target.id) ?? 1
-            const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
-            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
             awardXp(actionId, actualDamage * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
           }
           if (target.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1
-            const strongMult = strongEntities.has(attacker.id) ? balance.enemyVariance.strongXpMultiplier : 1
-            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(attacker.id)
             awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
@@ -2142,8 +2194,7 @@ export function createGameScene(
               playerManaSpent = true
               if (!replenish && paidCost > 0) {
                 const eLevel = enemyLevels.get(target.id) ?? 1
-                const strongMult = strongEntities.has(target.id) ? balance.enemyVariance.strongXpMultiplier : 1
-                const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * strongMult
+                const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
                 awardStatXp('mana', paidCost * balance.stat.manaXpMultiplier * xpMult)
               }
             }
