@@ -74,7 +74,7 @@ export function createGameScene(
 
   const playerEntity = createPlayerEntity({
     maxLife:  computePlayerMaxLife(),
-    maxMana:  balance.player.maxMana  * statBonus(manaProgress.level),
+    maxMana:  computePlayerMaxMana(),
     currentLife: char?.currentLife ?? balance.player.startingLife,
     currentMana: char?.currentMana ?? balance.player.startingMana,
     radius: balance.player.radius,
@@ -253,6 +253,13 @@ export function createGameScene(
       * (1 + lb.moreMaxLife / 100)
   }
 
+  function computePlayerMaxMana(): number {
+    const mb = getManaBonuses()
+    return balance.player.maxMana * statBonus(manaProgress.level)
+      * (1 + mb.maxManaIncrease / 100)
+      * (1 + mb.moreMaxMana / 100)
+  }
+
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
@@ -306,7 +313,7 @@ export function createGameScene(
       if (leveled) playerEntity.maxLife = computePlayerMaxLife()
     } else {
       manaProgress = prog
-      if (leveled) playerEntity.maxMana = balance.player.maxMana * statBonus(level)
+      if (leveled) playerEntity.maxMana = computePlayerMaxMana()
     }
     updateBars()
     updateStatLevels()
@@ -739,12 +746,12 @@ export function createGameScene(
 
   function computeLifeRegenPerSec(): number {
     const lb = getLifeBonuses()
-    return (balance.player.regenRate * statBonus(lifeProgress.level) + lb.regenFlatBonus)
+    return playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
       * (1 + lb.regenIncrease / 100)
   }
 
   function computeManaRegenPerSec(): number {
-    return balance.player.regenRate * statBonus(manaProgress.level)
+    return playerEntity.maxMana * balance.player.regenRate
       * (1 + getManaBonuses().regenIncrease / 100)
   }
 
@@ -774,11 +781,11 @@ export function createGameScene(
     regenTimer = setInterval(() => {
       if (playerDead) return
       const lb = getLifeBonuses()
-      const lifeRegenBase = balance.player.regenRate * statBonus(lifeProgress.level) + lb.regenFlatBonus
+      const lifeRegenBase = playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
       const lifeRegenMult = 1 + lb.regenIncrease / 100
       playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * REGEN_TICK)
       const manaRegenMult = 1 + getManaBonuses().regenIncrease / 100
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + balance.player.regenRate * statBonus(manaProgress.level) * manaRegenMult * gameSpeed * REGEN_TICK)
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + playerEntity.maxMana * balance.player.regenRate * manaRegenMult * gameSpeed * REGEN_TICK)
       updateBars()
     }, REGEN_INTERVAL_MS)
   }
@@ -1192,7 +1199,7 @@ export function createGameScene(
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
     playerEntity.maxLife = computePlayerMaxLife()
-    playerEntity.maxMana = balance.player.maxMana
+    playerEntity.maxMana = computePlayerMaxMana()
 
     // Enemy: max level persists; selected level and auto-level reset
     enemyProgress = { ...enemyProgress, level: 1, autoLevel: false }
@@ -1422,6 +1429,9 @@ export function createGameScene(
     if (id === 'life') {
       playerEntity.maxLife = computePlayerMaxLife()
     }
+    if (id === 'mana') {
+      playerEntity.maxMana = computePlayerMaxMana()
+    }
     persistState()
     refreshMasteryDot()
   }
@@ -1441,6 +1451,9 @@ export function createGameScene(
     }
     if (id === 'life') {
       playerEntity.maxLife = computePlayerMaxLife()
+    }
+    if (id === 'mana') {
+      playerEntity.maxMana = computePlayerMaxMana()
     }
     persistState()
     refreshMasteryDot()

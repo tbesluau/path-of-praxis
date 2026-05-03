@@ -31,10 +31,12 @@ export interface NodeEffect {
   lifeElementalResistance?: number // additive %; reduces damage from fire/lightning/cold hits
 
   // Life mastery effects (Life Regeneration tree)
-  lifeRegenIncrease?: number   // additive %; mastery layer — independent of level-scaling layer
-  lifeRegenFlatBonus?: number  // flat regen added after level scaling, before mastery % multiplier
+  lifeRegenIncrease?: number       // additive %; mastery layer — independent of level-scaling layer
+  lifeRegenFractionBonus?: number  // additional fraction of max life regenerated per second
 
   // Mana mastery effects
+  manaMaxIncrease?: number      // additive %; increases maximum mana before 'more' multiplier
+  manaMoreMax?: number          // 'more' %; applied as × (1 + sum/100) after increased
   manaRegenIncrease?: number    // additive %; increases mana regen rate
   manaReplenishChance?: number  // additive %; chance for a spell cast to add mana instead of spending it
 
@@ -79,10 +81,12 @@ export interface LifeBonuses {
   rotResistance: number         // total additive %
   elementalResistance: number   // total additive %
   regenIncrease: number         // mastery-layer additive % regen multiplier
-  regenFlatBonus: number        // flat regen added after level scaling
+  regenFractionBonus: number    // additional fraction of max life regenerated per second
 }
 
 export interface ManaBonuses {
+  maxManaIncrease: number  // total additive %
+  moreMaxMana: number      // total 'more' %
   regenIncrease: number    // total additive %
   replenishChance: number  // total additive %
 }
@@ -220,7 +224,7 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     2: { lifeRegenIncrease: 12 },
     3: { lifeRegenIncrease: 5 },
     4: { lifeRegenIncrease: 5 },
-    5: { lifeRegenFlatBonus: 1 },
+    5: { lifeRegenFractionBonus: 0.003 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -237,7 +241,7 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
     rotResistance: 0,
     elementalResistance: 0,
     regenIncrease: 0,
-    regenFlatBonus: 0,
+    regenFractionBonus: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -248,14 +252,14 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
       b.rotResistance += eff.lifeRotResistance ?? 0
       b.elementalResistance += eff.lifeElementalResistance ?? 0
       b.regenIncrease += eff.lifeRegenIncrease ?? 0
-      b.regenFlatBonus += eff.lifeRegenFlatBonus ?? 0
+      b.regenFractionBonus += eff.lifeRegenFractionBonus ?? 0
     }
   }
   return b
 }
 
 // ── Mana mastery node effects ──────────────────────────────────────────────
-// Tree 0: Mana Regeneration (short)  Tree 1-4: not yet implemented
+// Tree 0: Mana Regeneration (short)  Tree 1: Maximum Mana (short)  Tree 2-4: not yet implemented
 
 const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Mana Regeneration (short tree — line nodes 0-5, key nodes 12-13)
@@ -267,6 +271,15 @@ const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { manaReplenishChance: 10 },
     // 12-13: key nodes — not yet defined
   },
+  1: {  // Maximum Mana (short tree — line nodes 0-5, key nodes 12-13)
+    0: { manaMaxIncrease: 5 },
+    1: { manaMaxIncrease: 2, manaRegenIncrease: 2 },
+    2: { manaMaxIncrease: 12 },
+    3: { manaMaxIncrease: 5 },
+    4: { manaMaxIncrease: 2, manaRegenIncrease: 2 },
+    5: { manaMoreMax: 20 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getManaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -274,10 +287,12 @@ export function getManaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect 
 }
 
 export function computeManaBonuses(nodes: number[][]): ManaBonuses {
-  const b: ManaBonuses = { regenIncrease: 0, replenishChance: 0 }
+  const b: ManaBonuses = { maxManaIncrease: 0, moreMaxMana: 0, regenIncrease: 0, replenishChance: 0 }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getManaNodeEffect(treeIdx, nodeIdx)
+      b.maxManaIncrease += eff.manaMaxIncrease ?? 0
+      b.moreMaxMana += eff.manaMoreMax ?? 0
       b.regenIncrease += eff.manaRegenIncrease ?? 0
       b.replenishChance += eff.manaReplenishChance ?? 0
     }
@@ -420,7 +435,7 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     2: '+12% increased life regeneration',
     3: '+5% increased life regeneration',
     4: '+5% increased life regeneration',
-    5: '+1 base life regeneration (added after level scaling, before increased %)',
+    5: '+0.3% of maximum life regenerated per second',
   },
 }
 
@@ -436,6 +451,14 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: '+5% increased mana regeneration',
     4: '+5% increased mana regeneration',
     5: '+10% chance for a spell to replenish mana instead of depleting it',
+  },
+  1: {
+    0: '+5% increased maximum mana',
+    1: '+2% increased maximum mana · +2% increased mana regeneration',
+    2: '+12% increased maximum mana',
+    3: '+5% increased maximum mana',
+    4: '+2% increased maximum mana · +2% increased mana regeneration',
+    5: '20% more maximum mana',
   },
 }
 
