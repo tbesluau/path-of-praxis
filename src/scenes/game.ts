@@ -2032,7 +2032,9 @@ export function createGameScene(
             }
           }
 
-          // Trance multi-target: hit one extra in-range enemy
+          // Trance multi-target: hit one extra in-range enemy.
+          // Fires on both primary and double-cast iterations (chaining intentional).
+          // The extra hit itself does not re-roll multi-target — see applyHit().
           if (tranceActive && spellBonuses && spellBonuses.tranceMultiTargetChance > 0
               && Math.random() * 100 < spellBonuses.tranceMultiTargetChance) {
             let extra: Entity | null = null
@@ -2070,7 +2072,9 @@ export function createGameScene(
             }
           }
 
-          // Cooldown: trance cast speed bonus, then double cast intercept
+          // Cooldown: trance cast speed bonus, then double cast intercept.
+          // Double casts cannot queue another double cast (`!isDoubleCast` guard
+          // prevents recursion); they CAN roll for multi-target above.
           const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
             ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
             : 1
