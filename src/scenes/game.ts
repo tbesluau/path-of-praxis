@@ -574,6 +574,7 @@ export function createGameScene(
         <div class="stat-bar stat-bar--action">
           <div class="stat-bar-fill stat-bar-fill--action"></div>
           <span class="action-level-label">Lv.1</span>
+          <span class="stat-bar-regen stat-bar-regen--action"></span>
         </div>
       </div>
     </div>
@@ -621,6 +622,7 @@ export function createGameScene(
   const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
   const actionBarFill    = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
   const actionLevelLabel = el.querySelector<HTMLElement>('.action-level-label')!
+  const actionDpsEl      = el.querySelector<HTMLElement>('.stat-bar-regen--action')!
   const actionIconWrap   = el.querySelector<HTMLElement>('.action-icon-wrap')!
 
   function updateStatLevels(): void {
@@ -632,11 +634,31 @@ export function createGameScene(
     manaLevelEl.querySelector('span')!.textContent = `Lv.${manaProgress.level}`
   }
 
+  function computeActionDps(): { min: number; max: number } {
+    const action = getAction(playerActionId)
+    const level = getPlayerLevel(playerActionId)
+    let dmg = action.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
+    let spd = action.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
+    if (action.tags.includes('spell')) {
+      const b = getSpellBonuses()
+      dmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+      spd *= (1 + b.castSpeedIncrease / 100) * (1 + b.moreCastSpeed / 100)
+      if (b.doubleDamageChance > 0) {
+        return { min: dmg * spd, max: dmg * 2 * spd }
+      }
+    }
+    return { min: dmg * spd, max: dmg * spd }
+  }
+
   function updateActionBar(): void {
     const prog = actionProgress[playerActionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     const pct = Math.min(100, Math.round(prog.xp / actionXpNeeded(prog.level) * 100))
     actionBarFill.style.width = `${pct}%`
     actionLevelLabel.textContent = `Lv.${prog.level}`
+    const { min, max } = computeActionDps()
+    actionDpsEl.textContent = min === max
+      ? `${min.toFixed(1)}/s`
+      : `${min.toFixed(1)}–${max.toFixed(1)}/s`
   }
 
   function updateActionIcon(): void {
@@ -912,7 +934,8 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
-  const pendingDoubleCast = new Set<string>()
+  const pendingDoubleCast  = new Set<string>()
+  const pendingExtraTarget = new Map<string, Entity>()
   const strongEntities = new Set<string>()
   const enemyLevels = new Map<string, number>()  // enemy entity id → enemy level at spawn time
   const deathFragments: DeathFragment[] = []
@@ -1963,12 +1986,29 @@ export function createGameScene(
           const cd = (attackCooldowns.get(entity.id) ?? 0) - ticker.deltaMS
           attackCooldowns.set(entity.id, cd)
           if (cd > 0) continue
-          const target = entity.role === 'player' ? selectPlayerTarget(entities) : nearestTarget(entity, entities)
-          if (!target) continue
-          const dx = target.x - entity.x
-          const dy = target.y - entity.y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist - target.radius > entity.attackRange) continue
+
+          // Consume any pending extra-target cast for this entity
+          const isExtraTarget = pendingExtraTarget.has(entity.id)
+          const extraTargetEntity = isExtraTarget ? pendingExtraTarget.get(entity.id)! : null
+
+          // For an extra-target cast use the queued entity; otherwise pick normally
+          let target: Entity | null
+          if (isExtraTarget) {
+            const et = extraTargetEntity!
+            // Skip if target died before the short cooldown fired
+            if (!entities.includes(et) || et.currentLife <= 0) {
+              pendingExtraTarget.delete(entity.id)
+              continue
+            }
+            target = et
+          } else {
+            target = entity.role === 'player' ? selectPlayerTarget(entities) : nearestTarget(entity, entities)
+            if (!target) continue
+            const dx = target.x - entity.x
+            const dy = target.y - entity.y
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            if (dist - target.radius > entity.attackRange) continue
+          }
 
           const isPlayerSpell = entity.role === 'player' && action.tags.includes('spell')
           const spellBonuses = isPlayerSpell ? getSpellBonuses() : null
@@ -1976,9 +2016,10 @@ export function createGameScene(
           const tranceActive = isPlayerSpell && hasEffect('trance')
 
           // Compute effective mana cost (reductions + random + no-mana roll)
+          // Extra-target casts are always free (triggered by trance, not a new resource spend)
           let gateCost = action.manaCost
           let paidCost = action.manaCost
-          if (isPlayerSpell && spellBonuses && action.manaCost > 0) {
+          if (!isExtraTarget && isPlayerSpell && spellBonuses && action.manaCost > 0) {
             const reduction = spellBonuses.manaCostReduction / 100
               + (spellBonuses.manaCostRandomReductionMax > 0
                 ? (Math.random() * spellBonuses.manaCostRandomReductionMax) / 100
@@ -1990,8 +2031,9 @@ export function createGameScene(
             }
           }
 
-          // Mana gate — repeated casts (double cast) skip the gate when repeatNoMana is set
-          const skipGate = isDoubleCast && spellBonuses?.repeatNoMana === true
+          // Mana gate — repeated casts (double cast) skip gate when repeatNoMana set;
+          // extra-target casts are always free
+          const skipGate = isExtraTarget || (isDoubleCast && spellBonuses?.repeatNoMana === true)
           if (entity.maxMana > 0 && !skipGate && entity.currentMana < gateCost) continue
 
           // Compute effective damage (trance damage bonus, then double damage roll)
@@ -2008,11 +2050,11 @@ export function createGameScene(
             effectiveDamage *= 2
           }
 
-          // Primary hit
+          // Hit
           applyHit(entity, target, effectiveDamage, action, actionId)
 
-          // Pay mana and award mana XP (based on actual amount paid)
-          if (entity.maxMana > 0) {
+          // Pay mana and award mana XP (based on actual amount paid); skip for extra-target casts
+          if (entity.maxMana > 0 && !isExtraTarget) {
             const mb = entity.role === 'player' ? getManaBonuses() : null
             const replenish = mb && mb.replenishChance > 0 && paidCost > 0
               && Math.random() * 100 < mb.replenishChance
@@ -2032,30 +2074,31 @@ export function createGameScene(
             }
           }
 
-          // Trance multi-target: hit one extra in-range enemy.
-          // Fires on both primary and double-cast iterations (chaining intentional).
-          // The extra hit itself does not re-roll multi-target — see applyHit().
-          if (tranceActive && spellBonuses && spellBonuses.tranceMultiTargetChance > 0
+          // Trance multi-target: queue one extra in-range enemy as its own full cast iteration.
+          // Extra-target casts cannot re-roll this (prevents recursion).
+          if (!isExtraTarget && tranceActive && spellBonuses && spellBonuses.tranceMultiTargetChance > 0
               && Math.random() * 100 < spellBonuses.tranceMultiTargetChance) {
-            let extra: Entity | null = null
-            let extraDist = Infinity
-            for (const e of entities) {
-              if (e === target || e.role !== 'enemy') continue
-              const ex = e.x - entity.x, ey = e.y - entity.y
-              const d = Math.sqrt(ex * ex + ey * ey)
-              if (d - e.radius > entity.attackRange) continue
-              if (d < extraDist) { extraDist = d; extra = e }
+            if (!pendingExtraTarget.has(entity.id)) {
+              let extra: Entity | null = null
+              let extraDist = Infinity
+              for (const e of entities) {
+                if (e === target || e.role !== 'enemy') continue
+                const ex = e.x - entity.x, ey = e.y - entity.y
+                const d = Math.sqrt(ex * ex + ey * ey)
+                if (d - e.radius > entity.attackRange) continue
+                if (d < extraDist) { extraDist = d; extra = e }
+              }
+              if (extra) pendingExtraTarget.set(entity.id, extra)
             }
-            if (extra) applyHit(entity, extra, effectiveDamage, action, actionId)
           }
 
-          // Trance trigger roll (only on a primary cast, not on the second double cast)
+          // Trance trigger roll — fires on primary and extra-target casts, not on double cast
           if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.tranceTriggerChance > 0
               && Math.random() * 100 < spellBonuses.tranceTriggerChance) {
             applyEffect({ id: 'trance', iconName: 'book', kind: 'buff' }, balance.buffs.tranceDurationMs)
           }
 
-          // Immolation trigger (player fire actions; only on primary cast)
+          // Immolation trigger — fires on primary and extra-target casts, not on double cast
           if (entity.role === 'player' && action.tags.includes('fire') && !isDoubleCast) {
             const fb = getFireBonuses()
             if (fb.immolateChance > 0 && Math.random() * 100 < fb.immolateChance) {
@@ -2072,21 +2115,23 @@ export function createGameScene(
             }
           }
 
-          // Cooldown: trance cast speed bonus, then double cast intercept.
-          // Double casts cannot queue another double cast (`!isDoubleCast` guard
-          // prevents recursion); they CAN roll for multi-target above.
+          // Cooldown: trance cast speed bonus, then pending-queue intercept.
+          // Double casts cannot queue another double cast (`!isDoubleCast` guard prevents recursion).
+          // Extra-target casts cannot queue another extra target (`!isExtraTarget` guard above prevents recursion).
+          // Both may independently queue a double cast or extra target respectively.
           const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
             ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
             : 1
           const baseCooldown = (1000 / entity.attackSpeed) / tranceSpeedMult
           if (isDoubleCast) pendingDoubleCast.delete(entity.id)
+          if (isExtraTarget) pendingExtraTarget.delete(entity.id)
           if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0
               && Math.random() * 100 < spellBonuses.doubleCastChance) {
             pendingDoubleCast.add(entity.id)
-            attackCooldowns.set(entity.id, baseCooldown / 5)
-          } else {
-            attackCooldowns.set(entity.id, baseCooldown)
           }
+          // Short cooldown if any pending follow-up cast remains, otherwise full cooldown
+          const hasPending = pendingDoubleCast.has(entity.id) || pendingExtraTarget.has(entity.id)
+          attackCooldowns.set(entity.id, hasPending ? baseCooldown / 5 : baseCooldown)
         }
         if (playerManaSpent) updateBars()
 
