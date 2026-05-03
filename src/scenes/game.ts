@@ -60,12 +60,13 @@ export function createGameScene(
     JSON.stringify(char?.masteryProgress ?? {}),
   ) as Partial<Record<MasteryId, MasteryProgress>>
 
-  function enemyScale(): number {
-    return Math.pow(balance.enemyLevel.statMultiplier, enemyProgress.level - 1)
+  function enemyDamageScale(): number {
+    return Math.pow(balance.enemyLevel.damageMultiplier, enemyProgress.level - 1)
   }
 
   function enemyLifeScale(): number {
-    return enemyScale() * (1 + balance.enemyLevel.lifeAddPerLevel * (enemyProgress.level - 1))
+    return Math.pow(balance.enemyLevel.lifeMultiplier, enemyProgress.level - 1)
+      * (1 + balance.enemyLevel.lifeAddPerLevel * (enemyProgress.level - 1))
   }
 
   function statBonus(level: number): number {
@@ -1584,7 +1585,7 @@ export function createGameScene(
       }
       if (isTileBlocked(spawnX, spawnY)) continue
 
-      const scale = enemyScale()
+      const damageScale = enemyDamageScale()
       const lifeScale = enemyLifeScale()
       let lifeMult: number, dmgMult: number
       if (tier === 'elite') {
@@ -1608,7 +1609,7 @@ export function createGameScene(
         { moveSpeed: balance.enemyA.moveSpeed * speedScale * moveSpeedMult, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
       assignAction(enemy, randomAction().id)
-      enemy.attackDamage *= scale * balance.enemyA.damageMultiplier * dmgMult
+      enemy.attackDamage *= damageScale * balance.enemyA.damageMultiplier * dmgMult
       if (tier === 'elite') {
         enemy.attackSpeed *= ev.eliteSpeedMult
         strongEntities.add(enemy.id)

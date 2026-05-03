@@ -126,8 +126,9 @@ export const balance = {
   enemyLevel: {
     xpPerMaxLevel:      1000, // XP required for max-level 1 → 2
     xpGrowth:           1.5,  // each subsequent max-level costs xpGrowth× the previous
-    statMultiplier:      1.2, // multiplicative per-level bonus on enemy HP and damage
-    lifeAddPerLevel:     0.10, // additive life bonus per level above 1, stacks on top of statMultiplier
+    lifeMultiplier:      1.2, // multiplicative per-level bonus on enemy life
+    damageMultiplier:    1.1, // multiplicative per-level bonus on enemy damage
+    lifeAddPerLevel:     0.10, // additive life bonus per level above 1, stacks on top of lifeMultiplier
     speedAddPerLevel:    0.025, // additive move-speed bonus per level above 1
     xpMultiplierPerLevel: 1.1, // per-enemy-level XP multiplier: 1.1^(level-1) applied to action/life/mana XP
   },
