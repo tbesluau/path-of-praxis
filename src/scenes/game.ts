@@ -955,7 +955,7 @@ export function createGameScene(
   const attackCooldowns = new Map<string, number>()
   const pendingDoubleCast    = new Set<string>()
   const pendingExtraTarget   = new Map<string, Entity>()
-  const pendingExtraProjectile = new Set<string>()
+  const pendingExtraProjectile = new Map<string, Entity>()  // value: preferred target (different from primary when possible)
 
   interface PendingHit {
     attacker:  Entity
@@ -2147,6 +2147,17 @@ export function createGameScene(
           const isActiveExtraProj = isExtraProjectile && !isDoubleCast && !pendingExtraTarget.has(entity.id)
           const tranceActive = isPlayerSpell && hasEffect('trance')
 
+          // Extra projectiles prefer the queued (different) target if it's still alive and in range
+          if (isActiveExtraProj) {
+            const stored = pendingExtraProjectile.get(entity.id)
+            if (stored && stored !== target && entities.includes(stored) && stored.currentLife > 0) {
+              const dx = stored.x - entity.x
+              const dy = stored.y - entity.y
+              const dist = Math.sqrt(dx * dx + dy * dy)
+              if (dist - stored.radius <= entity.attackRange) target = stored
+            }
+          }
+
           // Compute effective mana cost (reductions + random + no-mana roll)
           // Extra-target casts are always free (triggered by trance, not a new resource spend)
           let gateCost = action.manaCost
@@ -2273,11 +2284,25 @@ export function createGameScene(
           // This caps the burst at: primary → double + extra → double-of-extra (4 total, all procs required).
           if (isDoubleCast) pendingDoubleCast.delete(entity.id)
           if (isExtraTarget) pendingExtraTarget.delete(entity.id)
+          // Pick a different in-range enemy than the just-attacked target; fall back to it if none exists.
+          const pickExtraProjTarget = (): Entity => {
+            let best: Entity = target
+            let bestDist = Infinity
+            for (const e of entities) {
+              if (e === target || e.role !== 'enemy') continue
+              const ex = e.x - entity.x, ey = e.y - entity.y
+              const d = Math.sqrt(ex * ex + ey * ey)
+              if (d - e.radius > entity.attackRange) continue
+              if (d < bestDist) { bestDist = d; best = e }
+            }
+            return best
+          }
+
           // Consume extra projectile flag when it's the active pending item; roll double if applicable.
           if (isActiveExtraProj) {
             pendingExtraProjectile.delete(entity.id)
             if (pb?.extraDoubleRoll && pb.extraChance > 0 && Math.random() * 100 < pb.extraChance) {
-              pendingExtraProjectile.add(entity.id)
+              pendingExtraProjectile.set(entity.id, pickExtraProjTarget())
             }
           }
           if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0
@@ -2288,7 +2313,7 @@ export function createGameScene(
           if (!isExtraProjectile && isPlayerProjectile && pb && pb.extraChance > 0
               && !pendingExtraProjectile.has(entity.id)
               && Math.random() * 100 < pb.extraChance) {
-            pendingExtraProjectile.add(entity.id)
+            pendingExtraProjectile.set(entity.id, pickExtraProjTarget())
           }
           // Short cooldown if any pending follow-up cast remains, otherwise full cooldown
           const hasPending = pendingDoubleCast.has(entity.id) || pendingExtraTarget.has(entity.id)

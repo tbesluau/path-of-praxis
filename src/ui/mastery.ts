@@ -449,10 +449,12 @@ export function mountMasteryModal(
         const id = btn.dataset['mastery'] as MasteryId
         const def = allMasteries.find(m => m.id === id)!
         closeSub()
+        // The tree modal stays open across assigns/resets, so we must NOT clear
+        // subCleanup in those callbacks — only when the tree modal itself closes.
         subCleanup = mountMasteryTreeModal(
           parent, def, masteryProgress,
-          (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); subCleanup = null },
-          () => { onReset(id); subCleanup = null; buildRows() },
+          (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
+          () => { onReset(id); buildRows() },
           () => { subCleanup = null },
         )
       })
