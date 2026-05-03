@@ -936,6 +936,16 @@ export function createGameScene(
   const attackCooldowns = new Map<string, number>()
   const pendingDoubleCast  = new Set<string>()
   const pendingExtraTarget = new Map<string, Entity>()
+
+  interface PendingHit {
+    attacker:  Entity
+    target:    Entity
+    damage:    number
+    action:    ActionDef
+    actionId:  ActionId
+    countdown: number   // ms remaining until impact
+  }
+  const pendingHits = new Map<string, PendingHit>()  // keyed by attacker entity.id
   const strongEntities = new Set<string>()
   const enemyLevels = new Map<string, number>()  // enemy entity id → enemy level at spawn time
   const deathFragments: DeathFragment[] = []
@@ -1556,7 +1566,80 @@ export function createGameScene(
     vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p) })
   }
 
-  function spawnVfx(attacker: Entity, target: Entity, action: ActionDef): void {
+  // Pre-hit VFX: spawned at attack-start, plays until damage lands (1/3 of cycle).
+  // Each action has a natural duration; if it's less than preHitDuration the animation
+  // starts late (startFraction > 0) so it completes right at impact.
+  function spawnPreHitVfx(attacker: Entity, target: Entity, action: ActionDef, preHitDuration: number): void {
+    const ax = attacker.x, ay = attacker.y
+    const tx = target.x, ty = target.y
+    const baseAng = Math.atan2(ty - ay, tx - ax)
+
+    if (action.id === 'sword') {
+      // Natural duration 100 ms — starts late so the arc completes right at impact.
+      const naturalMs = 100
+      const startFraction = Math.max(0, 1 - naturalMs / preHitDuration)
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        if (p < startFraction) return
+        const lp = (p - startFraction) / (1 - startFraction)  // local 0→1
+        // Windup arc sweeping from perpendicular to pointing at target.
+        const ang = baseAng - Math.PI * 0.5 * (1 - lp)
+        const len = attacker.radius * (1.0 + lp * 0.8)
+        g.moveTo(ax, ay)
+        g.lineTo(ax + Math.cos(ang) * len, ay + Math.sin(ang) * len)
+        g.stroke({ color: 0xffffff, width: Math.max(0.5, 3 * lp), alpha: lp * 0.7 })
+      })
+    } else if (action.id === 'bow') {
+      // Arrow in flight — fills the full pre-hit window.
+      const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const cx = ax + (tx - ax) * p
+        const cy = ay + (ty - ay) * p
+        const trailLen = 60
+        g.moveTo(cx - cos * trailLen, cy - sin * trailLen)
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0xfff0aa, width: 6, alpha: 0.35 })
+        g.moveTo(cx - cos * (trailLen * 0.6), cy - sin * (trailLen * 0.6))
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0xffee66, width: 3, alpha: 0.7 })
+        g.moveTo(cx - cos * 14, cy - sin * 14)
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0xffffff, width: 2.5 })
+        g.moveTo(cx, cy)
+        g.lineTo(cx - cos * 6 + sin * 4, cy - sin * 6 - cos * 4)
+        g.lineTo(cx - cos * 6 - sin * 4, cy - sin * 6 + cos * 4)
+        g.closePath()
+        g.fill({ color: 0xffffff })
+      })
+    } else if (action.id === 'fireball') {
+      // Fireball in flight — fills the full pre-hit window.
+      const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const cx = ax + (tx - ax) * p
+        const cy = ay + (ty - ay) * p
+        const pulse = 1 + 0.12 * Math.sin(p * 40)
+        const tr = target.radius
+        for (let i = 0; i < 5; i++) {
+          const back = (i + 1) * 12
+          const trad = tr * (0.7 - i * 0.1)
+          g.circle(cx - cos * back, cy - sin * back, trad)
+          g.fill({ color: i < 2 ? 0xff6600 : 0x553322, alpha: 0.5 - i * 0.08 })
+        }
+        g.circle(cx, cy, tr * 1.2 * pulse)
+        g.fill({ color: 0xff3300, alpha: 0.45 })
+        g.circle(cx, cy, tr * 0.85 * pulse)
+        g.fill({ color: 0xff8800, alpha: 0.85 })
+        g.circle(cx, cy, tr * 0.45)
+        g.fill({ color: 0xffee66, alpha: 1 })
+      })
+    }
+    // zap: no pre-hit animation (instant strike)
+  }
+
+  // Post-hit VFX: spawned when damage lands, duration does not affect game timing.
+  function spawnPostHitVfx(attacker: Entity, target: Entity, action: ActionDef): void {
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const tr = target.radius
@@ -1565,7 +1648,6 @@ export function createGameScene(
     if (action.id === 'sword') {
       addVfx(280, (g, p) => {
         g.clear()
-        // Three slashes fanned across the target, perpendicular to attack direction.
         for (let i = -1; i <= 1; i++) {
           const ang = baseAng + Math.PI / 2 + i * 0.35
           const len = tr * (1.8 - Math.abs(i) * 0.3)
@@ -1574,7 +1656,6 @@ export function createGameScene(
           g.moveTo(tx - dx, ty - dy); g.lineTo(tx + dx, ty + dy)
           g.stroke({ color: 0xffffff, width: Math.max(0.5, 5 * (1 - p)), alpha: 1 - p })
         }
-        // Spark particles flying outward.
         const sp = Math.min(1, p * 1.4)
         for (let i = 0; i < 10; i++) {
           const a = (i / 10) * Math.PI * 2 + i * 0.7
@@ -1582,7 +1663,6 @@ export function createGameScene(
           g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3.5 * (1 - sp)))
           g.fill({ color: i % 2 ? 0xfff0aa : 0xffffff, alpha: 1 - sp })
         }
-        // Initial impact flash.
         if (p < 0.35) {
           const fp = p / 0.35
           g.circle(tx, ty, tr * (0.6 + fp * 2.4))
@@ -1590,98 +1670,39 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'bow') {
-      addVfx(320, (g, p) => {
+      addVfx(160, (g, p) => {
         g.clear()
-        const flightP = Math.min(1, p * 2)
-        if (flightP < 1) {
-          // Streaking arrow with glowing tail.
-          const cx = ax + (tx - ax) * flightP
-          const cy = ay + (ty - ay) * flightP
-          const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
-          const trailLen = 60
-          g.moveTo(cx - cos * trailLen, cy - sin * trailLen)
-          g.lineTo(cx, cy)
-          g.stroke({ color: 0xfff0aa, width: 6, alpha: 0.35 })
-          g.moveTo(cx - cos * (trailLen * 0.6), cy - sin * (trailLen * 0.6))
-          g.lineTo(cx, cy)
-          g.stroke({ color: 0xffee66, width: 3, alpha: 0.7 })
-          // Arrow shaft.
-          g.moveTo(cx - cos * 14, cy - sin * 14)
-          g.lineTo(cx, cy)
-          g.stroke({ color: 0xffffff, width: 2.5 })
-          // Arrowhead.
-          g.moveTo(cx, cy)
-          g.lineTo(cx - cos * 6 + sin * 4, cy - sin * 6 - cos * 4)
-          g.lineTo(cx - cos * 6 - sin * 4, cy - sin * 6 + cos * 4)
-          g.closePath()
-          g.fill({ color: 0xffffff })
-        } else {
-          // Impact starburst + shockwave at target.
-          const bp = (p - 0.5) * 2
-          for (let i = 0; i < 10; i++) {
-            const a = (i / 10) * Math.PI * 2
-            const r0 = tr * 0.4
-            const r1 = tr * (0.9 + bp * 2)
-            g.moveTo(tx + Math.cos(a) * r0, ty + Math.sin(a) * r0)
-            g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
-            g.stroke({ color: 0xfff0aa, width: 2.5 * (1 - bp), alpha: 1 - bp })
-          }
-          g.circle(tx, ty, tr * (0.8 + bp * 2))
-          g.stroke({ color: 0xffee66, width: 3 * (1 - bp), alpha: (1 - bp) * 0.9 })
-          g.circle(tx, ty, tr * (1 - bp * 0.5))
-          g.fill({ color: 0xffffff, alpha: (1 - bp) * 0.5 })
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2
+          const r0 = tr * 0.4
+          const r1 = tr * (0.9 + p * 2)
+          g.moveTo(tx + Math.cos(a) * r0, ty + Math.sin(a) * r0)
+          g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
+          g.stroke({ color: 0xfff0aa, width: 2.5 * (1 - p), alpha: 1 - p })
         }
+        g.circle(tx, ty, tr * (0.8 + p * 2))
+        g.stroke({ color: 0xffee66, width: 3 * (1 - p), alpha: (1 - p) * 0.9 })
+        g.circle(tx, ty, tr * (1 - p * 0.5))
+        g.fill({ color: 0xffffff, alpha: (1 - p) * 0.5 })
       })
     } else if (action.id === 'fireball') {
-      addVfx(620, (g, p) => {
+      addVfx(310, (g, p) => {
         g.clear()
-        const flightP = Math.min(1, p * 1.9)
-        if (flightP < 1) {
-          // Traveling fireball with pulsing flames and smoky trail.
-          const cx = ax + (tx - ax) * flightP
-          const cy = ay + (ty - ay) * flightP
-          const pulse = 1 + 0.12 * Math.sin(p * 40)
-          const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
-          // Trail layers.
-          for (let i = 0; i < 5; i++) {
-            const back = (i + 1) * 12
-            const trad = tr * (0.7 - i * 0.1)
-            g.circle(cx - cos * back, cy - sin * back, trad)
-            g.fill({ color: i < 2 ? 0xff6600 : 0x553322, alpha: 0.5 - i * 0.08 })
-          }
-          // Outer halo.
-          g.circle(cx, cy, tr * 1.2 * pulse)
-          g.fill({ color: 0xff3300, alpha: 0.45 })
-          // Mid flame.
-          g.circle(cx, cy, tr * 0.85 * pulse)
-          g.fill({ color: 0xff8800, alpha: 0.85 })
-          // Bright core.
-          g.circle(cx, cy, tr * 0.45)
-          g.fill({ color: 0xffee66, alpha: 1 })
-        } else {
-          // Massive explosion at target.
-          const ep = Math.min(1, (p - 0.526) * 2.1)
-          // Outer shockwave ring.
-          g.circle(tx, ty, tr * (0.8 + ep * 5))
-          g.stroke({ color: 0xff9900, width: 5 * (1 - ep), alpha: (1 - ep) * 0.9 })
-          // Inner shockwave.
-          g.circle(tx, ty, tr * (0.5 + ep * 4))
-          g.stroke({ color: 0xffcc00, width: 3 * (1 - ep), alpha: (1 - ep) * 0.7 })
-          // Fire body.
-          g.circle(tx, ty, tr * (1 + ep * 2.5))
-          g.fill({ color: 0xff5500, alpha: (1 - ep) * 0.55 })
-          // Bright flash core.
-          g.circle(tx, ty, tr * (0.8 + ep * 1.2))
-          g.fill({ color: 0xffee66, alpha: (1 - ep) * 0.85 })
-          // Ember particles.
-          for (let i = 0; i < 16; i++) {
-            const a = (i / 16) * Math.PI * 2 + i * 0.4
-            const d = tr * (0.6 + ep * 6) + (i % 4) * 6
-            const ex = tx + Math.cos(a) * d
-            const ey = ty + Math.sin(a) * d
-            g.circle(ex, ey, Math.max(0.5, 3.5 * (1 - ep)))
-            g.fill({ color: i % 3 === 0 ? 0xffee66 : (i % 2 ? 0xffaa00 : 0xff5500), alpha: 1 - ep })
-          }
+        g.circle(tx, ty, tr * (0.8 + p * 5))
+        g.stroke({ color: 0xff9900, width: 5 * (1 - p), alpha: (1 - p) * 0.9 })
+        g.circle(tx, ty, tr * (0.5 + p * 4))
+        g.stroke({ color: 0xffcc00, width: 3 * (1 - p), alpha: (1 - p) * 0.7 })
+        g.circle(tx, ty, tr * (1 + p * 2.5))
+        g.fill({ color: 0xff5500, alpha: (1 - p) * 0.55 })
+        g.circle(tx, ty, tr * (0.8 + p * 1.2))
+        g.fill({ color: 0xffee66, alpha: (1 - p) * 0.85 })
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2 + i * 0.4
+          const d = tr * (0.6 + p * 6) + (i % 4) * 6
+          const ex = tx + Math.cos(a) * d
+          const ey = ty + Math.sin(a) * d
+          g.circle(ex, ey, Math.max(0.5, 3.5 * (1 - p)))
+          g.fill({ color: i % 3 === 0 ? 0xffee66 : (i % 2 ? 0xffaa00 : 0xff5500), alpha: 1 - p })
         }
       })
     } else if (action.id === 'zap') {
@@ -1691,7 +1712,6 @@ export function createGameScene(
         const len = Math.sqrt(dx * dx + dy * dy) || 1
         const nx = dx / len, ny = dy / len
         const px = -ny, py = nx
-        // Three jagged bolts re-randomized per frame for crackle.
         const flicker = Math.floor(p * 8)
         const segments = 10
         for (let b = 0; b < 3; b++) {
@@ -1710,7 +1730,6 @@ export function createGameScene(
             width: Math.max(0.6, (4 - b * 1.2) * (1 - p * 0.6)),
             alpha: (1 - p) * (b === 0 ? 1 : 0.7),
           })
-          // Branching forks off the main bolt.
           if (b === 0) {
             for (let f = 0; f < 3; f++) {
               const ft = 0.3 + f * 0.2
@@ -1726,7 +1745,6 @@ export function createGameScene(
             }
           }
         }
-        // Glow at endpoints.
         g.circle(tx, ty, tr * (1.2 + p * 0.5))
         g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.45 })
         g.circle(tx, ty, tr * (0.6 + p * 0.3))
@@ -1982,7 +2000,6 @@ export function createGameScene(
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
           damagedIds.add(target.id)
-          spawnVfx(attacker, target, action)
 
           // Burning effect: roll on fire-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && actualDamage > 0) {
@@ -1999,6 +2016,17 @@ export function createGameScene(
               burnStacks.set(target.id, list)
             }
           }
+        }
+
+        // ── Pending-hit countdown: apply damage when the pre-hit window expires ─
+        for (const [entityId, ph] of pendingHits) {
+          ph.countdown -= ticker.deltaMS
+          if (ph.countdown > 0) continue
+          pendingHits.delete(entityId)
+          if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
+          if (!entities.includes(ph.attacker)) continue
+          applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId)
+          spawnPostHitVfx(ph.attacker, ph.target, ph.action)
         }
 
         for (const entity of entities) {
@@ -2072,8 +2100,20 @@ export function createGameScene(
             effectiveDamage *= 2
           }
 
-          // Hit
-          applyHit(entity, target, effectiveDamage, action, actionId)
+          // Compute cycle duration here so it's available for both the pending-hit window and
+          // the final cooldown assignment below.
+          const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
+            ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
+            : 1
+          const baseCooldown = (1000 / entity.attackSpeed) / tranceSpeedMult
+          const preHitDuration = baseCooldown / 3
+
+          // Queue the hit to land after 1/3 of the action cycle; start pre-hit animation now.
+          pendingHits.set(entity.id, {
+            attacker: entity, target, damage: effectiveDamage,
+            action, actionId, countdown: preHitDuration,
+          })
+          spawnPreHitVfx(entity, target, action, preHitDuration)
 
           // Pay mana and award mana XP (based on actual amount paid); skip for extra-target casts
           if (entity.maxMana > 0 && !isExtraTarget) {
@@ -2138,13 +2178,9 @@ export function createGameScene(
             }
           }
 
-          // Cooldown: trance cast speed bonus, then pending-queue intercept.
+          // Cooldown: pending-queue intercept.
           // Only primary casts queue extra targets; only non-double casts queue double casts.
           // This caps the burst at: primary → double + extra → double-of-extra (4 total, all procs required).
-          const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
-            ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
-            : 1
-          const baseCooldown = (1000 / entity.attackSpeed) / tranceSpeedMult
           if (isDoubleCast) pendingDoubleCast.delete(entity.id)
           if (isExtraTarget) pendingExtraTarget.delete(entity.id)
           if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0
