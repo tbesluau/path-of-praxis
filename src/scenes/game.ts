@@ -557,6 +557,7 @@ export function createGameScene(
         <div class="stat-bar stat-bar--life">
           <div class="stat-bar-fill stat-bar-fill--life"></div>
           <span class="stat-bar-label stat-bar-label--life"></span>
+          <span class="stat-bar-regen stat-bar-regen--life"></span>
         </div>
         <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
       </div>
@@ -564,6 +565,7 @@ export function createGameScene(
         <div class="stat-bar stat-bar--mana">
           <div class="stat-bar-fill stat-bar-fill--mana"></div>
           <span class="stat-bar-label stat-bar-label--mana"></span>
+          <span class="stat-bar-regen stat-bar-regen--mana"></span>
         </div>
         <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
       </div>
@@ -612,6 +614,8 @@ export function createGameScene(
   const manaFill        = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
   const lifeLabel       = el.querySelector<HTMLElement>('.stat-bar-label--life')!
   const manaLabel       = el.querySelector<HTMLElement>('.stat-bar-label--mana')!
+  const lifeRegenEl     = el.querySelector<HTMLElement>('.stat-bar-regen--life')!
+  const manaRegenEl     = el.querySelector<HTMLElement>('.stat-bar-regen--mana')!
   const lifeLevelEl     = el.querySelector<HTMLElement>('.stat-level--life')!
   const manaLevelEl     = el.querySelector<HTMLElement>('.stat-level--mana')!
   const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
@@ -711,11 +715,24 @@ export function createGameScene(
     )
   })
 
+  function computeLifeRegenPerSec(): number {
+    const lb = getLifeBonuses()
+    return (balance.player.regenRate * statBonus(lifeProgress.level) + lb.regenFlatBonus)
+      * (1 + lb.regenIncrease / 100)
+  }
+
+  function computeManaRegenPerSec(): number {
+    return balance.player.regenRate * statBonus(manaProgress.level)
+      * (1 + getManaBonuses().regenIncrease / 100)
+  }
+
   function updateBars(): void {
     lifeFill.style.width = `${(playerEntity.currentLife / playerEntity.maxLife) * 100}%`
     manaFill.style.width = `${(playerEntity.currentMana / playerEntity.maxMana) * 100}%`
     lifeLabel.textContent = `${Math.round(playerEntity.currentLife)} / ${Math.round(playerEntity.maxLife)}`
     manaLabel.textContent = `${Math.round(playerEntity.currentMana)} / ${Math.round(playerEntity.maxMana)}`
+    lifeRegenEl.textContent = `+${computeLifeRegenPerSec().toFixed(1)}/s`
+    manaRegenEl.textContent = `+${computeManaRegenPerSec().toFixed(1)}/s`
   }
 
   updateBars()

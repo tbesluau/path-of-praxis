@@ -281,7 +281,7 @@ body::after {
 .stat-level {
   position: relative;
   flex-shrink: 0;
-  min-width: 5.5rem;
+  min-width: 11rem;
   height: 18px;
   display: flex;
   align-items: center;
@@ -384,6 +384,22 @@ body::after {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.7);
   pointer-events: none;
   letter-spacing: 0.03em;
+}
+
+.stat-bar-regen {
+  position: absolute;
+  right: 6px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  z-index: 3;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  letter-spacing: 0.02em;
 }
 
 /* ── Enemy level control (top-center) ── */
