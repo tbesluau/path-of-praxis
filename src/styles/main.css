@@ -1790,6 +1790,39 @@ body::after {
 
 /* ── Mastery name button in mastery list modal ── */
 
+.mastery-pts {
+  color: #c47a20;
+  font-weight: 700;
+}
+
+.mastery-row-reset-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius-md);
+  color: #ef4444;
+  font-size: 1rem;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.mastery-row-reset-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: #ef4444;
+}
+
+.mastery-row-reset-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .mastery-name-btn {
   position: relative;
   background: transparent;
