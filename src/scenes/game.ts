@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -128,6 +128,10 @@ export function createGameScene(
 
   function getEnemyBonuses(): EnemyBonuses {
     return computeEnemyBonuses(masteryProgress['enemy']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getProjectileBonuses(): ProjectileBonuses {
+    return computeProjectileBonuses(masteryProgress['projectile']?.nodes ?? [[], [], [], [], []])
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -273,6 +277,11 @@ export function createGameScene(
       const b = getSpellBonuses()
       entity.attackDamage *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
       entity.attackSpeed  *= (1 + b.castSpeedIncrease / 100) * (1 + b.moreCastSpeed / 100)
+    }
+    if (entity.role === 'player' && def.tags.includes('projectile')) {
+      const pb = getProjectileBonuses()
+      entity.attackDamage *= (1 + pb.damageIncrease / 100)
+      entity.attackRange  *= (1 + pb.rangeIncrease / 100)
     }
     entityActions.set(entity.id, id)
   }
@@ -944,8 +953,9 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
-  const pendingDoubleCast  = new Set<string>()
-  const pendingExtraTarget = new Map<string, Entity>()
+  const pendingDoubleCast    = new Set<string>()
+  const pendingExtraTarget   = new Map<string, Entity>()
+  const pendingExtraProjectile = new Set<string>()
 
   interface PendingHit {
     attacker:  Entity
@@ -1172,6 +1182,7 @@ export function createGameScene(
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
     pendingDoubleCast.delete(entity.id)
+    pendingExtraProjectile.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
     enemyLevels.delete(entity.id)
@@ -1434,7 +1445,7 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
-    if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
+    if ((id === 'spell' || id === 'projectile') && getAction(playerActionId).tags.includes(id)) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -1457,7 +1468,7 @@ export function createGameScene(
       level: existing.level - 1,
       nodes: defaultMasteryNodes(),
     }
-    if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
+    if ((id === 'spell' || id === 'projectile') && getAction(playerActionId).tags.includes(id)) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -2128,7 +2139,12 @@ export function createGameScene(
 
           const isPlayerSpell = entity.role === 'player' && action.tags.includes('spell')
           const spellBonuses = isPlayerSpell ? getSpellBonuses() : null
+          const isPlayerProjectile = entity.role === 'player' && action.tags.includes('projectile')
+          const pb = isPlayerProjectile ? getProjectileBonuses() : null
           const isDoubleCast = pendingDoubleCast.has(entity.id)
+          const isExtraProjectile = pendingExtraProjectile.has(entity.id)
+          // Extra-projectile fires only when not shadowed by a double cast or extra target
+          const isActiveExtraProj = isExtraProjectile && !isDoubleCast && !pendingExtraTarget.has(entity.id)
           const tranceActive = isPlayerSpell && hasEffect('trance')
 
           // Compute effective mana cost (reductions + random + no-mana roll)
@@ -2164,6 +2180,15 @@ export function createGameScene(
           }
           if (spellBonuses && spellBonuses.doubleDamageChance > 0 && Math.random() * 100 < spellBonuses.doubleDamageChance) {
             effectiveDamage *= 2
+          }
+          // Projectile range-based damage: +damagePerRange% per range unit
+          if (pb && pb.damagePerRange > 0) {
+            const rangeUnits = entity.attackRange / balance.player.radius
+            effectiveDamage *= 1 + (rangeUnits * pb.damagePerRange) / 100
+          }
+          // Extra projectile: fires at 50% base damage, boosted by extraDamage mastery nodes
+          if (isActiveExtraProj && pb) {
+            effectiveDamage *= 0.5 * (1 + pb.extraDamage / 100)
           }
 
           // Compute cycle duration here so it's available for both the pending-hit window and
@@ -2248,12 +2273,26 @@ export function createGameScene(
           // This caps the burst at: primary → double + extra → double-of-extra (4 total, all procs required).
           if (isDoubleCast) pendingDoubleCast.delete(entity.id)
           if (isExtraTarget) pendingExtraTarget.delete(entity.id)
+          // Consume extra projectile flag when it's the active pending item; roll double if applicable.
+          if (isActiveExtraProj) {
+            pendingExtraProjectile.delete(entity.id)
+            if (pb?.extraDoubleRoll && pb.extraChance > 0 && Math.random() * 100 < pb.extraChance) {
+              pendingExtraProjectile.add(entity.id)
+            }
+          }
           if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0
               && Math.random() * 100 < spellBonuses.doubleCastChance) {
             pendingDoubleCast.add(entity.id)
           }
+          // Roll for extra projectile on primary casts (not re-rolling from within an extra proj)
+          if (!isExtraProjectile && isPlayerProjectile && pb && pb.extraChance > 0
+              && !pendingExtraProjectile.has(entity.id)
+              && Math.random() * 100 < pb.extraChance) {
+            pendingExtraProjectile.add(entity.id)
+          }
           // Short cooldown if any pending follow-up cast remains, otherwise full cooldown
           const hasPending = pendingDoubleCast.has(entity.id) || pendingExtraTarget.has(entity.id)
+            || pendingExtraProjectile.has(entity.id)
           attackCooldowns.set(entity.id, hasPending ? baseCooldown / 5 : baseCooldown)
         }
         if (playerManaSpent) updateBars()
