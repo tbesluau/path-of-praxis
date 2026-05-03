@@ -25,6 +25,6 @@ export interface SpellDef {
 }
 
 export const spells: Record<SpellId, SpellDef> = {
-  fireball: { id: 'fireball', kind: 'spell', label: 'Fireball', icon: 'flame', iconSystem: 'lucide', range: 15, damage: 1,   speed: 1.2, manaCost: 3, tags: ['spell', 'fire']      },
+  fireball: { id: 'fireball', kind: 'spell', label: 'Fireball', icon: 'flame', iconSystem: 'lucide', range: 12, damage: 1,   speed: 1.2, manaCost: 3, tags: ['spell', 'fire']      },
   zap:      { id: 'zap',      kind: 'spell', label: 'Zap',      icon: 'zap',   iconSystem: 'lucide', range: 1, damage: 1.2, speed: 1.8, manaCost: 1, tags: ['spell', 'lightning'] },
 }

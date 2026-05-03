@@ -22,14 +22,14 @@ export const balance = {
   // ── Enemy teams ─────────────────────────────────────────────────────────
   enemyA: {
     radius:           20,   // pixels
-    moveSpeed:        80,   // pixels per second
+    moveSpeed:        40,   // pixels per second
     maxLife:          50,
     damageMultiplier: 0.5,  // applied on top of the action's base damage
   },
 
   enemyB: {
     radius:           20,   // pixels
-    moveSpeed:        80,   // pixels per second
+    moveSpeed:        40,   // pixels per second
     maxLife:          50,
     damageMultiplier: 0.5,
   },
@@ -37,10 +37,10 @@ export const balance = {
   // ── Enemy waves ─────────────────────────────────────────────────────────
   wave: {
     spawnDelay:        2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
-    clusterSpread:      0.3, // total angular span (radians) of each enemy cluster
+    clusterSpread:      0.15, // total angular span (radians) of each enemy cluster
     directionStdDev:   Math.PI / 12, // gaussian σ (rad) of next wave's angle vs the previous one
-    spawnMargin:        120, // px beyond screen edge enemies appear
-    spawnDepthVariance: 160, // additional random px beyond spawnMargin
+    spawnMargin:        210, // px beyond screen edge enemies appear
+    spawnDepthVariance:  60, // additional random px beyond spawnMargin
     nextWaveThreshold:    0, // spawn next wave when live enemy count reaches this
     // +1 extra enemy: 15% chance; +2 extra enemies: 5% chance (independent rolls)
     extraOneChance:    0.15,
@@ -121,6 +121,7 @@ export const balance = {
     xpPerMaxLevel:      1000, // damage needed to raise max level = currentMaxLevel × xpPerMaxLevel
     statMultiplier:      1.2, // multiplicative per-level bonus on enemy HP and damage
     lifeAddPerLevel:     0.10, // additive life bonus per level above 1, stacks on top of statMultiplier
+    speedAddPerLevel:    0.025, // additive move-speed bonus per level above 1
     xpMultiplierPerLevel: 1.1, // per-enemy-level XP multiplier: 1.1^(level-1) applied to action/life/mana XP
   },
 

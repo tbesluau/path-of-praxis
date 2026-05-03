@@ -1465,8 +1465,8 @@ export function createGameScene(
     waveScheduled = false
     enemySpawnTimeout = null
 
-    // Guaranteed: 1 at level 1, +1 every 5 levels (level 5→2, level 10→3, …)
-    let count = 1 + Math.floor(enemyProgress.level / 5)
+    // Guaranteed: 1 at level 1, +1 every 3 levels (level 3→2, level 6→3, …)
+    let count = 1 + Math.floor(enemyProgress.level / 3)
     if (Math.random() < balance.wave.extraOneChance) count++
     if (Math.random() < balance.wave.extraTwoChance) count += 2
 
@@ -1505,12 +1505,13 @@ export function createGameScene(
         ? ev.strongDamageMin + Math.random() * (ev.strongDamageMax - ev.strongDamageMin)
         : ev.damageMin       + Math.random() * (ev.damageMax       - ev.damageMin)
 
+      const speedScale = 1 + balance.enemyLevel.speedAddPerLevel * (enemyProgress.level - 1)
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
         spawnX, spawnY,
         'enemyA',
         balance.enemyA.radius,
-        { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
+        { moveSpeed: balance.enemyA.moveSpeed * speedScale, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
       assignAction(enemy, randomAction().id)
       enemy.attackDamage *= scale * balance.enemyA.damageMultiplier * dmgMult
