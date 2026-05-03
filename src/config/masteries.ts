@@ -1,10 +1,14 @@
 import { balance } from './balance'
 
-export type ActionTag = 'weapon' | 'spell' | 'physical' | 'rot' | 'fire' | 'lightning' | 'cold'
+export type ActionTypeTag    = 'spell' | 'weapon'
+export type DamageEssenceTag = 'lightning' | 'fire' | 'cold' | 'physical' | 'rot'
+export type DamageTypeTag    = 'area' | 'projectile' | 'strike'
+export type ActionTag = ActionTypeTag | DamageEssenceTag | DamageTypeTag
 
 export type MasteryId =
   | 'weapon' | 'spell'
   | 'physical' | 'fire' | 'lightning'
+  | 'area' | 'projectile' | 'strike'
   | 'life' | 'mana'
   | 'enemy' | 'movement'
 
@@ -68,6 +72,14 @@ export const masteryCategories: MasteryCategoryDef[] = [
         ...([3, 4, 5].map(n => ({ index: n - 1, label: `Fire ${n}` }))),
       ] },
       { id: 'lightning', label: 'Lightning', tag: 'lightning', trees: makeTrees('Lightning') },
+    ],
+  },
+  {
+    label: 'Damage Type',
+    masteries: [
+      { id: 'area',       label: 'Area',       tag: 'area',       trees: makeTrees('Area')       },
+      { id: 'projectile', label: 'Projectile', tag: 'projectile', trees: makeTrees('Projectile') },
+      { id: 'strike',     label: 'Strike',     tag: 'strike',     trees: makeTrees('Strike')     },
     ],
   },
   {
