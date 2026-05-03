@@ -968,6 +968,7 @@ export function createGameScene(
         masteryProgress,
         () => { modalCleanup = null },
         (id, treeIdx, nodeIdx) => { assignMasteryNode(id, treeIdx, nodeIdx) },
+        id => { resetMasteryPoints(id) },
       )
     })
 
@@ -1405,6 +1406,26 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
+    if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
+      assignAction(playerEntity, playerActionId)
+    }
+    if (id === 'life') {
+      playerEntity.maxLife = computePlayerMaxLife()
+    }
+    persistState()
+    refreshMasteryDot()
+  }
+
+  // Spend one mastery level to clear all assigned nodes and refund the rest.
+  // Net cost: -1 level (and the XP toward the next level resets to 0).
+  function resetMasteryPoints(id: MasteryId): void {
+    const existing = masteryProgress[id]
+    if (!existing || existing.level <= 1) return
+    masteryProgress[id] = {
+      xp: 0,
+      level: existing.level - 1,
+      nodes: defaultMasteryNodes(),
+    }
     if (id === 'spell' && getAction(playerActionId).tags.includes('spell')) {
       assignAction(playerEntity, playerActionId)
     }

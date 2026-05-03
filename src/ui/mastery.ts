@@ -48,6 +48,41 @@ function assignBlockReason(
   return null
 }
 
+// ── Reset Confirmation Modal ───────────────────────────────────────────────
+
+function mountResetConfirmModal(
+  parent: HTMLElement,
+  masteryLabel: string,
+  onConfirm: () => void,
+  onClose: () => void,
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop mastery-node-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel mastery-node-panel" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <h2 class="modal-title" id="reset-confirm-title">Reset ${masteryLabel}?</h2>
+      <p class="node-detail-desc">All assigned nodes will be cleared and you will lose 1 level in this mastery.</p>
+      <div class="node-detail-actions reset-confirm-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="cancel">Cancel</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm">Reset</button>
+      </div>
+    </div>
+  `
+  parent.appendChild(backdrop)
+
+  const dismiss = (): void => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+  backdrop.querySelector<HTMLButtonElement>('[data-action="confirm"]')!.addEventListener('click', () => {
+    onConfirm()
+    dismiss()
+  })
+
+  return () => backdrop.remove()
+}
+
 // ── Node Detail Modal ──────────────────────────────────────────────────────
 
 function mountNodeDetailModal(
@@ -249,6 +284,7 @@ function mountMasteryTreeModal(
   def: MasteryDef,
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
   onAssign: (treeIdx: number, nodeIdx: number) => void,
+  onReset: () => void,
   onClose: () => void,
 ): () => void {
   const p = prog(masteryProgress, def.id)
@@ -266,17 +302,22 @@ function mountMasteryTreeModal(
     <h2 class="modal-title" id="tree-modal-title">${def.label}</h2>
     <p class="mastery-tree-points"></p>
     <div class="mastery-trees-list"></div>
+    <div class="mastery-tree-footer">
+      <button class="modal-btn modal-btn--danger mastery-reset-btn" data-action="reset">Reset (−1 level)</button>
+    </div>
   `
   backdrop.appendChild(panel)
 
   const pointsEl = panel.querySelector<HTMLElement>('.mastery-tree-points')!
   const list = panel.querySelector<HTMLElement>('.mastery-trees-list')!
+  const resetBtn = panel.querySelector<HTMLButtonElement>('.mastery-reset-btn')!
 
   function updatePointsSummary(): void {
     const freshP = prog(masteryProgress, def.id)
     const available = masteryPointsAvailable(freshP)
     const earned = Math.max(0, freshP.level - 1)
     pointsEl.textContent = `You have ${available} / ${earned} mastery point${earned !== 1 ? 's' : ''} to assign`
+    resetBtn.disabled = freshP.level <= 1
   }
 
   updatePointsSummary()
@@ -332,6 +373,20 @@ function mountMasteryTreeModal(
     updatePointsSummary()
   }
 
+  resetBtn.addEventListener('click', () => {
+    closeSub()
+    subCleanup = mountResetConfirmModal(
+      parent,
+      def.label,
+      () => {
+        onReset()
+        subCleanup = null
+        rebuildTrees()
+      },
+      () => { subCleanup = null },
+    )
+  })
+
   const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
   panel.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
@@ -346,59 +401,79 @@ export function mountMasteryModal(
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
   onClose: () => void,
   onAssign: (id: MasteryId, treeIdx: number, nodeIdx: number) => void,
+  onReset: (id: MasteryId) => void,
 ): () => void {
-  const categoriesHtml = masteryCategories.map(cat => {
-    const rows = cat.masteries.map(m => {
-      const p = prog(masteryProgress, m.id)
-      const xpPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
-      const pts = masteryPointsAvailable(p)
-      return `
-        <div class="mastery-row">
-          <button class="mastery-name-btn" data-mastery="${m.id}">
-            ${m.label}${pts > 0 ? '<span class="notif-dot"></span>' : ''}
-          </button>
-          <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
-          <span class="mastery-level">Lv.${p.level}</span>
-        </div>`
-    }).join('')
-    return `
-      <div class="mastery-category">
-        <div class="mastery-category-label">${cat.label}</div>
-        ${rows}
-      </div>`
-  }).join('')
-
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-panel" role="dialog" aria-modal="true" aria-labelledby="mastery-title">
       <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="mastery-title">Masteries</h2>
-      <div class="mastery-categories">${categoriesHtml}</div>
+      <div class="mastery-categories"></div>
     </div>
   `
   parent.appendChild(backdrop)
 
+  const categoriesEl = backdrop.querySelector<HTMLElement>('.mastery-categories')!
+
   let subCleanup: (() => void) | null = null
   function closeSub(): void { if (subCleanup) { subCleanup(); subCleanup = null } }
 
-  backdrop.querySelectorAll<HTMLButtonElement>('.mastery-name-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset['mastery'] as MasteryId
-      const def = allMasteries.find(m => m.id === id)!
-      closeSub()
-      subCleanup = mountMasteryTreeModal(
-        parent,
-        def,
-        masteryProgress,
-        (treeIdx, nodeIdx) => {
-          onAssign(id, treeIdx, nodeIdx)
-          subCleanup = null
-        },
-        () => { subCleanup = null },
-      )
+  function buildRows(): void {
+    categoriesEl.innerHTML = masteryCategories.map(cat => {
+      const rows = cat.masteries.map(m => {
+        const p = prog(masteryProgress, m.id)
+        const xpPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
+        const pts = masteryPointsAvailable(p)
+        const canReset = p.level > 1
+        return `
+          <div class="mastery-row">
+            <button class="mastery-name-btn" data-mastery="${m.id}">
+              ${m.label}${pts > 0 ? '<span class="notif-dot"></span>' : ''}
+            </button>
+            <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
+            <span class="mastery-level">Lv.${p.level}${pts > 0 ? ` · <span class="mastery-pts">${pts}pt</span>` : ''}</span>
+            <button class="mastery-row-reset-btn" data-mastery-reset="${m.id}" title="Reset points for -1 level"${canReset ? '' : ' disabled'}>↺</button>
+          </div>`
+      }).join('')
+      return `
+        <div class="mastery-category">
+          <div class="mastery-category-label">${cat.label}</div>
+          ${rows}
+        </div>`
+    }).join('')
+
+    // Wire mastery-name buttons (open tree modal)
+    categoriesEl.querySelectorAll<HTMLButtonElement>('.mastery-name-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset['mastery'] as MasteryId
+        const def = allMasteries.find(m => m.id === id)!
+        closeSub()
+        subCleanup = mountMasteryTreeModal(
+          parent, def, masteryProgress,
+          (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); subCleanup = null },
+          () => { onReset(id); subCleanup = null; buildRows() },
+          () => { subCleanup = null },
+        )
+      })
     })
-  })
+
+    // Wire row-level reset buttons
+    categoriesEl.querySelectorAll<HTMLButtonElement>('.mastery-row-reset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset['masteryReset'] as MasteryId
+        const def = allMasteries.find(m => m.id === id)!
+        closeSub()
+        subCleanup = mountResetConfirmModal(
+          parent, def.label,
+          () => { onReset(id); subCleanup = null; buildRows() },
+          () => { subCleanup = null },
+        )
+      })
+    })
+  }
+
+  buildRows()
 
   const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
