@@ -103,7 +103,8 @@ export const balance = {
 
   // ── Stat XP (life / mana leveling) ──────────────────────────────────────
   stat: {
-    xpPerLevel:         100,   // XP needed for next level = currentLevel × xpPerLevel
+    xpPerLevel:         100,   // XP required for level 1 → 2
+    xpGrowth:           1.2,   // each subsequent level costs xpGrowth× the previous
     bonusPerLevel:      0.10,  // non-multiplicative +10% of base per level above 1
     lifeXpFromDamage:     4,   // multiplier on life XP earned from taking damage
     manaXpMultiplier:     2,   // multiplier on mana XP earned per mana point spent
@@ -118,7 +119,8 @@ export const balance = {
 
   // ── Enemy leveling ────────────────────────────────────────────────────────
   enemyLevel: {
-    xpPerMaxLevel:      1000, // damage needed to raise max level = currentMaxLevel × xpPerMaxLevel
+    xpPerMaxLevel:      1000, // XP required for max-level 1 → 2
+    xpGrowth:           1.5,  // each subsequent max-level costs xpGrowth× the previous
     statMultiplier:      1.2, // multiplicative per-level bonus on enemy HP and damage
     lifeAddPerLevel:     0.10, // additive life bonus per level above 1, stacks on top of statMultiplier
     speedAddPerLevel:    0.025, // additive move-speed bonus per level above 1

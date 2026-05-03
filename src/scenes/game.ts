@@ -295,8 +295,8 @@ export function createGameScene(
     let { xp, level } = prog
     xp += amount
     let leveled = false
-    while (xp >= level * balance.stat.xpPerLevel) {
-      xp -= level * balance.stat.xpPerLevel
+    while (xp >= statXpNeeded(level)) {
+      xp -= statXpNeeded(level)
       level++
       leveled = true
     }
@@ -626,10 +626,10 @@ export function createGameScene(
   const actionIconWrap   = el.querySelector<HTMLElement>('.action-icon-wrap')!
 
   function updateStatLevels(): void {
-    const lifePct = Math.round(lifeProgress.xp / (lifeProgress.level * balance.stat.xpPerLevel) * 100)
+    const lifePct = Math.round(lifeProgress.xp / statXpNeeded(lifeProgress.level) * 100)
     lifeLevelEl.style.setProperty('--xp-pct', `${lifePct}%`)
     lifeLevelEl.querySelector('span')!.textContent = `Lv.${lifeProgress.level}`
-    const manaPct = Math.round(manaProgress.xp / (manaProgress.level * balance.stat.xpPerLevel) * 100)
+    const manaPct = Math.round(manaProgress.xp / statXpNeeded(manaProgress.level) * 100)
     manaLevelEl.style.setProperty('--xp-pct', `${manaPct}%`)
     manaLevelEl.querySelector('span')!.textContent = `Lv.${manaProgress.level}`
   }
@@ -677,7 +677,7 @@ export function createGameScene(
     enemyLevelDownBtn.disabled = enemyProgress.level <= 1
     enemyLevelUpBtn.disabled   = enemyProgress.level >= enemyProgress.maxLevel
     enemyAutoLevelInput.checked = enemyProgress.autoLevel
-    const xpMax = enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel
+    const xpMax = enemyMaxLevelXpNeeded(enemyProgress.maxLevel)
     enemyXpBarFill.style.width = `${Math.min(100, Math.round(enemyProgress.xp / xpMax * 100))}%`
   }
 
@@ -699,8 +699,8 @@ export function createGameScene(
   function awardEnemyXp(amount: number): void {
     runEnemyXp += amount
     enemyProgress.xp += amount
-    while (enemyProgress.xp >= enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel) {
-      enemyProgress.xp -= enemyProgress.maxLevel * balance.enemyLevel.xpPerMaxLevel
+    while (enemyProgress.xp >= enemyMaxLevelXpNeeded(enemyProgress.maxLevel)) {
+      enemyProgress.xp -= enemyMaxLevelXpNeeded(enemyProgress.maxLevel)
       enemyProgress.maxLevel++
       if (enemyProgress.autoLevel) enemyProgress.level = enemyProgress.maxLevel
     }
@@ -2262,7 +2262,7 @@ function mountCharacterModal(
 
   function statDetailRow(label: string, prog: StatProgress, baseMax: number, cssClass: string): string {
     const effectiveMax = Math.round(baseMax * (1 + (prog.level - 1) * balance.stat.bonusPerLevel))
-    const xpNeeded = prog.level * balance.stat.xpPerLevel
+    const xpNeeded = statXpNeeded(prog.level)
     const detail = prog.level > 1 || prog.xp > 0
       ? `Lv.${prog.level} &mdash; ${Math.floor(prog.xp)}/${xpNeeded} xp &middot; ${effectiveMax} max`
       : `${effectiveMax}`
@@ -2433,6 +2433,14 @@ function mountBattleConfigModal(
 
 function actionXpNeeded(level: number): number {
   return Math.round(balance.action.xpPerLevel * Math.pow(balance.action.xpGrowth, level - 1))
+}
+
+function statXpNeeded(level: number): number {
+  return Math.round(balance.stat.xpPerLevel * Math.pow(balance.stat.xpGrowth, level - 1))
+}
+
+function enemyMaxLevelXpNeeded(maxLevel: number): number {
+  return Math.round(balance.enemyLevel.xpPerMaxLevel * Math.pow(balance.enemyLevel.xpGrowth, maxLevel - 1))
 }
 
 // Box-Muller transform: standard normal sample (mean 0, variance 1).
