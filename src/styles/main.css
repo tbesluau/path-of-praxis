@@ -241,6 +241,7 @@ body::after {
 }
 .buff-icon--buff   { background: #2d8a3e; }
 .buff-icon--debuff { background: #c43c3c; }
+.buff-icon--mixed  { background: linear-gradient(135deg, #2d8a3e 0%, #2d8a3e 50%, #c43c3c 50%, #c43c3c 100%); }
 .buff-icon svg {
   stroke: #fff;
   width: 20px;

@@ -758,7 +758,7 @@ export function createGameScene(
   interface ActiveEffect {
     id: string                 // unique key (e.g. 'trance')
     iconName: string           // lucide icon name (kebab-case)
-    kind: 'buff' | 'debuff'
+    kind: 'buff' | 'debuff' | 'mixed'  // 'mixed' = both buff and debuff (diagonal split icon)
     remainingMs: number
   }
 
@@ -795,6 +795,7 @@ export function createGameScene(
   function renderBuffBar(): void {
     const ordered = [
       ...activeEffects.filter(e => e.kind === 'buff'),
+      ...activeEffects.filter(e => e.kind === 'mixed'),
       ...activeEffects.filter(e => e.kind === 'debuff'),
     ]
     buffBarEl.innerHTML = ordered.map(e =>
@@ -2048,7 +2049,7 @@ export function createGameScene(
               } else {
                 playerImmolation = { dps: rawDps, remainingMs: duration }
               }
-              applyEffect({ id: 'immolation', iconName: 'flame', kind: 'debuff' }, duration)
+              applyEffect({ id: 'immolation', iconName: 'flame', kind: 'mixed' }, duration)
             }
           }
 
