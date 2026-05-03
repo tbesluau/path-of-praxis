@@ -2266,7 +2266,7 @@ export function createGameScene(
           if (entity.role === 'player' && action.tags.includes('fire') && !isDoubleCast) {
             const fb = getFireBonuses()
             if (fb.immolateChance > 0 && Math.random() * 100 < fb.immolateChance) {
-              const rawDps = effectiveDamage * balance.effects.burnDpsFraction
+              const rawDps = effectiveDamage * balance.effects.burnDpsFraction * 0.5
                 * Math.max(0, 1 - fb.immolateDamageReduction / 100)
               const duration = balance.effects.burnBaseDurationMs * (1 + fb.burnDurationIncrease / 100)
               if (playerImmolation) {
