@@ -64,6 +64,10 @@ export function createGameScene(
     return Math.pow(balance.enemyLevel.statMultiplier, enemyProgress.level - 1)
   }
 
+  function enemyLifeScale(): number {
+    return enemyScale() * (1 + balance.enemyLevel.lifeAddPerLevel * (enemyProgress.level - 1))
+  }
+
   function statBonus(level: number): number {
     return 1 + (level - 1) * balance.stat.bonusPerLevel
   }
@@ -1425,6 +1429,7 @@ export function createGameScene(
       if (isTileBlocked(spawnX, spawnY)) continue
 
       const scale = enemyScale()
+      const lifeScale = enemyLifeScale()
       const isStrong = Math.random() < ev.strongChance
       const lifeMult = isStrong
         ? ev.strongLifeMin  + Math.random() * (ev.strongLifeMax  - ev.strongLifeMin)
@@ -1438,7 +1443,7 @@ export function createGameScene(
         spawnX, spawnY,
         'enemyA',
         balance.enemyA.radius,
-        { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * scale * lifeMult) },
+        { moveSpeed: balance.enemyA.moveSpeed, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
       assignAction(enemy, randomAction().id)
       enemy.attackDamage *= scale * balance.enemyA.damageMultiplier * dmgMult
