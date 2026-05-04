@@ -2074,7 +2074,7 @@ body::after {
 .note-panel {
   width: min(420px, 92vw);
   max-height: 75dvh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .note-title {
@@ -2088,6 +2088,9 @@ body::after {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .note-body p {
