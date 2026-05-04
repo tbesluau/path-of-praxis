@@ -442,7 +442,6 @@ export function mountMasteryModal(
         const p = prog(masteryProgress, m.id)
         const xpPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
         const pts = masteryPointsAvailable(p)
-        const canReset = p.level > 1
         return `
           <div class="mastery-row">
             <button class="mastery-name-btn" data-mastery="${m.id}">
@@ -450,7 +449,6 @@ export function mountMasteryModal(
             </button>
             <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
             <span class="mastery-level">Lv.${p.level}${pts > 0 ? ` · <span class="mastery-pts">${pts}pt</span>` : ''}</span>
-            <button class="mastery-row-reset-btn" data-mastery-reset="${m.id}" title="Reset points for -1 level"${canReset ? '' : ' disabled'}>↺</button>
           </div>`
       }).join('')
       return `
@@ -472,20 +470,6 @@ export function mountMasteryModal(
           parent, def, masteryProgress,
           (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
           () => { onReset(id); buildRows() },
-          () => { subCleanup = null },
-        )
-      })
-    })
-
-    // Wire row-level reset buttons
-    categoriesEl.querySelectorAll<HTMLButtonElement>('.mastery-row-reset-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset['masteryReset'] as MasteryId
-        const def = allMasteries.find(m => m.id === id)!
-        closeSub()
-        subCleanup = mountResetConfirmModal(
-          parent, def.label,
-          () => { onReset(id); subCleanup = null; buildRows() },
           () => { subCleanup = null },
         )
       })
