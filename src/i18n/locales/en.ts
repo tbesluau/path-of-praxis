@@ -40,6 +40,7 @@ export interface TranslationSchema {
     guide: string
     discord: string
     showDamageNumbers: string
+    zoomLabel: string
   }
   guide: {
     title: string
@@ -89,6 +90,7 @@ export const en: TranslationSchema = {
     guide: 'Guide',
     discord: 'Discord',
     showDamageNumbers: 'Show damage numbers',
+    zoomLabel: 'Zoom',
   },
   guide: {
     title: 'Guide',

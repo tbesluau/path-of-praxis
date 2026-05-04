@@ -1361,6 +1361,94 @@ body::after {
   z-index: 40;
 }
 
+/* ── Zoom control (button + popover, top-right of game viewport) ── */
+
+.zoom-btn {
+  position: absolute;
+  top: var(--space-md);
+  right: calc(var(--space-md) + 52px + var(--space-sm));
+  width: 52px;
+  height: 52px;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') 14 fill stretch;
+  border-radius: 0;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.zoom-btn:hover,
+.zoom-btn:focus-visible {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
+  outline: none;
+}
+
+.zoom-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.75;
+}
+
+.zoom-popover {
+  position: absolute;
+  top: calc(var(--space-md) + 52px + var(--space-xs));
+  right: calc(var(--space-md) + 52px + var(--space-sm));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  background: rgba(20, 14, 10, 0.95);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 30;
+  min-width: 88px;
+}
+
+.zoom-step-btn {
+  width: 100%;
+  height: 36px;
+  background: transparent;
+  border: 8px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') 14 fill stretch;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-step-btn:hover:not(:disabled),
+.zoom-step-btn:focus-visible:not(:disabled) {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  outline: none;
+}
+
+.zoom-step-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.zoom-step-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+.zoom-value {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--color-primary);
+  padding: 2px 0;
+}
+
 /* ── Language options ── */
 
 .lang-options {

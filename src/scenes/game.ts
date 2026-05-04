@@ -14,7 +14,8 @@ import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 import { mountSettingsButton } from '../ui/settings'
-import { getPrefs } from '../core/prefs'
+import { mountZoomControl } from '../ui/zoom'
+import { getPrefs, setPref } from '../core/prefs'
 import { computeRuneBonuses, unlockedSlotCount, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 
@@ -704,6 +705,13 @@ export function createGameScene(
 
   const unmountSettings = mountSettingsButton(el, container)
 
+  let zoomLevel = getPrefs().zoomLevel ?? 1.0
+  const unmountZoom = mountZoomControl(viewportEl, zoomLevel, (z) => {
+    zoomLevel = z
+    setPref('zoomLevel', z)
+    updateCamera()
+  })
+
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill        = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
   const lifeLabel       = el.querySelector<HTMLElement>('.stat-bar-label--life')!
@@ -1264,9 +1272,10 @@ export function createGameScene(
   function updateCamera(): void {
     if (!app) return
     const { width, height } = app.screen
+    app.stage.scale.set(zoomLevel)
     app.stage.position.set(
-      width / 2 - playerEntity.x,
-      (height - HUD_HEIGHT) / 2 - playerEntity.y,
+      width / 2 - playerEntity.x * zoomLevel,
+      (height - HUD_HEIGHT) / 2 - playerEntity.y * zoomLevel,
     )
   }
 
@@ -2547,6 +2556,7 @@ export function createGameScene(
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()
+    unmountZoom()
     for (const f of deathFragments) f.g.destroy()
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()

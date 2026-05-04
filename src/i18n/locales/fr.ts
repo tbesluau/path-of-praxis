@@ -42,6 +42,7 @@ export const fr: TranslationSchema = {
     guide: 'Guide',
     discord: 'Discord',
     showDamageNumbers: 'Afficher les dégâts',
+    zoomLabel: 'Zoom',
   },
   guide: {
     title: 'Guide',
