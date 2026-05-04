@@ -629,7 +629,7 @@ export function createGameScene(
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
   createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword, Book } })
 
-  const unmountSettings = mountSettingsButton(el)
+  const unmountSettings = mountSettingsButton(el, container)
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
   const manaFill        = el.querySelector<HTMLElement>('.stat-bar-fill--mana')!
@@ -737,7 +737,7 @@ export function createGameScene(
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
     const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id
     modalCleanup = mountBattleConfigModal(
-      el,
+      container,
       currentId,
       targetingMode,
       (id) => {
@@ -944,7 +944,7 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="open-menu"]')!
     .addEventListener('click', () => {
       if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
-      modalCleanup = mountGameMenuModal(el, () => { modalCleanup = null }, {
+      modalCleanup = mountGameMenuModal(container, () => { modalCleanup = null }, {
         onHome: saveAndGoHome,
         onFlee: () => {
           for (const entity of [...entities]) {
@@ -1017,14 +1017,14 @@ export function createGameScene(
       modalCleanup = null
       return
     }
-    modalCleanup = mountCharacterModal(el, () => { modalCleanup = null }, actionProgress, lifeProgress, manaProgress)
+    modalCleanup = mountCharacterModal(container, () => { modalCleanup = null }, actionProgress, lifeProgress, manaProgress)
   })
 
   el.querySelector<HTMLButtonElement>('[data-action="open-mastery"]')!
     .addEventListener('click', () => {
       if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
       modalCleanup = mountMasteryModal(
-        el,
+        container,
         masteryProgress,
         () => { modalCleanup = null },
         (id, treeIdx, nodeIdx) => { assignMasteryNode(id, treeIdx, nodeIdx) },
@@ -1404,7 +1404,7 @@ export function createGameScene(
     `
     backdrop.querySelector<HTMLButtonElement>('[data-action="rebirth"]')!
       .addEventListener('click', () => { applyMasteryGains(pendingGains); backdrop.remove(); rebirth() })
-    el.appendChild(backdrop)
+    container.appendChild(backdrop)
     return () => backdrop.remove()
   }
 
