@@ -8,8 +8,7 @@ describe('i18n', () => {
     expect(t('game', 'title')).toBe('Path of Praxis')
     expect(t('game', 'subtitle')).toBe('Forge your path')
     expect(t('menu', 'continue')).toBe('Continue')
-    expect(t('menu', 'newCharacter')).toBe('New Character')
-    expect(t('menu', 'loadCharacter')).toBe('Load Character')
+    expect(t('menu', 'characters')).toBe('Characters')
     expect(t('menu', 'ladder')).toBe('Ladder')
   })
 

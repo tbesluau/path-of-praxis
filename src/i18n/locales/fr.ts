@@ -12,8 +12,7 @@ export const fr: TranslationSchema = {
   },
   menu: {
     continue: 'Continuer',
-    newCharacter: 'Nouveau personnage',
-    loadCharacter: 'Charger un personnage',
+    characters: 'Personnages',
     ladder: 'Classement',
     nav: 'Menu principal',
   },
@@ -26,6 +25,7 @@ export const fr: TranslationSchema = {
     cancel: 'Annuler',
     current: 'Actuel',
     emptySlot: '— Vide —',
+    newSlot: 'Nouveau',
     deleteLabel: 'Supprimer',
     nameTaken: 'Ce nom est déjà utilisé.',
     infoTitle: 'Personnage',

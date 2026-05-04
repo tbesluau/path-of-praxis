@@ -1,4 +1,4 @@
-import { createIcons, Play, UserPlus, FolderOpen, Trophy, Trash2, Sword, Crosshair, Flame, Zap } from 'lucide'
+import { createIcons, Play, FolderOpen, Trophy, Trash2, Sword, Crosshair, Flame, Zap } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import { mountSettingsButton } from '../ui/settings'
@@ -48,13 +48,9 @@ export function createMenuScene(
           <i data-lucide="play" aria-hidden="true"></i>
           <span>${t('menu', 'continue')}</span>
         </button>
-        <button class="menu-btn" data-action="new-character">
-          <i data-lucide="user-plus" aria-hidden="true"></i>
-          <span>${t('menu', 'newCharacter')}</span>
-        </button>
         <button class="menu-btn" data-action="load-character">
           <i data-lucide="folder-open" aria-hidden="true"></i>
-          <span>${t('menu', 'loadCharacter')}</span>
+          <span>${t('menu', 'characters')}</span>
         </button>
         <div class="menu-divider" role="separator"></div>
         <button class="menu-btn" data-action="ladder">
@@ -66,7 +62,7 @@ export function createMenuScene(
   `
 
   container.appendChild(el)
-  createIcons({ icons: { Play, UserPlus, FolderOpen, Trophy, Trash2 } })
+  createIcons({ icons: { Play, FolderOpen, Trophy, Trash2 } })
 
   const unmountSettings = mountSettingsButton(el)
 
@@ -74,17 +70,13 @@ export function createMenuScene(
   const stopParticles = startParticles(canvas)
 
   const btnContinue = el.querySelector<HTMLButtonElement>('[data-action="continue"]')!
-  const btnNew = el.querySelector<HTMLButtonElement>('[data-action="new-character"]')!
   const btnLoad = el.querySelector<HTMLButtonElement>('[data-action="load-character"]')!
 
   let modalCleanup: (() => void) | null = null
 
   function refreshButtonStates(): void {
-    const chars = getCharacters()
     const currentId = getCurrentId()
     btnContinue.disabled = currentId === null
-    btnLoad.disabled = chars.length === 0
-    btnNew.disabled = chars.length >= MAX_SLOTS
   }
 
   function closeModal(): void {
@@ -101,24 +93,15 @@ export function createMenuScene(
     if (!btnContinue.disabled) navigate('game')
   })
 
-  btnNew.addEventListener('click', () => {
-    if (btnNew.disabled) return
-    closeModal()
-    modalCleanup = mountNewCharacterModal(el, {
-      onClose: closeModal,
-      onCreate: (name, actionId) => {
-        createCharacter(name, actionId)
-        navigate('game')
-      },
-    })
-  })
-
   btnLoad.addEventListener('click', () => {
-    if (btnLoad.disabled) return
     closeModal()
     modalCleanup = mountLoadCharacterModal(el, {
       onClose: closeModal,
       onSelect: () => navigate('game'),
+      onCreate: (name, actionId) => {
+        createCharacter(name, actionId)
+        navigate('game')
+      },
     })
   })
 
@@ -248,7 +231,11 @@ function mountNewCharacterModal(
 
 function mountLoadCharacterModal(
   parent: HTMLElement,
-  { onClose, onSelect }: { onClose: () => void; onSelect: () => void },
+  { onClose, onSelect, onCreate }: {
+    onClose: () => void
+    onSelect: () => void
+    onCreate: (name: string, actionId: ActionId) => void
+  },
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -262,12 +249,18 @@ function mountLoadCharacterModal(
 
   parent.appendChild(backdrop)
 
+  let subCleanup: (() => void) | null = null
+  function closeSub(): void {
+    if (subCleanup) { subCleanup(); subCleanup = null }
+  }
+
   const slotList = backdrop.querySelector<HTMLElement>('.char-slot-list')!
 
   function renderSlots(): void {
     const chars = getCharacters()
     const currentId = getCurrentId()
     slotList.innerHTML = ''
+    let firstEmptyDone = false
 
     for (let i = 0; i < MAX_SLOTS; i++) {
       const char = chars[i]
@@ -275,7 +268,26 @@ function mountLoadCharacterModal(
 
       if (!char) {
         row.className = 'char-slot char-slot--empty'
-        row.textContent = t('character', 'emptySlot')
+        if (!firstEmptyDone) {
+          firstEmptyDone = true
+          const emptyLabel = document.createElement('span')
+          emptyLabel.className = 'char-slot-name'
+          emptyLabel.textContent = t('character', 'emptySlot')
+          const newBtn = document.createElement('button')
+          newBtn.className = 'char-slot-new-btn'
+          newBtn.textContent = t('character', 'newSlot')
+          newBtn.addEventListener('click', () => {
+            closeSub()
+            subCleanup = mountNewCharacterModal(parent, {
+              onClose: () => { subCleanup = null },
+              onCreate,
+            })
+          })
+          row.appendChild(emptyLabel)
+          row.appendChild(newBtn)
+        } else {
+          row.textContent = t('character', 'emptySlot')
+        }
       } else {
         const isCurrent = char.id === currentId
         row.className = `char-slot${isCurrent ? ' char-slot--current' : ' char-slot--selectable'}`
@@ -307,7 +319,6 @@ function mountLoadCharacterModal(
           deleteCharacter(char.id)
           createIcons({ icons: { Trash2 } })
           renderSlots()
-          if (getCharacters().length === 0) onClose()
         })
         row.appendChild(delBtn)
       }
@@ -321,13 +332,13 @@ function mountLoadCharacterModal(
   renderSlots()
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { backdrop.remove(); onClose() })
+    .addEventListener('click', () => { closeSub(); backdrop.remove(); onClose() })
 
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) onClose()
+    if (e.target === backdrop) { closeSub(); backdrop.remove(); onClose() }
   })
 
-  return () => backdrop.remove()
+  return () => { closeSub(); backdrop.remove() }
 }
 
 function startParticles(canvas: HTMLCanvasElement): () => void {
