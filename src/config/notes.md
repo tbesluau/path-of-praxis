@@ -81,3 +81,74 @@ Healing mechanic: a fraction of damage dealt to enemies is restored as player li
 **Feeding Frenzy** grants an additional +20% increased life stolen additively; the cap still applies.
 
 Life steal is applied once per direct hit. Burn ticks, Immolation self-burn, and other damage-over-time sources do not trigger life steal.
+
+---
+
+## Increased
+
+**Increased** modifiers are additive. All "+X% increased" values in the same stat category are summed into a single pool, and the total is applied as `(1 + total / 100)`.
+
+**Example:** +15% increased damage and +5% increased damage combine to +20% increased damage — a ×1.20 multiplier.
+
+Increased and **More** are separate multiplier layers that stack multiplicatively with each other.
+
+---
+
+## More
+
+**More** modifiers are multiplicative. Each "X% more" value applies as its own independent multiplier: `× (1 + X / 100)`.
+
+**Example:** ×1.10 more damage and ×1.05 more damage combine to ×1.155 — not ×1.15.
+
+More multipliers are applied after all **Increased** modifiers have been summed. The result is that "more" is strictly stronger than the same value of "increased" whenever any other bonus in the same category already exists.
+
+---
+
+## Double Damage
+
+A per-cast chance for the hit to deal exactly **2× its normal effective damage**. The roll happens after all other damage modifiers (including **Increased** and **More**) have been applied, so it doubles the final number.
+
+Sourced from the Spell mastery — Damage tree (double damage chance nodes). Multiple nodes add to a single cumulative chance. The roll is independent on every cast — it can proc on primary casts, **Double Cast** casts, and extra-target casts.
+
+---
+
+## Double Cast
+
+A per-cast chance to automatically fire a **second cast** of the same action at **1/5 of the normal cycle delay** after the primary cast. The second cast targets the same enemy (or the nearest in range if the primary target has died) and pays full mana cost.
+
+The second cast does **not** roll for another double cast (chain is capped at one level), but it can still roll for **Double Damage** and other per-cast effects.
+
+Sourced from the Spell mastery — Cast Speed tree (double cast chance nodes).
+
+---
+
+## Immolation
+
+A **mixed Effect** triggered on the player when a fire-tagged action hits and passes the immolation chance roll (requires Fire mastery nodes).
+
+**While Immolation is active:**
+- Fire action damage gains a bonus (additive; stacks with other increased damage modifiers)
+- Burn apply chance gains a bonus (additive; stacks with other burn chance modifiers)
+- The player takes self-burn damage: DPS = last triggering hit's damage × 20%, modified by Fire mastery Immolation DPS nodes
+
+Each triggering hit that passes the roll refreshes Immolation's duration (**5 seconds** base) and updates the self-burn DPS to the new hit's value. Only one Immolation instance can be active at a time.
+
+Immolation is a self-burn on the player — it is distinct from **Burn** stacks on enemies and does not interact with enemy burn mechanics.
+
+---
+
+## Strong
+
+A variant enemy tier. Strong enemies have **1.0–1.8× life**, **1.0–1.8× damage**, and **+20% attack speed** compared to a normal enemy of the same level. They award **×2 action XP** on kill. Identified by a **blue diamond** above the health bar.
+
+The base spawn chance is **10%** per enemy in a wave. Enemy mastery nodes can increase this chance.
+
+**Elite** enemies are a subset of Strong — they have additional bonuses on top.
+
+---
+
+## Elite
+
+A variant enemy tier that is a stronger version of **Strong**. Elite enemies have **1.5–2.5× life**, **1.5–2.5× damage**, **+20% attack speed**, and **+20% move speed** compared to a normal enemy of the same level. They award **×3 action XP** on kill. Identified by a **purple diamond** above the health bar.
+
+Elite enemies cannot spawn without Enemy mastery nodes that grant elite chance. Each Strong enemy has a separate roll to be upgraded to Elite based on this chance.
