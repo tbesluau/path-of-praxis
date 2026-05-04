@@ -31,18 +31,24 @@ const NOTES = parseNotes(notesRaw)
 
 // Ordered longest-first so multi-word phrases match before single words.
 const NOTE_TERMS: { id: string; pattern: RegExp }[] = [
-  { id: 'feeding-frenzy', pattern: /\bFeeding Frenzy\b/gi },
-  { id: 'life-steal',     pattern: /\bLife Steal\b/gi },
-  { id: 'double-damage',  pattern: /\bDouble Damage\b/gi },
-  { id: 'double-cast',    pattern: /\bDouble Cast(?:s|ing)?\b/gi },
-  { id: 'trance',         pattern: /\bTrance\b/gi },
-  { id: 'immolation',     pattern: /\bImmolation\b/gi },
-  { id: 'burn',           pattern: /\bBurning?\b/gi },
-  { id: 'effect',         pattern: /\bEffects?\b/gi },
-  { id: 'increased',      pattern: /\bIncreased\b/gi },
-  { id: 'more',           pattern: /\bMore\b/gi },
-  { id: 'strong',         pattern: /\bStrong\b/gi },
-  { id: 'elite',          pattern: /\bElite\b/gi },
+  { id: 'additional-projectile', pattern: /\bAdditional Projectiles?\b/gi },
+  { id: 'additional-target',     pattern: /\bAdditional Targets?\b/gi },
+  { id: 'feeding-frenzy',        pattern: /\bFeeding Frenzy\b/gi },
+  { id: 'second-cast',           pattern: /\bSecond Casts?\b/gi },
+  { id: 'double-damage',         pattern: /\bDouble Damage\b/gi },
+  { id: 'double-cast',           pattern: /\bDouble Cast(?:s|ing)?\b/gi },
+  { id: 'multi-action',          pattern: /\bMulti-actions?\b/gi },
+  { id: 'life-steal',            pattern: /\bLife Steal\b/gi },
+  { id: 'affliction',            pattern: /\bAfflictions?\b/gi },
+  { id: 'immolation',            pattern: /\bImmolation\b/gi },
+  { id: 'increased',             pattern: /\bIncreased\b/gi },
+  { id: 'effect',                pattern: /\bEffects?\b/gi },
+  { id: 'status',                pattern: /\bStatus(?:es)?\b/gi },
+  { id: 'trance',                pattern: /\bTrance\b/gi },
+  { id: 'strong',                pattern: /\bStrong\b/gi },
+  { id: 'elite',                 pattern: /\bElite\b/gi },
+  { id: 'burn',                  pattern: /\bBurning?\b/gi },
+  { id: 'more',                  pattern: /\bMore\b/gi },
 ]
 
 // Apply a single pattern to an HTML string, protecting already-linked spans.
