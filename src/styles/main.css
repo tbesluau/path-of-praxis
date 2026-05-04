@@ -1383,7 +1383,7 @@ body::after {
 
 .zoom-btn:hover,
 .zoom-btn:focus-visible {
-  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  filter: brightness(0.75);
   transform: translateY(2px);
   outline: none;
 }
@@ -1445,7 +1445,7 @@ body::after {
   text-align: center;
   font-family: var(--font-display);
   font-size: 0.95rem;
-  color: var(--color-primary);
+  color: #fff;
   padding: 2px 0;
 }
 

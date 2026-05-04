@@ -39,8 +39,8 @@ export const balance = {
     spawnDelay:        2000, // ms delay for intro spawns (new char, flee, rebirth, continue)
     clusterSpread:      0.15, // total angular span (radians) of each enemy cluster
     directionStdDev:   Math.PI / 12, // gaussian σ (rad) of next wave's angle vs the previous one
-    spawnMargin:        210, // px beyond screen edge enemies appear
-    spawnDepthVariance:  60, // additional random px beyond spawnMargin
+    spawnMargin:        315, // px beyond screen edge enemies appear
+    spawnDepthVariance:  90, // additional random px beyond spawnMargin
     nextWaveThreshold:    0, // spawn next wave when live enemy count reaches this
     // +1 extra enemy: 15% chance; +2 extra enemies: 5% chance (independent rolls)
     extraOneChance:    0.15,
@@ -91,7 +91,7 @@ export const balance = {
     gridSize: 64,  // pixels per grid cell
     map: {
       chunkSize:       16,    // tiles per chunk side
-      forgetRange:      2,    // chunks beyond this Chebyshev distance are forgotten (~2× spawn dist)
+      forgetRange:      3,    // chunks beyond this Chebyshev distance are forgotten (~2× spawn dist)
       blockedDensity: 1.00,   // probability of placing an obstacle at each placement-grid point
       placementGrid:    7,    // tiles between obstacle placement centres
       wallLengthMin:    3,    // min wall segment length in tiles
