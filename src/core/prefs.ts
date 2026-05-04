@@ -2,10 +2,12 @@ const STORAGE_KEY = 'pop:prefs'
 
 export interface Prefs {
   showDamageNumbers: boolean
+  zoomLevel:         number
 }
 
 const defaults: Prefs = {
   showDamageNumbers: true,
+  zoomLevel:         1.0,
 }
 
 let cache: Prefs | null = null
