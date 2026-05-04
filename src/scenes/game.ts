@@ -757,6 +757,16 @@ export function createGameScene(
     )
   })
 
+  // Must be declared before computeLifeRegenPerSec / computeManaRegenPerSec, which are
+  // called synchronously in updateBars() during setup — before the buffs block below.
+  interface ActiveEffect {
+    id: string
+    iconName: string
+    kind: 'buff' | 'debuff' | 'mixed'
+    remainingMs: number
+  }
+  const activeEffects: ActiveEffect[] = []
+
   function computeLifeRegenPerSec(): number {
     const lb = getLifeBonuses()
     const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
@@ -832,15 +842,8 @@ export function createGameScene(
   // ── Buffs / Debuffs ──────────────────────────────────────────────────────
   // Game-time-scaled durations: tickEffects() runs each frame with deltaMS so
   // pause/speed work naturally. Display order: buffs (oldest first), then debuffs.
+  // (ActiveEffect interface + activeEffects array declared above updateBars() to avoid TDZ.)
 
-  interface ActiveEffect {
-    id: string                 // unique key (e.g. 'trance')
-    iconName: string           // lucide icon name (kebab-case)
-    kind: 'buff' | 'debuff' | 'mixed'  // 'mixed' = both buff and debuff (diagonal split icon)
-    remainingMs: number
-  }
-
-  const activeEffects: ActiveEffect[] = []
   const buffBarEl = el.querySelector<HTMLElement>('.buff-bar')!
 
   function applyEffect(template: Omit<ActiveEffect, 'remainingMs'>, durationMs: number): void {
