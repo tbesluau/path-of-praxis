@@ -1,5 +1,6 @@
 import { balance } from '../config/balance'
 import type { MasteryId } from '../config/masteries'
+import type { RuneId } from '../config/runes'
 
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
@@ -40,6 +41,16 @@ export interface ActionProgress {
   maxLevel: number  // highest level ever reached; survives rebirth
 }
 
+export interface ActionRunes {
+  selected:  (RuneId | null)[]
+  history:   RuneId[]
+  autoApply: boolean
+}
+
+export function defaultActionRunes(): ActionRunes {
+  return { selected: [null, null, null, null, null, null], history: [], autoApply: true }
+}
+
 export interface RunProgress {
   actionXp: Record<string, number>
   lifeXp: number
@@ -68,6 +79,7 @@ export interface Character {
   targetingMode: TargetingMode
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>
   runProgress: RunProgress
+  actionRunes: Partial<Record<string, ActionRunes>>
 }
 
 interface SaveData {
@@ -101,6 +113,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       ]),
     ) as Partial<Record<MasteryId, MasteryProgress>>,
     runProgress: c.runProgress ?? defaultRunProgress(),
+    actionRunes: c.actionRunes ?? {},
   }
 }
 
@@ -159,6 +172,7 @@ export function createCharacter(name: string, actionId: string): Character {
     targetingMode: 'nearest',
     masteryProgress: {},
     runProgress: defaultRunProgress(),
+    actionRunes: {},
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -192,6 +206,7 @@ export function saveCharacterState(
   targetingMode?: TargetingMode,
   masteryProgress?: Partial<Record<MasteryId, MasteryProgress>>,
   runProgress?: RunProgress,
+  actionRunes?: Partial<Record<string, ActionRunes>>,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -206,5 +221,6 @@ export function saveCharacterState(
   if (targetingMode !== undefined) char.targetingMode = targetingMode
   if (masteryProgress !== undefined) char.masteryProgress = masteryProgress
   if (runProgress !== undefined) char.runProgress = runProgress
+  if (actionRunes !== undefined) char.actionRunes = actionRunes
   write(data)
 }

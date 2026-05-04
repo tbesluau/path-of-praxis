@@ -583,7 +583,8 @@ body::after {
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBlue_horizontalBlue.png');
 }
 
-.action-icon-wrap {
+.action-icon-wrap,
+.action-icon-btn {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
@@ -594,7 +595,18 @@ body::after {
   background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCircle_blue.png') center / contain no-repeat;
 }
 
-.action-icon-wrap svg {
+.action-icon-btn {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.action-icon-btn:hover { opacity: 0.8; }
+.action-icon-btn:active { opacity: 0.6; transform: scale(0.95); }
+
+.action-icon-wrap svg,
+.action-icon-btn svg {
   width: 12px;
   height: 12px;
   stroke-width: 1.75;
@@ -2222,4 +2234,168 @@ body::after {
 .guide-section-body strong {
   font-weight: 700;
   color: #2a1005;
+}
+
+/* ── Runes modal ── */
+
+.runes-backdrop { z-index: 25; }
+
+.runes-panel {
+  width: min(420px, 96vw);
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.runes-level-hint {
+  font-size: 0.78rem;
+  color: rgba(58,32,8,0.6);
+  margin: 0 0 var(--space-sm);
+}
+
+.rune-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.rune-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: 6px var(--space-sm);
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_beige.png') 14 fill stretch;
+  transition: opacity 0.1s;
+}
+
+.rune-card:hover:not(.rune-card--locked) {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png');
+}
+
+.rune-card:active:not(.rune-card--locked) {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+  transform: translateY(2px);
+}
+
+.rune-card--locked {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+.rune-card--filled {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png');
+}
+
+.rune-card--minor  { min-height: 44px; }
+.rune-card--major  { min-height: 52px; }
+.rune-card--key    { min-height: 60px; }
+
+.rune-card-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(58,32,8,0.55);
+  writing-mode: vertical-rl;
+  flex-shrink: 0;
+  min-width: 14px;
+}
+
+.rune-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rune-card-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1a0a02;
+}
+
+.rune-card-name--empty {
+  color: rgba(58,32,8,0.45);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.rune-card-desc {
+  font-size: 0.72rem;
+  color: rgba(58,32,8,0.65);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rune-card-lock {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: rgba(58,32,8,0.45);
+}
+
+/* ── Rune select modal ── */
+
+.rune-select-backdrop { z-index: 30; }
+
+.rune-select-panel {
+  width: min(360px, 96vw);
+  max-height: 80dvh;
+  overflow-y: auto;
+}
+
+.rune-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.rune-select-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-sm);
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_beige.png') 14 fill stretch;
+  cursor: pointer;
+}
+
+.rune-select-item:hover {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png');
+}
+
+.rune-select-item:active,
+.rune-select-item--active {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+}
+
+.rune-select-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1a0a02;
+}
+
+.rune-select-desc {
+  font-size: 0.75rem;
+  color: rgba(58,32,8,0.65);
+  line-height: 1.4;
+}
+
+.rune-select-footer {
+  border-top: 1px solid rgba(58,32,8,0.15);
+  padding-top: var(--space-sm);
+}
+
+.rune-remove-btn {
+  width: 100%;
 }
