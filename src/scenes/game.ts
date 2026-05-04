@@ -790,7 +790,12 @@ export function createGameScene(
     const cap = playerEntity.maxLife * 0.01 * (1 + lb.lifeStealCapIncrease / 100)
     const stolen = Math.min(stealRaw, cap)
     if (stolen <= 0) return
-    playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + stolen)
+    const before = playerEntity.currentLife
+    playerEntity.currentLife = Math.min(playerEntity.maxLife, before + stolen)
+    const healed = playerEntity.currentLife - before
+    if (healed > 0) {
+      spawnHealNumber(playerEntity.x, playerEntity.y - playerEntity.radius - 8, healed)
+    }
     if (lb.feedingFrenzyChance > 0 && Math.random() * 100 < lb.feedingFrenzyChance) {
       applyEffect({ id: 'feedingFrenzy', iconName: 'drumstick', kind: 'buff' }, balance.buffs.feedingFrenzyDurationMs)
     }
@@ -1874,6 +1879,34 @@ export function createGameScene(
     text.y = wy
     app.stage.addChild(text)
     // Drift up + fade over 2000ms, no static phase.
+    const originY = wy
+    vfxList.push({
+      g: text,
+      age: 0,
+      maxAge: 2000,
+      tick: (p) => {
+        text.y = originY - p * 80
+        text.alpha = 1 - p
+      },
+    })
+  }
+
+  function spawnHealNumber(wx: number, wy: number, amount: number): void {
+    if (!app) return
+    if (!getPrefs().showDamageNumbers) return
+    const text = new Text({
+      text: `+${Math.round(amount * 10) / 10}`,
+      style: {
+        fill: 0x44dd44,
+        fontSize: 16,
+        fontWeight: 'bold',
+        dropShadow: { color: 0x000000, blur: 3, angle: Math.PI / 2, distance: 1 },
+      },
+    })
+    text.anchor.set(0.5)
+    text.x = wx
+    text.y = wy
+    app.stage.addChild(text)
     const originY = wy
     vfxList.push({
       g: text,
