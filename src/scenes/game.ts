@@ -1096,7 +1096,8 @@ export function createGameScene(
     actionId:  ActionId
     countdown: number   // ms remaining until impact
   }
-  const pendingHits = new Map<string, PendingHit>()  // keyed by attacker entity.id
+  const pendingHits = new Map<string, PendingHit>()  // keyed by unique hit id (entity.id:seq)
+  let hitSeq = 0
   const strongEntities = new Set<string>()  // strong-or-elite enemies (elite is a subset)
   const eliteEntities = new Set<string>()
 
@@ -2394,7 +2395,7 @@ export function createGameScene(
           const baseCooldown = (1000 / entity.attackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
 
-          pendingHits.set(entity.id, {
+          pendingHits.set(`${entity.id}:${++hitSeq}`, {
             attacker: entity, target, damage: effectiveDamage,
             action, actionId, countdown: preHitDuration,
           })
