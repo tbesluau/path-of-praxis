@@ -34,6 +34,12 @@ export interface NodeEffect {
   lifeRegenIncrease?: number       // additive %; mastery layer — independent of level-scaling layer
   lifeRegenFractionBonus?: number  // additional fraction of max life regenerated per second
 
+  // Life mastery effects (Life Steal tree)
+  lifeStealPercent?: number          // additive %; fraction of action hit damage stolen as life
+  lifeStealIncrease?: number         // additive %; increases life stolen
+  lifeStealCapIncrease?: number      // additive %; increases the per-hit hard cap (base 1% of max life)
+  lifeFeedingFrenzyChance?: number   // additive %; chance per life-steal instance to trigger Feeding Frenzy
+
   // Mana mastery effects
   manaMaxIncrease?: number      // additive %; increases maximum mana before 'more' multiplier
   manaMoreMax?: number          // 'more' %; applied as × (1 + sum/100) after increased
@@ -99,6 +105,10 @@ export interface LifeBonuses {
   elementalResistance: number   // total additive %
   regenIncrease: number         // mastery-layer additive % regen multiplier
   regenFractionBonus: number    // additional fraction of max life regenerated per second
+  lifeStealPercent: number      // total additive %; fraction of action hit damage stolen as life
+  lifeStealIncrease: number     // total additive %; increases life stolen
+  lifeStealCapIncrease: number  // total additive %; increases per-hit hard cap (base 1% of max life)
+  feedingFrenzyChance: number   // total additive %; chance to trigger Feeding Frenzy on life steal
 }
 
 export interface ManaBonuses {
@@ -263,6 +273,15 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { lifeRegenFractionBonus: 0.003 },
     // 12-13: key nodes — not yet defined
   },
+  2: {  // Life Steal (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lifeStealPercent: 0.5 },
+    1: { lifeStealIncrease: 5 },
+    2: { lifeStealCapIncrease: 10 },
+    3: { lifeStealPercent: 0.5 },
+    4: { lifeStealIncrease: 5 },
+    5: { lifeFeedingFrenzyChance: 1 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getLifeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -278,6 +297,10 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
     elementalResistance: 0,
     regenIncrease: 0,
     regenFractionBonus: 0,
+    lifeStealPercent: 0,
+    lifeStealIncrease: 0,
+    lifeStealCapIncrease: 0,
+    feedingFrenzyChance: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -289,6 +312,10 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
       b.elementalResistance += eff.lifeElementalResistance ?? 0
       b.regenIncrease += eff.lifeRegenIncrease ?? 0
       b.regenFractionBonus += eff.lifeRegenFractionBonus ?? 0
+      b.lifeStealPercent += eff.lifeStealPercent ?? 0
+      b.lifeStealIncrease += eff.lifeStealIncrease ?? 0
+      b.lifeStealCapIncrease += eff.lifeStealCapIncrease ?? 0
+      b.feedingFrenzyChance += eff.lifeFeedingFrenzyChance ?? 0
     }
   }
   return b
@@ -582,6 +609,14 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: '+5% increased life regeneration',
     4: '+5% increased life regeneration',
     5: '+0.3% of maximum life regenerated per second',
+  },
+  2: {
+    0: 'Steal +0.5% of action hit damage as life',
+    1: '+5% increased life stolen',
+    2: '+10% increased life steal hard cap (caps at 1% of maximum life per instance)',
+    3: 'Steal +0.5% of action hit damage as life',
+    4: '+5% increased life stolen',
+    5: 'Stealing life has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
   },
 }
 

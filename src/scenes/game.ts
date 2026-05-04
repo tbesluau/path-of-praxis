@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book } from 'lucide'
+import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
@@ -237,7 +237,8 @@ export function createGameScene(
     // Player self-burn (immolation DOT — independent of burnStacks)
     if (playerImmolation !== null && !playerDead) {
       playerImmolation.remainingMs -= deltaMs
-      const selfDmg = playerImmolation.dps * dts
+      const elemRes = Math.max(0, Math.min(100, getLifeBonuses().elementalResistance))
+      const selfDmg = playerImmolation.dps * dts * (1 - elemRes / 100)
       if (selfDmg > 0) {
         playerEntity.currentLife = Math.max(0, playerEntity.currentLife - selfDmg)
         damagedIds.add(playerEntity.id)
@@ -758,13 +759,31 @@ export function createGameScene(
 
   function computeLifeRegenPerSec(): number {
     const lb = getLifeBonuses()
+    const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
     return playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
-      * (1 + lb.regenIncrease / 100)
+      * (1 + (lb.regenIncrease + frenzyBonus) / 100)
   }
 
   function computeManaRegenPerSec(): number {
+    const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
     return playerEntity.maxMana * balance.player.regenRate
-      * (1 + getManaBonuses().regenIncrease / 100)
+      * (1 + (getManaBonuses().regenIncrease + frenzyBonus) / 100)
+  }
+
+  function applyLifeSteal(hitDamage: number): void {
+    if (playerDead) return
+    const lb = getLifeBonuses()
+    if (lb.lifeStealPercent <= 0) return
+    const frenzyStealBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyStealBonus : 0
+    const stealRaw = hitDamage * (lb.lifeStealPercent / 100)
+      * (1 + (lb.lifeStealIncrease + frenzyStealBonus) / 100)
+    const cap = playerEntity.maxLife * 0.01 * (1 + lb.lifeStealCapIncrease / 100)
+    const stolen = Math.min(stealRaw, cap)
+    if (stolen <= 0) return
+    playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + stolen)
+    if (lb.feedingFrenzyChance > 0 && Math.random() * 100 < lb.feedingFrenzyChance) {
+      applyEffect({ id: 'feedingFrenzy', iconName: 'drumstick', kind: 'buff' }, balance.buffs.feedingFrenzyDurationMs)
+    }
   }
 
   function updateBars(): void {
@@ -793,10 +812,11 @@ export function createGameScene(
     regenTimer = setInterval(() => {
       if (playerDead) return
       const lb = getLifeBonuses()
+      const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
       const lifeRegenBase = playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
-      const lifeRegenMult = 1 + lb.regenIncrease / 100
+      const lifeRegenMult = 1 + (lb.regenIncrease + frenzyBonus) / 100
       playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * REGEN_TICK)
-      const manaRegenMult = 1 + getManaBonuses().regenIncrease / 100
+      const manaRegenMult = 1 + (getManaBonuses().regenIncrease + frenzyBonus) / 100
       playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + playerEntity.maxMana * balance.player.regenRate * manaRegenMult * gameSpeed * REGEN_TICK)
       updateBars()
     }, REGEN_INTERVAL_MS)
@@ -859,7 +879,7 @@ export function createGameScene(
     buffBarEl.innerHTML = ordered.map(e =>
       `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i></div>`
     ).join('')
-    if (ordered.length > 0) createIcons({ icons: { Book, Flame } })
+    if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -2069,6 +2089,7 @@ export function createGameScene(
             awardXp(actionId, actualDamage * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
+            applyLifeSteal(actualDamage)
           }
           if (target.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1
