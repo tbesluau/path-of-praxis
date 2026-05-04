@@ -2049,6 +2049,64 @@ body::after {
   font-style: italic;
 }
 
+/* ── Note links (clickable terms in node descriptions / note bodies) ── */
+
+.note-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: rgba(180, 120, 30, 0.8);
+  text-underline-offset: 2px;
+  color: inherit;
+  transition: text-decoration-color 0.15s;
+}
+
+.note-link:hover {
+  text-decoration-color: rgba(220, 160, 40, 1);
+}
+
+/* ── Note modal ── */
+
+.note-backdrop { z-index: 35; }
+
+.note-panel {
+  width: min(420px, 92vw);
+  max-height: 75dvh;
+  overflow-y: auto;
+}
+
+.note-title {
+  font-size: 1rem;
+}
+
+.note-body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #1a0a02;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.note-body p {
+  margin: 0;
+}
+
+.note-body ul {
+  list-style: disc;
+  padding-left: var(--space-lg);
+  margin: 0;
+}
+
+.note-body li {
+  line-height: 1.5;
+}
+
+.note-body strong {
+  font-weight: 700;
+  color: #2a1005;
+}
+
 /* ── Guide modal (accordion) ── */
 
 .guide-panel {

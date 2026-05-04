@@ -4,6 +4,7 @@ import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
 import { getNodeDescription } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
 import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
+import { linkifyNoteTerms, mountNoteModal } from './notes'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,8 @@ function mountNodeDetailModal(
     actionHtml = `<span class="node-detail-blocked">${info.blockReason === 'no mastery points' ? 'No mastery points available' : info.blockReason === 'another key already chosen' ? 'Another key node already chosen' : 'Complete previous nodes first'}</span>`
   }
 
+  const descHtml = linkifyNoteTerms(info.desc)
+
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop mastery-node-backdrop'
   backdrop.innerHTML = `
@@ -116,21 +119,35 @@ function mountNodeDetailModal(
       <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="node-detail-title">${typeLabel}</h2>
       <p class="node-detail-tree">${info.treeLabel}</p>
-      <p class="node-detail-desc">${info.desc}</p>
+      <p class="node-detail-desc">${descHtml}</p>
       <div class="node-detail-actions">${actionHtml}</div>
     </div>
   `
   parent.appendChild(backdrop)
 
-  const dismiss = (): void => { backdrop.remove(); onClose() }
+  let noteCleanup: (() => void) | null = null
+  const closeNote = (): void => { if (noteCleanup) { noteCleanup(); noteCleanup = null } }
+
+  backdrop.addEventListener('click', (e) => {
+    const link = (e.target as HTMLElement).closest<HTMLElement>('[data-note-id]')
+    if (link) {
+      const noteId = link.dataset.noteId!
+      e.stopPropagation()
+      closeNote()
+      noteCleanup = mountNoteModal(parent, noteId, () => { noteCleanup = null })
+      return
+    }
+    if (e.target === backdrop) dismiss()
+  })
+
+  const dismiss = (): void => { closeNote(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
   backdrop.querySelector<HTMLButtonElement>('[data-action="assign"]')?.addEventListener('click', () => {
     onAssign()
     dismiss()
   })
 
-  return () => backdrop.remove()
+  return () => { closeNote(); backdrop.remove() }
 }
 
 // ── Tree Row Builder ───────────────────────────────────────────────────────
