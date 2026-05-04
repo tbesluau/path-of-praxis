@@ -193,8 +193,9 @@ A category of **Effect** in which an additional cast of a player action is trigg
 **Standardised behaviour (applies to all Multi-actions):**
 
 1. **Proper new action.** Every Multi-action cast is a real cast. It can roll for **Double Damage**, apply **Afflictions**, trigger Statuses, and roll for any other Multi-action — but it can never re-trigger the same Multi-action that produced it.
-2. **Inheritance.** If a Multi-action carries a damage reduction or an effect-chance modifier specific to that mechanic, any new Multi-action it triggers inherits that modifier. Modifiers compound through chains: e.g. an Additional Projectile (×0.5) that triggers a Second Cast (×0.5) results in a follow-up at ×0.25 damage.
-3. **Trigger order.** When several Multi-actions are eligible to roll on the same cast, they evaluate from the **most generic source to the most specific**: spell-tier Multi-actions first, then projectile-tier, then action- or rune-specific. This ordering also determines which queued cast fires first when multiple are pending.
+2. **Inheritance.** If a Multi-action carries a damage reduction specific to that mechanic, any new Multi-action it triggers inherits that modifier. Modifiers compound through chains: e.g. an Additional Projectile (×0.5) that triggers a Second Cast (×0.5) results in a follow-up at ×0.25 damage.
+3. **Depth multiplier.** Every Multi-action level carries an additional ×0.9 multiplier. A Multi-action directly triggered by a primary cast starts at ×0.9 (before its own type modifier). Each subsequent level compounds: depth 2 is ×0.81, depth 3 is ×0.729, and so on. This stacks multiplicatively with the type-specific modifier from rule 2.
+4. **Trigger order.** When several Multi-actions are eligible to roll on the same cast, they evaluate from the **most generic source to the most specific**: spell-tier Multi-actions first (Double Cast, Additional Target), then projectile-tier (Additional Projectile), then rune-specific (Second Cast). This ordering also determines which queued cast fires first when multiple are pending.
 
 ---
 
