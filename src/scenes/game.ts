@@ -1079,12 +1079,13 @@ export function createGameScene(
     type:                MultiActionType
     inheritedDamageMult: number   // accumulated ×0.9^depth × parent ownMult
     target?:             Entity   // pre-selected target (additionalTarget / additionalProjectile)
+    isChainProjectile?:  boolean  // second additional projectile from extraDoubleRoll; cannot chain further
   }
   const MULTI_ACTION_PRIORITY: Record<MultiActionType, number> = {
     doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3,
   }
   const MULTI_ACTION_COOLDOWN_DIV: Record<MultiActionType, number> = {
-    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 10,
+    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 5,
   }
   const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
@@ -2463,11 +2464,13 @@ export function createGameScene(
           }
 
           // Insert a multi-action into the per-entity queue sorted by priority
-          const queueMA = (type: MultiActionType, inherited: number, maTarget?: Entity): void => {
+          const queueMA = (type: MultiActionType, inherited: number, maTarget?: Entity, chainProjectile?: boolean): void => {
             const arr = pendingMultiActions.get(entity.id) ?? []
             const idx = arr.findIndex(x => MULTI_ACTION_PRIORITY[x.type] > MULTI_ACTION_PRIORITY[type])
-            if (idx === -1) arr.push({ type, inheritedDamageMult: inherited, target: maTarget })
-            else arr.splice(idx, 0, { type, inheritedDamageMult: inherited, target: maTarget })
+            const entry: PendingMultiAction = { type, inheritedDamageMult: inherited, target: maTarget }
+            if (chainProjectile) entry.isChainProjectile = true
+            if (idx === -1) arr.push(entry)
+            else arr.splice(idx, 0, entry)
             pendingMultiActions.set(entity.id, arr)
           }
 
@@ -2489,10 +2492,14 @@ export function createGameScene(
             queueMA('doubleCast', childInherited)
           }
 
-          // additionalProjectile: not if this cast was an additionalProjectile
-          if (pending?.type !== 'additionalProjectile' && isPlayerProjectile && pb && pb.extraChance > 0
-              && Math.random() * 100 < pb.extraChance) {
-            queueMA('additionalProjectile', childInherited, pickOtherTarget() ?? (target as Entity))
+          // additionalProjectile: not if this cast was an additionalProjectile,
+          // UNLESS extraDoubleRoll is active and this cast was the first (non-chain) additional projectile
+          if (isPlayerProjectile && pb && pb.extraChance > 0) {
+            const isFirstAdditional = pending?.type === 'additionalProjectile' && !pending.isChainProjectile
+            const canRoll = pending?.type !== 'additionalProjectile' || (pb.extraDoubleRoll && isFirstAdditional)
+            if (canRoll && Math.random() * 100 < pb.extraChance) {
+              queueMA('additionalProjectile', childInherited, pickOtherTarget() ?? (target as Entity), isFirstAdditional)
+            }
           }
 
           // splitCast (key rune): not if this cast was a splitCast
