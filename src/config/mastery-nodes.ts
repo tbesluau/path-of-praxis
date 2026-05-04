@@ -58,7 +58,7 @@ export interface NodeEffect {
   fireImmolateChance?: number          // additive %; chance to trigger immolation on fire-tagged hit
   fireImmolateDamageBonus?: number     // additive %; fire action damage bonus while immolation is active
   fireImmolateBurnChance?: number      // additive %; burn apply chance bonus while immolation is active
-  fireImmolateDamageReduction?: number // additive %; reduces immolation self-burn dps
+  fireImmolateDamageMult?: number      // multiplicative; each node multiplies self-burn dps (e.g. 0.5 = halved)
 
   // Enemy mastery effects
   enemyExtraOneChance?: number    // additive percentage points to base "+1 enemy" wave roll
@@ -147,7 +147,7 @@ export interface FireBonuses {
   immolateChance: number        // total additive %; chance to trigger immolation on fire hit
   immolateDamageBonus: number   // total additive %; fire damage bonus while immolation is active
   immolateBurnChance: number    // total additive %; burn apply chance bonus while immolation is active
-  immolateDamageReduction: number // total additive %; immolation self-burn dps reduction
+  immolateDamageMult: number      // total multiplicative; product of all self-burn dps modifiers (1.0 = no change)
 }
 
 // ── Spell mastery node effects ─────────────────────────────────────────────
@@ -385,10 +385,10 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
   1: {  // Immolation (short tree — line nodes 0-5, key nodes 12-13)
     0: { fireImmolateChance: 2 },
     1: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
-    2: { fireImmolateDamageReduction: 25 },
+    2: { fireImmolateDamageMult: 0.5 },
     3: { fireImmolateChance: 2 },
     4: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
-    5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageReduction: 25 },
+    5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageMult: 0.5 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -408,7 +408,7 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
     immolateChance: 0,
     immolateDamageBonus: 0,
     immolateBurnChance: 0,
-    immolateDamageReduction: 0,
+    immolateDamageMult: 1,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -422,7 +422,7 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
       b.immolateChance += eff.fireImmolateChance ?? 0
       b.immolateDamageBonus += eff.fireImmolateDamageBonus ?? 0
       b.immolateBurnChance += eff.fireImmolateBurnChance ?? 0
-      b.immolateDamageReduction += eff.fireImmolateDamageReduction ?? 0
+      if (eff.fireImmolateDamageMult !== undefined) b.immolateDamageMult *= eff.fireImmolateDamageMult
     }
   }
   return b
@@ -661,10 +661,10 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
   1: {
     0: 'Fire actions have +2% chance to trigger immolation',
     1: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
-    2: 'Immolation self-burn damage reduced by 25%',
+    2: 'Immolation self-burn damage is halved (×0.5)',
     3: 'Fire actions have +2% chance to trigger immolation',
     4: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
-    5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage reduced by 25%',
+    5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage is halved (×0.5)',
   },
 }
 
