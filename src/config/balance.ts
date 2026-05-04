@@ -71,7 +71,10 @@ export const balance = {
 
   // ── Buffs / Debuffs ──────────────────────────────────────────────────────
   buffs: {
-    tranceDurationMs: 3000,  // how long trance lasts after each trigger
+    tranceDurationMs:        3000, // how long trance lasts after each trigger
+    feedingFrenzyDurationMs: 5000, // how long Feeding Frenzy lasts after each trigger
+    feedingFrenzyStealBonus:   20, // additive % to life/mana steal while active
+    feedingFrenzyRegenBonus:   20, // additive % to life/mana regen while active
   },
 
   // ── Damage-type effects (burning, bleeding, electrocuted, ...) ───────────
@@ -100,7 +103,7 @@ export const balance = {
   // ── Action XP ────────────────────────────────────────────────────────────
   action: {
     xpPerLevel:             100,  // XP required for level 1 → 2
-    xpGrowth:               1.2,  // each subsequent level costs xpGrowth× the previous
+    xpGrowth:               1.4,  // each subsequent level costs xpGrowth× the previous
     damageMult:             1.1,  // multiplicative damage bonus per level (1.1^(level-1))
     damageAddPerLevel:      0.20, // additive damage bonus per level above 1 (stacks on top of mult)
     speedBonusPerLevel:     0.01, // additive attack-speed bonus per level above 1
