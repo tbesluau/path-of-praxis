@@ -4,7 +4,7 @@ import * as PF from 'pathfinding'
 import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
 import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
@@ -15,6 +15,8 @@ import { allActions, getAction, randomAction, type ActionId, type ActionDef } fr
 import type { SceneId } from '../core/router'
 import { mountSettingsButton } from '../ui/settings'
 import { getPrefs } from '../core/prefs'
+import { computeRuneBonuses, unlockedSlotCount, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
+import { mountRunesModal } from '../ui/runes'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -59,6 +61,22 @@ export function createGameScene(
   let masteryProgress: Partial<Record<MasteryId, MasteryProgress>> = JSON.parse(
     JSON.stringify(char?.masteryProgress ?? {}),
   ) as Partial<Record<MasteryId, MasteryProgress>>
+
+  const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
+    JSON.stringify(char?.actionRunes ?? {}),
+  ) as Partial<Record<string, ActionRunes>>
+
+  function getActionRunes(id: string): ActionRunes {
+    const r = actionRunes[id]
+    if (r) return r
+    const fresh = defaultActionRunes()
+    actionRunes[id] = fresh
+    return fresh
+  }
+
+  function getRuneBonuses(id: string) {
+    return computeRuneBonuses(getActionRunes(id).selected)
+  }
 
   function enemyDamageScale(): number {
     return Math.pow(balance.enemyLevel.damageMultiplier, enemyProgress.level - 1)
@@ -284,6 +302,12 @@ export function createGameScene(
       entity.attackDamage *= (1 + pb.damageIncrease / 100)
       entity.attackRange  *= (1 + pb.rangeIncrease / 100)
     }
+    if (entity.role === 'player') {
+      const rb = getRuneBonuses(id)
+      entity.attackDamage *= (1 + rb.damageIncrease / 100) * rb.damageMore
+      entity.attackSpeed  *= (1 + rb.speedIncrease  / 100) * rb.speedMore
+      if (rb.slowHeavy) { entity.attackDamage *= 2; entity.attackSpeed *= 0.5 }
+    }
     entityActions.set(entity.id, id)
   }
 
@@ -291,7 +315,8 @@ export function createGameScene(
     const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     let { xp, level, maxLevel } = prev
     // Prestige accelerates XP gain: past peak level → faster leveling next life
-    const scaledXp = amount * Math.sqrt(maxLevel)
+    const rb = getRuneBonuses(actionId)
+    const scaledXp = amount * Math.sqrt(maxLevel) * (1 + rb.xpIncrease / 100) * rb.xpMore
     xp += scaledXp
     runActionXp[actionId] = (runActionXp[actionId] ?? 0) + scaledXp
     let leveled = false
@@ -303,9 +328,53 @@ export function createGameScene(
     }
     actionProgress[actionId] = { xp, level, maxLevel }
     if (actionId === playerActionId) {
-      if (leveled) assignAction(playerEntity, actionId)
+      if (leveled) {
+        assignAction(playerEntity, actionId)
+        applyAutoRunes(actionId)
+      }
       updateActionBar()
     }
+  }
+
+  function refreshRuneDot(): void {
+    const dot = el.querySelector<HTMLElement>('.rune-notif-dot')
+    if (!dot) return
+    const r = getActionRunes(playerActionId)
+    const level = actionProgress[playerActionId]?.level ?? 1
+    const unlocked = unlockedSlotCount(level)
+    dot.hidden = r.selected.slice(0, unlocked).every(s => s !== null)
+  }
+
+  function applyAutoRunes(actionId: string): void {
+    const r = getActionRunes(actionId)
+    if (!r.autoApply) return
+    const level = actionProgress[actionId]?.level ?? 1
+    const slotCount = unlockedSlotCount(level)
+    let changed = false
+    for (let i = 0; i < slotCount; i++) {
+      if (r.selected[i] !== null) continue
+      const slotType = SLOT_TYPES[i]
+      const taken = new Set(r.selected.filter((x): x is RuneId => x !== null))
+      const available = new Set(runesByType(slotType).map(rd => rd.id))
+      const next = r.history.find(rune => available.has(rune) && !taken.has(rune))
+      if (next) { r.selected[i] = next; changed = true }
+    }
+    if (changed) {
+      actionRunes[actionId] = r
+      if (actionId === playerActionId) assignAction(playerEntity, actionId as ActionId)
+      refreshRuneDot()
+      persistState()
+    }
+  }
+
+  function assignRune(actionId: string, slotIdx: number, runeId: RuneId | null): void {
+    const r = getActionRunes(actionId)
+    r.selected[slotIdx] = runeId
+    r.autoApply = false
+    actionRunes[actionId] = r
+    if (actionId === playerActionId) assignAction(playerEntity, actionId as ActionId)
+    refreshRuneDot()
+    persistState()
   }
 
   function awardStatXp(stat: 'life' | 'mana', amount: number): void {
@@ -548,6 +617,7 @@ export function createGameScene(
       targetingMode,
       masteryProgress,
       currentRunProgress(),
+      actionRunes,
     )
   }
   let playerPrevX = 0
@@ -590,7 +660,10 @@ export function createGameScene(
         <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
       </div>
       <div class="stat-bar-row stat-bar-row--action">
-        <div class="action-icon-wrap"><i data-lucide="sword" aria-hidden="true"></i></div>
+        <button class="action-icon-btn" aria-label="Runes" style="position:relative">
+          <i data-lucide="sword" aria-hidden="true"></i>
+          <span class="notif-dot rune-notif-dot" hidden></span>
+        </button>
         <div class="stat-bar stat-bar--action">
           <div class="stat-bar-fill stat-bar-fill--action"></div>
           <span class="action-level-label">Lv.1</span>
@@ -643,7 +716,7 @@ export function createGameScene(
   const actionBarFill    = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
   const actionLevelLabel = el.querySelector<HTMLElement>('.action-level-label')!
   const actionDpsEl      = el.querySelector<HTMLElement>('.stat-bar-regen--action')!
-  const actionIconWrap   = el.querySelector<HTMLElement>('.action-icon-wrap')!
+  const actionIconWrap   = el.querySelector<HTMLButtonElement>('.action-icon-btn')!
 
   function updateStatLevels(): void {
     const lifePct = Math.round(lifeProgress.xp / statXpNeeded(lifeProgress.level) * 100)
@@ -679,12 +752,32 @@ export function createGameScene(
     actionDpsEl.textContent = min === max
       ? `${min.toFixed(1)}/s`
       : `${min.toFixed(1)}–${max.toFixed(1)}/s`
+    refreshRuneDot()
   }
 
   function updateActionIcon(): void {
     const action = getAction(playerActionId)
-    actionIconWrap.innerHTML = `<i data-lucide="${action.icon}" aria-hidden="true"></i>`
+    actionIconWrap.innerHTML = `<i data-lucide="${action.icon}" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>`
     createIcons({ icons: { Sword, Crosshair, Flame, Zap } })
+    refreshRuneDot()
+  }
+
+  let runesModalCleanup: (() => void) | null = null
+
+  function openRunesModal(): void {
+    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+    const action = getAction(playerActionId)
+    const level = actionProgress[playerActionId]?.level ?? 1
+    const r = getActionRunes(playerActionId)
+    runesModalCleanup = mountRunesModal(
+      el,
+      playerActionId,
+      action.label,
+      level,
+      r,
+      (slotIdx, runeId) => { assignRune(playerActionId, slotIdx, runeId) },
+      () => { runesModalCleanup = null },
+    )
   }
 
   const enemyLevelDisplay   = el.querySelector<HTMLElement>('.enemy-level-display')!
@@ -981,7 +1074,8 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
-  const pendingDoubleCast    = new Set<string>()
+  const pendingDoubleCast    = new Map<string, number>()   // entity id → pending count (stacks when split+mastery both proc)
+  const pendingSplitCast     = new Set<string>()           // entity id → split-cast queued at 1/10 cycle
   const pendingExtraTarget   = new Map<string, Entity>()
   const pendingExtraProjectile = new Map<string, Entity>()  // value: preferred target (different from primary when possible)
 
@@ -1036,6 +1130,8 @@ export function createGameScene(
         id => { resetMasteryPoints(id) },
       )
     })
+
+  actionIconWrap.addEventListener('click', () => { openRunesModal() })
 
   function drawLifeBar(entity: Entity): void {
     const bar = lifeBarGraphics.get(entity.id)
@@ -1210,6 +1306,7 @@ export function createGameScene(
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
     pendingDoubleCast.delete(entity.id)
+    pendingSplitCast.delete(entity.id)
     pendingExtraProjectile.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
@@ -1238,6 +1335,15 @@ export function createGameScene(
 
   function rebirth(): void {
     modalCleanup = null
+    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+
+    // Snapshot rune selections into history; reset selections and re-enable auto-apply
+    for (const id of Object.keys(actionRunes)) {
+      const r = actionRunes[id]
+      if (!r) continue
+      const newHistory = r.selected.filter((x): x is RuneId => x !== null)
+      actionRunes[id] = { selected: [null, null, null, null, null, null], history: newHistory, autoApply: true }
+    }
 
     // Action XP reset; maxLevel persists so prestige multiplier carries forward
     for (const id of Object.keys(actionProgress)) {
@@ -2198,10 +2304,11 @@ export function createGameScene(
           const spellBonuses = isPlayerSpell ? getSpellBonuses() : null
           const isPlayerProjectile = entity.role === 'player' && action.tags.includes('projectile')
           const pb = isPlayerProjectile ? getProjectileBonuses() : null
-          const isDoubleCast = pendingDoubleCast.has(entity.id)
+          const isDoubleCast = (pendingDoubleCast.get(entity.id) ?? 0) > 0
+          const isSplitCast = pendingSplitCast.has(entity.id) && !isDoubleCast
           const isExtraProjectile = pendingExtraProjectile.has(entity.id)
           // Extra-projectile fires only when not shadowed by a double cast or extra target
-          const isActiveExtraProj = isExtraProjectile && !isDoubleCast && !pendingExtraTarget.has(entity.id)
+          const isActiveExtraProj = isExtraProjectile && !isDoubleCast && !isSplitCast && !pendingExtraTarget.has(entity.id)
           const tranceActive = isPlayerSpell && hasEffect('trance')
 
           // Extra projectiles prefer the queued (different) target if it's still alive and in range
@@ -2230,10 +2337,17 @@ export function createGameScene(
               paidCost = 0
             }
           }
+          // Rune mana modifiers (apply after mastery reductions)
+          if (entity.role === 'player' && !isExtraTarget) {
+            const rb = getRuneBonuses(entityActions.get(entity.id) ?? playerActionId)
+            if (rb.manaCostReduce > 0) { gateCost *= Math.max(0, 1 - rb.manaCostReduce / 100); paidCost *= Math.max(0, 1 - rb.manaCostReduce / 100) }
+            if (rb.manaCostMore !== 1) { gateCost *= rb.manaCostMore; paidCost *= rb.manaCostMore }
+          }
 
           // Mana gate — repeated casts (double cast) skip gate when repeatNoMana set;
-          // extra-target casts are always free
-          const skipGate = isExtraTarget || (isDoubleCast && spellBonuses?.repeatNoMana === true)
+          // extra-target casts are always free; manaless key rune bypasses the gate
+          const runeForGate = entity.role === 'player' ? getRuneBonuses(entityActions.get(entity.id) ?? playerActionId) : null
+          const skipGate = isExtraTarget || (isDoubleCast && spellBonuses?.repeatNoMana === true) || (runeForGate?.manaless === true)
           if (entity.maxMana > 0 && !skipGate && entity.currentMana < gateCost) continue
 
           // Compute effective damage (trance damage bonus, then double damage roll)
@@ -2257,6 +2371,10 @@ export function createGameScene(
           // Extra projectile: fires at 50% base damage, boosted by extraDamage mastery nodes
           if (isActiveExtraProj && pb) {
             effectiveDamage *= 0.5 * (1 + pb.extraDamage / 100)
+          }
+          // Split cast rune: both the original cast and the queued split cast deal ×0.5 damage
+          if (isSplitCast || (entity.role === 'player' && getRuneBonuses(entityActions.get(entity.id) ?? playerActionId).splitCast)) {
+            effectiveDamage *= 0.5
           }
 
           // Compute cycle duration here so it's available for both the pending-hit window and
@@ -2338,8 +2456,13 @@ export function createGameScene(
 
           // Cooldown: pending-queue intercept.
           // Only primary casts queue extra targets; only non-double casts queue double casts.
-          // This caps the burst at: primary → double + extra → double-of-extra (4 total, all procs required).
-          if (isDoubleCast) pendingDoubleCast.delete(entity.id)
+          // This caps the burst at: primary → split → double (all procs required).
+          if (isDoubleCast) {
+            const cnt = pendingDoubleCast.get(entity.id) ?? 0
+            if (cnt <= 1) pendingDoubleCast.delete(entity.id)
+            else pendingDoubleCast.set(entity.id, cnt - 1)
+          }
+          if (isSplitCast) pendingSplitCast.delete(entity.id)
           if (isExtraTarget) pendingExtraTarget.delete(entity.id)
           // Pick a different in-range enemy than the just-attacked target; fall back to it if none exists.
           const pickExtraProjTarget = (): Entity => {
@@ -2362,9 +2485,15 @@ export function createGameScene(
               pendingExtraProjectile.set(entity.id, pickExtraProjTarget())
             }
           }
+          // Queue split cast for every cast (primary and split-cast itself is suppressed)
+          if (!isSplitCast && entity.role === 'player') {
+            const rb = getRuneBonuses(entityActions.get(entity.id) ?? playerActionId)
+            if (rb.splitCast) pendingSplitCast.add(entity.id)
+          }
+          // Double cast roll: primary casts and split casts both roll (but not double casts themselves)
           if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0
               && Math.random() * 100 < spellBonuses.doubleCastChance) {
-            pendingDoubleCast.add(entity.id)
+            pendingDoubleCast.set(entity.id, (pendingDoubleCast.get(entity.id) ?? 0) + 1)
           }
           // Roll for extra projectile on primary casts (not re-rolling from within an extra proj)
           if (!isExtraProjectile && isPlayerProjectile && pb && pb.extraChance > 0
@@ -2372,10 +2501,15 @@ export function createGameScene(
               && Math.random() * 100 < pb.extraChance) {
             pendingExtraProjectile.set(entity.id, pickExtraProjTarget())
           }
-          // Short cooldown if any pending follow-up cast remains, otherwise full cooldown
-          const hasPending = pendingDoubleCast.has(entity.id) || pendingExtraTarget.has(entity.id)
-            || pendingExtraProjectile.has(entity.id)
-          attackCooldowns.set(entity.id, hasPending ? baseCooldown / 5 : baseCooldown)
+          // Short cooldown if any pending follow-up cast remains, otherwise full cooldown.
+          // Split cast fires at 1/10 (shorter delay), mastery double cast at 1/5.
+          const hasSplitPending = pendingSplitCast.has(entity.id)
+          const hasOtherPending = (pendingDoubleCast.get(entity.id) ?? 0) > 0
+            || pendingExtraTarget.has(entity.id) || pendingExtraProjectile.has(entity.id)
+          attackCooldowns.set(entity.id,
+            hasSplitPending ? baseCooldown / 10
+            : hasOtherPending ? baseCooldown / 5
+            : baseCooldown)
         }
         if (playerManaSpent) updateBars()
 

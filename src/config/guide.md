@@ -33,6 +33,30 @@ When your life reaches zero, your run ends and you Rebirth. But you don't start 
 
 If you feel like you're stagnating and can't increase enemy level consistently, it might be time to trigger a Rebirth and cash in that experience for the large power ups of Masteries.
 
+## Runes
+
+Runes are per-action modifiers that unlock as an action levels up. Each action has six rune slots, each unlocking at a specific level:
+
+- **Lv. 5** — 1st minor slot
+- **Lv. 10** — 1st major slot
+- **Lv. 15** — 2nd minor slot
+- **Lv. 20** — 3rd minor slot
+- **Lv. 25** — 2nd major slot
+- **Lv. 30** — key slot
+
+Click the action icon (next to the action XP bar) to open the runes panel.
+
+**Minor runes** give moderate additive bonuses — damage, speed, reduced mana cost, or experience. The Sampler minor rune gives a smaller portion of all four.
+
+**Major runes** give multiplicative "more" bonuses in the same categories, making them more powerful but less stacking. The Sampler major rune gives a smaller portion of all four.
+
+**Key runes** radically change how the action works:
+- **Split Cast** — ×0.5 damage, but every cast automatically fires a second cast at 1/10 of the normal cycle delay.
+- **Slow & Heavy** — ×2 damage but ×0.5 attack speed.
+- **Manaless** — ×2 mana cost, but the action fires even when you have no mana.
+
+Each rune can only fill one slot at a time. After a Rebirth, runes auto-fill in the same order they were slotted in the previous run as slots unlock. Making a manual change in any slot disables auto-fill for the rest of that run.
+
 ## Masteries
 
 Masteries are long-term passive upgrades that persist across Rebirths. Each mastery has its own experience track that fills through related actions and activities.
