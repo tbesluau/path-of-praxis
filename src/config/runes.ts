@@ -40,7 +40,7 @@ export const allRunes: RuneDef[] = [
   { id: 'majorMana',  type: 'major', label: 'Mana',       desc: '20% less action mana cost' },
   { id: 'majorXp',    type: 'major', label: 'Experience', desc: '15% more action experience' },
   { id: 'majorAll',   type: 'major', label: 'Sampler',    desc: '2.5% more damage / 1.25% more speed / 5% less mana / 3.75% more experience' },
-  { id: 'keySplit',    type: 'key', label: 'Split Cast',  desc: '×0.5 damage — every cast automatically fires a second cast at 1/10 cycle delay' },
+  { id: 'keySplit',    type: 'key', label: 'Split Cast',  desc: '×0.5 damage — every cast automatically fires a second cast' },
   { id: 'keyHeavy',   type: 'key', label: 'Slow & Heavy', desc: '×2 damage — ×0.5 attack speed' },
   { id: 'keyManaless', type: 'key', label: 'Manaless',    desc: '×2 mana cost — action fires even when mana is insufficient' },
 ]

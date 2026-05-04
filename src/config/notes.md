@@ -188,7 +188,7 @@ A category of **Effect** in which an additional cast of a player action is trigg
 - **Double Cast** — follow-up at 1/5 cycle, full damage (Spell mastery)
 - **Additional Target** — follow-up against a different enemy at 1/5 cycle, full damage (Spell mastery, while **Trance** is active)
 - **Additional Projectile** — follow-up at 1/5 cycle, ×0.5 damage (Projectile mastery)
-- **Second Cast** — follow-up at 1/10 cycle, ×0.5 damage (**Split Cast** rune)
+- **Second Cast** — follow-up at 1/5 cycle, ×0.5 damage (**Split Cast** rune)
 
 **Standardised behaviour (applies to all Multi-actions):**
 
@@ -213,14 +213,65 @@ A **Multi-action** triggered by Projectile mastery (extra-projectile chance node
 
 Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Target**, **Second Cast**, and trigger Statuses or Afflictions. It cannot roll for another Additional Projectile.
 
+**Exception — Projectile mastery key node:** when this node is taken, the first Additional Projectile rolls once more for a second Additional Projectile. Both are proper new actions; the second cannot roll for a third.
+
 By the **inheritance** rule, any Multi-action triggered from an Additional Projectile carries the ×0.5 damage modifier forward — compounded with any further Multi-action modifier on top.
 
 ---
 
 ## Second Cast
 
-A **Multi-action** triggered by the **Split Cast** key rune. Every cast that is not itself a Second Cast queues a follow-up at **1/10 of the normal cycle**, dealing **×0.5 damage**.
+A **Multi-action** triggered by the **Split Cast** key rune. Every cast that is not itself a Second Cast queues a follow-up at **1/5 of the normal cycle**, dealing **×0.5 damage**.
 
 Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Target**, **Additional Projectile**, and trigger Statuses or Afflictions. It cannot trigger another Second Cast.
 
 By the **inheritance** rule, any Multi-action triggered from a Second Cast carries the ×0.5 damage modifier forward — compounded with any further Multi-action modifier on top.
+
+---
+
+## Hit
+
+A direct damage event produced by a single cast landing on a target. Hits are distinct from damage-over-time sources such as **Burn** stacks and **Immolation** self-burn, which deal damage continuously without being hits.
+
+Only hits trigger mechanics that react to individual damage events:
+- **Life Steal** — heals the player a fraction of hit damage
+- **Double Damage** — per-cast roll that doubles the hit
+- Status procs such as **Trance** and **Immolation** triggers
+
+Affliction ticks (Burn) and Immolation self-burn are not hits and do not trigger any of the above.
+
+---
+
+## Mitigation
+
+Damage mitigation is a source of damage reduction applied to incoming hits. Several independent mitigation sources can stack; the details depend on the specific source.
+
+**Current sources:**
+- **Resistance** — reduces incoming damage of a matching family (Physical, Rot, or Elemental)
+
+More mitigation types are planned. Some Spell mastery nodes allow spells to bypass all enemy damage mitigation on a per-cast roll.
+
+---
+
+## Resistance
+
+Player stat that reduces incoming damage from a specific damage family. Three families exist:
+- **Physical** — raised by Life mastery nodes
+- **Rot** — raised by Life mastery nodes
+- **Elemental** — raised by Life mastery nodes
+
+Each resistance is a separate value. Incoming damage of a matching family is reduced by the resistance percentage before being applied to the player's life.
+
+Resistance is one source of **Mitigation**; other mitigation types may be added in future updates.
+
+---
+
+## Cast Speed
+
+How quickly a player action fires. Higher cast speed shortens the time between casts (the attack cycle), letting you deal more hits per second.
+
+**Sources of increased cast speed:**
+- **Trance** Status — grants a temporary cast speed bonus while active (Spell mastery)
+- Spell mastery cast speed nodes — permanent additive increases
+
+Cast speed bonuses are additive within their category. The resulting multiplier shortens the cycle proportionally — doubling cast speed halves the time between casts.
