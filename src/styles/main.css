@@ -1256,6 +1256,24 @@ body::after {
   stroke-width: 1.75;
 }
 
+.char-slot-new-btn {
+  background: transparent;
+  border: 1px solid rgba(90, 48, 16, 0.5);
+  color: #3a2008;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.char-slot-new-btn:hover {
+  background: rgba(90, 48, 16, 0.12);
+}
+
 /* ── Modal input error ── */
 
 .modal-input-error {

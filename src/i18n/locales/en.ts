@@ -10,8 +10,7 @@ export interface TranslationSchema {
   }
   menu: {
     continue: string
-    newCharacter: string
-    loadCharacter: string
+    characters: string
     ladder: string
     nav: string
   }
@@ -24,6 +23,7 @@ export interface TranslationSchema {
     cancel: string
     current: string
     emptySlot: string
+    newSlot: string
     deleteLabel: string
     nameTaken: string
     infoTitle: string
@@ -59,8 +59,7 @@ export const en: TranslationSchema = {
   },
   menu: {
     continue: 'Continue',
-    newCharacter: 'New Character',
-    loadCharacter: 'Load Character',
+    characters: 'Characters',
     ladder: 'Ladder',
     nav: 'Main menu',
   },
@@ -73,6 +72,7 @@ export const en: TranslationSchema = {
     cancel: 'Cancel',
     current: 'Current',
     emptySlot: '— Empty —',
+    newSlot: 'New',
     deleteLabel: 'Delete',
     nameTaken: 'That name is already taken.',
     infoTitle: 'Character',
