@@ -1074,10 +1074,19 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
-  const pendingDoubleCast    = new Map<string, number>()   // entity id → pending count (stacks when split+mastery both proc)
-  const pendingSplitCast     = new Set<string>()           // entity id → split-cast queued at 1/10 cycle
-  const pendingExtraTarget   = new Map<string, Entity>()
-  const pendingExtraProjectile = new Map<string, Entity>()  // value: preferred target (different from primary when possible)
+  type MultiActionType = 'doubleCast' | 'additionalTarget' | 'additionalProjectile' | 'splitCast'
+  interface PendingMultiAction {
+    type:                MultiActionType
+    inheritedDamageMult: number   // accumulated ×0.9^depth × parent ownMult
+    target?:             Entity   // pre-selected target (additionalTarget / additionalProjectile)
+  }
+  const MULTI_ACTION_PRIORITY: Record<MultiActionType, number> = {
+    doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3,
+  }
+  const MULTI_ACTION_COOLDOWN_DIV: Record<MultiActionType, number> = {
+    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 10,
+  }
+  const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
   interface PendingHit {
     attacker:  Entity
@@ -1305,9 +1314,7 @@ export function createGameScene(
     }
     lifeBarGraphics.delete(entity.id)
     attackCooldowns.delete(entity.id)
-    pendingDoubleCast.delete(entity.id)
-    pendingSplitCast.delete(entity.id)
-    pendingExtraProjectile.delete(entity.id)
+    pendingMultiActions.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
     enemyLevels.delete(entity.id)
@@ -2277,17 +2284,19 @@ export function createGameScene(
           attackCooldowns.set(entity.id, cd)
           if (cd > 0) continue
 
-          // Consume any pending extra-target cast for this entity
-          const isExtraTarget = pendingExtraTarget.has(entity.id)
-          const extraTargetEntity = isExtraTarget ? pendingExtraTarget.get(entity.id)! : null
+          // ── Determine next pending multi-action ───────────────────────────
+          const queue = pendingMultiActions.get(entity.id)
+          const pending = queue?.[0] ?? null
 
-          // For an extra-target cast use the queued entity; otherwise pick normally
+          // Determine target:
+          // - additionalTarget uses the queued entity (skip cast if it died)
+          // - all others use normal target selection
           let target: Entity | null
-          if (isExtraTarget) {
-            const et = extraTargetEntity!
-            // Skip if target died before the short cooldown fired
+          if (pending?.type === 'additionalTarget') {
+            const et = pending.target!
             if (!entities.includes(et) || et.currentLife <= 0) {
-              pendingExtraTarget.delete(entity.id)
+              queue!.shift()
+              if (queue!.length === 0) pendingMultiActions.delete(entity.id)
               continue
             }
             target = et
@@ -2304,17 +2313,13 @@ export function createGameScene(
           const spellBonuses = isPlayerSpell ? getSpellBonuses() : null
           const isPlayerProjectile = entity.role === 'player' && action.tags.includes('projectile')
           const pb = isPlayerProjectile ? getProjectileBonuses() : null
-          const isDoubleCast = (pendingDoubleCast.get(entity.id) ?? 0) > 0
-          const isSplitCast = pendingSplitCast.has(entity.id) && !isDoubleCast
-          const isExtraProjectile = pendingExtraProjectile.has(entity.id)
-          // Extra-projectile fires only when not shadowed by a double cast or extra target
-          const isActiveExtraProj = isExtraProjectile && !isDoubleCast && !isSplitCast && !pendingExtraTarget.has(entity.id)
           const tranceActive = isPlayerSpell && hasEffect('trance')
+          const rb = entity.role === 'player' ? getRuneBonuses(actionId) : null
 
-          // Extra projectiles prefer the queued (different) target if it's still alive and in range
-          if (isActiveExtraProj) {
-            const stored = pendingExtraProjectile.get(entity.id)
-            if (stored && stored !== target && entities.includes(stored) && stored.currentLife > 0) {
+          // additionalProjectile: prefer the queued different target if still alive and in range
+          if (pending?.type === 'additionalProjectile' && pending.target && pending.target !== target) {
+            const stored = pending.target
+            if (entities.includes(stored) && stored.currentLife > 0) {
               const dx = stored.x - entity.x
               const dy = stored.y - entity.y
               const dist = Math.sqrt(dx * dx + dy * dy)
@@ -2322,11 +2327,12 @@ export function createGameScene(
             }
           }
 
-          // Compute effective mana cost (reductions + random + no-mana roll)
-          // Extra-target casts are always free (triggered by trance, not a new resource spend)
+          // ── Mana cost computation ─────────────────────────────────────────
+          // additionalTarget casts are always free (triggered by trance; no resource spend)
+          const isAdditionalTarget = pending?.type === 'additionalTarget'
           let gateCost = action.manaCost
           let paidCost = action.manaCost
-          if (!isExtraTarget && isPlayerSpell && spellBonuses && action.manaCost > 0) {
+          if (!isAdditionalTarget && isPlayerSpell && spellBonuses && action.manaCost > 0) {
             const reduction = spellBonuses.manaCostReduction / 100
               + (spellBonuses.manaCostRandomReductionMax > 0
                 ? (Math.random() * spellBonuses.manaCostRandomReductionMax) / 100
@@ -2337,25 +2343,38 @@ export function createGameScene(
               paidCost = 0
             }
           }
-          // Rune mana modifiers (apply after mastery reductions)
-          if (entity.role === 'player' && !isExtraTarget) {
-            const rb = getRuneBonuses(entityActions.get(entity.id) ?? playerActionId)
+          if (!isAdditionalTarget && entity.role === 'player' && rb) {
             if (rb.manaCostReduce > 0) { gateCost *= Math.max(0, 1 - rb.manaCostReduce / 100); paidCost *= Math.max(0, 1 - rb.manaCostReduce / 100) }
             if (rb.manaCostMore !== 1) { gateCost *= rb.manaCostMore; paidCost *= rb.manaCostMore }
           }
-
-          // Mana gate — repeated casts (double cast) skip gate when repeatNoMana set;
-          // extra-target casts are always free; manaless key rune bypasses the gate
-          const runeForGate = entity.role === 'player' ? getRuneBonuses(entityActions.get(entity.id) ?? playerActionId) : null
-          const skipGate = isExtraTarget || (isDoubleCast && spellBonuses?.repeatNoMana === true) || (runeForGate?.manaless === true)
+          // Gate: additionalTarget free; doubleCast may skip with repeatNoMana; manaless bypasses
+          const skipGate = isAdditionalTarget
+            || (pending?.type === 'doubleCast' && spellBonuses?.repeatNoMana === true)
+            || (rb?.manaless === true)
           if (entity.maxMana > 0 && !skipGate && entity.currentMana < gateCost) continue
 
-          // Compute effective damage (trance damage bonus, then double damage roll)
-          let effectiveDamage = entity.attackDamage
+          // ── Damage computation ────────────────────────────────────────────
+          // Primary cast: attackDamage (split rune halves it on the primary; not inherited)
+          // Multi-action: attackDamage × inheritedDamageMult × ownMult(type)
+          // Children inherit: currentInherited × ownMult × 0.9 (×0.9 per depth level)
+          let effectiveDamage: number
+          let childInherited: number
+
+          if (pending) {
+            let ownMult = 1.0
+            if (pending.type === 'splitCast') ownMult = 0.5
+            else if (pending.type === 'additionalProjectile') ownMult = 0.5 * (1 + (pb?.extraDamage ?? 0) / 100)
+            effectiveDamage = entity.attackDamage * pending.inheritedDamageMult * ownMult
+            childInherited = pending.inheritedDamageMult * ownMult * 0.9
+          } else {
+            effectiveDamage = entity.attackDamage * (rb?.splitCast ? 0.5 : 1.0)
+            childInherited = 0.9
+          }
+
+          // Layered bonuses applied after base × inheritance
           if (tranceActive && spellBonuses && spellBonuses.tranceDamageIncrease > 0) {
             effectiveDamage *= 1 + spellBonuses.tranceDamageIncrease / 100
           }
-          // Immolation fire damage bonus (mastery additive layer)
           if (entity.role === 'player' && action.tags.includes('fire') && hasEffect('immolation')) {
             const fb = getFireBonuses()
             if (fb.immolateDamageBonus > 0) effectiveDamage *= 1 + fb.immolateDamageBonus / 100
@@ -2363,37 +2382,26 @@ export function createGameScene(
           if (spellBonuses && spellBonuses.doubleDamageChance > 0 && Math.random() * 100 < spellBonuses.doubleDamageChance) {
             effectiveDamage *= 2
           }
-          // Projectile range-based damage: +damagePerRange% per range unit
           if (pb && pb.damagePerRange > 0) {
             const rangeUnits = entity.attackRange / balance.player.radius
             effectiveDamage *= 1 + (rangeUnits * pb.damagePerRange) / 100
           }
-          // Extra projectile: fires at 50% base damage, boosted by extraDamage mastery nodes
-          if (isActiveExtraProj && pb) {
-            effectiveDamage *= 0.5 * (1 + pb.extraDamage / 100)
-          }
-          // Split cast rune: both the original cast and the queued split cast deal ×0.5 damage
-          if (isSplitCast || (entity.role === 'player' && getRuneBonuses(entityActions.get(entity.id) ?? playerActionId).splitCast)) {
-            effectiveDamage *= 0.5
-          }
 
-          // Compute cycle duration here so it's available for both the pending-hit window and
-          // the final cooldown assignment below.
+          // ── Cycle duration ────────────────────────────────────────────────
           const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
             ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
             : 1
           const baseCooldown = (1000 / entity.attackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
 
-          // Queue the hit to land after 1/3 of the action cycle; start pre-hit animation now.
           pendingHits.set(entity.id, {
             attacker: entity, target, damage: effectiveDamage,
             action, actionId, countdown: preHitDuration,
           })
           spawnPreHitVfx(entity, target, action, preHitDuration)
 
-          // Pay mana and award mana XP (based on actual amount paid); skip for extra-target casts
-          if (entity.maxMana > 0 && !isExtraTarget) {
+          // ── Mana payment ──────────────────────────────────────────────────
+          if (entity.maxMana > 0 && !isAdditionalTarget) {
             const mb = entity.role === 'player' ? getManaBonuses() : null
             const replenish = mb && mb.replenishChance > 0 && paidCost > 0
               && Math.random() * 100 < mb.replenishChance
@@ -2412,33 +2420,12 @@ export function createGameScene(
             }
           }
 
-          // Trance multi-target: queue one extra in-range enemy as its own full cast iteration.
-          // Only primary casts roll for this — double casts and extra-target casts cannot re-roll
-          // (prevents the cycle: double → extra → double-of-extra → extra → …)
-          if (!isExtraTarget && !isDoubleCast && tranceActive && spellBonuses && spellBonuses.tranceMultiTargetChance > 0
-              && Math.random() * 100 < spellBonuses.tranceMultiTargetChance) {
-            if (!pendingExtraTarget.has(entity.id)) {
-              let extra: Entity | null = null
-              let extraDist = Infinity
-              for (const e of entities) {
-                if (e === target || e.role !== 'enemy') continue
-                const ex = e.x - entity.x, ey = e.y - entity.y
-                const d = Math.sqrt(ex * ex + ey * ey)
-                if (d - e.radius > entity.attackRange) continue
-                if (d < extraDist) { extraDist = d; extra = e }
-              }
-              if (extra) pendingExtraTarget.set(entity.id, extra)
-            }
-          }
-
-          // Trance trigger roll — fires on primary and extra-target casts, not on double cast
-          if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.tranceTriggerChance > 0
+          // ── Status triggers — all casts (including multi-actions) can trigger ──
+          if (isPlayerSpell && spellBonuses && spellBonuses.tranceTriggerChance > 0
               && Math.random() * 100 < spellBonuses.tranceTriggerChance) {
             applyEffect({ id: 'trance', iconName: 'book', kind: 'buff' }, balance.buffs.tranceDurationMs)
           }
-
-          // Immolation trigger — fires on primary and extra-target casts, not on double cast
-          if (entity.role === 'player' && action.tags.includes('fire') && !isDoubleCast) {
+          if (entity.role === 'player' && action.tags.includes('fire')) {
             const fb = getFireBonuses()
             if (fb.immolateChance > 0 && Math.random() * 100 < fb.immolateChance) {
               const rawDps = effectiveDamage * balance.effects.burnDpsFraction * 0.5
@@ -2454,19 +2441,15 @@ export function createGameScene(
             }
           }
 
-          // Cooldown: pending-queue intercept.
-          // Only primary casts queue extra targets; only non-double casts queue double casts.
-          // This caps the burst at: primary → split → double (all procs required).
-          if (isDoubleCast) {
-            const cnt = pendingDoubleCast.get(entity.id) ?? 0
-            if (cnt <= 1) pendingDoubleCast.delete(entity.id)
-            else pendingDoubleCast.set(entity.id, cnt - 1)
+          // ── Consume the pending multi-action ──────────────────────────────
+          if (queue && pending) {
+            queue.shift()
+            if (queue.length === 0) pendingMultiActions.delete(entity.id)
           }
-          if (isSplitCast) pendingSplitCast.delete(entity.id)
-          if (isExtraTarget) pendingExtraTarget.delete(entity.id)
-          // Pick a different in-range enemy than the just-attacked target; fall back to it if none exists.
-          const pickExtraProjTarget = (): Entity => {
-            let best: Entity = target
+
+          // Find a different in-range enemy (null if none; used when queuing multi-actions)
+          const pickOtherTarget = (): Entity | null => {
+            let best: Entity | null = null
             let bestDist = Infinity
             for (const e of entities) {
               if (e === target || e.role !== 'enemy') continue
@@ -2478,38 +2461,50 @@ export function createGameScene(
             return best
           }
 
-          // Consume extra projectile flag when it's the active pending item; roll double if applicable.
-          if (isActiveExtraProj) {
-            pendingExtraProjectile.delete(entity.id)
-            if (pb?.extraDoubleRoll && pb.extraChance > 0 && Math.random() * 100 < pb.extraChance) {
-              pendingExtraProjectile.set(entity.id, pickExtraProjTarget())
-            }
+          // Insert a multi-action into the per-entity queue sorted by priority
+          const queueMA = (type: MultiActionType, inherited: number, maTarget?: Entity): void => {
+            const arr = pendingMultiActions.get(entity.id) ?? []
+            const idx = arr.findIndex(x => MULTI_ACTION_PRIORITY[x.type] > MULTI_ACTION_PRIORITY[type])
+            if (idx === -1) arr.push({ type, inheritedDamageMult: inherited, target: maTarget })
+            else arr.splice(idx, 0, { type, inheritedDamageMult: inherited, target: maTarget })
+            pendingMultiActions.set(entity.id, arr)
           }
-          // Queue split cast for every cast (primary and split-cast itself is suppressed)
-          if (!isSplitCast && entity.role === 'player') {
-            const rb = getRuneBonuses(entityActions.get(entity.id) ?? playerActionId)
-            if (rb.splitCast) pendingSplitCast.add(entity.id)
+
+          // ── Roll for new multi-actions ────────────────────────────────────
+          // Any cast can trigger any type except the one it was itself.
+
+          // additionalTarget (trance multi-target): not if this cast was an additionalTarget
+          if (pending?.type !== 'additionalTarget' && tranceActive && spellBonuses
+              && spellBonuses.tranceMultiTargetChance > 0
+              && Math.random() * 100 < spellBonuses.tranceMultiTargetChance) {
+            const extra = pickOtherTarget()
+            if (extra) queueMA('additionalTarget', childInherited, extra)
           }
-          // Double cast roll: primary casts and split casts both roll (but not double casts themselves)
-          if (isPlayerSpell && !isDoubleCast && spellBonuses && spellBonuses.doubleCastChance > 0
+
+          // doubleCast: not if this cast was a doubleCast
+          if (isPlayerSpell && pending?.type !== 'doubleCast' && spellBonuses
+              && spellBonuses.doubleCastChance > 0
               && Math.random() * 100 < spellBonuses.doubleCastChance) {
-            pendingDoubleCast.set(entity.id, (pendingDoubleCast.get(entity.id) ?? 0) + 1)
+            queueMA('doubleCast', childInherited)
           }
-          // Roll for extra projectile on primary casts (not re-rolling from within an extra proj)
-          if (!isExtraProjectile && isPlayerProjectile && pb && pb.extraChance > 0
-              && !pendingExtraProjectile.has(entity.id)
+
+          // additionalProjectile: not if this cast was an additionalProjectile
+          if (pending?.type !== 'additionalProjectile' && isPlayerProjectile && pb && pb.extraChance > 0
               && Math.random() * 100 < pb.extraChance) {
-            pendingExtraProjectile.set(entity.id, pickExtraProjTarget())
+            queueMA('additionalProjectile', childInherited, pickOtherTarget() ?? (target as Entity))
           }
-          // Short cooldown if any pending follow-up cast remains, otherwise full cooldown.
-          // Split cast fires at 1/10 (shorter delay), mastery double cast at 1/5.
-          const hasSplitPending = pendingSplitCast.has(entity.id)
-          const hasOtherPending = (pendingDoubleCast.get(entity.id) ?? 0) > 0
-            || pendingExtraTarget.has(entity.id) || pendingExtraProjectile.has(entity.id)
+
+          // splitCast (key rune): not if this cast was a splitCast
+          if (pending?.type !== 'splitCast' && entity.role === 'player' && rb?.splitCast) {
+            queueMA('splitCast', childInherited)
+          }
+
+          // ── Set cooldown ──────────────────────────────────────────────────
+          const nextQueue = pendingMultiActions.get(entity.id)
           attackCooldowns.set(entity.id,
-            hasSplitPending ? baseCooldown / 10
-            : hasOtherPending ? baseCooldown / 5
-            : baseCooldown)
+            nextQueue && nextQueue.length > 0
+              ? baseCooldown / MULTI_ACTION_COOLDOWN_DIV[nextQueue[0].type]
+              : baseCooldown)
         }
         if (playerManaSpent) updateBars()
 
