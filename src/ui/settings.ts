@@ -10,7 +10,7 @@ const LOCALE_FLAG_CLASS: Record<Locale, string> = {
   fr: 'fi fi-fr',
 }
 
-export function mountSettingsButton(container: HTMLElement): () => void {
+export function mountSettingsButton(container: HTMLElement, modalRoot: HTMLElement = container): () => void {
   const btn = document.createElement('button')
   btn.className = 'settings-btn'
   btn.setAttribute('aria-label', 'Settings')
@@ -33,7 +33,7 @@ export function mountSettingsButton(container: HTMLElement): () => void {
 
   btn.addEventListener('click', () => {
     if (modalCleanup) { closeModal(); return }
-    modalCleanup = mountSettingsModal(container, closeModal)
+    modalCleanup = mountSettingsModal(modalRoot, closeModal)
     document.addEventListener('keydown', onEscape)
   })
 
