@@ -710,6 +710,7 @@ export function createGameScene(
     zoomLevel = z
     setPref('zoomLevel', z)
     updateCamera()
+    drawGrid()
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
@@ -1212,12 +1213,14 @@ export function createGameScene(
     if (!app) return
     const { width, height } = app.screen
     const gs = balance.world.gridSize
-    const halfW = width / 2
-    const halfH = (height - HUD_HEIGHT) / 2
-    const left   = playerEntity.x - halfW   - gs
-    const right  = playerEntity.x + halfW   + gs
-    const top    = playerEntity.y - halfH   - gs
-    const bottom = playerEntity.y + halfH   + gs
+    // Divide by zoom so the visible-world rectangle grows when zoomed out;
+    // multiply by 1.5 to render 50% beyond the visible screen edge.
+    const halfW = (width  / zoomLevel) / 2 * 1.5
+    const halfH = ((height - HUD_HEIGHT) / zoomLevel) / 2 * 1.5
+    const left   = playerEntity.x - halfW - gs
+    const right  = playerEntity.x + halfW + gs
+    const top    = playerEntity.y - halfH - gs
+    const bottom = playerEntity.y + halfH + gs
 
     // Tilemap sprites — floor under every tile, obstacle on top of blocked ones.
     const tStartX = Math.floor(left  / gs)
