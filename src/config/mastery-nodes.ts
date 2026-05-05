@@ -22,6 +22,7 @@ export interface NodeEffect {
   spellNoManaCostChance?: number           // additive %; chance for spell to cost 0 mana (gate still applies)
   spellManaCostRandomReductionMax?: number // additive % cap; per-cast random reduction in [0, cap]
   spellRepeatNoMana?: boolean              // when true, repeated casts (e.g. double cast) skip the mana gate
+  spellGuaranteedAfflictions?: boolean    // when true, second-cast hits always apply afflictions
 
   // Life mastery effects (Maximum Life tree)
   lifeMaxIncrease?: number         // additive %; stacks before the 'more' multiplier
@@ -95,6 +96,7 @@ export interface SpellBonuses {
   noManaCostChance: number
   manaCostRandomReductionMax: number
   repeatNoMana: boolean
+  guaranteedAfflictions: boolean
 }
 
 export interface LifeBonuses {
@@ -183,7 +185,7 @@ const SPELL_EFFECTS: Partial<Record<number, TreeEffects>> = {
     8:  { spellCastSpeedIncrease: 4, spellDoubleCastChance: 3, spellDamageIncrease: 5 },
     9:  { spellCastSpeedIncrease: 4 },
     10: { spellDoubleCastChance: 3 },
-    // 11: double-cast guarantee — not yet implemented
+    11: { spellGuaranteedAfflictions: true },
     // 12-15: key nodes — not yet defined
   },
   2: {  // Trance (short tree — line nodes 0-5, key nodes 12-13)
@@ -223,6 +225,7 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
     noManaCostChance: 0,
     manaCostRandomReductionMax: 0,
     repeatNoMana: false,
+    guaranteedAfflictions: false,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -241,6 +244,7 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
       b.noManaCostChance += eff.spellNoManaCostChance ?? 0
       b.manaCostRandomReductionMax += eff.spellManaCostRandomReductionMax ?? 0
       if (eff.spellRepeatNoMana) b.repeatNoMana = true
+      if (eff.spellGuaranteedAfflictions) b.guaranteedAfflictions = true
     }
   }
   return b
@@ -567,7 +571,7 @@ const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
     8:  '+4% increased spell cast speed · +3% chance for spell to double cast · +5% increased spell damage',
     9:  '+4% increased spell cast speed',
     10: '+3% chance for spell to double cast',
-    11: 'When double casting, the second cast is guaranteed to trigger effects',
+    11: 'When double casting, the second cast is guaranteed to trigger afflictions',
   },
   2: {
     0: 'Spells have +2% chance to trigger trance',

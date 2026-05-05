@@ -1101,12 +1101,13 @@ export function createGameScene(
   const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
   interface PendingHit {
-    attacker:  Entity
-    target:    Entity
-    damage:    number
-    action:    ActionDef
-    actionId:  ActionId
-    countdown: number   // ms remaining until impact
+    attacker:              Entity
+    target:                Entity
+    damage:                number
+    action:                ActionDef
+    actionId:              ActionId
+    countdown:             number   // ms remaining until impact
+    guaranteedAfflictions: boolean
   }
   const pendingHits = new Map<string, PendingHit>()  // keyed by unique hit id (entity.id:seq)
   let hitSeq = 0
@@ -2236,7 +2237,7 @@ export function createGameScene(
         let playerManaSpent = false
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
-        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId): void => {
+        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false): void => {
           let finalDamage = damage
           if (target.role === 'player') {
             const lb = getLifeBonuses()
@@ -2280,7 +2281,7 @@ export function createGameScene(
             const fb = getFireBonuses()
             const immolBurnBonus = hasEffect('immolation') ? fb.immolateBurnChance : 0
             const chance = balance.effects.baseApplyChance + fb.burnApplyChance + immolBurnBonus
-            if (Math.random() * 100 < chance) {
+            if (guaranteedAfflictions || Math.random() * 100 < chance) {
               const dps = damage * balance.effects.burnDpsFraction
                 * (1 + fb.burnDamageIncrease / 100)
                 * (1 + fb.burnMoreDamage / 100)
@@ -2299,7 +2300,7 @@ export function createGameScene(
           pendingHits.delete(entityId)
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
-          applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId)
+          applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
           spawnPostHitVfx(ph.attacker, ph.target, ph.action)
         }
 
@@ -2424,6 +2425,7 @@ export function createGameScene(
           pendingHits.set(`${entity.id}:${++hitSeq}`, {
             attacker: entity, target, damage: effectiveDamage,
             action, actionId, countdown: preHitDuration,
+            guaranteedAfflictions: pending?.type === 'doubleCast' && (spellBonuses?.guaranteedAfflictions ?? false),
           })
           spawnPreHitVfx(entity, target, action, preHitDuration)
 
