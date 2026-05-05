@@ -34,7 +34,7 @@ const NOTE_TERMS: { id: string; pattern: RegExp }[] = [
   { id: 'additional-projectile', pattern: /\bAdditional Projectiles?\b/gi },
   { id: 'additional-target',     pattern: /\bAdditional Targets?\b/gi },
   { id: 'feeding-frenzy',        pattern: /\bFeeding Frenzy\b/gi },
-  { id: 'second-cast',           pattern: /\bSecond Casts?\b/gi },
+  { id: 'second-cast',           pattern: /\bSecond Casts?\b/g },
   { id: 'double-damage',         pattern: /\bDouble Damage\b/gi },
   { id: 'double-cast',           pattern: /\bDouble Cast(?:s|ing)?\b/gi },
   { id: 'multi-action',          pattern: /\bMulti-actions?\b/gi },
