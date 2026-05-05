@@ -169,14 +169,13 @@ A category of **Effect** that applies to the player. Statuses are shown as icons
 
 ## Affliction
 
-A category of **Effect** that applies damage-over-time on an enemy. Each affliction tracks independent stacks per enemy: a stack has its own remaining duration and DPS, and multiple stacks of the same affliction can coexist on a single target.
+A category of **Effect** that applies a debuff or damage-over-time on an enemy. Afflictions are typically applied by hits with a small base chance (modified by mastery nodes). Each is specific to a damage tag.
 
 **Current afflictions:**
 - **Burn** — fire damage-over-time, applied by fire-tagged actions
+- **Electrocution** — damage-taken debuff, applied by lightning-tagged actions
 
-**Planned afflictions:** Bleed (physical), Poison (toxin), Electrocuted (lightning), Frozen (cold). They will follow the same independent-stack model as Burn.
-
-Afflictions are typically applied by hits with a small base chance, modified by mastery nodes and other modifiers. Each tick deals its DPS scaled by the elapsed time.
+**Planned afflictions:** Bleed (physical), Poison (toxin), Frozen (cold).
 
 ---
 
@@ -189,13 +188,14 @@ A category of **Effect** in which an additional cast of a player action is trigg
 - **Additional Target** — follow-up against a different enemy at 1/5 cycle, full damage (Spell mastery, while **Trance** is active)
 - **Additional Projectile** — follow-up at 1/5 cycle, ×0.5 damage (Projectile mastery)
 - **Second Cast** — follow-up at 1/5 cycle, ×0.5 damage (**Split Cast** rune)
+- **Jump** — follow-up at 1/5 cycle, ×0.6 damage (Lightning mastery); targets a nearby enemy from the previous target's position
 
 **Standardised behaviour (applies to all Multi-actions):**
 
 1. **Proper new action.** Every Multi-action cast is a real cast. It can roll for **Double Damage**, apply **Afflictions**, trigger Statuses, and roll for any other Multi-action — but it can never re-trigger the same Multi-action that produced it.
 2. **Inheritance.** If a Multi-action carries a damage reduction specific to that mechanic, any new Multi-action it triggers inherits that modifier. Modifiers compound through chains: e.g. an Additional Projectile (×0.5) that triggers a Second Cast (×0.5) results in a follow-up at ×0.25 damage.
 3. **Depth multiplier.** Every Multi-action level carries an additional ×0.9 multiplier. A Multi-action directly triggered by a primary cast starts at ×0.9 (before its own type modifier). Each subsequent level compounds: depth 2 is ×0.81, depth 3 is ×0.729, and so on. This stacks multiplicatively with the type-specific modifier from rule 2.
-4. **Trigger order.** When several Multi-actions are eligible to roll on the same cast, they evaluate from the **most generic source to the most specific**: spell-tier Multi-actions first (Double Cast, Additional Target), then projectile-tier (Additional Projectile), then rune-specific (Second Cast). This ordering also determines which queued cast fires first when multiple are pending.
+4. **Trigger order.** When several Multi-actions are eligible to roll on the same cast, they evaluate from the **most generic source to the most specific**: spell-tier Multi-actions first (Double Cast, Additional Target), then projectile-tier (Additional Projectile), then rune-specific (Second Cast), then lightning-specific (Jump). This ordering also determines which queued cast fires first when multiple are pending.
 
 ---
 
@@ -275,3 +275,27 @@ How quickly a player action fires. Higher cast speed shortens the time between c
 - Spell mastery cast speed nodes — permanent additive increases
 
 Cast speed bonuses are additive within their category. The resulting multiplier shortens the cycle proportionally — doubling cast speed halves the time between casts.
+
+---
+
+## Electrocution
+
+An **Affliction** applied by lightning-tagged hits. While active (base duration 3 s, refreshed on re-application), the target takes additional damage from **all sources** — this is an independent multiplier, separate from other damage-taken or damage-dealt modifiers.
+
+**Damage taken formula:** base 10% + all "increased damage taken from electrocution" nodes (additive). Example: with +3 +5 +3 +8 +3 = +22%, total is 32%; all incoming damage to that enemy is ×1.32.
+
+**Speed slow (Lightning mastery node 11):** When this node is active, electrocuted enemies have their movement speed and action speed each reduced by the full electrocution damage taken value (base + mastery increases). A value of 32% means the enemy moves and attacks at 68% of normal speed.
+
+---
+
+## Jump
+
+A **Multi-action** triggered by Lightning mastery (Jump tree). After a lightning-tagged player hit, a successful roll queues a follow-up hit at **1/5 of the normal cycle**, dealing ×0.6 base damage (reduced by mastery nodes). The follow-up targets a nearby enemy measured from the **previous target's position**, not the player's.
+
+**Target selection:** prefers the closest enemy not yet hit in the current jump chain. If all in-range enemies have already been jumped, it can re-target any of them except the one that triggered this jump.
+
+**Jump range** is the action's normal attack range, optionally increased by the major node (+30%). Range is measured from the target that was just hit.
+
+**Chaining (major node 5):** when active, each successful jump re-rolls for another jump with no limit. The chain continues as long as rolls succeed and valid targets exist.
+
+**Inheritance:** each jump in a chain carries the ×0.9 depth multiplier from the Multi-action system on top of the ×0.6 jump-specific modifier. A first jump (depth 1) deals ×0.9 × 0.6 = ×0.54 damage; a second jump (depth 2) adds another ×0.9, giving ×0.486, and so on.

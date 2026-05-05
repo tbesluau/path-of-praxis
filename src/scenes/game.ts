@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -155,6 +155,10 @@ export function createGameScene(
     return computeProjectileBonuses(masteryProgress['projectile']?.nodes ?? [[], [], [], [], []])
   }
 
+  function getLightningBonuses(): LightningBonuses {
+    return computeLightningBonuses(masteryProgress['lightning']?.nodes ?? [[], [], [], [], []])
+  }
+
   // ── Damage-type effects (burning + immolation) ────────────────────────────
   // Per-entity stack list. Only the highest-dps stack ticks; the rest are
   // silent. When the active stack expires, the next highest takes over.
@@ -167,6 +171,22 @@ export function createGameScene(
   // Duration mirrors the buff bar entry; both are refreshed together on re-trigger.
   let playerImmolation: { dps: number; remainingMs: number } | null = null
   let playerImmolAccum = { damage: 0, timeMs: 0 }
+
+  // ── Electrocution debuff ──────────────────────────────────────────────────
+  // Value = remaining duration ms. Refreshed (overwritten) on re-application.
+  const electrocuteStacks = new Map<string, number>()
+
+  function isElectrocuted(entity: Entity): boolean {
+    return electrocuteStacks.has(entity.id)
+  }
+
+  function tickElectrocutions(deltaMs: number): void {
+    for (const [id, remaining] of [...electrocuteStacks]) {
+      const updated = remaining - deltaMs
+      if (updated <= 0) electrocuteStacks.delete(id)
+      else electrocuteStacks.set(id, updated)
+    }
+  }
 
   function isBurning(entity: Entity): boolean {
     const s = burnStacks.get(entity.id)
@@ -1085,18 +1105,20 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
-  type MultiActionType = 'doubleCast' | 'additionalTarget' | 'additionalProjectile' | 'splitCast'
+  type MultiActionType = 'doubleCast' | 'additionalTarget' | 'additionalProjectile' | 'splitCast' | 'jump'
   interface PendingMultiAction {
-    type:                MultiActionType
-    inheritedDamageMult: number   // accumulated ×0.9^depth × parent ownMult
-    target?:             Entity   // pre-selected target (additionalTarget / additionalProjectile)
-    isChainProjectile?:  boolean  // second additional projectile from extraDoubleRoll; cannot chain further
+    type:                   MultiActionType
+    inheritedDamageMult:    number   // accumulated ×0.9^depth × parent ownMult
+    target?:                Entity   // pre-selected target (additionalTarget / additionalProjectile / jump)
+    isChainProjectile?:     boolean  // second additional projectile from extraDoubleRoll; cannot chain further
+    guaranteedAfflictions?: boolean  // inherited from a doubleCast root when Cast Speed node 11 is active
+    jumpedTargetIds?:       Set<string> // enemies already hit in the current jump chain
   }
   const MULTI_ACTION_PRIORITY: Record<MultiActionType, number> = {
-    doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3,
+    doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3, jump: 4,
   }
   const MULTI_ACTION_COOLDOWN_DIV: Record<MultiActionType, number> = {
-    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 5,
+    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 5, jump: 5,
   }
   const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
@@ -1339,6 +1361,7 @@ export function createGameScene(
     entityPaths.delete(entity.id)
     burnStacks.delete(entity.id)
     burnAccum.delete(entity.id)
+    electrocuteStacks.delete(entity.id)
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     const idx = entities.indexOf(entity)
     if (idx !== -1) entities.splice(idx, 1)
@@ -1672,6 +1695,26 @@ export function createGameScene(
         return pick ?? null
       }
     }
+  }
+
+  // Finds the next jump target from `fromTarget`'s position.
+  // Prefers the closest enemy not yet in the jump chain; falls back to any
+  // in-range enemy (excluding fromTarget itself) if all nearby have been jumped.
+  function selectJumpTarget(fromTarget: Entity, jumpedIds: Set<string>, range: number): Entity | null {
+    let bestPref: Entity | null = null, bestPrefDist = Infinity
+    let bestFall: Entity | null = null, bestFallDist = Infinity
+    for (const e of entities) {
+      if (e.role !== 'enemy' || e === fromTarget) continue
+      const dx = e.x - fromTarget.x, dy = e.y - fromTarget.y
+      const dist = Math.sqrt(dx * dx + dy * dy) - e.radius
+      if (dist > range) continue
+      if (!jumpedIds.has(e.id)) {
+        if (dist < bestPrefDist) { bestPrefDist = dist; bestPref = e }
+      } else {
+        if (dist < bestFallDist) { bestFallDist = dist; bestFall = e }
+      }
+    }
+    return bestPref ?? bestFall
   }
 
   // ── Spawn ────────────────────────────────────────────────────────────────
@@ -2155,6 +2198,7 @@ export function createGameScene(
         updateChunks()
 
         // ── Movement ────────────────────────────────────────────────────────
+        const lbForMove = electrocuteStacks.size > 0 ? getLightningBonuses() : null
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (!body) continue
@@ -2199,9 +2243,14 @@ export function createGameScene(
           // Velocity is set per Matter base step (1/60 s), not per frame dt;
           // otherwise per-frame displacement scales with dt² and the simulation
           // diverges from a true sped-up x1 at higher gameSpeed.
+          let ms = entity.moveSpeed
+          if (entity.role === 'enemy' && lbForMove && lbForMove.electrocuteSlowOnDamageTaken && isElectrocuted(entity)) {
+            const total = balance.effects.electrocutionBaseDamageTakenPct + lbForMove.electrocuteDamageTakenIncrease
+            ms *= Math.max(0, 1 - total / 100)
+          }
           Matter.Body.setVelocity(body, {
-            x: moveX * entity.moveSpeed * MATTER_BASE_DT,
-            y: moveY * entity.moveSpeed * MATTER_BASE_DT,
+            x: moveX * ms * MATTER_BASE_DT,
+            y: moveY * ms * MATTER_BASE_DT,
           })
         }
 
@@ -2257,6 +2306,12 @@ export function createGameScene(
               finalDamage *= 1 + fb.burningTakeIncreased / 100
             }
           }
+          // Electrocution: additional damage taken — own multiplier, applies from all sources
+          if (target.role === 'enemy' && isElectrocuted(target)) {
+            const lbElec = getLightningBonuses()
+            const totalDmgTaken = balance.effects.electrocutionBaseDamageTakenPct + lbElec.electrocuteDamageTakenIncrease
+            finalDamage *= 1 + totalDmgTaken / 100
+          }
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - finalDamage)
           const actualDamage = prevLife - target.currentLife
@@ -2276,7 +2331,7 @@ export function createGameScene(
           }
           damagedIds.add(target.id)
 
-          // Burning effect: roll on fire-tagged player hits to enemy targets
+          // Burning: roll on fire-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && actualDamage > 0) {
             const fb = getFireBonuses()
             const immolBurnBonus = hasEffect('immolation') ? fb.immolateBurnChance : 0
@@ -2289,6 +2344,15 @@ export function createGameScene(
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
+            }
+          }
+          // Electrocution: roll on lightning-tagged player hits to enemy targets
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('lightning') && actualDamage > 0) {
+            const lbElec = getLightningBonuses()
+            const chance = balance.effects.baseApplyChance + lbElec.electrocuteApplyChance
+            if (guaranteedAfflictions || Math.random() * 100 < chance) {
+              const duration = balance.effects.electrocutionBaseDurationMs * (1 + lbElec.electrocuteDurationIncrease / 100)
+              electrocuteStacks.set(target.id, duration)
             }
           }
         }
@@ -2320,7 +2384,7 @@ export function createGameScene(
           // - additionalTarget uses the queued entity (skip cast if it died)
           // - all others use normal target selection
           let target: Entity | null
-          if (pending?.type === 'additionalTarget') {
+          if (pending?.type === 'additionalTarget' || pending?.type === 'jump') {
             const et = pending.target!
             if (!entities.includes(et) || et.currentLife <= 0) {
               queue!.shift()
@@ -2343,6 +2407,11 @@ export function createGameScene(
           const pb = isPlayerProjectile ? getProjectileBonuses() : null
           const tranceActive = isPlayerSpell && hasEffect('trance')
           const rb = entity.role === 'player' ? getRuneBonuses(actionId) : null
+
+          // Cast Speed node 11: doubleCast second cast guarantees afflictions; propagates to its branched multi-actions.
+          const guaranteedAfflictions =
+            pending?.guaranteedAfflictions === true
+            || (pending?.type === 'doubleCast' && spellBonuses?.guaranteedAfflictions === true)
 
           // additionalProjectile: prefer the queued different target if still alive and in range
           if (pending?.type === 'additionalProjectile' && pending.target && pending.target !== target) {
@@ -2392,6 +2461,10 @@ export function createGameScene(
             let ownMult = 1.0
             if (pending.type === 'splitCast') ownMult = 0.5
             else if (pending.type === 'additionalProjectile') ownMult = 0.5 * (1 + (pb?.extraDamage ?? 0) / 100)
+            else if (pending.type === 'jump') {
+              const lbJ = getLightningBonuses()
+              ownMult = Math.max(0, 1 - (balance.effects.jumpBaseDamagePenalty - lbJ.jumpDamagePenaltyReduce) / 100)
+            }
             effectiveDamage = entity.attackDamage * pending.inheritedDamageMult * ownMult
             childInherited = pending.inheritedDamageMult * ownMult * 0.9
           } else {
@@ -2419,13 +2492,21 @@ export function createGameScene(
           const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
             ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
             : 1
-          const baseCooldown = (1000 / entity.attackSpeed) / tranceSpeedMult
+          let effectiveAttackSpeed = entity.attackSpeed
+          if (entity.role === 'enemy' && isElectrocuted(entity)) {
+            const lbAtk = getLightningBonuses()
+            if (lbAtk.electrocuteSlowOnDamageTaken) {
+              const total = balance.effects.electrocutionBaseDamageTakenPct + lbAtk.electrocuteDamageTakenIncrease
+              effectiveAttackSpeed *= Math.max(0, 1 - total / 100)
+            }
+          }
+          const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
 
           pendingHits.set(`${entity.id}:${++hitSeq}`, {
             attacker: entity, target, damage: effectiveDamage,
             action, actionId, countdown: preHitDuration,
-            guaranteedAfflictions: pending?.type === 'doubleCast' && (spellBonuses?.guaranteedAfflictions ?? false),
+            guaranteedAfflictions,
           })
           spawnPreHitVfx(entity, target, action, preHitDuration)
 
@@ -2491,11 +2572,13 @@ export function createGameScene(
           }
 
           // Insert a multi-action into the per-entity queue sorted by priority
-          const queueMA = (type: MultiActionType, inherited: number, maTarget?: Entity, chainProjectile?: boolean): void => {
+          const queueMA = (type: MultiActionType, inherited: number, maTarget?: Entity, chainProjectile?: boolean, jumpedTargetIds?: Set<string>): void => {
             const arr = pendingMultiActions.get(entity.id) ?? []
             const idx = arr.findIndex(x => MULTI_ACTION_PRIORITY[x.type] > MULTI_ACTION_PRIORITY[type])
             const entry: PendingMultiAction = { type, inheritedDamageMult: inherited, target: maTarget }
             if (chainProjectile) entry.isChainProjectile = true
+            if (guaranteedAfflictions) entry.guaranteedAfflictions = true
+            if (jumpedTargetIds) entry.jumpedTargetIds = jumpedTargetIds
             if (idx === -1) arr.push(entry)
             else arr.splice(idx, 0, entry)
             pendingMultiActions.set(entity.id, arr)
@@ -2534,6 +2617,19 @@ export function createGameScene(
             queueMA('splitCast', childInherited)
           }
 
+          // jump: on any lightning-tagged player hit; re-rolls on jump casts only if jumpReroll active
+          if (entity.role === 'player' && action.tags.includes('lightning')) {
+            const lbJump = getLightningBonuses()
+            const canRollJump = pending?.type !== 'jump' || lbJump.jumpReroll
+            if (canRollJump && lbJump.jumpChance > 0 && Math.random() * 100 < lbJump.jumpChance) {
+              const jumpedSoFar = new Set(pending?.type === 'jump' ? (pending.jumpedTargetIds ?? []) : [])
+              jumpedSoFar.add((target as Entity).id)
+              const jumpRange = entity.attackRange * (1 + lbJump.jumpRangeIncrease / 100)
+              const jumpTarget = selectJumpTarget(target as Entity, jumpedSoFar, jumpRange)
+              if (jumpTarget) queueMA('jump', childInherited, jumpTarget, false, jumpedSoFar)
+            }
+          }
+
           // ── Set cooldown ──────────────────────────────────────────────────
           const nextQueue = pendingMultiActions.get(entity.id)
           attackCooldowns.set(entity.id,
@@ -2545,6 +2641,7 @@ export function createGameScene(
 
         // ── Burning effect tick (registers burned entities for death pass) ─
         tickBurns(ticker.deltaMS, damagedIds)
+        tickElectrocutions(ticker.deltaMS)
 
         // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
