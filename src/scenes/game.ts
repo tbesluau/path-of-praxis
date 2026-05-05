@@ -173,8 +173,10 @@ export function createGameScene(
   let playerImmolAccum = { damage: 0, timeMs: 0 }
 
   // ── Electrocution debuff ──────────────────────────────────────────────────
-  // Value = remaining duration ms. Refreshed (overwritten) on re-application.
+  // One entry per entity: remaining duration ms. Re-applying refreshes the timer (no stacking).
   const electrocuteStacks = new Map<string, number>()
+  // Per-entity lightning Graphics attached to the entity's Container child list.
+  const electrocuteGraphics = new Map<string, Graphics>()
 
   function isElectrocuted(entity: Entity): boolean {
     return electrocuteStacks.has(entity.id)
@@ -185,6 +187,68 @@ export function createGameScene(
       const updated = remaining - deltaMs
       if (updated <= 0) electrocuteStacks.delete(id)
       else electrocuteStacks.set(id, updated)
+    }
+  }
+
+  function tickElectrocuteEffects(): void {
+    if (!app) return
+    const frame = Math.floor(Date.now() / 60)
+
+    for (const id of electrocuteStacks.keys()) {
+      const entity = entities.find(e => e.id === id)
+      if (!entity) continue
+      const container = entityContainers.get(id)
+      if (!container) continue
+
+      let g = electrocuteGraphics.get(id)
+      if (!g) {
+        g = new Graphics()
+        container.addChild(g)
+        electrocuteGraphics.set(id, g)
+      }
+
+      g.clear()
+      const r = entity.radius
+
+      // Two jagged rings: outer cyan, inner white
+      for (let b = 0; b < 2; b++) {
+        const seed = b * 19 + frame * 37
+        const pts   = 10
+        const phase = (b * Math.PI) / pts + frame * 0.25
+        for (let i = 0; i <= pts; i++) {
+          const a = phase + (i / pts) * Math.PI * 2
+          const h = Math.sin(seed + i * 12.9898) * 43758.5453
+          const noise = (h - Math.floor(h)) - 0.5
+          const x = Math.cos(a) * (r + 5 + noise * r * 0.3)
+          const y = Math.sin(a) * (r + 5 + noise * r * 0.3)
+          if (i === 0) g.moveTo(x, y); else g.lineTo(x, y)
+        }
+        g.closePath()
+        g.stroke({ color: b === 0 ? 0x66ddff : 0xffffff, width: b === 0 ? 2 : 1, alpha: b === 0 ? 0.9 : 0.55 })
+      }
+
+      // Short radiating sparks
+      for (let s = 0; s < 3; s++) {
+        const sh  = Math.sin(s * 91.7  + frame * 53) * 43758.5453
+        const ang = (sh - Math.floor(sh)) * Math.PI * 2
+        const lh  = Math.sin(s * 43.3  + frame * 71) * 43758.5453
+        const len = r * (0.4 + (lh - Math.floor(lh)) * 0.5)
+        g.moveTo(Math.cos(ang) * r, Math.sin(ang) * r)
+        g.lineTo(Math.cos(ang) * (r + len), Math.sin(ang) * (r + len))
+        g.stroke({ color: 0x99eeff, width: 1.5, alpha: 0.7 })
+      }
+
+      // Subtle inner glow
+      g.circle(0, 0, r)
+      g.fill({ color: 0x66ddff, alpha: 0.12 })
+    }
+
+    // Remove graphics for entities no longer electrocuted
+    for (const [id, g] of [...electrocuteGraphics]) {
+      if (!electrocuteStacks.has(id)) {
+        g.destroy()
+        electrocuteGraphics.delete(id)
+      }
     }
   }
 
@@ -1362,6 +1426,7 @@ export function createGameScene(
     burnStacks.delete(entity.id)
     burnAccum.delete(entity.id)
     electrocuteStacks.delete(entity.id)
+    electrocuteGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     const idx = entities.indexOf(entity)
     if (idx !== -1) entities.splice(idx, 1)
@@ -2642,6 +2707,7 @@ export function createGameScene(
         // ── Burning effect tick (registers burned entities for death pass) ─
         tickBurns(ticker.deltaMS, damagedIds)
         tickElectrocutions(ticker.deltaMS)
+        tickElectrocuteEffects()
 
         // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
@@ -2676,6 +2742,8 @@ export function createGameScene(
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()
     vfxList.length = 0
+    for (const g of electrocuteGraphics.values()) g.destroy()
+    electrocuteGraphics.clear()
     blockedTiles.clear()
     generatedChunks.clear()
     chunkBodies.clear()
