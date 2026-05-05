@@ -1087,10 +1087,11 @@ export function createGameScene(
   const attackCooldowns = new Map<string, number>()
   type MultiActionType = 'doubleCast' | 'additionalTarget' | 'additionalProjectile' | 'splitCast'
   interface PendingMultiAction {
-    type:                MultiActionType
-    inheritedDamageMult: number   // accumulated ×0.9^depth × parent ownMult
-    target?:             Entity   // pre-selected target (additionalTarget / additionalProjectile)
-    isChainProjectile?:  boolean  // second additional projectile from extraDoubleRoll; cannot chain further
+    type:                   MultiActionType
+    inheritedDamageMult:    number   // accumulated ×0.9^depth × parent ownMult
+    target?:                Entity   // pre-selected target (additionalTarget / additionalProjectile)
+    isChainProjectile?:     boolean  // second additional projectile from extraDoubleRoll; cannot chain further
+    guaranteedAfflictions?: boolean  // inherited from a doubleCast root when Cast Speed node 11 is active
   }
   const MULTI_ACTION_PRIORITY: Record<MultiActionType, number> = {
     doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3,
@@ -2344,6 +2345,11 @@ export function createGameScene(
           const tranceActive = isPlayerSpell && hasEffect('trance')
           const rb = entity.role === 'player' ? getRuneBonuses(actionId) : null
 
+          // Cast Speed node 11: doubleCast second cast guarantees afflictions; propagates to its branched multi-actions.
+          const guaranteedAfflictions =
+            pending?.guaranteedAfflictions === true
+            || (pending?.type === 'doubleCast' && spellBonuses?.guaranteedAfflictions === true)
+
           // additionalProjectile: prefer the queued different target if still alive and in range
           if (pending?.type === 'additionalProjectile' && pending.target && pending.target !== target) {
             const stored = pending.target
@@ -2425,7 +2431,7 @@ export function createGameScene(
           pendingHits.set(`${entity.id}:${++hitSeq}`, {
             attacker: entity, target, damage: effectiveDamage,
             action, actionId, countdown: preHitDuration,
-            guaranteedAfflictions: pending?.type === 'doubleCast' && (spellBonuses?.guaranteedAfflictions ?? false),
+            guaranteedAfflictions,
           })
           spawnPreHitVfx(entity, target, action, preHitDuration)
 
@@ -2496,6 +2502,7 @@ export function createGameScene(
             const idx = arr.findIndex(x => MULTI_ACTION_PRIORITY[x.type] > MULTI_ACTION_PRIORITY[type])
             const entry: PendingMultiAction = { type, inheritedDamageMult: inherited, target: maTarget }
             if (chainProjectile) entry.isChainProjectile = true
+            if (guaranteedAfflictions) entry.guaranteedAfflictions = true
             if (idx === -1) arr.push(entry)
             else arr.splice(idx, 0, entry)
             pendingMultiActions.set(entity.id, arr)
