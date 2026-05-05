@@ -221,7 +221,7 @@ By the **inheritance** rule, any Multi-action triggered from an Additional Proje
 
 ## Second Cast
 
-A **Multi-action** triggered by the **Split Cast** key rune. Every cast that is not itself a Second Cast queues a follow-up at **1/5 of the normal cycle**, dealing **×0.5 damage**.
+A **Multi-action** triggered by the **Split Cast** key rune. Every cast that is not itself a Second Cast queues a follow-up at **1/5 of the normal cycle**, dealing **×0.5 damage** and paying no mana (the rune fires the second cast for free, on top of the original).
 
 Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Target**, **Additional Projectile**, and trigger Statuses or Afflictions. It cannot trigger another Second Cast.
 

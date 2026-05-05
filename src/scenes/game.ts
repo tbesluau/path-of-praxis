@@ -2425,11 +2425,12 @@ export function createGameScene(
           }
 
           // ── Mana cost computation ─────────────────────────────────────────
-          // additionalTarget casts are always free (triggered by trance; no resource spend)
+          // additionalTarget and splitCast (Second Cast) casts are free auto-follow-ups; no resource spend.
           const isAdditionalTarget = pending?.type === 'additionalTarget'
+          const isFreeMultiAction = isAdditionalTarget || pending?.type === 'splitCast'
           let gateCost = action.manaCost
           let paidCost = action.manaCost
-          if (!isAdditionalTarget && isPlayerSpell && spellBonuses && action.manaCost > 0) {
+          if (!isFreeMultiAction && isPlayerSpell && spellBonuses && action.manaCost > 0) {
             const reduction = spellBonuses.manaCostReduction / 100
               + (spellBonuses.manaCostRandomReductionMax > 0
                 ? (Math.random() * spellBonuses.manaCostRandomReductionMax) / 100
@@ -2440,12 +2441,12 @@ export function createGameScene(
               paidCost = 0
             }
           }
-          if (!isAdditionalTarget && entity.role === 'player' && rb) {
+          if (!isFreeMultiAction && entity.role === 'player' && rb) {
             if (rb.manaCostReduce > 0) { gateCost *= Math.max(0, 1 - rb.manaCostReduce / 100); paidCost *= Math.max(0, 1 - rb.manaCostReduce / 100) }
             if (rb.manaCostMore !== 1) { gateCost *= rb.manaCostMore; paidCost *= rb.manaCostMore }
           }
-          // Gate: additionalTarget free; doubleCast may skip with repeatNoMana; manaless bypasses
-          const skipGate = isAdditionalTarget
+          // Gate: additionalTarget and splitCast are free; doubleCast may skip with repeatNoMana; manaless bypasses
+          const skipGate = isFreeMultiAction
             || (pending?.type === 'doubleCast' && spellBonuses?.repeatNoMana === true)
             || (rb?.manaless === true)
           if (entity.maxMana > 0 && !skipGate && entity.currentMana < gateCost) continue
@@ -2511,7 +2512,7 @@ export function createGameScene(
           spawnPreHitVfx(entity, target, action, preHitDuration)
 
           // ── Mana payment ──────────────────────────────────────────────────
-          if (entity.maxMana > 0 && !isAdditionalTarget) {
+          if (entity.maxMana > 0 && !isFreeMultiAction) {
             const mb = entity.role === 'player' ? getManaBonuses() : null
             const replenish = mb && mb.replenishChance > 0 && paidCost > 0
               && Math.random() * 100 < mb.replenishChance
