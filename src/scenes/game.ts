@@ -23,6 +23,8 @@ const HP_BAR_H = 4
 const HP_BAR_GAP = 4
 const HUD_HEIGHT = 0
 const SAVE_INTERVAL_MS = 10_000
+const MATTER_BASE_DT = 1 / 60
+const PHYSICS_MAX_STEP_MS = 1000 / 60
 
 interface DeathFragment {
   g: Graphics
@@ -2151,8 +2153,6 @@ export function createGameScene(
         tickEffects(ticker.deltaMS)
         updateChunks()
 
-        const dt = ticker.deltaMS / 1000
-
         // ── Movement ────────────────────────────────────────────────────────
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
@@ -2195,11 +2195,24 @@ export function createGameScene(
             }
           }
 
-          Matter.Body.setVelocity(body, { x: moveX * entity.moveSpeed * dt, y: moveY * entity.moveSpeed * dt })
+          // Velocity is set per Matter base step (1/60 s), not per frame dt;
+          // otherwise per-frame displacement scales with dt² and the simulation
+          // diverges from a true sped-up x1 at higher gameSpeed.
+          Matter.Body.setVelocity(body, {
+            x: moveX * entity.moveSpeed * MATTER_BASE_DT,
+            y: moveY * entity.moveSpeed * MATTER_BASE_DT,
+          })
         }
 
         // ── Physics step ────────────────────────────────────────────────────
-        Matter.Engine.update(physicsEngine, ticker.deltaMS)
+        // Substep so each Matter step stays near its design timestep (~16.7 ms),
+        // keeping integration stable at high gameSpeed (deltaMS up to ~167 ms).
+        let physicsRemaining = ticker.deltaMS
+        while (physicsRemaining > 0) {
+          const step = Math.min(physicsRemaining, PHYSICS_MAX_STEP_MS)
+          Matter.Engine.update(physicsEngine, step)
+          physicsRemaining -= step
+        }
 
         // ── Sync positions ──────────────────────────────────────────────────
         for (const entity of entities) {
