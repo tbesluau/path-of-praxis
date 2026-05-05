@@ -187,7 +187,7 @@ A category of **Effect** in which an additional cast of a player action is trigg
 - **Double Cast** — follow-up at 1/5 cycle, full damage (Spell mastery)
 - **Additional Target** — follow-up against a different enemy at 1/5 cycle, full damage (Spell mastery, while **Trance** is active)
 - **Additional Projectile** — follow-up at 1/5 cycle, ×0.5 damage (Projectile mastery)
-- **Second Cast** — follow-up at 1/5 cycle, ×0.5 damage (**Split Cast** rune)
+- **Second Cast** — follow-up at 1/5 cycle, ×0.5 damage (**Split Cast** rune; triggers on primary cast only)
 - **Jump** — follow-up at 1/5 cycle, ×0.6 damage (Lightning mastery); targets a nearby enemy from the previous target's position
 
 **Standardised behaviour (applies to all Multi-actions):**
@@ -221,7 +221,7 @@ By the **inheritance** rule, any Multi-action triggered from an Additional Proje
 
 ## Second Cast
 
-A **Multi-action** triggered by the **Split Cast** key rune. Every cast that is not itself a Second Cast queues a follow-up at **1/5 of the normal cycle**, dealing **×0.5 damage** and paying no mana (the rune fires the second cast for free, on top of the original).
+A **Multi-action** triggered by the **Split Cast** key rune. Every **primary cast** queues a follow-up at **1/5 of the normal cycle**, dealing **×0.5 damage**. Multi-actions (Double Cast, Additional Projectile, etc.) that fire as a result of the primary do not each trigger their own Second Cast.
 
 Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Target**, **Additional Projectile**, and trigger Statuses or Afflictions. It cannot trigger another Second Cast.
 
