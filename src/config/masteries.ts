@@ -67,7 +67,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
     masteries: [
       { id: 'physical',  label: 'Physical',  tag: 'physical',  trees: [
         { index: 0, label: 'Physical Damage', short: true },
-        ...([2, 3, 4, 5].map(n => ({ index: n - 1, label: `Physical ${n}` }))),
+        { index: 1, label: 'Bleed' },
+        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Physical ${n}` }))),
       ] },
       { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: [
         { index: 0, label: 'Burning' },
@@ -112,7 +113,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'mana', label: 'Mana', trees: [
         { index: 0, label: 'Mana Regeneration', short: true },
         { index: 1, label: 'Maximum Mana',       short: true },
-        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Mana ${n}` }))),
+        { index: 2, label: 'Mana Steal',         short: true },
+        ...([4, 5].map(n => ({ index: n - 1, label: `Mana ${n}` }))),
       ] },
     ],
   },

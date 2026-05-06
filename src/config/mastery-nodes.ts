@@ -47,6 +47,12 @@ export interface NodeEffect {
   manaRegenIncrease?: number    // additive %; increases mana regen rate
   manaReplenishChance?: number  // additive %; chance for a spell cast to add mana instead of spending it
 
+  // Mana mastery effects (Mana Steal tree)
+  manaStealPercent?: number          // additive %; fraction of action hit damage stolen as mana
+  manaStealIncrease?: number         // additive %; increases mana stolen
+  manaStealCapIncrease?: number      // additive %; increases the per-hit hard cap (base 1% of max mana)
+  manaFeedingFrenzyChance?: number   // additive %; chance per mana-steal instance to trigger Feeding Frenzy
+
   // Fire mastery effects (Burning tree)
   fireBurnApplyChance?: number          // additive %; added to base apply chance for fire-tagged hits
   fireBurnDamageIncrease?: number       // additive %; stacks before the 'more' multiplier
@@ -127,6 +133,12 @@ export interface NodeEffect {
   physicalMoreDamage?: number           // 'more' %; for physical-tagged actions
   physicalActionSpeedIncrease?: number  // additive %; for physical-tagged actions
   physicalBleedApplyChance?: number     // additive %; chance to apply bleed on physical hits
+
+  // Physical mastery effects (Bleed tree)
+  physicalBleedDamageIncrease?: number  // additive %; stacks before the 'more' multiplier
+  physicalBleedDurationIncrease?: number // additive %; extends bleed duration
+  physicalBleedMoreDamage?: number      // 'more' %; multiplies bleed dps after increased
+  physicalBleedIgnoreResistance?: boolean // when true, bleeding ignores enemy physical resistance (no-op for now)
 }
 
 export interface SpellBonuses {
@@ -168,6 +180,10 @@ export interface ManaBonuses {
   moreMaxMana: number      // total 'more' %
   regenIncrease: number    // total additive %
   replenishChance: number  // total additive %
+  manaStealPercent: number      // total additive %; fraction of action hit damage stolen as mana
+  manaStealIncrease: number     // total additive %; increases mana stolen
+  manaStealCapIncrease: number  // total additive %; increases per-hit hard cap (base 1% of max mana)
+  feedingFrenzyChance: number   // total additive %; chance to trigger Feeding Frenzy on mana steal
 }
 
 export interface ProjectileBonuses {
@@ -213,10 +229,14 @@ export interface StrikeBonuses {
 }
 
 export interface PhysicalBonuses {
-  damageIncrease: number       // total additive %
-  moreDamage: number           // total 'more' %
-  actionSpeedIncrease: number  // total additive %
-  bleedApplyChance: number     // total additive %
+  damageIncrease: number        // total additive %
+  moreDamage: number            // total 'more' %
+  actionSpeedIncrease: number   // total additive %
+  bleedApplyChance: number      // total additive %
+  bleedDamageIncrease: number   // total additive %
+  bleedDurationIncrease: number // total additive %
+  bleedMoreDamage: number       // total 'more' %
+  bleedIgnoreResistance: boolean // when true, bleeding ignores enemy physical resistance (no-op for now)
 }
 
 export interface EnemyBonuses {
@@ -440,6 +460,15 @@ const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { manaMoreMax: 20 },
     // 12-13: key nodes — not yet defined
   },
+  2: {  // Mana Steal (short tree — line nodes 0-5, key nodes 12-13)
+    0: { manaStealPercent: 0.5 },
+    1: { manaStealIncrease: 5 },
+    2: { manaStealCapIncrease: 10 },
+    3: { manaStealPercent: 0.5 },
+    4: { manaStealIncrease: 5 },
+    5: { manaFeedingFrenzyChance: 1 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getManaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -447,14 +476,21 @@ export function getManaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect 
 }
 
 export function computeManaBonuses(nodes: number[][]): ManaBonuses {
-  const b: ManaBonuses = { maxManaIncrease: 0, moreMaxMana: 0, regenIncrease: 0, replenishChance: 0 }
+  const b: ManaBonuses = {
+    maxManaIncrease: 0, moreMaxMana: 0, regenIncrease: 0, replenishChance: 0,
+    manaStealPercent: 0, manaStealIncrease: 0, manaStealCapIncrease: 0, feedingFrenzyChance: 0,
+  }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getManaNodeEffect(treeIdx, nodeIdx)
-      b.maxManaIncrease += eff.manaMaxIncrease ?? 0
-      b.moreMaxMana += eff.manaMoreMax ?? 0
-      b.regenIncrease += eff.manaRegenIncrease ?? 0
-      b.replenishChance += eff.manaReplenishChance ?? 0
+      b.maxManaIncrease      += eff.manaMaxIncrease ?? 0
+      b.moreMaxMana          += eff.manaMoreMax ?? 0
+      b.regenIncrease        += eff.manaRegenIncrease ?? 0
+      b.replenishChance      += eff.manaReplenishChance ?? 0
+      b.manaStealPercent     += eff.manaStealPercent ?? 0
+      b.manaStealIncrease    += eff.manaStealIncrease ?? 0
+      b.manaStealCapIncrease += eff.manaStealCapIncrease ?? 0
+      b.feedingFrenzyChance  += eff.manaFeedingFrenzyChance ?? 0
     }
   }
   return b
@@ -818,6 +854,21 @@ const PHYSICAL_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { physicalMoreDamage: 10 },
     // 12-13: key nodes — not yet defined
   },
+  1: {  // Bleed (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { physicalBleedApplyChance: 5 },
+    1:  { physicalBleedDamageIncrease: 5 },
+    2:  { physicalBleedDamageIncrease: 10, physicalBleedDurationIncrease: 10 },
+    3:  { physicalBleedApplyChance: 5 },
+    4:  { physicalBleedDamageIncrease: 5 },
+    5:  { physicalBleedMoreDamage: 30 },
+    6:  { physicalBleedApplyChance: 5 },
+    7:  { physicalBleedDamageIncrease: 5 },
+    8:  { physicalBleedDamageIncrease: 20 },
+    9:  { physicalBleedApplyChance: 5 },
+    10: { physicalBleedDamageIncrease: 5 },
+    11: { physicalBleedIgnoreResistance: true },
+    // 12-15: key nodes — not yet defined
+  },
 }
 
 export function getPhysicalNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -828,14 +879,19 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
   const b: PhysicalBonuses = {
     damageIncrease: 0, moreDamage: 0,
     actionSpeedIncrease: 0, bleedApplyChance: 0,
+    bleedDamageIncrease: 0, bleedDurationIncrease: 0, bleedMoreDamage: 0, bleedIgnoreResistance: false,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getPhysicalNodeEffect(treeIdx, nodeIdx)
-      b.damageIncrease      += eff.physicalDamageIncrease ?? 0
-      b.moreDamage          += eff.physicalMoreDamage ?? 0
-      b.actionSpeedIncrease += eff.physicalActionSpeedIncrease ?? 0
-      b.bleedApplyChance    += eff.physicalBleedApplyChance ?? 0
+      b.damageIncrease          += eff.physicalDamageIncrease ?? 0
+      b.moreDamage              += eff.physicalMoreDamage ?? 0
+      b.actionSpeedIncrease     += eff.physicalActionSpeedIncrease ?? 0
+      b.bleedApplyChance        += eff.physicalBleedApplyChance ?? 0
+      b.bleedDamageIncrease     += eff.physicalBleedDamageIncrease ?? 0
+      b.bleedDurationIncrease   += eff.physicalBleedDurationIncrease ?? 0
+      b.bleedMoreDamage         += eff.physicalBleedMoreDamage ?? 0
+      if (eff.physicalBleedIgnoreResistance) b.bleedIgnoreResistance = true
     }
   }
   return b
@@ -944,6 +1000,14 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     4: '+2% increased maximum mana · +2% increased mana regeneration',
     5: '20% more maximum mana',
   },
+  2: {
+    0: 'Steal +0.5% of action hit damage as mana',
+    1: '+5% increased mana stolen',
+    2: '+10% increased mana steal hard cap (caps at 1% of maximum mana per instance)',
+    3: 'Steal +0.5% of action hit damage as mana',
+    4: '+5% increased mana stolen',
+    5: 'Stealing mana has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
+  },
 }
 
 const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -987,6 +1051,20 @@ const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     3: '+5% increased physical damage',
     4: '+3% increased physical action speed',
     5: '+10% more physical damage',
+  },
+  1: {
+    0:  'Physical actions have +5% chance to apply bleed',
+    1:  '+5% increased bleed damage',
+    2:  '+10% increased bleed damage · +10% increased bleed duration',
+    3:  'Physical actions have +5% chance to apply bleed',
+    4:  '+5% increased bleed damage',
+    5:  '+30% more bleed damage',
+    6:  'Physical actions have +5% chance to apply bleed',
+    7:  '+5% increased bleed damage',
+    8:  '+20% increased bleed damage',
+    9:  'Physical actions have +5% chance to apply bleed',
+    10: '+5% increased bleed damage',
+    11: 'Bleeding ignores enemy physical resistance',
   },
 }
 

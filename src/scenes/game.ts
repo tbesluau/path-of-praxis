@@ -1075,6 +1075,22 @@ export function createGameScene(
     }
   }
 
+  function applyManaSteal(hitDamage: number): void {
+    if (playerDead) return
+    const mb = getManaBonuses()
+    if (mb.manaStealPercent <= 0) return
+    const frenzyStealBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyStealBonus : 0
+    const stealRaw = hitDamage * (mb.manaStealPercent / 100)
+      * (1 + (mb.manaStealIncrease + frenzyStealBonus) / 100)
+    const cap = playerEntity.maxMana * 0.01 * (1 + mb.manaStealCapIncrease / 100)
+    const stolen = Math.min(stealRaw, cap)
+    if (stolen <= 0) return
+    playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + stolen)
+    if (mb.feedingFrenzyChance > 0 && Math.random() * 100 < mb.feedingFrenzyChance) {
+      applyEffect({ id: 'feedingFrenzy', iconName: 'drumstick', kind: 'buff' }, balance.buffs.feedingFrenzyDurationMs)
+    }
+  }
+
   function updateBars(): void {
     lifeFill.style.width = `${(playerEntity.currentLife / playerEntity.maxLife) * 100}%`
     manaFill.style.width = `${(playerEntity.currentMana / playerEntity.maxMana) * 100}%`
@@ -2494,6 +2510,7 @@ export function createGameScene(
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
             applyLifeSteal(actualDamage)
+            applyManaSteal(actualDamage)
           }
           if (target.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1
@@ -2533,7 +2550,9 @@ export function createGameScene(
             const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
               const dps = damage * balance.effects.bleedDpsFraction
-              const duration = balance.effects.bleedBaseDurationMs
+                * (1 + pb.bleedDamageIncrease / 100)
+                * (1 + pb.bleedMoreDamage / 100)
+              const duration = balance.effects.bleedBaseDurationMs * (1 + pb.bleedDurationIncrease / 100)
               const list = bleedStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               bleedStacks.set(target.id, list)
