@@ -75,6 +75,8 @@ export const balance = {
     feedingFrenzyDurationMs: 5000, // how long Feeding Frenzy lasts after each trigger
     feedingFrenzyStealBonus:   20, // additive % to life/mana steal while active
     feedingFrenzyRegenBonus:   20, // additive % to life/mana regen while active
+    frenzyDurationMs:        3000, // how long each Frenzy stack window lasts (refreshed on re-gain)
+    frenzyMaxCharges:          10, // maximum Frenzy charges (raised to 20 by mastery final node)
   },
 
   // ── Damage-type effects (burning, bleeding, electrocuted, ...) ───────────

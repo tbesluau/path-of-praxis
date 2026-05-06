@@ -1,3 +1,18 @@
+## Frenzy
+
+A **Status** (buff) gained from strike-tagged hits when the **Strike mastery — Frenzy tree** grants frenzy chance. Lasts **3 seconds**; re-gaining frenzy while it is active refreshes its duration to the full value.
+
+**Charges:** Frenzy stacks up to **10 charges** (raised to **20** with the Frenzy tree final node). Each qualifying strike hit that passes the frenzy chance roll adds one charge, up to the maximum. Charges are tracked separately from the duration and reset to 0 when frenzy expires.
+
+**While Frenzy is active, all actions (not just strikes) gain:**
+- Increased damage — flat bonus + bonus per charge (from Frenzy mastery nodes)
+- Increased action speed — flat bonus + bonus per charge (from Frenzy mastery nodes)
+- Bonus chance to trigger afflictions per charge (from Frenzy node 5)
+
+Note: frenzy can only be **gained** from strikes, but its bonuses apply to **every action** while the buff is active.
+
+---
+
 ## Feeding Frenzy
 
 A **Status** (buff) triggered by the **Life Steal** major node (Feeding Frenzy chance, node 5). Lasts **5 seconds**; re-triggering refreshes the duration.

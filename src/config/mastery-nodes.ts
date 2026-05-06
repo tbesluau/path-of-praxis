@@ -89,6 +89,23 @@ export interface NodeEffect {
   projExtraChance?: number        // additive %; chance to fire an extra projectile at reduced damage
   projExtraDamage?: number        // additive %; increases the damage of extra projectiles (base 50%)
   projExtraDoubleRoll?: boolean   // when extra projectile fires, roll once more for a second extra
+
+  // Strike mastery effects (Strike Damage tree)
+  strikeDamageIncrease?: number        // additive %; stacks before the 'more' multiplier
+  strikeDoubleDamageChance?: number    // additive %; chance to deal 2× damage on strike
+  strikeMoreDamage?: number            // 'more' %; applied as × (1 + sum/100) after increased
+  strikeActionSpeedIncrease?: number   // additive %; stacks before the 'more' multiplier
+  strikeAfflictionChanceIncrease?: number // additive %; bonus chance to apply afflictions on strike hits
+
+  // Strike mastery effects (Frenzy tree)
+  strikeFrenzyChance?: number              // additive %; chance per strike hit to add a Frenzy charge
+  frenzyDamagePerCharge?: number           // additive %; increased damage per Frenzy charge
+  frenzySpeedPerCharge?: number            // additive %; increased action speed per Frenzy charge
+  frenzyFlatDamage?: number                // additive %; flat increased damage while Frenzy is active
+  frenzyFlatSpeed?: number                 // additive %; flat increased action speed while Frenzy is active
+  frenzyAfflictionChancePerCharge?: number // additive %; bonus affliction chance per Frenzy charge
+  frenzyDurationIncrease?: number          // additive %; extends Frenzy duration
+  frenzyMaxChargesBonus?: number           // flat: additional maximum Frenzy charges
 }
 
 export interface SpellBonuses {
@@ -150,6 +167,22 @@ export interface LightningBonuses {
   jumpDamagePenaltyReduce: number // total additive %
   jumpRangeIncrease: number       // total additive %
   jumpReroll: boolean
+}
+
+export interface StrikeBonuses {
+  damageIncrease: number           // total additive %
+  moreDamage: number               // total 'more' %
+  doubleDamageChance: number       // total additive %
+  actionSpeedIncrease: number      // total additive %
+  afflictionChanceIncrease: number // total additive %
+  frenzyChance: number             // total additive %
+  frenzyDamagePerCharge: number    // total additive %
+  frenzySpeedPerCharge: number     // total additive %
+  frenzyFlatDamage: number         // total additive %
+  frenzyFlatSpeed: number          // total additive %
+  frenzyAfflictionChancePerCharge: number // total additive %
+  frenzyDurationIncrease: number   // total additive %
+  frenzyMaxChargesBonus: number    // total flat
 }
 
 export interface EnemyBonuses {
@@ -625,6 +658,73 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
   return b
 }
 
+// ── Strike mastery node effects ───────────────────────────────────────────
+// Tree 0: Strike Damage (full)  Tree 1: Frenzy (full)  Tree 2-4: not yet implemented
+
+const STRIKE_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Strike Damage
+    0:  { strikeDamageIncrease: 5 },
+    1:  { strikeDoubleDamageChance: 5 },
+    2:  { strikeDamageIncrease: 12 },
+    3:  { strikeDamageIncrease: 5 },
+    4:  { strikeDoubleDamageChance: 5 },
+    5:  { strikeMoreDamage: 20 },
+    6:  { strikeDamageIncrease: 5 },
+    7:  { strikeDoubleDamageChance: 5 },
+    8:  { strikeDoubleDamageChance: 5, strikeDamageIncrease: 5, strikeActionSpeedIncrease: 5 },
+    9:  { strikeDamageIncrease: 5 },
+    10: { strikeDoubleDamageChance: 5 },
+    11: { strikeAfflictionChanceIncrease: 20 },
+  },
+  1: {  // Frenzy
+    0:  { strikeFrenzyChance: 5 },
+    1:  { frenzyDamagePerCharge: 1, frenzySpeedPerCharge: 1 },
+    2:  { strikeFrenzyChance: 5, frenzyFlatDamage: 10, frenzyFlatSpeed: 10 },
+    3:  { strikeFrenzyChance: 5 },
+    4:  { frenzyDamagePerCharge: 1, frenzySpeedPerCharge: 1 },
+    5:  { frenzyAfflictionChancePerCharge: 1 },
+    6:  { strikeFrenzyChance: 5 },
+    7:  { frenzyDamagePerCharge: 1, frenzySpeedPerCharge: 1 },
+    8:  { strikeFrenzyChance: 5, frenzyDurationIncrease: 20, frenzyDamagePerCharge: 1, frenzySpeedPerCharge: 1 },
+    9:  { strikeFrenzyChance: 5 },
+    10: { frenzyDamagePerCharge: 1, frenzySpeedPerCharge: 1 },
+    11: { frenzyMaxChargesBonus: 10 },
+  },
+}
+
+export function getStrikeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return STRIKE_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
+  const b: StrikeBonuses = {
+    damageIncrease: 0, moreDamage: 0, doubleDamageChance: 0,
+    actionSpeedIncrease: 0, afflictionChanceIncrease: 0,
+    frenzyChance: 0, frenzyDamagePerCharge: 0, frenzySpeedPerCharge: 0,
+    frenzyFlatDamage: 0, frenzyFlatSpeed: 0,
+    frenzyAfflictionChancePerCharge: 0, frenzyDurationIncrease: 0, frenzyMaxChargesBonus: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getStrikeNodeEffect(treeIdx, nodeIdx)
+      b.damageIncrease              += eff.strikeDamageIncrease ?? 0
+      b.moreDamage                  += eff.strikeMoreDamage ?? 0
+      b.doubleDamageChance          += eff.strikeDoubleDamageChance ?? 0
+      b.actionSpeedIncrease         += eff.strikeActionSpeedIncrease ?? 0
+      b.afflictionChanceIncrease    += eff.strikeAfflictionChanceIncrease ?? 0
+      b.frenzyChance                += eff.strikeFrenzyChance ?? 0
+      b.frenzyDamagePerCharge       += eff.frenzyDamagePerCharge ?? 0
+      b.frenzySpeedPerCharge        += eff.frenzySpeedPerCharge ?? 0
+      b.frenzyFlatDamage            += eff.frenzyFlatDamage ?? 0
+      b.frenzyFlatSpeed             += eff.frenzyFlatSpeed ?? 0
+      b.frenzyAfflictionChancePerCharge += eff.frenzyAfflictionChancePerCharge ?? 0
+      b.frenzyDurationIncrease      += eff.frenzyDurationIncrease ?? 0
+      b.frenzyMaxChargesBonus       += eff.frenzyMaxChargesBonus ?? 0
+    }
+  }
+  return b
+}
+
 // ── Node description text (shown in the node detail modal) ─────────────────
 
 const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -808,6 +908,10 @@ export function getNodeDescription(
     const desc = LIGHTNING_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
+  if (masteryId === 'strike') {
+    const desc = STRIKE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`
 }
 
@@ -833,6 +937,37 @@ const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  '+5% chance to fire an additional projectile',
     10: '+5% increased additional projectile damage',
     11: 'When an additional projectile fires, roll once more for a second additional projectile',
+  },
+}
+
+const STRIKE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0:  '+5% increased strike damage',
+    1:  '+5% chance for strike to deal double damage',
+    2:  '+12% increased strike damage',
+    3:  '+5% increased strike damage',
+    4:  '+5% chance for strike to deal double damage',
+    5:  '+20% more strike damage',
+    6:  '+5% increased strike damage',
+    7:  '+5% chance for strike to deal double damage',
+    8:  '+5% chance for strike to deal double damage · +5% increased strike damage · +5% increased action speed',
+    9:  '+5% increased strike damage',
+    10: '+5% chance for strike to deal double damage',
+    11: 'Strikes have +20% increased chance to trigger afflictions',
+  },
+  1: {
+    0:  'Strikes have +5% increased chance to trigger frenzy',
+    1:  'Frenzy gives +1% increased damage and action speed per charge',
+    2:  'Strikes have +5% increased chance to trigger frenzy · Frenzy gives a flat +10% increased damage and action speed',
+    3:  'Strikes have +5% increased chance to trigger frenzy',
+    4:  'Frenzy gives +1% increased damage and action speed per charge',
+    5:  'Frenzy has +1% increased chance to trigger afflictions per charge',
+    6:  'Strikes have +5% increased chance to trigger frenzy',
+    7:  'Frenzy gives +1% increased damage and action speed per charge',
+    8:  'Strikes have +5% increased chance to trigger frenzy · Frenzy has +20% increased duration · Frenzy gives +1% increased damage and action speed per charge',
+    9:  'Strikes have +5% increased chance to trigger frenzy',
+    10: 'Frenzy gives +1% increased damage and action speed per charge',
+    11: 'Frenzy has 10 additional maximum charges',
   },
 }
 
