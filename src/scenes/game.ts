@@ -1,12 +1,12 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick } from 'lucide'
+import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick, Swords } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -157,6 +157,10 @@ export function createGameScene(
 
   function getLightningBonuses(): LightningBonuses {
     return computeLightningBonuses(masteryProgress['lightning']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getStrikeBonuses(): StrikeBonuses {
+    return computeStrikeBonuses(masteryProgress['strike']?.nodes ?? [[], [], [], [], []])
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -388,6 +392,11 @@ export function createGameScene(
       const pb = getProjectileBonuses()
       entity.attackDamage *= (1 + pb.damageIncrease / 100)
       entity.attackRange  *= (1 + pb.rangeIncrease / 100)
+    }
+    if (entity.role === 'player' && def.tags.includes('strike')) {
+      const sb = getStrikeBonuses()
+      entity.attackDamage *= (1 + sb.damageIncrease / 100) * (1 + sb.moreDamage / 100)
+      entity.attackSpeed  *= (1 + sb.actionSpeedIncrease / 100)
     }
     if (entity.role === 'player') {
       const rb = getRuneBonuses(id)
@@ -954,6 +963,7 @@ export function createGameScene(
     remainingMs: number
   }
   const activeEffects: ActiveEffect[] = []
+  let frenzyCharges = 0
 
   function computeLifeRegenPerSec(): number {
     const lb = getLifeBonuses()
@@ -1049,6 +1059,15 @@ export function createGameScene(
     }
   }
 
+  function applyFrenzy(): void {
+    const sb = getStrikeBonuses()
+    const maxCharges = balance.buffs.frenzyMaxCharges + sb.frenzyMaxChargesBonus
+    if (frenzyCharges < maxCharges) frenzyCharges++
+    const durationMs = balance.buffs.frenzyDurationMs * (1 + sb.frenzyDurationIncrease / 100)
+    applyEffect({ id: 'frenzy', iconName: 'swords', kind: 'buff' }, durationMs)
+    renderBuffBar()
+  }
+
   function tickEffects(deltaMs: number): void {
     if (activeEffects.length === 0) return
     let removed = false
@@ -1072,10 +1091,13 @@ export function createGameScene(
       ...activeEffects.filter(e => e.kind === 'mixed'),
       ...activeEffects.filter(e => e.kind === 'debuff'),
     ]
-    buffBarEl.innerHTML = ordered.map(e =>
-      `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i></div>`
-    ).join('')
-    if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick } })
+    buffBarEl.innerHTML = ordered.map(e => {
+      const badge = e.id === 'frenzy' && frenzyCharges > 0
+        ? `<span class="buff-charge">${frenzyCharges}</span>`
+        : ''
+      return `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
+    }).join('')
+    if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -1691,7 +1713,7 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
-    if ((id === 'spell' || id === 'projectile') && getAction(playerActionId).tags.includes(id)) {
+    if ((id === 'spell' || id === 'projectile' || id === 'strike') && getAction(playerActionId).tags.includes(id)) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -1714,7 +1736,7 @@ export function createGameScene(
       level: existing.level - 1,
       nodes: defaultMasteryNodes(),
     }
-    if ((id === 'spell' || id === 'projectile') && getAction(playerActionId).tags.includes(id)) {
+    if ((id === 'spell' || id === 'projectile' || id === 'strike') && getAction(playerActionId).tags.includes(id)) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -2260,6 +2282,7 @@ export function createGameScene(
         }
 
         tickEffects(ticker.deltaMS)
+        if (!hasEffect('frenzy')) frenzyCharges = 0
         updateChunks()
 
         // ── Movement ────────────────────────────────────────────────────────
@@ -2352,6 +2375,12 @@ export function createGameScene(
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
         const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false): void => {
+          const isPlayerAttacker = attacker.role === 'player'
+          const sbHit = isPlayerAttacker ? getStrikeBonuses() : null
+          const strikeAfflBonus = (sbHit && action.tags.includes('strike')) ? sbHit.afflictionChanceIncrease : 0
+          const frenzyAfflBonus = (isPlayerAttacker && frenzyCharges > 0 && sbHit) ? frenzyCharges * sbHit.frenzyAfflictionChancePerCharge : 0
+          const extraAfflChance = strikeAfflBonus + frenzyAfflBonus
+
           let finalDamage = damage
           if (target.role === 'player') {
             const lb = getLifeBonuses()
@@ -2400,7 +2429,7 @@ export function createGameScene(
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && actualDamage > 0) {
             const fb = getFireBonuses()
             const immolBurnBonus = hasEffect('immolation') ? fb.immolateBurnChance : 0
-            const chance = balance.effects.baseApplyChance + fb.burnApplyChance + immolBurnBonus
+            const chance = balance.effects.baseApplyChance + fb.burnApplyChance + immolBurnBonus + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
               const dps = damage * balance.effects.burnDpsFraction
                 * (1 + fb.burnDamageIncrease / 100)
@@ -2414,11 +2443,15 @@ export function createGameScene(
           // Electrocution: roll on lightning-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('lightning') && actualDamage > 0) {
             const lbElec = getLightningBonuses()
-            const chance = balance.effects.baseApplyChance + lbElec.electrocuteApplyChance
+            const chance = balance.effects.baseApplyChance + lbElec.electrocuteApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
               const duration = balance.effects.electrocutionBaseDurationMs * (1 + lbElec.electrocuteDurationIncrease / 100)
               electrocuteStacks.set(target.id, duration)
             }
+          }
+          // Frenzy: roll on strike-tagged player hits to enemy targets
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('strike') && actualDamage > 0) {
+            if (sbHit && sbHit.frenzyChance > 0 && Math.random() * 100 < sbHit.frenzyChance) applyFrenzy()
           }
         }
 
@@ -2545,12 +2578,19 @@ export function createGameScene(
             const fb = getFireBonuses()
             if (fb.immolateDamageBonus > 0) effectiveDamage *= 1 + fb.immolateDamageBonus / 100
           }
-          if (spellBonuses && spellBonuses.doubleDamageChance > 0 && Math.random() * 100 < spellBonuses.doubleDamageChance) {
+          const isPlayerStrike = entity.role === 'player' && action.tags.includes('strike')
+          const totalDDC = (spellBonuses?.doubleDamageChance ?? 0) + (isPlayerStrike ? getStrikeBonuses().doubleDamageChance : 0)
+          if (totalDDC > 0 && Math.random() * 100 < totalDDC) {
             effectiveDamage *= 2
           }
           if (pb && pb.damagePerRange > 0) {
             const rangeUnits = entity.attackRange / balance.player.radius
             effectiveDamage *= 1 + (rangeUnits * pb.damagePerRange) / 100
+          }
+          if (entity.role === 'player' && frenzyCharges > 0) {
+            const sb = getStrikeBonuses()
+            const dmgBonus = sb.frenzyFlatDamage + frenzyCharges * sb.frenzyDamagePerCharge
+            if (dmgBonus > 0) effectiveDamage *= 1 + dmgBonus / 100
           }
 
           // ── Cycle duration ────────────────────────────────────────────────
@@ -2564,6 +2604,11 @@ export function createGameScene(
               const total = balance.effects.electrocutionBaseDamageTakenPct + lbAtk.electrocuteDamageTakenIncrease
               effectiveAttackSpeed *= Math.max(0, 1 - total / 100)
             }
+          }
+          if (entity.role === 'player' && frenzyCharges > 0) {
+            const sb = getStrikeBonuses()
+            const speedBonus = sb.frenzyFlatSpeed + frenzyCharges * sb.frenzySpeedPerCharge
+            if (speedBonus > 0) effectiveAttackSpeed *= 1 + speedBonus / 100
           }
           const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3

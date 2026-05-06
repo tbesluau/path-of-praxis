@@ -87,7 +87,11 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 1, label: 'Multiple Projectiles' },
         ...([3, 4, 5].map(n => ({ index: n - 1, label: `Projectile ${n}` }))),
       ] },
-      { id: 'strike',     label: 'Strike',     tag: 'strike',     trees: makeTrees('Strike')     },
+      { id: 'strike',     label: 'Strike',     tag: 'strike',     trees: [
+        { index: 0, label: 'Strike Damage' },
+        { index: 1, label: 'Frenzy' },
+        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Strike ${n}` }))),
+      ] },
     ],
   },
   {

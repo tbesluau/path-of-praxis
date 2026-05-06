@@ -230,6 +230,7 @@ body::after {
   z-index: 10;
 }
 .buff-icon {
+  position: relative;
   width: 32px;
   height: 32px;
   display: flex;
@@ -238,6 +239,17 @@ body::after {
   border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.4);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.buff-charge {
+  position: absolute;
+  bottom: 1px;
+  right: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 2px #000;
+  line-height: 1;
+  pointer-events: none;
 }
 .buff-icon--buff   { background: #2d8a3e; }
 .buff-icon--debuff { background: #c43c3c; }
