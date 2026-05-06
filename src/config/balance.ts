@@ -86,6 +86,9 @@ export const balance = {
     burnBaseDurationMs:     5000, // base burn duration
     burnSplashRadius:       100,  // px radius for major-node splash to non-burning neighbors
     burnDisplayIntervalMs:  500,  // ms between accumulated burn-damage number emissions
+    bleedDpsFraction:       0.20, // bleed dps = hit damage * this
+    bleedBaseDurationMs:    5000, // base bleed duration
+    bleedDisplayIntervalMs: 500,  // ms between accumulated bleed-damage number emissions
     electrocutionBaseDamageTakenPct: 10,   // base % additional damage taken while electrocuted
     electrocutionBaseDurationMs:     3000, // base electrocution duration
     jumpBaseDamagePenalty:           40,   // % damage penalty on jump hits (40 = ×0.6 damage; reduced by mastery)

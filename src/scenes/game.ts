@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -163,6 +163,10 @@ export function createGameScene(
     return computeStrikeBonuses(masteryProgress['strike']?.nodes ?? [[], [], [], [], []])
   }
 
+  function getPhysicalBonuses(): PhysicalBonuses {
+    return computePhysicalBonuses(masteryProgress['physical']?.nodes ?? [[], [], [], [], []])
+  }
+
   // ── Damage-type effects (burning + immolation) ────────────────────────────
   // Per-entity stack list. Only the highest-dps stack ticks; the rest are
   // silent. When the active stack expires, the next highest takes over.
@@ -175,6 +179,13 @@ export function createGameScene(
   // Duration mirrors the buff bar entry; both are refreshed together on re-trigger.
   let playerImmolation: { dps: number; remainingMs: number } | null = null
   let playerImmolAccum = { damage: 0, timeMs: 0 }
+
+  // ── Bleed affliction (physical-tagged hits) ──────────────────────────────
+  // Same model as burn: multiple independent stacks per enemy; only the
+  // highest-dps stack ticks at a time, the rest decay silently.
+  interface BleedStack { dps: number; remainingMs: number; sourceActionId: ActionId }
+  const bleedStacks = new Map<string, BleedStack[]>()
+  const bleedAccum = new Map<string, { damage: number; timeMs: number }>()
 
   // ── Electrocution debuff ──────────────────────────────────────────────────
   // One entry per entity: remaining duration ms. Re-applying refreshes the timer (no stacking).
@@ -363,6 +374,55 @@ export function createGameScene(
     }
   }
 
+  // Tick bleed: max-dps stack damages, others tick down silently. Damage
+  // numbers are batched into red ticks separate from direct-hit white numbers.
+  function tickBleeds(deltaMs: number, damagedIds: Set<string>): void {
+    if (bleedStacks.size === 0 && bleedAccum.size === 0) return
+    const dts = deltaMs / 1000
+
+    for (const [entityId, stacks] of bleedStacks) {
+      const entity = entities.find(e => e.id === entityId)
+      if (!entity || entity.role !== 'enemy') continue
+      let maxStack = stacks[0]
+      for (const s of stacks) if (s.dps > maxStack.dps) maxStack = s
+      const tickDmg = maxStack.dps * dts
+      if (tickDmg <= 0) continue
+
+      const prev = entity.currentLife
+      entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
+      const actual = prev - entity.currentLife
+      if (actual > 0) {
+        const eLevel = enemyLevels.get(entity.id) ?? 1
+        const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
+        awardXp(maxStack.sourceActionId, actual * xpMult)
+        if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
+        acc.damage += actual
+        bleedAccum.set(entityId, acc)
+        damagedIds.add(entityId)
+      }
+    }
+
+    for (const [entityId, stacks] of [...bleedStacks]) {
+      for (const s of stacks) s.remainingMs -= deltaMs
+      const live = stacks.filter(s => s.remainingMs > 0)
+      if (live.length === 0) bleedStacks.delete(entityId)
+      else bleedStacks.set(entityId, live)
+    }
+
+    for (const [entityId, acc] of [...bleedAccum]) {
+      const entity = entities.find(e => e.id === entityId)
+      if (!entity) { bleedAccum.delete(entityId); continue }
+      acc.timeMs += deltaMs
+      if (acc.timeMs >= balance.effects.bleedDisplayIntervalMs && acc.damage > 0) {
+        spawnDamageNumber(entity.x, entity.y - entity.radius - 8, acc.damage, 0xcc2222)
+        acc.damage = 0
+        acc.timeMs = 0
+      }
+      if (!bleedStacks.has(entityId) && acc.damage === 0) bleedAccum.delete(entityId)
+    }
+  }
+
   function computePlayerMaxLife(): number {
     const lb = getLifeBonuses()
     return balance.player.maxLife * statBonus(lifeProgress.level)
@@ -396,7 +456,23 @@ export function createGameScene(
     if (entity.role === 'player' && def.tags.includes('strike')) {
       const sb = getStrikeBonuses()
       entity.attackDamage *= (1 + sb.damageIncrease / 100) * (1 + sb.moreDamage / 100)
-      entity.attackSpeed  *= (1 + sb.actionSpeedIncrease / 100)
+      entity.attackSpeed  *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100)
+      entity.attackRange  *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100)
+    }
+    if (entity.role === 'player' && def.tags.includes('lightning')) {
+      const lb = getLightningBonuses()
+      entity.attackDamage *= (1 + lb.damageIncrease / 100) * (1 + lb.moreDamage / 100)
+      entity.attackSpeed  *= (1 + lb.actionSpeedIncrease / 100)
+    }
+    if (entity.role === 'player' && def.tags.includes('fire')) {
+      const fb = getFireBonuses()
+      entity.attackDamage *= (1 + fb.damageIncrease / 100) * (1 + fb.moreDamage / 100)
+      entity.attackSpeed  *= (1 + fb.actionSpeedIncrease / 100)
+    }
+    if (entity.role === 'player' && def.tags.includes('physical')) {
+      const pb = getPhysicalBonuses()
+      entity.attackDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
+      entity.attackSpeed  *= (1 + pb.actionSpeedIncrease / 100)
     }
     if (entity.role === 'player') {
       const rb = getRuneBonuses(id)
@@ -1447,6 +1523,8 @@ export function createGameScene(
     entityPaths.delete(entity.id)
     burnStacks.delete(entity.id)
     burnAccum.delete(entity.id)
+    bleedStacks.delete(entity.id)
+    bleedAccum.delete(entity.id)
     electrocuteStacks.delete(entity.id)
     electrocuteGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
@@ -1713,7 +1791,7 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
-    if ((id === 'spell' || id === 'projectile' || id === 'strike') && getAction(playerActionId).tags.includes(id)) {
+    if ((id === 'spell' || id === 'projectile' || id === 'strike' || id === 'lightning' || id === 'fire' || id === 'physical') && getAction(playerActionId).tags.includes(id)) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -1736,7 +1814,7 @@ export function createGameScene(
       level: existing.level - 1,
       nodes: defaultMasteryNodes(),
     }
-    if ((id === 'spell' || id === 'projectile' || id === 'strike') && getAction(playerActionId).tags.includes(id)) {
+    if ((id === 'spell' || id === 'projectile' || id === 'strike' || id === 'lightning' || id === 'fire' || id === 'physical') && getAction(playerActionId).tags.includes(id)) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -2449,6 +2527,18 @@ export function createGameScene(
               electrocuteStacks.set(target.id, duration)
             }
           }
+          // Bleeding: roll on physical-tagged player hits to enemy targets
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('physical') && actualDamage > 0) {
+            const pb = getPhysicalBonuses()
+            const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + extraAfflChance
+            if (guaranteedAfflictions || Math.random() * 100 < chance) {
+              const dps = damage * balance.effects.bleedDpsFraction
+              const duration = balance.effects.bleedBaseDurationMs
+              const list = bleedStacks.get(target.id) ?? []
+              list.push({ dps, remainingMs: duration, sourceActionId: actionId })
+              bleedStacks.set(target.id, list)
+            }
+          }
           // Frenzy: roll on strike-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('strike') && actualDamage > 0) {
             if (sbHit && sbHit.frenzyChance > 0 && Math.random() * 100 < sbHit.frenzyChance) applyFrenzy()
@@ -2751,6 +2841,7 @@ export function createGameScene(
 
         // ── Burning effect tick (registers burned entities for death pass) ─
         tickBurns(ticker.deltaMS, damagedIds)
+        tickBleeds(ticker.deltaMS, damagedIds)
         tickElectrocutions(ticker.deltaMS)
         tickElectrocuteEffects()
 

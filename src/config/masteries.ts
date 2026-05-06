@@ -65,16 +65,21 @@ export const masteryCategories: MasteryCategoryDef[] = [
   {
     label: 'Damage',
     masteries: [
-      { id: 'physical',  label: 'Physical',  tag: 'physical',  trees: makeTrees('Physical')  },
+      { id: 'physical',  label: 'Physical',  tag: 'physical',  trees: [
+        { index: 0, label: 'Physical Damage', short: true },
+        ...([2, 3, 4, 5].map(n => ({ index: n - 1, label: `Physical ${n}` }))),
+      ] },
       { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: [
         { index: 0, label: 'Burning' },
         { index: 1, label: 'Immolation', short: true },
-        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Fire ${n}` }))),
+        { index: 2, label: 'Fire Damage', short: true },
+        ...([4, 5].map(n => ({ index: n - 1, label: `Fire ${n}` }))),
       ] },
       { id: 'lightning', label: 'Lightning', tag: 'lightning', trees: [
         { index: 0, label: 'Electrocution' },
         { index: 1, label: 'Jump', short: true },
-        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Lightning ${n}` }))),
+        { index: 2, label: 'Lightning Damage', short: true },
+        ...([4, 5].map(n => ({ index: n - 1, label: `Lightning ${n}` }))),
       ] },
     ],
   },
@@ -90,7 +95,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'strike',     label: 'Strike',     tag: 'strike',     trees: [
         { index: 0, label: 'Strike Damage' },
         { index: 1, label: 'Frenzy' },
-        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Strike ${n}` }))),
+        { index: 2, label: 'Strike Range', short: true },
+        ...([4, 5].map(n => ({ index: n - 1, label: `Strike ${n}` }))),
       ] },
     ],
   },
