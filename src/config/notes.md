@@ -60,6 +60,21 @@ An **Affliction** (damage-over-time Effect) applied by fire-tagged actions to en
 
 ---
 
+## Bleed
+
+An **Affliction** (damage-over-time Effect) applied by physical-tagged actions to enemies. Multiple independent stacks can exist on the same enemy simultaneously.
+
+**Application:**
+- Base chance to apply per hit: **5%**
+- Physical mastery bleed apply chance nodes add to this directly (additive)
+
+**Per stack:**
+- Bleed DPS = hit damage × **20%** (the triggering hit's damage is used)
+- Duration: **5 seconds** base
+- Each stack tracks its own remaining duration and DPS independently; only the highest-DPS stack ticks at any moment
+
+---
+
 ## Effect
 
 Umbrella term for in-game modifiers triggered by hits, casts, kills, and other events. Effects are organised into several distinct categories — each category has its own rules for triggering, duration, stacking, and interaction with other modifiers.

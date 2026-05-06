@@ -106,6 +106,27 @@ export interface NodeEffect {
   frenzyAfflictionChancePerCharge?: number // additive %; bonus affliction chance per Frenzy charge
   frenzyDurationIncrease?: number          // additive %; extends Frenzy duration
   frenzyMaxChargesBonus?: number           // flat: additional maximum Frenzy charges
+
+  // Strike mastery effects (Strike Range tree)
+  strikeRangeIncrease?: number       // additive %; increases strike action range
+  strikeMoreRange?: number           // 'more' %; multiplies strike range after increased
+  strikeMoreActionSpeed?: number     // 'more' %; multiplies strike action speed after increased
+
+  // Lightning mastery effects (Lightning Damage tree)
+  lightningDamageIncrease?: number       // additive %; for lightning-tagged actions
+  lightningMoreDamage?: number           // 'more' %; for lightning-tagged actions
+  lightningActionSpeedIncrease?: number  // additive %; for lightning-tagged actions
+
+  // Fire mastery effects (Fire Damage tree)
+  fireDamageIncrease?: number       // additive %; for fire-tagged actions
+  fireMoreDamage?: number           // 'more' %; for fire-tagged actions
+  fireActionSpeedIncrease?: number  // additive %; for fire-tagged actions
+
+  // Physical mastery effects (Physical Damage tree)
+  physicalDamageIncrease?: number       // additive %; for physical-tagged actions
+  physicalMoreDamage?: number           // 'more' %; for physical-tagged actions
+  physicalActionSpeedIncrease?: number  // additive %; for physical-tagged actions
+  physicalBleedApplyChance?: number     // additive %; chance to apply bleed on physical hits
 }
 
 export interface SpellBonuses {
@@ -167,6 +188,9 @@ export interface LightningBonuses {
   jumpDamagePenaltyReduce: number // total additive %
   jumpRangeIncrease: number       // total additive %
   jumpReroll: boolean
+  damageIncrease: number          // total additive %; lightning-tagged actions
+  moreDamage: number              // total 'more' %; lightning-tagged actions
+  actionSpeedIncrease: number     // total additive %; lightning-tagged actions
 }
 
 export interface StrikeBonuses {
@@ -183,6 +207,16 @@ export interface StrikeBonuses {
   frenzyAfflictionChancePerCharge: number // total additive %
   frenzyDurationIncrease: number   // total additive %
   frenzyMaxChargesBonus: number    // total flat
+  rangeIncrease: number            // total additive %; strike action range
+  moreRange: number                // total 'more' %; strike action range
+  moreActionSpeed: number          // total 'more' %; strike action speed
+}
+
+export interface PhysicalBonuses {
+  damageIncrease: number       // total additive %
+  moreDamage: number           // total 'more' %
+  actionSpeedIncrease: number  // total additive %
+  bleedApplyChance: number     // total additive %
 }
 
 export interface EnemyBonuses {
@@ -206,6 +240,9 @@ export interface FireBonuses {
   immolateDamageBonus: number   // total additive %; fire damage bonus while immolation is active
   immolateBurnChance: number    // total additive %; burn apply chance bonus while immolation is active
   immolateDamageMult: number      // total multiplicative; product of all self-burn dps modifiers (1.0 = no change)
+  damageIncrease: number        // total additive %; fire-tagged actions
+  moreDamage: number            // total 'more' %; fire-tagged actions
+  actionSpeedIncrease: number   // total additive %; fire-tagged actions
 }
 
 // ── Spell mastery node effects ─────────────────────────────────────────────
@@ -451,6 +488,15 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageMult: 0.5 },
     // 12-13: key nodes — not yet defined
   },
+  2: {  // Fire Damage (short tree — line nodes 0-5, key nodes 12-13)
+    0: { fireDamageIncrease: 5 },
+    1: { fireActionSpeedIncrease: 3 },
+    2: { fireDamageIncrease: 5, fireBurnApplyChance: 5 },
+    3: { fireDamageIncrease: 5 },
+    4: { fireActionSpeedIncrease: 3 },
+    5: { fireMoreDamage: 10 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getFireNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -469,6 +515,9 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
     immolateDamageBonus: 0,
     immolateBurnChance: 0,
     immolateDamageMult: 1,
+    damageIncrease: 0,
+    moreDamage: 0,
+    actionSpeedIncrease: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -483,6 +532,9 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
       b.immolateDamageBonus += eff.fireImmolateDamageBonus ?? 0
       b.immolateBurnChance += eff.fireImmolateBurnChance ?? 0
       if (eff.fireImmolateDamageMult !== undefined) b.immolateDamageMult *= eff.fireImmolateDamageMult
+      b.damageIncrease += eff.fireDamageIncrease ?? 0
+      b.moreDamage += eff.fireMoreDamage ?? 0
+      b.actionSpeedIncrease += eff.fireActionSpeedIncrease ?? 0
     }
   }
   return b
@@ -625,6 +677,15 @@ const LIGHTNING_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { lightningJumpReroll: true, lightningJumpRangeIncrease: 30 },
     // 12-13: key nodes — not yet defined
   },
+  2: {  // Lightning Damage (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lightningDamageIncrease: 5 },
+    1: { lightningActionSpeedIncrease: 3 },
+    2: { lightningDamageIncrease: 5, lightningElectrocuteApplyChance: 5 },
+    3: { lightningDamageIncrease: 5 },
+    4: { lightningActionSpeedIncrease: 3 },
+    5: { lightningMoreDamage: 10 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getLightningNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -641,6 +702,9 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
     jumpDamagePenaltyReduce: 0,
     jumpRangeIncrease: 0,
     jumpReroll: false,
+    damageIncrease: 0,
+    moreDamage: 0,
+    actionSpeedIncrease: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -653,6 +717,9 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
       b.jumpDamagePenaltyReduce += eff.lightningJumpDamagePenaltyReduce ?? 0
       b.jumpRangeIncrease += eff.lightningJumpRangeIncrease ?? 0
       if (eff.lightningJumpReroll) b.jumpReroll = true
+      b.damageIncrease += eff.lightningDamageIncrease ?? 0
+      b.moreDamage += eff.lightningMoreDamage ?? 0
+      b.actionSpeedIncrease += eff.lightningActionSpeedIncrease ?? 0
     }
   }
   return b
@@ -690,6 +757,15 @@ const STRIKE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     10: { frenzyDamagePerCharge: 1, frenzySpeedPerCharge: 1 },
     11: { frenzyMaxChargesBonus: 10 },
   },
+  2: {  // Strike Range (short tree — line nodes 0-5, key nodes 12-13)
+    0: { strikeRangeIncrease: 5 },
+    1: { strikeActionSpeedIncrease: 3 },
+    2: { strikeRangeIncrease: 5, strikeDamageIncrease: 5 },
+    3: { strikeRangeIncrease: 5 },
+    4: { strikeActionSpeedIncrease: 3 },
+    5: { strikeMoreRange: 10, strikeMoreActionSpeed: 5 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getStrikeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -703,6 +779,7 @@ export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
     frenzyChance: 0, frenzyDamagePerCharge: 0, frenzySpeedPerCharge: 0,
     frenzyFlatDamage: 0, frenzyFlatSpeed: 0,
     frenzyAfflictionChancePerCharge: 0, frenzyDurationIncrease: 0, frenzyMaxChargesBonus: 0,
+    rangeIncrease: 0, moreRange: 0, moreActionSpeed: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -720,6 +797,45 @@ export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
       b.frenzyAfflictionChancePerCharge += eff.frenzyAfflictionChancePerCharge ?? 0
       b.frenzyDurationIncrease      += eff.frenzyDurationIncrease ?? 0
       b.frenzyMaxChargesBonus       += eff.frenzyMaxChargesBonus ?? 0
+      b.rangeIncrease               += eff.strikeRangeIncrease ?? 0
+      b.moreRange                   += eff.strikeMoreRange ?? 0
+      b.moreActionSpeed             += eff.strikeMoreActionSpeed ?? 0
+    }
+  }
+  return b
+}
+
+// ── Physical mastery node effects ─────────────────────────────────────────
+// Tree 0: Physical Damage (short)  Tree 1-4: not yet implemented
+
+const PHYSICAL_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Physical Damage (short tree — line nodes 0-5, key nodes 12-13)
+    0: { physicalDamageIncrease: 5 },
+    1: { physicalActionSpeedIncrease: 3 },
+    2: { physicalDamageIncrease: 5, physicalBleedApplyChance: 5 },
+    3: { physicalDamageIncrease: 5 },
+    4: { physicalActionSpeedIncrease: 3 },
+    5: { physicalMoreDamage: 10 },
+    // 12-13: key nodes — not yet defined
+  },
+}
+
+export function getPhysicalNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return PHYSICAL_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
+  const b: PhysicalBonuses = {
+    damageIncrease: 0, moreDamage: 0,
+    actionSpeedIncrease: 0, bleedApplyChance: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getPhysicalNodeEffect(treeIdx, nodeIdx)
+      b.damageIncrease      += eff.physicalDamageIncrease ?? 0
+      b.moreDamage          += eff.physicalMoreDamage ?? 0
+      b.actionSpeedIncrease += eff.physicalActionSpeedIncrease ?? 0
+      b.bleedApplyChance    += eff.physicalBleedApplyChance ?? 0
     }
   }
   return b
@@ -853,6 +969,25 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     4: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
     5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage is halved (×0.5)',
   },
+  2: {
+    0: '+5% increased fire damage',
+    1: '+3% increased fire action speed',
+    2: '+5% increased fire damage · Fire actions have +5% chance to apply burn',
+    3: '+5% increased fire damage',
+    4: '+3% increased fire action speed',
+    5: '+10% more fire damage',
+  },
+}
+
+const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0: '+5% increased physical damage',
+    1: '+3% increased physical action speed',
+    2: '+5% increased physical damage · Physical actions have +5% chance to apply bleed',
+    3: '+5% increased physical damage',
+    4: '+3% increased physical action speed',
+    5: '+10% more physical damage',
+  },
 }
 
 const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -912,6 +1047,10 @@ export function getNodeDescription(
     const desc = STRIKE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
+  if (masteryId === 'physical') {
+    const desc = PHYSICAL_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`
 }
 
@@ -969,6 +1108,14 @@ const STRIKE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     10: 'Frenzy gives +1% increased damage and action speed per charge',
     11: 'Frenzy has 10 additional maximum charges',
   },
+  2: {  // Strike Range
+    0: '+5% increased strike range',
+    1: '+3% increased strike action speed',
+    2: '+5% increased strike range · +5% increased strike damage',
+    3: '+5% increased strike range',
+    4: '+3% increased strike action speed',
+    5: '+10% more strike range · +5% more strike action speed',
+  },
 }
 
 const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -993,5 +1140,13 @@ const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, stri
     3: 'Lightning actions have +20% increased chance to jump to an additional enemy',
     4: '+10% reduced damage penalty of jump',
     5: 'Successful jumps re-roll for another jump (unlimited chain) · +30% increased jump range',
+  },
+  2: {  // Lightning Damage
+    0: '+5% increased lightning damage',
+    1: '+3% increased lightning action speed',
+    2: '+5% increased lightning damage · Lightning actions have +5% chance to electrocute',
+    3: '+5% increased lightning damage',
+    4: '+3% increased lightning action speed',
+    5: '+10% more lightning damage',
   },
 }
