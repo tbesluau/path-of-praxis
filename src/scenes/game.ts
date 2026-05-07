@@ -390,7 +390,8 @@ export function createGameScene(
     return !!s && s.length > 0
   }
 
-  // Tick burning effect: max-dps stack damages, others tick down silently.
+  // Tick burning effect: all stacks deal damage simultaneously.
+  // The highest-dps stack is used for XP/splash attribution.
   // Splashes a fraction to nearby non-burning enemies (fire mastery 11).
   // Adds touched entity IDs to `damagedIds` so the main loop's death pass picks them up.
   function tickBurns(deltaMs: number, damagedIds: Set<string>): void {
@@ -399,13 +400,14 @@ export function createGameScene(
     const fb = getFireBonuses()
     const splashFrac = fb.burnSplashFraction / 100
 
-    // Damage pass — read max-dps stack per entity, apply, accumulate, splash.
+    // Damage pass — all stacks tick; highest-dps stack used for attribution & splash.
     for (const [entityId, stacks] of burnStacks) {
       const entity = entities.find(e => e.id === entityId)
       if (!entity || entity.role !== 'enemy') continue
       let maxStack = stacks[0]
       for (const s of stacks) if (s.dps > maxStack.dps) maxStack = s
-      const tickDmg = maxStack.dps * dts
+      const totalDps = stacks.reduce((sum, s) => sum + s.dps, 0)
+      const tickDmg = totalDps * dts
       if (tickDmg <= 0) continue
 
       const prev = entity.currentLife
@@ -2899,8 +2901,11 @@ export function createGameScene(
           if (entity.role === 'player' && action.tags.includes('fire')) {
             const fb = getFireBonuses()
             if (fb.immolateChance > 0 && Math.random() * 100 < fb.immolateChance) {
-              const rawDps = effectiveDamage * balance.effects.burnDpsFraction * 0.5
-                * fb.immolateDamageMult
+              const capDps = playerEntity.maxLife * balance.effects.immolationSelfBurnCapFraction * fb.immolateDamageMult
+              const rawDps = Math.min(
+                effectiveDamage * balance.effects.burnDpsFraction * 0.5 * fb.immolateDamageMult,
+                capDps,
+              )
               const duration = balance.effects.burnBaseDurationMs * (1 + fb.burnDurationIncrease / 100)
               if (playerImmolation) {
                 playerImmolation.dps = rawDps
