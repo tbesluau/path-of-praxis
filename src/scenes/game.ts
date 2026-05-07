@@ -192,6 +192,9 @@ export function createGameScene(
   const electrocuteStacks = new Map<string, number>()
   // Per-entity lightning Graphics attached to the entity's Container child list.
   const electrocuteGraphics = new Map<string, Graphics>()
+  // Per-entity burn/bleed Graphics attached to the entity's Container child list.
+  const burnEffectGraphics  = new Map<string, Graphics>()
+  const bleedEffectGraphics = new Map<string, Graphics>()
 
   function isElectrocuted(entity: Entity): boolean {
     return electrocuteStacks.has(entity.id)
@@ -264,6 +267,121 @@ export function createGameScene(
         g.destroy()
         electrocuteGraphics.delete(id)
       }
+    }
+  }
+
+  function tickBurnEffects(): void {
+    if (!app) return
+    const now = Date.now()
+    const frame = Math.floor(now / 40)
+
+    const activeIds = new Set(burnStacks.keys())
+    if (playerImmolation !== null) activeIds.add(playerEntity.id)
+
+    for (const id of activeIds) {
+      const entity = id === playerEntity.id ? playerEntity : entities.find(e => e.id === id)
+      if (!entity) continue
+      const container = entityContainers.get(id)
+      if (!container) continue
+
+      let g = burnEffectGraphics.get(id)
+      if (!g) {
+        g = new Graphics()
+        container.addChild(g)
+        burnEffectGraphics.set(id, g)
+      }
+
+      g.clear()
+      const r = entity.radius
+
+      // Soft orange inner glow, pulsing
+      const glowAlpha = 0.12 + 0.08 * Math.sin(now / 140)
+      g.circle(0, 0, r)
+      g.fill({ color: 0xff5500, alpha: glowAlpha })
+
+      // Two jagged flame rings — outer orange, inner yellow
+      for (let b = 0; b < 2; b++) {
+        const color  = b === 0 ? 0xff6600 : 0xffcc00
+        const seed   = b * 23 + frame * 41
+        const pts    = 10
+        const phase  = (b * Math.PI) / pts + frame * 0.3
+        for (let i = 0; i <= pts; i++) {
+          const a = phase + (i / pts) * Math.PI * 2
+          const h = Math.sin(seed + i * 12.9898) * 43758.5453
+          const noise = (h - Math.floor(h)) - 0.5
+          const upBias = 1 + 0.35 * -Math.sin(a)  // larger at top
+          const rad = r + 4 + noise * r * 0.4 * upBias
+          const x = Math.cos(a) * rad
+          const y = Math.sin(a) * rad
+          if (i === 0) g.moveTo(x, y); else g.lineTo(x, y)
+        }
+        g.closePath()
+        g.stroke({ color, width: b === 0 ? 2 : 1.5, alpha: b === 0 ? 0.85 : 0.6 })
+      }
+
+      // Short upward sparks
+      for (let s = 0; s < 4; s++) {
+        const sh  = Math.sin(s * 71.3  + frame * 53) * 43758.5453
+        const ang = (sh - Math.floor(sh)) * Math.PI * 2
+        const lh  = Math.sin(s * 37.7  + frame * 67) * 43758.5453
+        const len = r * (0.3 + (lh - Math.floor(lh)) * 0.5)
+        const sx = Math.cos(ang) * r;  const sy = Math.sin(ang) * r
+        g.moveTo(sx, sy)
+        g.lineTo(sx + Math.cos(ang) * len * 0.4, sy + Math.sin(ang) * len * 0.4 - len * 0.5)
+        g.stroke({ color: 0xffcc44, width: 1.5, alpha: 0.75 })
+      }
+    }
+
+    for (const [id, g] of [...burnEffectGraphics]) {
+      const still = burnStacks.has(id) || (id === playerEntity.id && playerImmolation !== null)
+      if (!still) { g.destroy(); burnEffectGraphics.delete(id) }
+    }
+  }
+
+  function tickBleedEffects(): void {
+    if (!app) return
+    const now = Date.now()
+    const pulse = 0.5 + 0.5 * Math.sin(now / 220)
+
+    for (const id of bleedStacks.keys()) {
+      const entity = entities.find(e => e.id === id)
+      if (!entity) continue
+      const container = entityContainers.get(id)
+      if (!container) continue
+
+      let g = bleedEffectGraphics.get(id)
+      if (!g) {
+        g = new Graphics()
+        container.addChild(g)
+        bleedEffectGraphics.set(id, g)
+      }
+
+      g.clear()
+      const r = entity.radius
+
+      // Pulsing outer ring
+      g.circle(0, 0, r + 2 + pulse * 5)
+      g.stroke({ color: 0xcc0000, width: 2, alpha: 0.35 + pulse * 0.5 })
+
+      // Dark red inner tint
+      g.circle(0, 0, r)
+      g.fill({ color: 0xaa0000, alpha: 0.07 + pulse * 0.11 })
+
+      // Drip streaks radiating outward and slightly downward
+      for (let s = 0; s < 4; s++) {
+        const sh  = Math.sin(s * 83.5) * 43758.5453
+        const ang = (sh - Math.floor(sh)) * Math.PI * 2
+        const lh  = Math.sin(s * 47.2 + now / 600) * 43758.5453
+        const len = r * (0.25 + (lh - Math.floor(lh)) * 0.35)
+        const sx = Math.cos(ang) * r;  const sy = Math.sin(ang) * r
+        g.moveTo(sx, sy)
+        g.lineTo(sx + Math.cos(ang) * len * 0.35, sy + Math.sin(ang) * len * 0.35 + len * 0.55)
+        g.stroke({ color: 0xff2222, width: 1.5, alpha: 0.45 + pulse * 0.45 })
+      }
+    }
+
+    for (const [id, g] of [...bleedEffectGraphics]) {
+      if (!bleedStacks.has(id)) { g.destroy(); bleedEffectGraphics.delete(id) }
     }
   }
 
@@ -1401,7 +1519,7 @@ export function createGameScene(
       if (highResistEntities.has(entity.id)) {
         const shield = new Graphics()
         shield.poly([0, -6, 5, -3, 5, 2, 0, 6, -5, 2, -5, -3])
-        shield.fill({ color: 0xddaa22 })
+        shield.fill({ color: 0xffffff })
         const barW = entity.radius * 2
         shield.position.set(barW / 2, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
         c.addChild(shield)
@@ -2887,6 +3005,8 @@ export function createGameScene(
         tickBleeds(ticker.deltaMS, damagedIds)
         tickElectrocutions(ticker.deltaMS)
         tickElectrocuteEffects()
+        tickBurnEffects()
+        tickBleedEffects()
 
         // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
