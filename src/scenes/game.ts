@@ -1311,8 +1311,9 @@ export function createGameScene(
   }
   const pendingHits = new Map<string, PendingHit>()  // keyed by unique hit id (entity.id:seq)
   let hitSeq = 0
-  const strongEntities = new Set<string>()  // strong-or-elite enemies (elite is a subset)
+  const strongEntities = new Set<string>()    // strong-or-elite enemies (elite is a subset)
   const eliteEntities = new Set<string>()
+  const highResistEntities = new Set<string>() // enemies with physRot or ele resist ≥ threshold
 
   function tierXpMult(entityId: string): number {
     if (eliteEntities.has(entityId)) return balance.enemyVariance.eliteXpMultiplier
@@ -1396,6 +1397,14 @@ export function createGameScene(
         diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
         diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
         c.addChild(diamond)
+      }
+      if (highResistEntities.has(entity.id)) {
+        const shield = new Graphics()
+        shield.poly([0, -6, 5, -3, 5, 2, 0, 6, -5, 2, -5, -3])
+        shield.fill({ color: 0xddaa22 })
+        const barW = entity.radius * 2
+        shield.position.set(barW / 2, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
+        c.addChild(shield)
       }
     }
     c.position.set(entity.x, entity.y)
@@ -1534,6 +1543,7 @@ export function createGameScene(
     pendingMultiActions.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
+    highResistEntities.delete(entity.id)
     enemyLevels.delete(entity.id)
     entityActions.delete(entity.id)
     entityPaths.delete(entity.id)
@@ -2003,6 +2013,13 @@ export function createGameScene(
       )
       assignAction(enemy, randomAction().id)
       enemy.attackDamage *= damageScale * balance.enemyA.damageMultiplier * dmgMult
+      const rMin = tier === 'elite' ? ev.eliteResistMin : tier === 'strong' ? ev.strongResistMin : ev.normalResistMin
+      const rMax = tier === 'elite' ? ev.eliteResistMax : tier === 'strong' ? ev.strongResistMax : ev.normalResistMax
+      enemy.physRotResist = Math.round(rMin + Math.random() * (rMax - rMin))
+      enemy.eleResist     = Math.round(rMin + Math.random() * (rMax - rMin))
+      if (enemy.physRotResist >= ev.highResistThreshold || enemy.eleResist >= ev.highResistThreshold) {
+        highResistEntities.add(enemy.id)
+      }
       if (tier === 'elite') {
         enemy.attackSpeed *= ev.eliteSpeedMult
         strongEntities.add(enemy.id)
@@ -2499,6 +2516,13 @@ export function createGameScene(
             const lbElec = getLightningBonuses()
             const totalDmgTaken = balance.effects.electrocutionBaseDamageTakenPct + lbElec.electrocuteDamageTakenIncrease
             finalDamage *= 1 + totalDmgTaken / 100
+          }
+          // Enemy resistance: last calculation before applying the hit
+          if (target.role === 'enemy') {
+            let enemyResist = 0
+            if (action.tags.includes('physical') || action.tags.includes('rot')) enemyResist += target.physRotResist ?? 0
+            if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) enemyResist += target.eleResist ?? 0
+            if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - finalDamage)

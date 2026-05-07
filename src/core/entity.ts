@@ -16,6 +16,8 @@ export interface Entity {
   attackSpeed: number  // attacks per second
   attackDamage: number
   attackRange: number  // pixels from target edge
+  physRotResist?: number  // % damage reduction for physical and rot hits
+  eleResist?: number      // % damage reduction for fire, lightning, and cold hits
 }
 
 export function createPlayerEntity(
