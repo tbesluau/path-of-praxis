@@ -181,10 +181,12 @@ export function createGameScene(
   let playerImmolAccum = { damage: 0, timeMs: 0 }
 
   // ── Bleed affliction (physical-tagged hits) ──────────────────────────────
-  // Same model as burn: multiple independent stacks per enemy; only the
-  // highest-dps stack ticks at a time, the rest decay silently.
-  interface BleedStack { dps: number; remainingMs: number; sourceActionId: ActionId }
-  const bleedStacks = new Map<string, BleedStack[]>()
+  // Single stack per enemy. baseDps = hitDamage × bleedDpsFraction (mastery bonuses applied at tick time).
+  // stackedIncrease accumulates +20% per subsequent weaker proc, multiplicative with mastery bonuses.
+  // A proc that beats the current effective dps replaces baseDps while preserving stackedIncrease.
+  // Duration always refreshes on any proc.
+  interface BleedStack { baseDps: number; stackedIncrease: number; remainingMs: number; sourceActionId: ActionId }
+  const bleedStacks = new Map<string, BleedStack>()
   const bleedAccum = new Map<string, { damage: number; timeMs: number }>()
 
   // ── Electrocution debuff ──────────────────────────────────────────────────
@@ -494,18 +496,21 @@ export function createGameScene(
     }
   }
 
-  // Tick bleed: max-dps stack damages, others tick down silently. Damage
-  // numbers are batched into red ticks separate from direct-hit white numbers.
+  // Tick bleed: single stack per enemy. Effective DPS = baseDps × (1 + stackedIncrease/100)
+  // × mastery multipliers (applied at tick time so they stay independent of stacking logic).
   function tickBleeds(deltaMs: number, damagedIds: Set<string>): void {
     if (bleedStacks.size === 0 && bleedAccum.size === 0) return
     const dts = deltaMs / 1000
+    const pb = getPhysicalBonuses()
 
-    for (const [entityId, stacks] of bleedStacks) {
+    for (const [entityId, stack] of bleedStacks) {
       const entity = entities.find(e => e.id === entityId)
       if (!entity || entity.role !== 'enemy') continue
-      let maxStack = stacks[0]
-      for (const s of stacks) if (s.dps > maxStack.dps) maxStack = s
-      const tickDmg = maxStack.dps * dts
+      const effectiveDps = stack.baseDps
+        * (1 + stack.stackedIncrease / 100)
+        * (1 + pb.bleedDamageIncrease / 100)
+        * (1 + pb.bleedMoreDamage / 100)
+      const tickDmg = effectiveDps * dts
       if (tickDmg <= 0) continue
 
       const prev = entity.currentLife
@@ -514,20 +519,16 @@ export function createGameScene(
       if (actual > 0) {
         const eLevel = enemyLevels.get(entity.id) ?? 1
         const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
-        awardXp(maxStack.sourceActionId, actual * xpMult)
+        awardXp(stack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
         const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
         bleedAccum.set(entityId, acc)
         damagedIds.add(entityId)
       }
-    }
 
-    for (const [entityId, stacks] of [...bleedStacks]) {
-      for (const s of stacks) s.remainingMs -= deltaMs
-      const live = stacks.filter(s => s.remainingMs > 0)
-      if (live.length === 0) bleedStacks.delete(entityId)
-      else bleedStacks.set(entityId, live)
+      stack.remainingMs -= deltaMs
+      if (stack.remainingMs <= 0) bleedStacks.delete(entityId)
     }
 
     for (const [entityId, acc] of [...bleedAccum]) {
@@ -2693,13 +2694,21 @@ export function createGameScene(
             const pb = getPhysicalBonuses()
             const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
-              const dps = damage * balance.effects.bleedDpsFraction
-                * (1 + pb.bleedDamageIncrease / 100)
-                * (1 + pb.bleedMoreDamage / 100)
-              const duration = balance.effects.bleedBaseDurationMs * (1 + pb.bleedDurationIncrease / 100)
-              const list = bleedStacks.get(target.id) ?? []
-              list.push({ dps, remainingMs: duration, sourceActionId: actionId })
-              bleedStacks.set(target.id, list)
+              const newBaseDps  = damage * balance.effects.bleedDpsFraction
+              const duration    = balance.effects.bleedBaseDurationMs * (1 + pb.bleedDurationIncrease / 100)
+              const existing    = bleedStacks.get(target.id)
+              if (!existing) {
+                bleedStacks.set(target.id, { baseDps: newBaseDps, stackedIncrease: 0, remainingMs: duration, sourceActionId: actionId })
+              } else {
+                const currentEffective = existing.baseDps * (1 + existing.stackedIncrease / 100)
+                if (newBaseDps > currentEffective) {
+                  existing.baseDps = newBaseDps
+                } else {
+                  existing.stackedIncrease += balance.effects.bleedStackIncreasePerProc
+                }
+                existing.remainingMs    = duration
+                existing.sourceActionId = actionId
+              }
             }
           }
           // Frenzy: roll on strike-tagged player hits to enemy targets

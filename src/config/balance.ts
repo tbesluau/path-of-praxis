@@ -91,8 +91,9 @@ export const balance = {
     burnSplashRadius:       100,  // px radius for major-node splash to non-burning neighbors
     burnDisplayIntervalMs:  500,  // ms between accumulated burn-damage number emissions
     immolationSelfBurnCapFraction: 0.04, // max immolation self-burn DPS as fraction of max life/s (reduced by immolateDamageMult nodes)
-    bleedDpsFraction:       0.20, // bleed dps = hit damage * this
-    bleedBaseDurationMs:    5000, // base bleed duration
+    bleedDpsFraction:       0.25, // bleed dps = hit damage * this
+    bleedBaseDurationMs:    2000, // base bleed duration
+    bleedStackIncreasePerProc: 20, // % additive increase to baseDps when a weaker proc hits a bleeding enemy
     bleedDisplayIntervalMs: 500,  // ms between accumulated bleed-damage number emissions
     electrocutionBaseDamageTakenPct: 10,   // base % additional damage taken while electrocuted
     electrocutionBaseDurationMs:     3000, // base electrocution duration
