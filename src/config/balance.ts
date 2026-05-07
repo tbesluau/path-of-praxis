@@ -61,6 +61,10 @@ export const balance = {
     eliteDamageMin:  1.5,  eliteDamageMax: 2.5,
     eliteSpeedMult:  1.2,             // applied to BOTH attack speed AND move speed
     eliteXpMultiplier:  3,
+    normalResistMin:  0,  normalResistMax: 20,  // % resist range for normal enemies (physRot and ele rolled separately)
+    strongResistMin: 10,  strongResistMax: 40,  // % resist range for strong enemies
+    eliteResistMin:  25,  eliteResistMax:  50,  // % resist range for elite enemies
+    highResistThreshold: 40,                    // enemies at or above this value on either resist show a shield icon
   },
 
   // ── Death animation ──────────────────────────────────────────────────────
