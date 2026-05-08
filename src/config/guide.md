@@ -51,8 +51,8 @@ Click the action icon (next to the action XP bar) to open the runes panel.
 **Major runes** give multiplicative "more" bonuses in the same categories, making them more powerful but less stacking. The Sampler major rune gives a smaller portion of all four.
 
 **Key runes** radically change how the action works:
-- **Split Cast** — ×0.5 damage, but every cast automatically fires a second cast at 1/10 of the normal cycle delay.
-- **Slow & Heavy** — ×2 damage but ×0.5 attack speed.
+- **Split Action** — ×0.5 damage, but every action automatically fires a second action at 1/10 of the normal cycle delay.
+- **Slow & Heavy** — ×2 damage but ×0.5 action speed.
 - **Manaless** — ×2 mana cost, but the action fires even when you have no mana.
 
 Each rune can only fill one slot at a time. After a Rebirth, runes auto-fill in the same order they were slotted in the previous run as slots unlock. Making a manual change in any slot disables auto-fill for the rest of that run.
