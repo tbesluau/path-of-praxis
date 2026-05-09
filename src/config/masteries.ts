@@ -69,7 +69,7 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 0, label: 'Physical Damage' },
         { index: 1, label: 'Bleed' },
         { index: 2, label: 'Resistance Breaking', short: true },
-        { index: 3, label: 'Physical 4' },
+        { index: 3, label: 'Bloodlust', short: true },
         { index: 4, label: 'Physical 5' },
       ] },
       { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: [
@@ -83,7 +83,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 0, label: 'Electrocution' },
         { index: 1, label: 'Jump', short: true },
         { index: 2, label: 'Lightning Damage' },
-        ...([4, 5].map(n => ({ index: n - 1, label: `Lightning ${n}` }))),
+        { index: 3, label: 'Electrifying', short: true },
+        { index: 4, label: 'Lightning 5' },
       ] },
     ],
   },

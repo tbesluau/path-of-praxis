@@ -81,6 +81,8 @@ export const balance = {
     feedingFrenzyRegenBonus:   20, // additive % to life/mana regen while active
     frenzyDurationMs:        3000, // how long each Frenzy stack window lasts (refreshed on re-gain)
     frenzyMaxCharges:          10, // maximum Frenzy charges (raised to 20 by mastery final node)
+    bloodlustDurationMs:     4000, // how long Bloodlust lasts after each trigger
+    electrifiedDurationMs:   4000, // how long Electrified lasts after each trigger
   },
 
   // ── Damage-type effects (burning, bleeding, electrocuted, ...) ───────────

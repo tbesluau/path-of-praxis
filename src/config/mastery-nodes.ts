@@ -158,6 +158,19 @@ export interface NodeEffect {
   // Physical mastery effects (Resistance Breaking tree)
   physicalResistBreakChance?: number    // additive %; chance per physical hit to permanently reduce enemy physRot resistance by 1%
   physicalResistBreakSlowAtZero?: number // additive %; slow applied to enemies at 0% physRot resistance (movement and action speed)
+
+  // Physical mastery effects (Bloodlust tree)
+  physicalBloodlustChance?: number          // additive %; chance to trigger bloodlust on each successful bleed application
+  physicalBloodlustActionSpeed?: number     // additive %; physical action speed bonus while bloodlust is active
+  physicalBloodlustDamage?: number          // additive %; physical damage bonus while bloodlust is active
+  physicalBloodlustBleedChance?: number     // additive %; bonus bleed apply chance for physical actions while bloodlust is active
+  physicalBloodlustDurationIncrease?: number // additive %; extends bloodlust duration
+
+  // Lightning mastery effects (Electrifying tree)
+  lightningElectrifyChance?: number          // additive %; chance per player lightning hit to apply electrified to the player
+  lightningElectrifyActionSpeed?: number     // additive %; global action speed bonus while electrified
+  lightningElectrifyDurationIncrease?: number // additive %; extends electrified duration
+  lightningElectrifyDamageReduction?: number  // additive %; less damage taken from all sources while electrified
 }
 
 export interface SpellBonuses {
@@ -228,6 +241,10 @@ export interface LightningBonuses {
   moreDamage: number              // total 'more' %; lightning-tagged actions
   actionSpeedIncrease: number     // total additive %; lightning-tagged actions
   moreActionSpeed: number         // total 'more' %; lightning action speed
+  electrifyChance: number              // total additive %; chance per player lightning hit to apply electrified
+  electrifyActionSpeed: number         // total additive %; global action speed bonus while electrified
+  electrifyDurationIncrease: number    // total additive %; extends electrified duration
+  electrifyDamageReduction: number     // total additive %; less damage taken from all sources while electrified
 }
 
 export interface StrikeBonuses {
@@ -263,6 +280,11 @@ export interface PhysicalBonuses {
   bleedingTakeMore: number      // total 'more' %; physical damage multiplier vs bleeding enemies
   resistBreakChance: number     // total additive %; chance per physical hit to permanently reduce enemy phys-rot resistance
   resistBreakSlowAtZero: number // total additive %; slow applied to enemies at 0% phys-rot resistance
+  bloodlustChance: number             // total additive %; chance to trigger bloodlust on bleed application
+  bloodlustActionSpeed: number        // total additive %; physical action speed while bloodlust active
+  bloodlustDamage: number             // total additive %; physical damage while bloodlust active
+  bloodlustBleedChance: number        // total additive %; bonus bleed apply chance while bloodlust active
+  bloodlustDurationIncrease: number   // total additive %; extends bloodlust duration
 }
 
 export interface EnemyBonuses {
@@ -803,6 +825,15 @@ const LIGHTNING_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { lightningMoreDamage: 10, lightningMoreActionSpeed: 5 },
     // 12-15: key nodes — not yet defined
   },
+  3: {  // Electrifying (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lightningElectrifyChance: 5 },
+    1: { lightningElectrifyActionSpeed: 5 },
+    2: { lightningElectrifyDurationIncrease: 25, lightningElectrifyActionSpeed: 5 },
+    3: { lightningElectrifyChance: 5 },
+    4: { lightningElectrifyActionSpeed: 5 },
+    5: { lightningElectrifyDamageReduction: 5 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getLightningNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -823,6 +854,10 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
     moreDamage: 0,
     actionSpeedIncrease: 0,
     moreActionSpeed: 0,
+    electrifyChance: 0,
+    electrifyActionSpeed: 0,
+    electrifyDurationIncrease: 0,
+    electrifyDamageReduction: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -838,6 +873,10 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
       b.damageIncrease   += eff.lightningDamageIncrease ?? 0
       b.moreDamage       += eff.lightningMoreDamage ?? 0
       b.moreActionSpeed  += eff.lightningMoreActionSpeed ?? 0
+      b.electrifyChance            += eff.lightningElectrifyChance ?? 0
+      b.electrifyActionSpeed       += eff.lightningElectrifyActionSpeed ?? 0
+      b.electrifyDurationIncrease  += eff.lightningElectrifyDurationIncrease ?? 0
+      b.electrifyDamageReduction   += eff.lightningElectrifyDamageReduction ?? 0
       b.actionSpeedIncrease += eff.lightningActionSpeedIncrease ?? 0
     }
   }
@@ -979,6 +1018,15 @@ const PHYSICAL_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { physicalResistBreakSlowAtZero: 20 },
     // 12-13: key nodes — not yet defined
   },
+  3: {  // Bloodlust (short tree — line nodes 0-5, key nodes 12-13)
+    0: { physicalBloodlustChance: 5 },
+    1: { physicalBloodlustActionSpeed: 5 },
+    2: { physicalBloodlustActionSpeed: 5, physicalBloodlustDamage: 12, physicalBloodlustBleedChance: 10 },
+    3: { physicalBloodlustChance: 5 },
+    4: { physicalBloodlustActionSpeed: 5 },
+    5: { physicalBloodlustActionSpeed: 5, physicalBloodlustDamage: 12, physicalBloodlustDurationIncrease: 25 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getPhysicalNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -991,6 +1039,8 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
     actionSpeedIncrease: 0, bleedApplyChance: 0,
     bleedDamageIncrease: 0, bleedDurationIncrease: 0, bleedMoreDamage: 0, bleedIgnoreResistance: false,
     bleedingTakeMore: 0, resistBreakChance: 0, resistBreakSlowAtZero: 0,
+    bloodlustChance: 0, bloodlustActionSpeed: 0, bloodlustDamage: 0,
+    bloodlustBleedChance: 0, bloodlustDurationIncrease: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -1006,6 +1056,11 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
       b.bleedingTakeMore        += eff.physicalBleedingTakeMore ?? 0
       b.resistBreakChance       += eff.physicalResistBreakChance ?? 0
       b.resistBreakSlowAtZero   += eff.physicalResistBreakSlowAtZero ?? 0
+      b.bloodlustChance         += eff.physicalBloodlustChance ?? 0
+      b.bloodlustActionSpeed    += eff.physicalBloodlustActionSpeed ?? 0
+      b.bloodlustDamage         += eff.physicalBloodlustDamage ?? 0
+      b.bloodlustBleedChance    += eff.physicalBloodlustBleedChance ?? 0
+      b.bloodlustDurationIncrease += eff.physicalBloodlustDurationIncrease ?? 0
     }
   }
   return b
@@ -1222,6 +1277,14 @@ const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     4: '+5% increased physical damage',
     5: 'Enemies at 0% physical and rot resistance have their action and movement speed reduced by 20%',
   },
+  3: {  // Bloodlust
+    0: '+5% increased chance to trigger Bloodlust when inflicting bleeding',
+    1: 'Bloodlust grants +5% increased physical action speed',
+    2: 'Bloodlust grants +5% increased physical action speed and +12% increased physical damage · Physical actions during Bloodlust have +10% increased chance to cause bleeding',
+    3: '+5% increased chance to trigger Bloodlust when inflicting bleeding',
+    4: 'Bloodlust grants +5% increased physical action speed',
+    5: 'Bloodlust grants +5% increased physical action speed and +12% increased physical damage · +25% increased Bloodlust duration',
+  },
 }
 
 const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -1396,5 +1459,13 @@ const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, stri
     9:  '+5% increased lightning damage',
     10: '+3% increased lightning action speed',
     11: '+10% more lightning damage · +5% more lightning action speed',
+  },
+  3: {  // Electrifying
+    0: 'Lightning actions have +5% increased chance to Electrify you',
+    1: '+5% increased action speed while Electrified',
+    2: '+25% increased Electrified duration · +5% increased action speed while Electrified',
+    3: 'Lightning actions have +5% increased chance to Electrify you',
+    4: '+5% increased action speed while Electrified',
+    5: '5% less damage taken from all sources while Electrified',
   },
 }
