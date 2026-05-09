@@ -66,9 +66,11 @@ export const masteryCategories: MasteryCategoryDef[] = [
     label: 'Damage',
     masteries: [
       { id: 'physical',  label: 'Physical',  tag: 'physical',  trees: [
-        { index: 0, label: 'Physical Damage', short: true },
+        { index: 0, label: 'Physical Damage' },
         { index: 1, label: 'Bleed' },
-        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Physical ${n}` }))),
+        { index: 2, label: 'Resistance Breaking', short: true },
+        { index: 3, label: 'Physical 4' },
+        { index: 4, label: 'Physical 5' },
       ] },
       { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: [
         { index: 0, label: 'Burning' },
@@ -98,7 +100,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 0, label: 'Strike Damage' },
         { index: 1, label: 'Frenzy' },
         { index: 2, label: 'Strike Range', short: true },
-        ...([4, 5].map(n => ({ index: n - 1, label: `Strike ${n}` }))),
+        { index: 3, label: 'Additional Target', short: true },
+        { index: 4, label: 'Strike 5' },
       ] },
     ],
   },

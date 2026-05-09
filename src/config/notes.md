@@ -259,9 +259,13 @@ A category of **Effect** in which an additional cast of a player action is trigg
 
 ## Additional Target
 
-A **Multi-action** triggered by Spell mastery — Trance tree (multi-target chance nodes). Available only while the **Trance** Status is active. Each successful roll queues a follow-up cast at **1/5 of the normal cycle**, against a different in-range enemy, paying no mana. The follow-up deals full damage with no Multi-action-specific modifier.
+A **Multi-action** that queues a follow-up cast at **1/5 of the normal cycle** against a different in-range enemy, paying no mana. The follow-up deals full damage with no Multi-action-specific modifier.
 
-Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Projectile**, **Second Cast**, and trigger Statuses or Afflictions. It cannot roll for another Additional Target.
+**Sources (chances are summed into a single roll per cast):**
+- Spell mastery — Trance tree (multi-target chance nodes), only while **Trance** is active
+- Strike mastery — Additional Target tree, on any **strike**-tagged action; total chance = strike additional-target chance × (1 + strike additional-target more / 100)
+
+A single action that is both spell- and strike-tagged sums the chances from both pools. Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Projectile**, **Second Cast**, and trigger Statuses or Afflictions. It cannot roll for another Additional Target.
 
 ---
 
@@ -313,14 +317,13 @@ More mitigation types are planned. Some Spell mastery nodes allow spells to bypa
 
 ## Resistance
 
-Player stat that reduces incoming damage from a specific damage family. Three families exist:
-- **Physical** — raised by Life mastery nodes
-- **Rot** — raised by Life mastery nodes
-- **Elemental** — raised by Life mastery nodes
+Player and enemy stat that reduces incoming damage from a specific damage family. Two families exist:
+- **Physical & Rot** — combined into a single resistance stat
+- **Elemental** — covers fire, lightning, and cold
 
-Each resistance is a separate value. Incoming damage of a matching family is reduced by the resistance percentage before being applied to the player's life.
+Both player and enemies have these resistance values. Incoming damage of a matching family is reduced by the resistance percentage before being applied. The Life mastery — Resistances tree raises both player resistances; enemies roll initial values within tier-specific ranges at spawn.
 
-Resistance is one source of **Mitigation**; other mitigation types may be added in future updates.
+Resistance is one source of **Mitigation**. **Resistance reduction** effects (e.g. Physical Resistance Breaking, Burning enemies vs Fire) lower an enemy's effective resistance below its rolled value, clamped at 0%.
 
 ---
 
@@ -357,3 +360,17 @@ A **Multi-action** triggered by Lightning mastery (Jump tree). After a lightning
 **Chaining (major node 5):** when active, each successful jump re-rolls for another jump with no limit. The chain continues as long as rolls succeed and valid targets exist.
 
 **Inheritance:** each jump in a chain carries the ×0.9 depth multiplier from the Multi-action system on top of the ×0.6 jump-specific modifier. A first jump (depth 1) deals ×0.9 × 0.6 = ×0.54 damage; a second jump (depth 2) adds another ×0.9, giving ×0.486, and so on.
+
+---
+
+## Resistance Breaking
+
+A **Physical mastery — Resistance Breaking** mechanic. Each physical-tagged player hit on an enemy rolls the resist-break chance; on success the enemy's combined **physical and rot resistance** is permanently reduced by **1 percentage point** (clamped at 0% — never negative). The reduction is per-enemy and persists for that enemy's lifetime; new enemies roll fresh resistance values.
+
+**Resistance Breaking tree (short, 6 nodes):**
+- Nodes 0 and 3 (small): +5% chance to permanently reduce enemy phys-rot resistance by 1% each — total +10% base
+- Nodes 1 and 4 (small): +5% increased physical damage each
+- Node 2 (strong): +7% chance to permanently reduce enemy phys-rot resistance · +3% increased physical action speed
+- Node 5 (major): Enemies at 0% physical and rot resistance have their movement speed and action speed reduced by **20%**
+
+The slow at 0% applies multiplicatively alongside other speed modifiers and to both move speed and attack speed (mirrors the Burning Ground slow's behaviour).
