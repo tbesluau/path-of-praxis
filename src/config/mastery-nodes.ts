@@ -135,6 +135,7 @@ export interface NodeEffect {
   lightningDamageIncrease?: number       // additive %; for lightning-tagged actions
   lightningMoreDamage?: number           // 'more' %; for lightning-tagged actions
   lightningActionSpeedIncrease?: number  // additive %; for lightning-tagged actions
+  lightningMoreActionSpeed?: number      // 'more' %; multiplies lightning action speed after increased
 
   // Fire mastery effects (Fire Damage tree)
   fireDamageIncrease?: number       // additive %; for fire-tagged actions
@@ -226,6 +227,7 @@ export interface LightningBonuses {
   damageIncrease: number          // total additive %; lightning-tagged actions
   moreDamage: number              // total 'more' %; lightning-tagged actions
   actionSpeedIncrease: number     // total additive %; lightning-tagged actions
+  moreActionSpeed: number         // total 'more' %; lightning action speed
 }
 
 export interface StrikeBonuses {
@@ -786,14 +788,20 @@ const LIGHTNING_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { lightningJumpReroll: true, lightningJumpRangeIncrease: 30 },
     // 12-13: key nodes — not yet defined
   },
-  2: {  // Lightning Damage (short tree — line nodes 0-5, key nodes 12-13)
-    0: { lightningDamageIncrease: 5 },
-    1: { lightningActionSpeedIncrease: 3 },
-    2: { lightningDamageIncrease: 5, lightningElectrocuteApplyChance: 5 },
-    3: { lightningDamageIncrease: 5 },
-    4: { lightningActionSpeedIncrease: 3 },
-    5: { lightningMoreDamage: 10 },
-    // 12-13: key nodes — not yet defined
+  2: {  // Lightning Damage (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { lightningDamageIncrease: 5 },
+    1:  { lightningActionSpeedIncrease: 3 },
+    2:  { lightningDamageIncrease: 5, lightningElectrocuteApplyChance: 5 },
+    3:  { lightningDamageIncrease: 5 },
+    4:  { lightningActionSpeedIncrease: 3 },
+    5:  { lightningMoreDamage: 10 },
+    6:  { lightningDamageIncrease: 5 },
+    7:  { lightningActionSpeedIncrease: 3 },
+    8:  { lightningDamageIncrease: 12 },
+    9:  { lightningDamageIncrease: 5 },
+    10: { lightningActionSpeedIncrease: 3 },
+    11: { lightningMoreDamage: 10, lightningMoreActionSpeed: 5 },
+    // 12-15: key nodes — not yet defined
   },
 }
 
@@ -814,6 +822,7 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
     damageIncrease: 0,
     moreDamage: 0,
     actionSpeedIncrease: 0,
+    moreActionSpeed: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -826,8 +835,9 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
       b.jumpDamagePenaltyReduce += eff.lightningJumpDamagePenaltyReduce ?? 0
       b.jumpRangeIncrease += eff.lightningJumpRangeIncrease ?? 0
       if (eff.lightningJumpReroll) b.jumpReroll = true
-      b.damageIncrease += eff.lightningDamageIncrease ?? 0
-      b.moreDamage += eff.lightningMoreDamage ?? 0
+      b.damageIncrease   += eff.lightningDamageIncrease ?? 0
+      b.moreDamage       += eff.lightningMoreDamage ?? 0
+      b.moreActionSpeed  += eff.lightningMoreActionSpeed ?? 0
       b.actionSpeedIncrease += eff.lightningActionSpeedIncrease ?? 0
     }
   }
@@ -1374,11 +1384,17 @@ const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, stri
     5: 'Successful jumps re-roll for another jump (unlimited chain) · +30% increased jump range',
   },
   2: {  // Lightning Damage
-    0: '+5% increased lightning damage',
-    1: '+3% increased lightning action speed',
-    2: '+5% increased lightning damage · Lightning actions have +5% chance to electrocute',
-    3: '+5% increased lightning damage',
-    4: '+3% increased lightning action speed',
-    5: '+10% more lightning damage',
+    0:  '+5% increased lightning damage',
+    1:  '+3% increased lightning action speed',
+    2:  '+5% increased lightning damage · Lightning actions have +5% chance to electrocute',
+    3:  '+5% increased lightning damage',
+    4:  '+3% increased lightning action speed',
+    5:  '+10% more lightning damage',
+    6:  '+5% increased lightning damage',
+    7:  '+3% increased lightning action speed',
+    8:  '+12% increased lightning damage',
+    9:  '+5% increased lightning damage',
+    10: '+3% increased lightning action speed',
+    11: '+10% more lightning damage · +5% more lightning action speed',
   },
 }
