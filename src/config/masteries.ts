@@ -109,7 +109,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 0, label: 'Maximum Life' },
         { index: 1, label: 'Life Regeneration', short: true },
         { index: 2, label: 'Life Steal', short: true },
-        ...([4, 5].map(n => ({ index: n - 1, label: `Life ${n}` }))),
+        { index: 3, label: 'Resistances' },
+        { index: 4, label: 'Life 5' },
       ] },
       { id: 'mana', label: 'Mana', trees: [
         { index: 0, label: 'Mana Regeneration', short: true },
