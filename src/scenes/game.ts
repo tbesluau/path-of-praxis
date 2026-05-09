@@ -2689,6 +2689,10 @@ export function createGameScene(
             const slow = getFireBonuses().burnGroundSlowAmount
             if (slow > 0) ms *= Math.max(0, 1 - slow / 100)
           }
+          if (entity.role === 'enemy' && (entity.physRotResist ?? 0) <= 0) {
+            const breakSlow = getPhysicalBonuses().resistBreakSlowAtZero
+            if (breakSlow > 0) ms *= Math.max(0, 1 - breakSlow / 100)
+          }
           Matter.Body.setVelocity(body, {
             x: moveX * ms * MATTER_BASE_DT,
             y: moveY * ms * MATTER_BASE_DT,
@@ -2754,6 +2758,13 @@ export function createGameScene(
             const fb = getFireBonuses()
             if (fb.burningTakeIncreased > 0) {
               finalDamage *= 1 + fb.burningTakeIncreased / 100
+            }
+          }
+          // Bleeding enemies take more physical damage (Physical Damage tree node 11)
+          if (target.role === 'enemy' && attacker.role === 'player' && action.tags.includes('physical') && bleedStacks.has(target.id)) {
+            const pbBleed = getPhysicalBonuses()
+            if (pbBleed.bleedingTakeMore > 0) {
+              finalDamage *= 1 + pbBleed.bleedingTakeMore / 100
             }
           }
           // Electrocution: additional damage taken — own multiplier, applies from all sources
@@ -2850,6 +2861,14 @@ export function createGameScene(
                 existing.remainingMs    = duration
                 existing.sourceActionId = actionId
               }
+            }
+          }
+          // Resistance Breaking: roll on physical-tagged player hits to permanently reduce enemy physRot resistance
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('physical') && actualDamage > 0) {
+            const pbBreak = getPhysicalBonuses()
+            if (pbBreak.resistBreakChance > 0 && (target.physRotResist ?? 0) > 0
+                && Math.random() * 100 < pbBreak.resistBreakChance) {
+              target.physRotResist = Math.max(0, (target.physRotResist ?? 0) - 1)
             }
           }
           // Frenzy: roll on strike-tagged player hits to enemy targets
@@ -3012,6 +3031,10 @@ export function createGameScene(
             const slow = getFireBonuses().burnGroundSlowAmount
             if (slow > 0) effectiveAttackSpeed *= Math.max(0, 1 - slow / 100)
           }
+          if (entity.role === 'enemy' && (entity.physRotResist ?? 0) <= 0) {
+            const breakSlow = getPhysicalBonuses().resistBreakSlowAtZero
+            if (breakSlow > 0) effectiveAttackSpeed *= Math.max(0, 1 - breakSlow / 100)
+          }
           if (entity.role === 'player' && frenzyCharges > 0) {
             const sb = getStrikeBonuses()
             const speedBonus = sb.frenzyFlatSpeed + frenzyCharges * sb.frenzySpeedPerCharge
@@ -3107,12 +3130,18 @@ export function createGameScene(
           // ── Roll for new multi-actions ────────────────────────────────────
           // Any cast can trigger any type except the one it was itself.
 
-          // additionalTarget (trance multi-target): not if this cast was an additionalTarget
-          if (pending?.type !== 'additionalTarget' && tranceActive && spellBonuses
-              && spellBonuses.tranceMultiTargetChance > 0
-              && Math.random() * 100 < spellBonuses.tranceMultiTargetChance) {
-            const extra = pickOtherTarget()
-            if (extra) queueMA('additionalTarget', childInherited, extra)
+          // additionalTarget: trance multi-target chance + strike additional-target chance (sum, then 'more' applies to strike pool)
+          if (pending?.type !== 'additionalTarget' && entity.role === 'player') {
+            let totalChance = 0
+            if (tranceActive && spellBonuses) totalChance += spellBonuses.tranceMultiTargetChance
+            if (action.tags.includes('strike')) {
+              const sb = getStrikeBonuses()
+              totalChance += sb.additionalTargetChance * (1 + sb.additionalTargetMore / 100)
+            }
+            if (totalChance > 0 && Math.random() * 100 < totalChance) {
+              const extra = pickOtherTarget()
+              if (extra) queueMA('additionalTarget', childInherited, extra)
+            }
           }
 
           // doubleCast: not if this cast was a doubleCast

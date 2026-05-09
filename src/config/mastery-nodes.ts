@@ -127,6 +127,10 @@ export interface NodeEffect {
   strikeMoreRange?: number           // 'more' %; multiplies strike range after increased
   strikeMoreActionSpeed?: number     // 'more' %; multiplies strike action speed after increased
 
+  // Strike mastery effects (Additional Target tree)
+  strikeAdditionalTargetChance?: number  // additive %; chance for strike to target an additional enemy
+  strikeAdditionalTargetMore?: number    // 'more' %; multiplies the total chance after increased
+
   // Lightning mastery effects (Lightning Damage tree)
   lightningDamageIncrease?: number       // additive %; for lightning-tagged actions
   lightningMoreDamage?: number           // 'more' %; for lightning-tagged actions
@@ -148,6 +152,11 @@ export interface NodeEffect {
   physicalBleedDurationIncrease?: number // additive %; extends bleed duration
   physicalBleedMoreDamage?: number      // 'more' %; multiplies bleed dps after increased
   physicalBleedIgnoreResistance?: boolean // when true, bleeding ignores enemy physical resistance (no-op for now)
+  physicalBleedingTakeMore?: number     // 'more' %; multiplier on physical damage to bleeding enemies
+
+  // Physical mastery effects (Resistance Breaking tree)
+  physicalResistBreakChance?: number    // additive %; chance per physical hit to permanently reduce enemy physRot resistance by 1%
+  physicalResistBreakSlowAtZero?: number // additive %; slow applied to enemies at 0% physRot resistance (movement and action speed)
 }
 
 export interface SpellBonuses {
@@ -236,6 +245,8 @@ export interface StrikeBonuses {
   rangeIncrease: number            // total additive %; strike action range
   moreRange: number                // total 'more' %; strike action range
   moreActionSpeed: number          // total 'more' %; strike action speed
+  additionalTargetChance: number   // total additive %; chance for strikes to target an additional enemy
+  additionalTargetMore: number     // total 'more' %; multiplies additional-target chance after increased
 }
 
 export interface PhysicalBonuses {
@@ -247,6 +258,9 @@ export interface PhysicalBonuses {
   bleedDurationIncrease: number // total additive %
   bleedMoreDamage: number       // total 'more' %
   bleedIgnoreResistance: boolean // when true, bleeding ignores enemy physical resistance (no-op for now)
+  bleedingTakeMore: number      // total 'more' %; physical damage multiplier vs bleeding enemies
+  resistBreakChance: number     // total additive %; chance per physical hit to permanently reduce enemy phys-rot resistance
+  resistBreakSlowAtZero: number // total additive %; slow applied to enemies at 0% phys-rot resistance
 }
 
 export interface EnemyBonuses {
@@ -861,6 +875,15 @@ const STRIKE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { strikeMoreRange: 10, strikeMoreActionSpeed: 5 },
     // 12-13: key nodes — not yet defined
   },
+  3: {  // Additional Target (short tree — line nodes 0-5, key nodes 12-13)
+    0: { strikeAdditionalTargetChance: 5 },
+    1: { strikeActionSpeedIncrease: 3 },
+    2: { strikeAdditionalTargetChance: 10 },
+    3: { strikeAdditionalTargetChance: 5 },
+    4: { strikeActionSpeedIncrease: 3 },
+    5: { strikeAdditionalTargetMore: 10 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getStrikeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -875,6 +898,7 @@ export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
     frenzyFlatDamage: 0, frenzyFlatSpeed: 0,
     frenzyAfflictionChancePerCharge: 0, frenzyDurationIncrease: 0, frenzyMaxChargesBonus: 0,
     rangeIncrease: 0, moreRange: 0, moreActionSpeed: 0,
+    additionalTargetChance: 0, additionalTargetMore: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -895,6 +919,8 @@ export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
       b.rangeIncrease               += eff.strikeRangeIncrease ?? 0
       b.moreRange                   += eff.strikeMoreRange ?? 0
       b.moreActionSpeed             += eff.strikeMoreActionSpeed ?? 0
+      b.additionalTargetChance      += eff.strikeAdditionalTargetChance ?? 0
+      b.additionalTargetMore        += eff.strikeAdditionalTargetMore ?? 0
     }
   }
   return b
@@ -904,14 +930,20 @@ export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
 // Tree 0: Physical Damage (short)  Tree 1-4: not yet implemented
 
 const PHYSICAL_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Physical Damage (short tree — line nodes 0-5, key nodes 12-13)
-    0: { physicalDamageIncrease: 5 },
-    1: { physicalActionSpeedIncrease: 3 },
-    2: { physicalDamageIncrease: 5, physicalBleedApplyChance: 5 },
-    3: { physicalDamageIncrease: 5 },
-    4: { physicalActionSpeedIncrease: 3 },
-    5: { physicalMoreDamage: 10 },
-    // 12-13: key nodes — not yet defined
+  0: {  // Physical Damage (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { physicalDamageIncrease: 5 },
+    1:  { physicalActionSpeedIncrease: 3 },
+    2:  { physicalDamageIncrease: 5, physicalBleedApplyChance: 5 },
+    3:  { physicalDamageIncrease: 5 },
+    4:  { physicalActionSpeedIncrease: 3 },
+    5:  { physicalMoreDamage: 10 },
+    6:  { physicalDamageIncrease: 5 },
+    7:  { physicalActionSpeedIncrease: 3 },
+    8:  { physicalDamageIncrease: 12 },
+    9:  { physicalDamageIncrease: 5 },
+    10: { physicalActionSpeedIncrease: 3 },
+    11: { physicalBleedingTakeMore: 10 },
+    // 12-15: key nodes — not yet defined
   },
   1: {  // Bleed (full tree — line nodes 0-11, key nodes 12-15)
     0:  { physicalBleedApplyChance: 5 },
@@ -928,6 +960,15 @@ const PHYSICAL_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { physicalBleedIgnoreResistance: true },
     // 12-15: key nodes — not yet defined
   },
+  2: {  // Resistance Breaking (short tree — line nodes 0-5, key nodes 12-13)
+    0: { physicalResistBreakChance: 5 },
+    1: { physicalDamageIncrease: 5 },
+    2: { physicalResistBreakChance: 7, physicalActionSpeedIncrease: 3 },
+    3: { physicalResistBreakChance: 5 },
+    4: { physicalDamageIncrease: 5 },
+    5: { physicalResistBreakSlowAtZero: 20 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getPhysicalNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -939,6 +980,7 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
     damageIncrease: 0, moreDamage: 0,
     actionSpeedIncrease: 0, bleedApplyChance: 0,
     bleedDamageIncrease: 0, bleedDurationIncrease: 0, bleedMoreDamage: 0, bleedIgnoreResistance: false,
+    bleedingTakeMore: 0, resistBreakChance: 0, resistBreakSlowAtZero: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -951,6 +993,9 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
       b.bleedDurationIncrease   += eff.physicalBleedDurationIncrease ?? 0
       b.bleedMoreDamage         += eff.physicalBleedMoreDamage ?? 0
       if (eff.physicalBleedIgnoreResistance) b.bleedIgnoreResistance = true
+      b.bleedingTakeMore        += eff.physicalBleedingTakeMore ?? 0
+      b.resistBreakChance       += eff.physicalResistBreakChance ?? 0
+      b.resistBreakSlowAtZero   += eff.physicalResistBreakSlowAtZero ?? 0
     }
   }
   return b
@@ -1132,12 +1177,18 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
 
 const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
   0: {
-    0: '+5% increased physical damage',
-    1: '+3% increased physical action speed',
-    2: '+5% increased physical damage · Physical actions have +5% chance to apply bleed',
-    3: '+5% increased physical damage',
-    4: '+3% increased physical action speed',
-    5: '+10% more physical damage',
+    0:  '+5% increased physical damage',
+    1:  '+3% increased physical action speed',
+    2:  '+5% increased physical damage · Physical actions have +5% chance to apply bleed',
+    3:  '+5% increased physical damage',
+    4:  '+3% increased physical action speed',
+    5:  '+10% more physical damage',
+    6:  '+5% increased physical damage',
+    7:  '+3% increased physical action speed',
+    8:  '+12% increased physical damage',
+    9:  '+5% increased physical damage',
+    10: '+3% increased physical action speed',
+    11: 'Bleeding enemies take +10% more physical damage',
   },
   1: {
     0:  'Physical actions have +5% chance to apply bleed',
@@ -1152,6 +1203,14 @@ const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     9:  'Physical actions have +5% chance to apply bleed',
     10: '+5% increased bleed damage',
     11: 'Bleeding ignores enemy physical resistance',
+  },
+  2: {  // Resistance Breaking
+    0: 'Physical actions have +5% chance to permanently reduce enemy physical and rot resistance by 1%',
+    1: '+5% increased physical damage',
+    2: 'Physical actions have +7% chance to permanently reduce enemy physical and rot resistance by 1% · +3% increased physical action speed',
+    3: 'Physical actions have +5% chance to permanently reduce enemy physical and rot resistance by 1%',
+    4: '+5% increased physical damage',
+    5: 'Enemies at 0% physical and rot resistance have their action and movement speed reduced by 20%',
   },
 }
 
@@ -1280,6 +1339,14 @@ const STRIKE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     3: '+5% increased strike range',
     4: '+3% increased strike action speed',
     5: '+10% more strike range · +5% more strike action speed',
+  },
+  3: {  // Additional Target
+    0: '+5% increased chance for strike actions to target an additional enemy',
+    1: '+3% increased strike action speed',
+    2: '+10% increased chance for strike actions to target an additional enemy',
+    3: '+5% increased chance for strike actions to target an additional enemy',
+    4: '+3% increased strike action speed',
+    5: '+10% more chance for strike actions to target an additional enemy',
   },
 }
 
