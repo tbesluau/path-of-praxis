@@ -404,3 +404,13 @@ A **Status** (buff) on the player, sourced from the **Lightning mastery — Elec
 - Node 5 (major): -5% damage taken from all sources while Electrified
 
 The action-speed bonus is **global** — it applies to every player action regardless of tag. The incoming-damage reduction is applied after resistances and any other multipliers in the player damage pipeline.
+
+## Area
+
+A **damage type** alongside `projectile` and `strike`. Each action carries at most one of these three tags. An area-tagged action has a circular hit zone defined by its `area` field (in player-radius units): every enemy within that zone of the area's source takes the cast's full damage on impact.
+
+Two targeting modes:
+- **Enemy-targeted**: the action has a `range` like any other; once the targeted enemy enters that range the cast fires, and the area is centered **on the target**.
+- **Self-targeted** (`selfTargeted: true`): the action has no range. Its area radius doubles as the trigger range — the cast fires the moment any enemy enters the area, and the area is centered **on the caster**.
+
+Each enemy in the area receives an independent pending hit, so all per-hit triggers (burn, electrocute, bleed, frenzy, life/mana steal, action XP, etc.) fire once per hit enemy. Per-cast triggers (trance, immolate, doubleCast, mana payment) fire once per cast as usual.
