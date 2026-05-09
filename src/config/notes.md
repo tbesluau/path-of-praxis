@@ -222,6 +222,8 @@ A category of **Effect** that applies to the player. Statuses are shown as icons
 - **Trance** — buff; empowers spell casts (Additional Target chance, increased damage, increased cast speed)
 - **Feeding Frenzy** — buff; amplifies life steal and regeneration
 - **Immolation** — mixed; grants fire damage and burn-chance bonuses while inflicting self-burn DoT on the player
+- **Bloodlust** — buff; physical action speed/damage and bonus bleed apply chance while active
+- **Electrified** — buff; global action speed bonus and incoming damage reduction while active
 
 ---
 
@@ -374,3 +376,31 @@ A **Physical mastery — Resistance Breaking** mechanic. Each physical-tagged pl
 - Node 5 (major): Enemies at 0% physical and rot resistance have their movement speed and action speed reduced by **20%**
 
 The slow at 0% applies multiplicatively alongside other speed modifiers and to both move speed and attack speed (mirrors the Burning Ground slow's behaviour).
+
+---
+
+## Bloodlust
+
+A **Status** (buff) on the player, sourced from the **Physical mastery — Bloodlust tree**. Each successful **Bleed** application rolls the Bloodlust trigger chance; on success the buff is applied for **4 seconds** (extended by the major node). Re-triggering refreshes its duration to the full value. The buff itself does nothing intrinsic — its bonuses are entirely defined by the Bloodlust tree nodes.
+
+**Bloodlust tree (short, 6 nodes):**
+- Nodes 0 and 3 (small): +5% chance to trigger Bloodlust on bleed application each — total +10% base
+- Nodes 1 and 4 (small): Bloodlust grants +5% increased physical action speed each
+- Node 2 (strong): Bloodlust grants +5% increased physical action speed and +12% increased physical damage · Physical actions during Bloodlust have +10% increased chance to apply bleed
+- Node 5 (major): Bloodlust grants +5% increased physical action speed and +12% increased physical damage · +25% increased Bloodlust duration
+
+While Bloodlust is active, the action-speed and damage bonuses apply only to **physical-tagged actions**. The bonus bleed apply chance from node 2 also applies only while Bloodlust is up. Bonuses are summed additively into the existing physical pools at runtime.
+
+---
+
+## Electrified
+
+A **Status** (buff) on the player, sourced from the **Lightning mastery — Electrifying tree**. Each lightning-tagged player hit rolls the Electrify trigger chance; on success the buff is applied for **4 seconds** (extended by the strong node). Re-triggering refreshes its duration. The buff itself does nothing intrinsic — its bonuses are entirely defined by the Electrifying tree nodes.
+
+**Electrifying tree (short, 6 nodes):**
+- Nodes 0 and 3 (small): +5% chance for lightning actions to Electrify you each — total +10% base
+- Nodes 1 and 4 (small): +5% increased action speed while Electrified each (applies to **all** actions, not just lightning)
+- Node 2 (strong): +25% increased Electrified duration · +5% increased action speed while Electrified
+- Node 5 (major): -5% damage taken from all sources while Electrified
+
+The action-speed bonus is **global** — it applies to every player action regardless of tag. The incoming-damage reduction is applied after resistances and any other multipliers in the player damage pipeline.

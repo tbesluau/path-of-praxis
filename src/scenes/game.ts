@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick, Swords } from 'lucide'
+import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick, Swords, Droplets } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
@@ -1396,6 +1396,18 @@ export function createGameScene(
     renderBuffBar()
   }
 
+  function applyBloodlust(): void {
+    const pb = getPhysicalBonuses()
+    const durationMs = balance.buffs.bloodlustDurationMs * (1 + pb.bloodlustDurationIncrease / 100)
+    applyEffect({ id: 'bloodlust', iconName: 'droplets', kind: 'buff' }, durationMs)
+  }
+
+  function applyElectrified(): void {
+    const lb = getLightningBonuses()
+    const durationMs = balance.buffs.electrifiedDurationMs * (1 + lb.electrifyDurationIncrease / 100)
+    applyEffect({ id: 'electrified', iconName: 'zap', kind: 'buff' }, durationMs)
+  }
+
   function tickEffects(deltaMs: number): void {
     if (activeEffects.length === 0) return
     let removed = false
@@ -1425,7 +1437,7 @@ export function createGameScene(
         : ''
       return `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
     }).join('')
-    if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords } })
+    if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -2752,6 +2764,12 @@ export function createGameScene(
               const absorbed = damage - finalDamage
               playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + absorbed * lb.resistAbsorbLifePercent / 100)
             }
+            if (hasEffect('electrified')) {
+              const lbElectrified = getLightningBonuses()
+              if (lbElectrified.electrifyDamageReduction > 0) {
+                finalDamage *= Math.max(0, 1 - lbElectrified.electrifyDamageReduction / 100)
+              }
+            }
           }
           // Burning enemies take additional damage from any source (fire mastery 8)
           if (target.role === 'enemy' && attacker.role === 'player' && isBurning(target)) {
@@ -2841,10 +2859,16 @@ export function createGameScene(
               electrocuteStacks.set(target.id, duration)
             }
           }
+          // Electrifying: lightning-tagged player hits roll a chance to apply Electrified to the player
+          if (attacker.role === 'player' && action.tags.includes('lightning') && actualDamage > 0) {
+            const lbElec = getLightningBonuses()
+            if (lbElec.electrifyChance > 0 && Math.random() * 100 < lbElec.electrifyChance) applyElectrified()
+          }
           // Bleeding: roll on physical-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('physical') && actualDamage > 0) {
             const pb = getPhysicalBonuses()
-            const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + extraAfflChance
+            const bloodlustBleedBonus = hasEffect('bloodlust') ? pb.bloodlustBleedChance : 0
+            const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + bloodlustBleedBonus + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
               const newBaseDps  = damage * balance.effects.bleedDpsFraction
               const duration    = balance.effects.bleedBaseDurationMs * (1 + pb.bleedDurationIncrease / 100)
@@ -2861,6 +2885,8 @@ export function createGameScene(
                 existing.remainingMs    = duration
                 existing.sourceActionId = actionId
               }
+              // Bloodlust: roll on each successful bleed application
+              if (pb.bloodlustChance > 0 && Math.random() * 100 < pb.bloodlustChance) applyBloodlust()
             }
           }
           // Resistance Breaking: roll on physical-tagged player hits to permanently reduce enemy physRot resistance
@@ -3000,6 +3026,10 @@ export function createGameScene(
             const fb = getFireBonuses()
             if (fb.immolateDamageBonus > 0) effectiveDamage *= 1 + fb.immolateDamageBonus / 100
           }
+          if (entity.role === 'player' && action.tags.includes('physical') && hasEffect('bloodlust')) {
+            const pbBl = getPhysicalBonuses()
+            if (pbBl.bloodlustDamage > 0) effectiveDamage *= 1 + pbBl.bloodlustDamage / 100
+          }
           const isPlayerStrike = entity.role === 'player' && action.tags.includes('strike')
           const totalDDC = (spellBonuses?.doubleDamageChance ?? 0) + (isPlayerStrike ? getStrikeBonuses().doubleDamageChance : 0)
           if (totalDDC > 0 && Math.random() * 100 < totalDDC) {
@@ -3039,6 +3069,14 @@ export function createGameScene(
             const sb = getStrikeBonuses()
             const speedBonus = sb.frenzyFlatSpeed + frenzyCharges * sb.frenzySpeedPerCharge
             if (speedBonus > 0) effectiveAttackSpeed *= 1 + speedBonus / 100
+          }
+          if (entity.role === 'player' && action.tags.includes('physical') && hasEffect('bloodlust')) {
+            const pbSpeed = getPhysicalBonuses()
+            if (pbSpeed.bloodlustActionSpeed > 0) effectiveAttackSpeed *= 1 + pbSpeed.bloodlustActionSpeed / 100
+          }
+          if (entity.role === 'player' && hasEffect('electrified')) {
+            const lbSpeed = getLightningBonuses()
+            if (lbSpeed.electrifyActionSpeed > 0) effectiveAttackSpeed *= 1 + lbSpeed.electrifyActionSpeed / 100
           }
           const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
