@@ -22,6 +22,8 @@ export interface WeaponDef {
   speed: number
   manaCost: number
   tags: ActionTag[]
+  area?: number          // (area-tagged only) radius units (1 = player radius)
+  selfTargeted?: boolean // (area-tagged only) when true, area is centered on caster
 }
 
 export const weapons: Record<WeaponId, WeaponDef> = {

@@ -678,7 +678,9 @@ export function createGameScene(
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
     entity.attackSpeed  = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
     entity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
-    entity.attackRange  = def.range * balance.player.radius
+    // Self-targeted area actions have no range; their area radius doubles as the trigger range.
+    const baseRangeUnits = def.selfTargeted ? (def.area ?? 0) : def.range
+    entity.attackRange  = baseRangeUnits * balance.player.radius
     if (entity.role === 'player' && def.tags.includes('spell')) {
       const b = getSpellBonuses()
       entity.attackDamage *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
@@ -2365,6 +2367,35 @@ export function createGameScene(
     // zap: no pre-hit animation (instant strike)
   }
 
+  // Pre-hit VFX for area actions: an expanding ring at the area centre.
+  function spawnAreaPreHitVfx(_attacker: Entity, center: Entity, areaRadiusPx: number, action: ActionDef, preHitDuration: number): void {
+    const cx = center.x, cy = center.y
+    if (action.id === 'fire-nova') {
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const r = areaRadiusPx * p
+        const pulse = 1 + 0.08 * Math.sin(p * 30)
+        // Outer expanding fire ring
+        g.circle(cx, cy, r * pulse)
+        g.stroke({ color: 0xff6600, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
+        g.circle(cx, cy, r * 0.85 * pulse)
+        g.stroke({ color: 0xffcc33, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        // Inner flame body building up at the centre
+        g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
+        g.fill({ color: 0xff8800, alpha: 0.45 + p * 0.4 })
+        g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
+        g.fill({ color: 0xffee66, alpha: 0.7 + p * 0.3 })
+        // Sparks fanning out toward the ring
+        for (let i = 0; i < 14; i++) {
+          const a = (i / 14) * Math.PI * 2 + i * 0.3
+          const sd = areaRadiusPx * (0.2 + p * 0.85)
+          g.circle(cx + Math.cos(a) * sd, cy + Math.sin(a) * sd, Math.max(0.5, 2.5 * (1 - p * 0.5)))
+          g.fill({ color: i % 2 ? 0xffaa33 : 0xffee66, alpha: 1 - p * 0.3 })
+        }
+      })
+    }
+  }
+
   // Post-hit VFX: spawned when damage lands, duration does not affect game timing.
   function spawnPostHitVfx(attacker: Entity, target: Entity, action: ActionDef): void {
     const ax = attacker.x, ay = attacker.y
@@ -2430,6 +2461,22 @@ export function createGameScene(
           const ey = ty + Math.sin(a) * d
           g.circle(ex, ey, Math.max(0.5, 3.5 * (1 - p)))
           g.fill({ color: i % 3 === 0 ? 0xffee66 : (i % 2 ? 0xffaa00 : 0xff5500), alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'fire-nova') {
+      addVfx(260, (g, p) => {
+        g.clear()
+        g.circle(tx, ty, tr * (0.7 + p * 1.8))
+        g.fill({ color: 0xff5500, alpha: (1 - p) * 0.6 })
+        g.circle(tx, ty, tr * (0.45 + p * 1.0))
+        g.fill({ color: 0xff9900, alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.25 + p * 0.5))
+        g.fill({ color: 0xffee66, alpha: (1 - p) * 0.95 })
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + i * 0.4
+          const d = tr * (0.5 + p * 2.0)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 2.5 * (1 - p)))
+          g.fill({ color: i % 2 ? 0xffaa00 : 0xffee66, alpha: 1 - p })
         }
       })
     } else if (action.id === 'zap') {
@@ -3084,12 +3131,30 @@ export function createGameScene(
           const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
 
-          pendingHits.set(`${entity.id}:${++hitSeq}`, {
-            attacker: entity, target, damage: effectiveDamage,
-            action, actionId, countdown: preHitDuration,
-            guaranteedAfflictions,
-          })
-          spawnPreHitVfx(entity, target, action, preHitDuration)
+          if (action.tags.includes('area')) {
+            const areaRadiusPx = (action.area ?? 0) * balance.player.radius
+            const center = action.selfTargeted ? entity : target
+            const enemyRole: Entity['role'] = entity.role === 'player' ? 'enemy' : 'player'
+            for (const v of entities) {
+              if (v.role !== enemyRole) continue
+              const dx = v.x - center.x, dy = v.y - center.y
+              const dist = Math.sqrt(dx * dx + dy * dy)
+              if (dist - v.radius > areaRadiusPx) continue
+              pendingHits.set(`${entity.id}:${++hitSeq}`, {
+                attacker: entity, target: v, damage: effectiveDamage,
+                action, actionId, countdown: preHitDuration,
+                guaranteedAfflictions,
+              })
+            }
+            spawnAreaPreHitVfx(entity, center, areaRadiusPx, action, preHitDuration)
+          } else {
+            pendingHits.set(`${entity.id}:${++hitSeq}`, {
+              attacker: entity, target, damage: effectiveDamage,
+              action, actionId, countdown: preHitDuration,
+              guaranteedAfflictions,
+            })
+            spawnPreHitVfx(entity, target, action, preHitDuration)
+          }
 
           // ── Mana payment ──────────────────────────────────────────────────
           if (entity.maxMana > 0 && !isAdditionalTarget) {
