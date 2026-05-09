@@ -698,7 +698,7 @@ export function createGameScene(
     if (entity.role === 'player' && def.tags.includes('lightning')) {
       const lb = getLightningBonuses()
       entity.attackDamage *= (1 + lb.damageIncrease / 100) * (1 + lb.moreDamage / 100)
-      entity.attackSpeed  *= (1 + lb.actionSpeedIncrease / 100)
+      entity.attackSpeed  *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100)
     }
     if (entity.role === 'player' && def.tags.includes('fire')) {
       const fb = getFireBonuses()
