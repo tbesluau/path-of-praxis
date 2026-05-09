@@ -198,6 +198,24 @@ export function createGameScene(
   const burnEffectGraphics  = new Map<string, Graphics>()
   const bleedEffectGraphics = new Map<string, Graphics>()
 
+  // ── Burning ground (Fire mastery — Burning Ground tree) ─────────────────
+  // Per-tile state: tileKey "tx,ty" → dps, remainingMs, sourceActionId.
+  // A tile is immune to new burning ground until its current instance expires.
+  interface BurnGroundTile { dps: number; remainingMs: number; sourceActionId: ActionId }
+  const burnGroundTiles    = new Map<string, BurnGroundTile>()
+  const burnGroundGraphics = new Map<string, Graphics>()
+  const burnGroundAccum    = new Map<string, { damage: number; timeMs: number }>()
+  let burnGroundContainer: Container | null = null
+
+  function tileKey(worldX: number, worldY: number): string {
+    const gs = balance.world.gridSize
+    return `${Math.floor(worldX / gs)},${Math.floor(worldY / gs)}`
+  }
+
+  function isOnBurningGround(entity: Entity): boolean {
+    return burnGroundTiles.has(tileKey(entity.x, entity.y))
+  }
+
   function isElectrocuted(entity: Entity): boolean {
     return electrocuteStacks.has(entity.id)
   }
@@ -541,6 +559,103 @@ export function createGameScene(
         acc.timeMs = 0
       }
       if (!bleedStacks.has(entityId) && acc.damage === 0) bleedAccum.delete(entityId)
+    }
+  }
+
+  // Tick burning ground: damage every enemy whose tile coordinates match a
+  // burning ground tile. Damage uses the tile's stored dps (snapshot at apply time).
+  function tickBurnGrounds(deltaMs: number, damagedIds: Set<string>): void {
+    if (burnGroundTiles.size === 0 && burnGroundAccum.size === 0) return
+    const dts = deltaMs / 1000
+
+    for (const [tk, tile] of burnGroundTiles) {
+      const tickDmg = tile.dps * dts
+      if (tickDmg > 0) {
+        for (const e of entities) {
+          if (e.role !== 'enemy') continue
+          if (tileKey(e.x, e.y) !== tk) continue
+          const prev = e.currentLife
+          e.currentLife = Math.max(0, e.currentLife - tickDmg)
+          const actual = prev - e.currentLife
+          if (actual > 0) {
+            const eLevel = enemyLevels.get(e.id) ?? 1
+            const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(e.id)
+            awardXp(tile.sourceActionId, actual * xpMult)
+            if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+            const acc = burnGroundAccum.get(e.id) ?? { damage: 0, timeMs: 0 }
+            acc.damage += actual
+            burnGroundAccum.set(e.id, acc)
+            damagedIds.add(e.id)
+          }
+        }
+      }
+      tile.remainingMs -= deltaMs
+      if (tile.remainingMs <= 0) burnGroundTiles.delete(tk)
+    }
+
+    for (const [entityId, acc] of [...burnGroundAccum]) {
+      const entity = entities.find(e => e.id === entityId)
+      if (!entity) { burnGroundAccum.delete(entityId); continue }
+      acc.timeMs += deltaMs
+      if (acc.timeMs >= balance.effects.burnDisplayIntervalMs && acc.damage > 0) {
+        spawnDamageNumber(entity.x, entity.y - entity.radius - 8, acc.damage, 0xff8800)
+        acc.damage = 0
+        acc.timeMs = 0
+      }
+      if (acc.damage === 0) burnGroundAccum.delete(entityId)
+    }
+  }
+
+  function tickBurnGroundEffects(): void {
+    if (!app || !burnGroundContainer) return
+    const gs = balance.world.gridSize
+    const now = Date.now()
+    const frame = Math.floor(now / 40)
+
+    for (const tk of burnGroundTiles.keys()) {
+      let g = burnGroundGraphics.get(tk)
+      if (!g) {
+        g = new Graphics()
+        burnGroundContainer.addChild(g)
+        burnGroundGraphics.set(tk, g)
+      }
+      const [txStr, tyStr] = tk.split(',')
+      const cx = (Number(txStr) + 0.5) * gs
+      const cy = (Number(tyStr) + 0.5) * gs
+      const half = gs / 2
+
+      g.clear()
+      g.position.set(cx, cy)
+
+      // Filled tile glow
+      const glowAlpha = 0.18 + 0.10 * Math.sin(now / 160 + (Number(txStr) + Number(tyStr)) * 0.7)
+      g.rect(-half, -half, gs, gs)
+      g.fill({ color: 0xff5500, alpha: glowAlpha })
+
+      // Jagged flame ring around the tile centre
+      for (let b = 0; b < 2; b++) {
+        const color = b === 0 ? 0xff6600 : 0xffcc00
+        const seed  = b * 23 + frame * 41
+        const pts   = 12
+        const phase = (b * Math.PI) / pts + frame * 0.25
+        const r0    = half * 0.55
+        for (let i = 0; i <= pts; i++) {
+          const a = phase + (i / pts) * Math.PI * 2
+          const h = Math.sin(seed + i * 12.9898) * 43758.5453
+          const noise = (h - Math.floor(h)) - 0.5
+          const upBias = 1 + 0.3 * -Math.sin(a)
+          const rad = r0 + noise * r0 * 0.4 * upBias
+          const x = Math.cos(a) * rad
+          const y = Math.sin(a) * rad
+          if (i === 0) g.moveTo(x, y); else g.lineTo(x, y)
+        }
+        g.closePath()
+        g.stroke({ color, width: b === 0 ? 2 : 1.5, alpha: b === 0 ? 0.85 : 0.6 })
+      }
+    }
+
+    for (const [tk, g] of [...burnGroundGraphics]) {
+      if (!burnGroundTiles.has(tk)) { g.destroy(); burnGroundGraphics.delete(tk) }
     }
   }
 
@@ -2473,8 +2588,10 @@ export function createGameScene(
 
       floorContainer = new Container()
       wallContainer  = new Container()
+      burnGroundContainer = new Container()
       app.stage.addChild(floorContainer)
       app.stage.addChild(wallContainer)
+      app.stage.addChild(burnGroundContainer)
 
       initEntityDisplay(playerEntity)
       drawGrid()
@@ -2568,6 +2685,10 @@ export function createGameScene(
             const total = balance.effects.electrocutionBaseDamageTakenPct + lbForMove.electrocuteDamageTakenIncrease
             ms *= Math.max(0, 1 - total / 100)
           }
+          if (entity.role === 'enemy' && burnGroundTiles.size > 0 && isOnBurningGround(entity)) {
+            const slow = getFireBonuses().burnGroundSlowAmount
+            if (slow > 0) ms *= Math.max(0, 1 - slow / 100)
+          }
           Matter.Body.setVelocity(body, {
             x: moveX * ms * MATTER_BASE_DT,
             y: moveY * ms * MATTER_BASE_DT,
@@ -2640,9 +2761,15 @@ export function createGameScene(
           }
           // Enemy resistance: last calculation before applying the hit
           if (target.role === 'enemy') {
-            let enemyResist = 0
-            if (action.tags.includes('physical') || action.tags.includes('rot')) enemyResist += target.physRotResist ?? 0
-            if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) enemyResist += target.eleResist ?? 0
+            let physRotR = 0
+            let eleR = 0
+            if (action.tags.includes('physical') || action.tags.includes('rot')) physRotR = target.physRotResist ?? 0
+            if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) eleR = target.eleResist ?? 0
+            if (action.tags.includes('fire') && isBurning(target)) {
+              const fbResist = getFireBonuses()
+              if (fbResist.burnEnemyResistReduction > 0) eleR = Math.max(0, eleR - fbResist.burnEnemyResistReduction)
+            }
+            const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
           const prevLife = target.currentLife
@@ -2678,6 +2805,17 @@ export function createGameScene(
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
+            }
+            // Burning Ground: roll on fire-tagged player hits; tile must be clear of burning ground
+            if (fb.burnGroundChance > 0) {
+              const tk = tileKey(target.x, target.y)
+              if (!burnGroundTiles.has(tk) && Math.random() * 100 < fb.burnGroundChance) {
+                const groundDps = damage * balance.effects.burnDpsFraction
+                  * (1 + fb.burnGroundDamageIncrease / 100)
+                  * (1 + fb.burnGroundMoreDamage / 100)
+                const groundDuration = balance.effects.burnGroundBaseDurationMs * (1 + fb.burnGroundDurationIncrease / 100)
+                burnGroundTiles.set(tk, { dps: groundDps, remainingMs: groundDuration, sourceActionId: actionId })
+              }
             }
           }
           // Electrocution: roll on lightning-tagged player hits to enemy targets
@@ -2867,6 +3005,10 @@ export function createGameScene(
               effectiveAttackSpeed *= Math.max(0, 1 - total / 100)
             }
           }
+          if (entity.role === 'enemy' && burnGroundTiles.size > 0 && isOnBurningGround(entity)) {
+            const slow = getFireBonuses().burnGroundSlowAmount
+            if (slow > 0) effectiveAttackSpeed *= Math.max(0, 1 - slow / 100)
+          }
           if (entity.role === 'player' && frenzyCharges > 0) {
             const sb = getStrikeBonuses()
             const speedBonus = sb.frenzyFlatSpeed + frenzyCharges * sb.frenzySpeedPerCharge
@@ -3017,10 +3159,12 @@ export function createGameScene(
         // ── Burning effect tick (registers burned entities for death pass) ─
         tickBurns(ticker.deltaMS, damagedIds)
         tickBleeds(ticker.deltaMS, damagedIds)
+        tickBurnGrounds(ticker.deltaMS, damagedIds)
         tickElectrocutions(ticker.deltaMS)
         tickElectrocuteEffects()
         tickBurnEffects()
         tickBleedEffects()
+        tickBurnGroundEffects()
 
         // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
@@ -3057,6 +3201,10 @@ export function createGameScene(
     vfxList.length = 0
     for (const g of electrocuteGraphics.values()) g.destroy()
     electrocuteGraphics.clear()
+    for (const g of burnGroundGraphics.values()) g.destroy()
+    burnGroundGraphics.clear()
+    burnGroundTiles.clear()
+    burnGroundAccum.clear()
     blockedTiles.clear()
     generatedChunks.clear()
     chunkBodies.clear()

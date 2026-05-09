@@ -60,6 +60,14 @@ export interface NodeEffect {
   fireBurnMoreDamage?: number           // 'more' %; multiplies burn dps after increased
   fireBurningTakeIncreased?: number     // additive %; burning enemies take more damage from all sources
   fireBurnSplashFraction?: number       // additive %; non-burning neighbors take this share of burn dps
+  fireBurnEnemyResistReduction?: number // flat %; burning enemies have their fire resistance reduced (capped at 0)
+
+  // Fire mastery effects (Burning Ground tree)
+  fireBurnGroundChance?: number             // additive %; chance for fire actions to cause burning ground on hit tile
+  fireBurnGroundDamageIncrease?: number     // additive %; stacks before the 'more' multiplier
+  fireBurnGroundDurationIncrease?: number   // additive %; extends burning ground duration
+  fireBurnGroundMoreDamage?: number         // additive %; final multiplier as × (1 + sum/100)
+  fireBurnGroundSlowAmount?: number         // additive %; movement and action speed slow for enemies standing on burning ground
 
   // Fire mastery effects (Immolation tree)
   fireImmolateChance?: number          // additive %; chance to trigger immolation on fire-tagged hit
@@ -256,6 +264,7 @@ export interface FireBonuses {
   burnMoreDamage: number        // total 'more' %
   burningTakeIncreased: number  // total additive %; damage taken by burning enemies from any source
   burnSplashFraction: number    // total additive %; share of burn dps that splashes to non-burning neighbors
+  burnEnemyResistReduction: number // total flat %; reduced fire resistance on burning enemies (capped at 0)
   immolateChance: number        // total additive %; chance to trigger immolation on fire hit
   immolateDamageBonus: number   // total additive %; fire damage bonus while immolation is active
   immolateBurnChance: number    // total additive %; burn apply chance bonus while immolation is active
@@ -263,6 +272,11 @@ export interface FireBonuses {
   damageIncrease: number        // total additive %; fire-tagged actions
   moreDamage: number            // total 'more' %; fire-tagged actions
   actionSpeedIncrease: number   // total additive %; fire-tagged actions
+  burnGroundChance: number          // total additive %; chance to cause burning ground on hit tile
+  burnGroundDamageIncrease: number  // total additive %
+  burnGroundDurationIncrease: number // total additive %
+  burnGroundMoreDamage: number      // total additive %; final multiplier as × (1 + sum/100)
+  burnGroundSlowAmount: number      // total additive %; slow applied to enemies on burning ground tiles
 }
 
 // ── Spell mastery node effects ─────────────────────────────────────────────
@@ -497,7 +511,7 @@ export function computeManaBonuses(nodes: number[][]): ManaBonuses {
 }
 
 // ── Fire mastery node effects ──────────────────────────────────────────────
-// Tree 0: Burning (full-length tree)  Tree 1: Immolation (short)  Tree 2-4: not yet implemented
+// Tree 0: Burning (full)  Tree 1: Immolation (short)  Tree 2: Fire Damage (full)  Tree 3: Burning Ground (short)  Tree 4: not implemented
 
 const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Burning
@@ -524,13 +538,28 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageMult: 0.5 },
     // 12-13: key nodes — not yet defined
   },
-  2: {  // Fire Damage (short tree — line nodes 0-5, key nodes 12-13)
-    0: { fireDamageIncrease: 5 },
-    1: { fireActionSpeedIncrease: 3 },
-    2: { fireDamageIncrease: 5, fireBurnApplyChance: 5 },
-    3: { fireDamageIncrease: 5 },
-    4: { fireActionSpeedIncrease: 3 },
-    5: { fireMoreDamage: 10 },
+  2: {  // Fire Damage (full)
+    0:  { fireDamageIncrease: 5 },
+    1:  { fireActionSpeedIncrease: 3 },
+    2:  { fireDamageIncrease: 5, fireBurnApplyChance: 5 },
+    3:  { fireDamageIncrease: 5 },
+    4:  { fireActionSpeedIncrease: 3 },
+    5:  { fireMoreDamage: 10 },
+    6:  { fireDamageIncrease: 5 },
+    7:  { fireActionSpeedIncrease: 3 },
+    8:  { fireDamageIncrease: 12 },
+    9:  { fireDamageIncrease: 5 },
+    10: { fireActionSpeedIncrease: 3 },
+    11: { fireBurnEnemyResistReduction: 20 },
+    // 12-15: key nodes — not yet defined
+  },
+  3: {  // Burning Ground (short tree — line nodes 0-5, key nodes 12-13)
+    0: { fireBurnGroundChance: 5 },
+    1: { fireBurnGroundDamageIncrease: 15 },
+    2: { fireBurnGroundDamageIncrease: 30, fireBurnGroundDurationIncrease: 30 },
+    3: { fireBurnGroundChance: 5 },
+    4: { fireBurnGroundDamageIncrease: 15 },
+    5: { fireBurnGroundSlowAmount: 20, fireBurnGroundMoreDamage: 10 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -547,6 +576,7 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
     burnMoreDamage: 0,
     burningTakeIncreased: 0,
     burnSplashFraction: 0,
+    burnEnemyResistReduction: 0,
     immolateChance: 0,
     immolateDamageBonus: 0,
     immolateBurnChance: 0,
@@ -554,6 +584,11 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
     damageIncrease: 0,
     moreDamage: 0,
     actionSpeedIncrease: 0,
+    burnGroundChance: 0,
+    burnGroundDamageIncrease: 0,
+    burnGroundDurationIncrease: 0,
+    burnGroundMoreDamage: 0,
+    burnGroundSlowAmount: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -564,6 +599,7 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
       b.burnMoreDamage += eff.fireBurnMoreDamage ?? 0
       b.burningTakeIncreased += eff.fireBurningTakeIncreased ?? 0
       b.burnSplashFraction += eff.fireBurnSplashFraction ?? 0
+      b.burnEnemyResistReduction += eff.fireBurnEnemyResistReduction ?? 0
       b.immolateChance += eff.fireImmolateChance ?? 0
       b.immolateDamageBonus += eff.fireImmolateDamageBonus ?? 0
       b.immolateBurnChance += eff.fireImmolateBurnChance ?? 0
@@ -571,6 +607,11 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
       b.damageIncrease += eff.fireDamageIncrease ?? 0
       b.moreDamage += eff.fireMoreDamage ?? 0
       b.actionSpeedIncrease += eff.fireActionSpeedIncrease ?? 0
+      b.burnGroundChance += eff.fireBurnGroundChance ?? 0
+      b.burnGroundDamageIncrease += eff.fireBurnGroundDamageIncrease ?? 0
+      b.burnGroundDurationIncrease += eff.fireBurnGroundDurationIncrease ?? 0
+      b.burnGroundMoreDamage += eff.fireBurnGroundMoreDamage ?? 0
+      b.burnGroundSlowAmount += eff.fireBurnGroundSlowAmount ?? 0
     }
   }
   return b
@@ -1034,12 +1075,26 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage is halved (×0.5)',
   },
   2: {
-    0: '+5% increased fire damage',
-    1: '+3% increased fire action speed',
-    2: '+5% increased fire damage · Fire actions have +5% chance to apply burn',
-    3: '+5% increased fire damage',
-    4: '+3% increased fire action speed',
-    5: '+10% more fire damage',
+    0:  '+5% increased fire damage',
+    1:  '+3% increased fire action speed',
+    2:  '+5% increased fire damage · Fire actions have +5% chance to apply burn',
+    3:  '+5% increased fire damage',
+    4:  '+3% increased fire action speed',
+    5:  '+10% more fire damage',
+    6:  '+5% increased fire damage',
+    7:  '+3% increased fire action speed',
+    8:  '+12% increased fire damage',
+    9:  '+5% increased fire damage',
+    10: '+3% increased fire action speed',
+    11: 'Burning enemies have 20% reduced fire resistance',
+  },
+  3: {  // Burning Ground
+    0: 'Fire actions have +5% chance to cause burning ground',
+    1: '+15% increased burning ground damage',
+    2: '+30% increased burning ground damage · +30% increased burning ground duration',
+    3: 'Fire actions have +5% chance to cause burning ground',
+    4: '+15% increased burning ground damage',
+    5: 'Burning ground slows enemy movement and action speed by 20% · +10% more burning ground damage',
   },
 }
 

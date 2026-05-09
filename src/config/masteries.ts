@@ -73,8 +73,9 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: [
         { index: 0, label: 'Burning' },
         { index: 1, label: 'Immolation', short: true },
-        { index: 2, label: 'Fire Damage', short: true },
-        ...([4, 5].map(n => ({ index: n - 1, label: `Fire ${n}` }))),
+        { index: 2, label: 'Fire Damage' },
+        { index: 3, label: 'Burning Ground', short: true },
+        { index: 4, label: 'Fire 5' },
       ] },
       { id: 'lightning', label: 'Lightning', tag: 'lightning', trees: [
         { index: 0, label: 'Electrocution' },

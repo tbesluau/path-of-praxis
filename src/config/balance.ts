@@ -90,6 +90,7 @@ export const balance = {
     burnBaseDurationMs:     5000, // base burn duration
     burnSplashRadius:       100,  // px radius for major-node splash to non-burning neighbors
     burnDisplayIntervalMs:  500,  // ms between accumulated burn-damage number emissions
+    burnGroundBaseDurationMs: 4000, // base burning ground duration (extended only by Burning Ground tree strong node)
     immolationSelfBurnCapFraction: 0.04, // max immolation self-burn DPS as fraction of max life/s (reduced by immolateDamageMult nodes)
     bleedDpsFraction:       0.25, // bleed dps = hit damage * this
     bleedBaseDurationMs:    2000, // base bleed duration

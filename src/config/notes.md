@@ -54,9 +54,37 @@ An **Affliction** (damage-over-time Effect) applied by fire-tagged actions to en
 - Each stack tracks its own remaining duration and DPS independently
 
 **Interactions:**
-- Burning enemies take increased damage from all sources when the fire mastery major node (node 5) is assigned
-- Fire mastery node 11 causes each burn stack to splash a fraction of its DPS to nearby non-burning enemies
+- Burning enemies take increased damage from all sources when the Burning tree node 8 (strong) is assigned
+- Burning tree node 11 causes each burn stack to splash a fraction of its DPS to nearby non-burning enemies
+- Burning enemies have their fire resistance reduced (capped at 0) when the Fire Damage tree final node (node 11) is assigned
 - **Immolation** is a separate self-burn on the player — it is not a burn stack and does not appear in enemy burn mechanics
+
+---
+
+## Burning Ground
+
+A **tile-based** fire damage source created when a fire-tagged action lands on an enemy and the Burning Ground tree's apply roll succeeds. The whole grid tile where the triggering hit happened becomes burning ground for a fixed base duration.
+
+**Application:**
+- Base chance: **0%** — granted by Burning Ground tree apply nodes (each adds +5%)
+- Triggered by any fire-tagged player hit on an enemy
+- A tile already covered in burning ground is **immune** — the roll is wasted; the tile must clear (its duration must expire) before a new burning ground can be applied to it
+
+**Damage:**
+- Burning ground DPS = triggering hit damage × **20%** × (1 + burning ground increased) × (1 + burning ground more)
+- Damage applies every tick to **all enemies whose tile coordinates match** the burning ground tile
+- Damage numbers display in orange (same colour as burn DoT)
+
+**Duration:**
+- Base **4 seconds**, extended only by the Burning Ground tree strong node (node 2: +30% increased duration). Generic burn duration nodes do **not** extend burning ground.
+
+**Burning Ground tree (short, 6 nodes):**
+- Nodes 0 and 3 (small): +5% chance for fire actions to cause burning ground each — total +10% base
+- Nodes 1 and 4 (small): +15% increased burning ground damage each
+- Node 2 (strong): +30% increased burning ground damage · +30% increased burning ground duration
+- Node 5 (major): Burning ground slows enemy movement and action speed by **20%** while standing on it · +10% more burning ground damage
+
+The slow stacks multiplicatively with other speed modifiers and applies to both move speed and attack speed. Damage from burning ground is not a hit and does not trigger life steal, double damage, or status procs.
 
 ---
 
