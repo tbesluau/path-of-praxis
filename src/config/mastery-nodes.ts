@@ -100,6 +100,10 @@ export interface NodeEffect {
   // Projectile mastery effects
   projRangeIncrease?: number      // additive %; increases range for projectile-tagged actions
   projDamageIncrease?: number     // additive %; increases damage for projectile-tagged actions
+  projMoreDamage?: number         // 'more' %; applied as × (1 + sum/100) after increased
+  projActionSpeedIncrease?: number // additive %; increases action speed for projectile-tagged actions
+  projAdditionalTargetChance?: number // additive %; chance to hit an additional enemy per projectile cast
+  projDoubleDamageChance?: number // additive %; chance to deal 2× damage on projectile hit
   projDamagePerRange?: number     // % per range unit; increased projectile damage per 1 unit of total range
   projExtraChance?: number        // additive %; chance to fire an extra projectile at reduced damage
   projExtraDamage?: number        // additive %; increases the damage of extra projectiles (base 50%)
@@ -220,11 +224,15 @@ export interface ManaBonuses {
 }
 
 export interface ProjectileBonuses {
-  rangeIncrease: number     // total additive %
-  damageIncrease: number    // total additive %
-  damagePerRange: number    // % per range unit added to damage at attack time
-  extraChance: number       // total additive %
-  extraDamage: number       // total additive % (stacks on 50% base)
+  rangeIncrease: number             // total additive %
+  damageIncrease: number            // total additive %
+  moreDamage: number                // total 'more' %
+  actionSpeedIncrease: number       // total additive %
+  additionalTargetChance: number    // total additive %; chance to hit a different enemy per cast
+  doubleDamageChance: number        // total additive %; chance to deal 2× damage
+  damagePerRange: number            // % per range unit added to damage at attack time
+  extraChance: number               // total additive %
+  extraDamage: number               // total additive % (stacks on 50% base)
   extraDoubleRoll: boolean
 }
 
@@ -677,23 +685,35 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
 // Tree 0: Enemy Quantity (short)  Tree 1: Enemy Quality (short)  Tree 2-4: not yet implemented
 
 const ENEMY_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Enemy Quantity (short tree — line nodes 0-5, key nodes 12-13)
-    0: { enemyExtraOneChance: 50 },
-    1: { enemyExtraTwoChance: 25 },
-    2: { enemyGuaranteedExtra: 1 },
-    3: { enemyExtraOneChance: 50 },
-    4: { enemyExtraTwoChance: 25 },
-    5: { enemyGuaranteedExtra: 2, enemyMinStrongCount: 1 },
-    // 12-13: key nodes — not yet defined
+  0: {  // Enemy Quantity (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { enemyExtraOneChance: 50 },
+    1:  { enemyExtraTwoChance: 25 },
+    2:  { enemyGuaranteedExtra: 1 },
+    3:  { enemyExtraOneChance: 50 },
+    4:  { enemyExtraTwoChance: 25 },
+    5:  { enemyGuaranteedExtra: 2, enemyMinStrongCount: 1 },
+    6:  { enemyExtraOneChance: 50 },
+    7:  { enemyExtraTwoChance: 25 },
+    8:  { enemyGuaranteedExtra: 1 },
+    9:  { enemyExtraOneChance: 50 },
+    10: { enemyExtraTwoChance: 25 },
+    11: { enemyGuaranteedExtra: 2, enemyMinEliteCount: 1 },
+    // 12-15: key nodes — not yet defined
   },
-  1: {  // Enemy Quality (short tree — line nodes 0-5, key nodes 12-13)
-    0: { enemyStrongChance: 5 },
-    1: { enemyEliteChance: 10 },
-    2: { enemyStrongChance: 12 },
-    3: { enemyStrongChance: 5 },
-    4: { enemyEliteChance: 10 },
-    5: { enemyMinStrongCount: 2, enemyMinEliteCount: 1 },
-    // 12-13: key nodes — not yet defined
+  1: {  // Enemy Quality (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { enemyStrongChance: 5 },
+    1:  { enemyEliteChance: 10 },
+    2:  { enemyStrongChance: 12 },
+    3:  { enemyStrongChance: 5 },
+    4:  { enemyEliteChance: 10 },
+    5:  { enemyMinStrongCount: 2, enemyMinEliteCount: 1 },
+    6:  { enemyStrongChance: 5 },
+    7:  { enemyEliteChance: 10 },
+    8:  { enemyStrongChance: 12 },
+    9:  { enemyStrongChance: 5 },
+    10: { enemyEliteChance: 10 },
+    11: { enemyStrongChance: 20, enemyEliteChance: 20, enemyGuaranteedExtra: 1 },
+    // 12-15: key nodes — not yet defined
   },
 }
 
@@ -754,6 +774,21 @@ const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { projExtraDoubleRoll: true },
     // 12-15: key nodes — not yet defined
   },
+  2: {  // Projectile Damage (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { projDamageIncrease: 5 },
+    1:  { projAdditionalTargetChance: 5 },
+    2:  { projDamageIncrease: 12 },
+    3:  { projDamageIncrease: 5 },
+    4:  { projAdditionalTargetChance: 5 },
+    5:  { projMoreDamage: 20 },
+    6:  { projDamageIncrease: 5 },
+    7:  { projAdditionalTargetChance: 5 },
+    8:  { projAdditionalTargetChance: 5, projDamageIncrease: 5, projActionSpeedIncrease: 5 },
+    9:  { projDamageIncrease: 5 },
+    10: { projAdditionalTargetChance: 5 },
+    11: { projDoubleDamageChance: 20, projRangeIncrease: 10 },
+    // 12-15: key nodes — not yet defined
+  },
 }
 
 export function getProjectileNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -764,6 +799,10 @@ export function computeProjectileBonuses(nodes: number[][]): ProjectileBonuses {
   const b: ProjectileBonuses = {
     rangeIncrease: 0,
     damageIncrease: 0,
+    moreDamage: 0,
+    actionSpeedIncrease: 0,
+    additionalTargetChance: 0,
+    doubleDamageChance: 0,
     damagePerRange: 0,
     extraChance: 0,
     extraDamage: 0,
@@ -772,11 +811,15 @@ export function computeProjectileBonuses(nodes: number[][]): ProjectileBonuses {
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getProjectileNodeEffect(treeIdx, nodeIdx)
-      b.rangeIncrease += eff.projRangeIncrease ?? 0
-      b.damageIncrease += eff.projDamageIncrease ?? 0
-      b.damagePerRange += eff.projDamagePerRange ?? 0
-      b.extraChance += eff.projExtraChance ?? 0
-      b.extraDamage += eff.projExtraDamage ?? 0
+      b.rangeIncrease            += eff.projRangeIncrease ?? 0
+      b.damageIncrease           += eff.projDamageIncrease ?? 0
+      b.moreDamage               += eff.projMoreDamage ?? 0
+      b.actionSpeedIncrease      += eff.projActionSpeedIncrease ?? 0
+      b.additionalTargetChance   += eff.projAdditionalTargetChance ?? 0
+      b.doubleDamageChance       += eff.projDoubleDamageChance ?? 0
+      b.damagePerRange           += eff.projDamagePerRange ?? 0
+      b.extraChance              += eff.projExtraChance ?? 0
+      b.extraDamage              += eff.projExtraDamage ?? 0
       if (eff.projExtraDoubleRoll) b.extraDoubleRoll = true
     }
   }

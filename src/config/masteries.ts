@@ -95,7 +95,9 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'projectile', label: 'Projectile', tag: 'projectile', trees: [
         { index: 0, label: 'Projectile Range',      short: true },
         { index: 1, label: 'Multiple Projectiles' },
-        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Projectile ${n}` }))),
+        { index: 2, label: 'Projectile Damage' },
+        { index: 3, label: 'Projectile 4' },
+        { index: 4, label: 'Projectile 5' },
       ] },
       { id: 'strike',     label: 'Strike',     tag: 'strike',     trees: [
         { index: 0, label: 'Strike Damage' },
@@ -128,9 +130,11 @@ export const masteryCategories: MasteryCategoryDef[] = [
     label: 'World',
     masteries: [
       { id: 'enemy',    label: 'Enemy',    trees: [
-        { index: 0, label: 'Enemy Quantity', short: true },
-        { index: 1, label: 'Enemy Quality',  short: true },
-        ...([3, 4, 5].map(n => ({ index: n - 1, label: `Enemy ${n}` }))),
+        { index: 0, label: 'Enemy Quantity' },
+        { index: 1, label: 'Enemy Quality' },
+        { index: 2, label: 'Enemy 3' },
+        { index: 3, label: 'Enemy 4' },
+        { index: 4, label: 'Enemy 5' },
       ] },
       { id: 'movement', label: 'Movement', trees: makeTrees('Movement') },
     ],
