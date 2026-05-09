@@ -2738,13 +2738,16 @@ export function createGameScene(
           if (target.role === 'player') {
             const lb = getLifeBonuses()
             let totalResistance = 0
-            if (action.tags.includes('physical')) totalResistance += lb.physicalResistance
-            if (action.tags.includes('rot'))      totalResistance += lb.rotResistance
+            if (action.tags.includes('physical') || action.tags.includes('rot')) totalResistance += lb.physRotResistance
             if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) {
               totalResistance += lb.elementalResistance
             }
             totalResistance = Math.max(0, Math.min(100, totalResistance))
             finalDamage = damage * (1 - totalResistance / 100)
+            if (lb.resistAbsorbLifePercent > 0 && totalResistance > 0) {
+              const absorbed = damage - finalDamage
+              playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + absorbed * lb.resistAbsorbLifePercent / 100)
+            }
           }
           // Burning enemies take additional damage from any source (fire mastery 8)
           if (target.role === 'enemy' && attacker.role === 'player' && isBurning(target)) {

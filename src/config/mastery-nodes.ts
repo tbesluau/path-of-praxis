@@ -25,11 +25,12 @@ export interface NodeEffect {
   spellGuaranteedAfflictions?: boolean    // when true, second-cast hits always apply afflictions
 
   // Life mastery effects (Maximum Life tree)
-  lifeMaxIncrease?: number         // additive %; stacks before the 'more' multiplier
-  lifeMoreMax?: number             // 'more' %; applied as × (1 + sum/100) after increased
-  lifePhysicalResistance?: number  // additive %; reduces damage from physical-tagged hits
-  lifeRotResistance?: number       // additive %; reduces damage from rot-tagged hits
-  lifeElementalResistance?: number // additive %; reduces damage from fire/lightning/cold hits
+  lifeMaxIncrease?: number          // additive %; stacks before the 'more' multiplier
+  lifeMoreMax?: number              // 'more' %; applied as × (1 + sum/100) after increased
+  lifePhysRotResistance?: number    // additive %; reduces damage from physical- and rot-tagged hits (combined)
+  lifeElementalResistance?: number  // additive %; reduces damage from fire/lightning/cold hits
+  lifeResistAbsorbLifePercent?: number    // % of damage absorbed by resistances that is recovered as life
+  lifeResistReductionEffectiveness?: number // future: resistance reduction effects on player lose X% effectiveness
 
   // Life mastery effects (Life Regeneration tree)
   lifeRegenIncrease?: number       // additive %; mastery layer — independent of level-scaling layer
@@ -170,17 +171,18 @@ export interface SpellBonuses {
 }
 
 export interface LifeBonuses {
-  maxLifeIncrease: number       // total additive %
-  moreMaxLife: number           // total 'more' %
-  physicalResistance: number    // total additive %
-  rotResistance: number         // total additive %
-  elementalResistance: number   // total additive %
-  regenIncrease: number         // mastery-layer additive % regen multiplier
-  regenFractionBonus: number    // additional fraction of max life regenerated per second
-  lifeStealPercent: number      // total additive %; fraction of action hit damage stolen as life
-  lifeStealIncrease: number     // total additive %; increases life stolen
-  lifeStealCapIncrease: number  // total additive %; increases per-hit hard cap (base 1% of max life)
-  feedingFrenzyChance: number   // total additive %; chance to trigger Feeding Frenzy on life steal
+  maxLifeIncrease: number        // total additive %
+  moreMaxLife: number            // total 'more' %
+  physRotResistance: number      // total additive %; physical and rot resistance (combined)
+  elementalResistance: number    // total additive %
+  resistAbsorbLifePercent: number      // % of damage absorbed by resistances recovered as life
+  resistReductionEffectiveness: number // resistance reduction effects on player lose this % effectiveness
+  regenIncrease: number          // mastery-layer additive % regen multiplier
+  regenFractionBonus: number     // additional fraction of max life regenerated per second
+  lifeStealPercent: number       // total additive %; fraction of action hit damage stolen as life
+  lifeStealIncrease: number      // total additive %; increases life stolen
+  lifeStealCapIncrease: number   // total additive %; increases per-hit hard cap (base 1% of max life)
+  feedingFrenzyChance: number    // total additive %; chance to trigger Feeding Frenzy on life steal
 }
 
 export interface ManaBonuses {
@@ -383,14 +385,14 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
 const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Maximum Life
     0:  { lifeMaxIncrease: 5 },
-    1:  { lifePhysicalResistance: 5, lifeRotResistance: 5 },
+    1:  { lifePhysRotResistance: 5 },
     2:  { lifeMaxIncrease: 12 },
     3:  { lifeMaxIncrease: 5 },
     4:  { lifeElementalResistance: 5 },
     5:  { lifeMoreMax: 30 },
     6:  { lifeMaxIncrease: 5 },
-    7:  { lifePhysicalResistance: 5, lifeRotResistance: 5 },
-    8:  { lifePhysicalResistance: 7, lifeRotResistance: 7, lifeElementalResistance: 7 },
+    7:  { lifePhysRotResistance: 5 },
+    8:  { lifePhysRotResistance: 7, lifeElementalResistance: 7 },
     9:  { lifeMaxIncrease: 5 },
     10: { lifeElementalResistance: 5 },
     11: { lifeMoreMax: 30 },
@@ -413,6 +415,20 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { lifeFeedingFrenzyChance: 1 },
     // 12-13: key nodes — not yet defined
   },
+  3: {  // Resistances (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { lifePhysRotResistance: 5 },
+    1:  { lifeElementalResistance: 5 },
+    2:  { lifePhysRotResistance: 7, lifeElementalResistance: 7 },
+    3:  { lifePhysRotResistance: 5 },
+    4:  { lifeElementalResistance: 5 },
+    5:  { lifeResistAbsorbLifePercent: 5 },
+    6:  { lifePhysRotResistance: 5 },
+    7:  { lifeElementalResistance: 5 },
+    8:  { lifePhysRotResistance: 7, lifeElementalResistance: 7 },
+    9:  { lifePhysRotResistance: 5 },
+    10: { lifeElementalResistance: 5 },
+    11: { lifeResistReductionEffectiveness: 50 },
+  },
 }
 
 export function getLifeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -423,9 +439,10 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
   const b: LifeBonuses = {
     maxLifeIncrease: 0,
     moreMaxLife: 0,
-    physicalResistance: 0,
-    rotResistance: 0,
+    physRotResistance: 0,
     elementalResistance: 0,
+    resistAbsorbLifePercent: 0,
+    resistReductionEffectiveness: 0,
     regenIncrease: 0,
     regenFractionBonus: 0,
     lifeStealPercent: 0,
@@ -438,9 +455,10 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
       const eff = getLifeNodeEffect(treeIdx, nodeIdx)
       b.maxLifeIncrease += eff.lifeMaxIncrease ?? 0
       b.moreMaxLife += eff.lifeMoreMax ?? 0
-      b.physicalResistance += eff.lifePhysicalResistance ?? 0
-      b.rotResistance += eff.lifeRotResistance ?? 0
+      b.physRotResistance += eff.lifePhysRotResistance ?? 0
       b.elementalResistance += eff.lifeElementalResistance ?? 0
+      b.resistAbsorbLifePercent += eff.lifeResistAbsorbLifePercent ?? 0
+      b.resistReductionEffectiveness += eff.lifeResistReductionEffectiveness ?? 0
       b.regenIncrease += eff.lifeRegenIncrease ?? 0
       b.regenFractionBonus += eff.lifeRegenFractionBonus ?? 0
       b.lifeStealPercent += eff.lifeStealPercent ?? 0
@@ -990,14 +1008,14 @@ const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
 const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
   0: {
     0:  '+5% increased maximum life',
-    1:  '+5% physical resistance · +5% rot resistance',
+    1:  '+5% physical and rot resistance',
     2:  '+12% increased maximum life',
     3:  '+5% increased maximum life',
     4:  '+5% elemental resistance',
     5:  '+30% more maximum life',
     6:  '+5% increased maximum life',
-    7:  '+5% physical resistance · +5% rot resistance',
-    8:  '+7% physical resistance · +7% rot resistance · +7% elemental resistance',
+    7:  '+5% physical and rot resistance',
+    8:  '+7% physical and rot resistance · +7% elemental resistance',
     9:  '+5% increased maximum life',
     10: '+5% elemental resistance',
     11: '+30% more maximum life',
@@ -1017,6 +1035,20 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: 'Steal +0.5% of action hit damage as life',
     4: '+5% increased life stolen',
     5: 'Stealing life has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
+  },
+  3: {
+    0:  '+5% physical and rot resistance',
+    1:  '+5% elemental resistance',
+    2:  '+7% physical and rot resistance · +7% elemental resistance',
+    3:  '+5% physical and rot resistance',
+    4:  '+5% elemental resistance',
+    5:  '5% of damage absorbed by your resistances is recovered as life',
+    6:  '+5% physical and rot resistance',
+    7:  '+5% elemental resistance',
+    8:  '+7% physical and rot resistance · +7% elemental resistance',
+    9:  '+5% physical and rot resistance',
+    10: '+5% elemental resistance',
+    11: 'Resistance reduction effects applied to you lose 50% effectiveness',
   },
 }
 
