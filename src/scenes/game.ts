@@ -686,7 +686,8 @@ export function createGameScene(
     }
     if (entity.role === 'player' && def.tags.includes('projectile')) {
       const pb = getProjectileBonuses()
-      entity.attackDamage *= (1 + pb.damageIncrease / 100)
+      entity.attackDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
+      entity.attackSpeed  *= (1 + pb.actionSpeedIncrease / 100)
       entity.attackRange  *= (1 + pb.rangeIncrease / 100)
     }
     if (entity.role === 'player' && def.tags.includes('strike')) {
@@ -3031,7 +3032,9 @@ export function createGameScene(
             if (pbBl.bloodlustDamage > 0) effectiveDamage *= 1 + pbBl.bloodlustDamage / 100
           }
           const isPlayerStrike = entity.role === 'player' && action.tags.includes('strike')
-          const totalDDC = (spellBonuses?.doubleDamageChance ?? 0) + (isPlayerStrike ? getStrikeBonuses().doubleDamageChance : 0)
+          const totalDDC = (spellBonuses?.doubleDamageChance ?? 0)
+            + (isPlayerStrike ? getStrikeBonuses().doubleDamageChance : 0)
+            + (isPlayerProjectile ? (pb?.doubleDamageChance ?? 0) : 0)
           if (totalDDC > 0 && Math.random() * 100 < totalDDC) {
             effectiveDamage *= 2
           }
@@ -3168,7 +3171,7 @@ export function createGameScene(
           // ── Roll for new multi-actions ────────────────────────────────────
           // Any cast can trigger any type except the one it was itself.
 
-          // additionalTarget: trance multi-target chance + strike additional-target chance (sum, then 'more' applies to strike pool)
+          // additionalTarget: trance multi-target + strike additional-target + projectile additional-target (summed)
           if (pending?.type !== 'additionalTarget' && entity.role === 'player') {
             let totalChance = 0
             if (tranceActive && spellBonuses) totalChance += spellBonuses.tranceMultiTargetChance
@@ -3176,6 +3179,7 @@ export function createGameScene(
               const sb = getStrikeBonuses()
               totalChance += sb.additionalTargetChance * (1 + sb.additionalTargetMore / 100)
             }
+            if (isPlayerProjectile && pb) totalChance += pb.additionalTargetChance
             if (totalChance > 0 && Math.random() * 100 < totalChance) {
               const extra = pickOtherTarget()
               if (extra) queueMA('additionalTarget', childInherited, extra)
