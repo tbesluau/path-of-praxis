@@ -91,7 +91,13 @@ export const masteryCategories: MasteryCategoryDef[] = [
   {
     label: 'Damage Type',
     masteries: [
-      { id: 'area',       label: 'Area',       tag: 'area',       trees: makeTrees('Area')       },
+      { id: 'area',       label: 'Area',       tag: 'area',       trees: [
+        { index: 0, label: 'Area Damage' },
+        { index: 1, label: 'Area Size' },
+        { index: 2, label: 'Tremor', short: true },
+        { index: 3, label: 'Area 4' },
+        { index: 4, label: 'Area 5' },
+      ] },
       { id: 'projectile', label: 'Projectile', tag: 'projectile', trees: [
         { index: 0, label: 'Projectile Range',      short: true },
         { index: 1, label: 'Multiple Projectiles' },

@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses } from '../config/mastery-nodes'
+import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -165,6 +165,10 @@ export function createGameScene(
 
   function getPhysicalBonuses(): PhysicalBonuses {
     return computePhysicalBonuses(masteryProgress['physical']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getAreaBonuses(): AreaBonuses {
+    return computeAreaBonuses(masteryProgress['area']?.nodes ?? [[], [], [], [], []])
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -712,6 +716,15 @@ export function createGameScene(
       const pb = getPhysicalBonuses()
       entity.attackDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
       entity.attackSpeed  *= (1 + pb.actionSpeedIncrease / 100)
+    }
+    if (entity.role === 'player' && def.tags.includes('area')) {
+      const ab = getAreaBonuses()
+      entity.attackDamage *= (1 + ab.damageIncrease / 100) * (1 + ab.moreDamage / 100)
+      entity.attackSpeed  *= Math.max(0.01, 1 - ab.lessActionSpeed / 100)
+      // Self-targeted area uses (2/3 × area radius) as trigger range — grow it with size bonuses
+      if (def.selfTargeted) {
+        entity.attackRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+      }
     }
     if (entity.role === 'player') {
       const rb = getRuneBonuses(id)
@@ -1534,20 +1547,20 @@ export function createGameScene(
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
   const attackCooldowns = new Map<string, number>()
-  type MultiActionType = 'doubleCast' | 'additionalTarget' | 'additionalProjectile' | 'splitCast' | 'jump'
+  type MultiActionType = 'doubleCast' | 'additionalTarget' | 'additionalProjectile' | 'splitCast' | 'jump' | 'tremor'
   interface PendingMultiAction {
     type:                   MultiActionType
     inheritedDamageMult:    number   // accumulated ×0.9^depth × parent ownMult
-    target?:                Entity   // pre-selected target (additionalTarget / additionalProjectile / jump)
+    target?:                Entity   // pre-selected target (additionalTarget / additionalProjectile / jump / tremor)
     isChainProjectile?:     boolean  // second additional projectile from extraDoubleRoll; cannot chain further
     guaranteedAfflictions?: boolean  // inherited from a doubleCast root when Cast Speed node 11 is active
     jumpedTargetIds?:       Set<string> // enemies already hit in the current jump chain
   }
   const MULTI_ACTION_PRIORITY: Record<MultiActionType, number> = {
-    doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3, jump: 4,
+    doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3, jump: 4, tremor: 5,
   }
   const MULTI_ACTION_COOLDOWN_DIV: Record<MultiActionType, number> = {
-    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 5, jump: 5,
+    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 5, jump: 5, tremor: 5,
   }
   const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
@@ -2978,7 +2991,7 @@ export function createGameScene(
           // - additionalTarget uses the queued entity (skip cast if it died)
           // - all others use normal target selection
           let target: Entity | null
-          if (pending?.type === 'additionalTarget' || pending?.type === 'jump') {
+          if (pending?.type === 'additionalTarget' || pending?.type === 'jump' || pending?.type === 'tremor') {
             const et = pending.target!
             if (!entities.includes(et) || et.currentLife <= 0) {
               queue!.shift()
@@ -3020,10 +3033,11 @@ export function createGameScene(
 
           // ── Mana cost computation ─────────────────────────────────────────
           // additionalTarget casts are always free (triggered by trance; no resource spend)
-          const isAdditionalTarget = pending?.type === 'additionalTarget'
+          // additionalTarget and tremor are free continuation casts (no extra mana cost)
+          const isFreeMultiCast = pending?.type === 'additionalTarget' || pending?.type === 'tremor'
           let gateCost = action.manaCost
           let paidCost = action.manaCost
-          if (!isAdditionalTarget && isPlayerSpell && spellBonuses && action.manaCost > 0) {
+          if (!isFreeMultiCast && isPlayerSpell && spellBonuses && action.manaCost > 0) {
             const reduction = spellBonuses.manaCostReduction / 100
               + (spellBonuses.manaCostRandomReductionMax > 0
                 ? (Math.random() * spellBonuses.manaCostRandomReductionMax) / 100
@@ -3034,12 +3048,12 @@ export function createGameScene(
               paidCost = 0
             }
           }
-          if (!isAdditionalTarget && entity.role === 'player' && rb) {
+          if (!isFreeMultiCast && entity.role === 'player' && rb) {
             if (rb.manaCostReduce > 0) { gateCost *= Math.max(0, 1 - rb.manaCostReduce / 100); paidCost *= Math.max(0, 1 - rb.manaCostReduce / 100) }
             if (rb.manaCostMore !== 1) { gateCost *= rb.manaCostMore; paidCost *= rb.manaCostMore }
           }
           // Gate: additionalTarget free; doubleCast may skip with repeatNoMana; manaless bypasses
-          const skipGate = isAdditionalTarget
+          const skipGate = isFreeMultiCast
             || (pending?.type === 'doubleCast' && spellBonuses?.repeatNoMana === true)
             || (rb?.manaless === true)
           if (entity.maxMana > 0 && !skipGate && entity.currentMana < gateCost) continue
@@ -3058,6 +3072,9 @@ export function createGameScene(
             else if (pending.type === 'jump') {
               const lbJ = getLightningBonuses()
               ownMult = Math.max(0, 1 - (balance.effects.jumpBaseDamagePenalty - lbJ.jumpDamagePenaltyReduce) / 100)
+            }
+            else if (pending.type === 'tremor') {
+              ownMult = 0.5 * (1 + getAreaBonuses().tremorDamage / 100)
             }
             effectiveDamage = entity.attackDamage * pending.inheritedDamageMult * ownMult
             childInherited = pending.inheritedDamageMult * ownMult * 0.9
@@ -3079,9 +3096,11 @@ export function createGameScene(
             if (pbBl.bloodlustDamage > 0) effectiveDamage *= 1 + pbBl.bloodlustDamage / 100
           }
           const isPlayerStrike = entity.role === 'player' && action.tags.includes('strike')
+          const isPlayerArea = entity.role === 'player' && action.tags.includes('area')
           const totalDDC = (spellBonuses?.doubleDamageChance ?? 0)
             + (isPlayerStrike ? getStrikeBonuses().doubleDamageChance : 0)
             + (isPlayerProjectile ? (pb?.doubleDamageChance ?? 0) : 0)
+            + (isPlayerArea ? getAreaBonuses().doubleDamageChance : 0)
           if (totalDDC > 0 && Math.random() * 100 < totalDDC) {
             effectiveDamage *= 2
           }
@@ -3131,9 +3150,16 @@ export function createGameScene(
           const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
 
+          const areaVictims: Entity[] = []
           if (action.tags.includes('area')) {
-            const areaRadiusPx = (action.area ?? 0) * balance.player.radius
-            const center = action.selfTargeted ? entity : target
+            const ab = entity.role === 'player' ? getAreaBonuses() : null
+            let areaRadiusPx = (action.area ?? 0) * balance.player.radius
+            if (ab) areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+            // Tremor: 0.5× base radius, then add tremor radius bonuses
+            const isTremor = pending?.type === 'tremor'
+            if (isTremor && ab) areaRadiusPx *= 0.5 * (1 + ab.tremorSize / 100)
+            // Tremor always centers on the queued target (the entity that triggered it)
+            const center = (isTremor || !action.selfTargeted) ? target : entity
             const enemyRole: Entity['role'] = entity.role === 'player' ? 'enemy' : 'player'
             for (const v of entities) {
               if (v.role !== enemyRole) continue
@@ -3145,6 +3171,7 @@ export function createGameScene(
                 action, actionId, countdown: preHitDuration,
                 guaranteedAfflictions,
               })
+              areaVictims.push(v)
             }
             spawnAreaPreHitVfx(entity, center, areaRadiusPx, action, preHitDuration)
           } else {
@@ -3157,7 +3184,7 @@ export function createGameScene(
           }
 
           // ── Mana payment ──────────────────────────────────────────────────
-          if (entity.maxMana > 0 && !isAdditionalTarget) {
+          if (entity.maxMana > 0 && !isFreeMultiCast) {
             const mb = entity.role === 'player' ? getManaBonuses() : null
             const replenish = mb && mb.replenishChance > 0 && paidCost > 0
               && Math.random() * 100 < mb.replenishChance
@@ -3235,9 +3262,11 @@ export function createGameScene(
 
           // ── Roll for new multi-actions ────────────────────────────────────
           // Any cast can trigger any type except the one it was itself.
+          // Tremors stop ALL further multi-actions, including more tremors.
+          const blockMultiActions = pending?.type === 'tremor'
 
           // additionalTarget: trance multi-target + strike additional-target + projectile additional-target (summed)
-          if (pending?.type !== 'additionalTarget' && entity.role === 'player') {
+          if (!blockMultiActions && pending?.type !== 'additionalTarget' && entity.role === 'player') {
             let totalChance = 0
             if (tranceActive && spellBonuses) totalChance += spellBonuses.tranceMultiTargetChance
             if (action.tags.includes('strike')) {
@@ -3252,7 +3281,7 @@ export function createGameScene(
           }
 
           // doubleCast: not if this cast was a doubleCast
-          if (isPlayerSpell && pending?.type !== 'doubleCast' && spellBonuses
+          if (!blockMultiActions && isPlayerSpell && pending?.type !== 'doubleCast' && spellBonuses
               && spellBonuses.doubleCastChance > 0
               && Math.random() * 100 < spellBonuses.doubleCastChance) {
             queueMA('doubleCast', childInherited)
@@ -3260,7 +3289,7 @@ export function createGameScene(
 
           // additionalProjectile: not if this cast was an additionalProjectile,
           // UNLESS extraDoubleRoll is active and this cast was the first (non-chain) additional projectile
-          if (isPlayerProjectile && pb && pb.extraChance > 0) {
+          if (!blockMultiActions && isPlayerProjectile && pb && pb.extraChance > 0) {
             const isFirstAdditional = pending?.type === 'additionalProjectile' && !pending.isChainProjectile
             const canRoll = pending?.type !== 'additionalProjectile' || (pb.extraDoubleRoll && isFirstAdditional)
             if (canRoll && Math.random() * 100 < pb.extraChance) {
@@ -3269,12 +3298,12 @@ export function createGameScene(
           }
 
           // splitCast (key rune): only the primary cast triggers the second cast
-          if (!pending && entity.role === 'player' && rb?.splitCast) {
+          if (!blockMultiActions && !pending && entity.role === 'player' && rb?.splitCast) {
             queueMA('splitCast', childInherited)
           }
 
           // jump: on any lightning-tagged player hit; re-rolls on jump casts only if jumpReroll active
-          if (entity.role === 'player' && action.tags.includes('lightning')) {
+          if (!blockMultiActions && entity.role === 'player' && action.tags.includes('lightning')) {
             const lbJump = getLightningBonuses()
             const canRollJump = pending?.type !== 'jump' || lbJump.jumpReroll
             if (canRollJump && lbJump.jumpChance > 0 && Math.random() * 100 < lbJump.jumpChance) {
@@ -3283,6 +3312,19 @@ export function createGameScene(
               const jumpRange = entity.attackRange * (1 + lbJump.jumpRangeIncrease / 100)
               const jumpTarget = selectJumpTarget(target as Entity, jumpedSoFar, jumpRange)
               if (jumpTarget) queueMA('jump', childInherited, jumpTarget, false, jumpedSoFar)
+            }
+          }
+
+          // tremor: roll once per non-primary area victim (player area casts only; tremor itself does not re-trigger)
+          if (!blockMultiActions && isPlayerArea && areaVictims.length > 0) {
+            const tremorChance = getAreaBonuses().tremorChance
+            if (tremorChance > 0) {
+              for (const v of areaVictims) {
+                if (v === target) continue
+                if (Math.random() * 100 < tremorChance) {
+                  queueMA('tremor', childInherited, v)
+                }
+              }
             }
           }
 

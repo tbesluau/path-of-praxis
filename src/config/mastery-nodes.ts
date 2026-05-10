@@ -175,6 +175,17 @@ export interface NodeEffect {
   lightningElectrifyActionSpeed?: number     // additive %; global action speed bonus while electrified
   lightningElectrifyDurationIncrease?: number // additive %; extends electrified duration
   lightningElectrifyDamageReduction?: number  // additive %; less damage taken from all sources while electrified
+
+  // Area mastery effects
+  areaDamageIncrease?: number        // additive %; stacks before the 'more' multiplier
+  areaMoreDamage?: number            // 'more' %; applied as × (1 + sum/100) after increased
+  areaDoubleDamageChance?: number    // additive %; chance for area hit to deal 2× damage
+  areaSizeIncrease?: number          // additive %; increases area radius
+  areaMoreSize?: number              // 'more' %; multiplies area radius after increased
+  areaLessActionSpeed?: number       // additive %; reduces area action speed (× (1 - sum/100))
+  areaTremorChance?: number          // additive %; chance per non-primary area victim to queue a tremor
+  areaTremorDamage?: number          // additive %; tremor damage bonus on top of the 0.5× base
+  areaTremorSize?: number            // additive %; tremor area radius bonus on top of the 0.5× base
 }
 
 export interface SpellBonuses {
@@ -274,6 +285,18 @@ export interface StrikeBonuses {
   moreActionSpeed: number          // total 'more' %; strike action speed
   additionalTargetChance: number   // total additive %; chance for strikes to target an additional enemy
   additionalTargetMore: number     // total 'more' %; multiplies additional-target chance after increased
+}
+
+export interface AreaBonuses {
+  damageIncrease: number       // total additive %; area-tagged actions
+  moreDamage: number           // total 'more' %; area-tagged actions
+  doubleDamageChance: number   // total additive %; chance for area hit to deal 2× damage
+  sizeIncrease: number         // total additive %; area radius
+  moreSize: number             // total 'more' %; area radius
+  lessActionSpeed: number      // total additive %; less area action speed (× (1 - sum/100))
+  tremorChance: number         // total additive %; chance per non-primary area victim to queue a tremor
+  tremorDamage: number         // total additive %; tremor damage bonus on top of the 0.5× base
+  tremorSize: number           // total additive %; tremor area radius bonus on top of the 0.5× base
 }
 
 export interface PhysicalBonuses {
@@ -1018,6 +1041,84 @@ export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
   return b
 }
 
+// ── Area mastery node effects ─────────────────────────────────────────────
+// Tree 0: Area Damage (full)  Tree 1: Area Size (full)  Tree 2: Tremor (short)
+
+const AREA_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Area Damage (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { areaDamageIncrease: 5 },
+    1:  { areaDoubleDamageChance: 5 },
+    2:  { areaDamageIncrease: 12 },
+    3:  { areaDamageIncrease: 5 },
+    4:  { areaDoubleDamageChance: 5 },
+    5:  { areaMoreDamage: 20 },
+    6:  { areaDamageIncrease: 5 },
+    7:  { areaDoubleDamageChance: 5 },
+    8:  { areaDoubleDamageChance: 5, areaDamageIncrease: 5, areaSizeIncrease: 5 },
+    9:  { areaDamageIncrease: 5 },
+    10: { areaDoubleDamageChance: 5 },
+    11: { areaMoreDamage: 30, areaLessActionSpeed: 15 },
+    // 12-15: key nodes — not yet defined
+  },
+  1: {  // Area Size (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { areaSizeIncrease: 5 },
+    1:  { areaDamageIncrease: 5 },
+    2:  { areaSizeIncrease: 12 },
+    3:  { areaSizeIncrease: 5 },
+    4:  { areaDamageIncrease: 5 },
+    5:  { areaMoreSize: 15 },
+    6:  { areaSizeIncrease: 5 },
+    7:  { areaDamageIncrease: 5 },
+    8:  { areaSizeIncrease: 8, areaDamageIncrease: 5 },
+    9:  { areaSizeIncrease: 5 },
+    10: { areaDamageIncrease: 5 },
+    11: { areaMoreSize: 10, areaMoreDamage: 10, areaLessActionSpeed: 10 },
+    // 12-15: key nodes — not yet defined
+  },
+  2: {  // Tremor (short tree — line nodes 0-5, key nodes 12-13)
+    0: { areaTremorChance: 5 },
+    1: { areaTremorDamage: 5 },
+    2: { areaTremorChance: 8, areaTremorSize: 8 },
+    3: { areaTremorChance: 5 },
+    4: { areaTremorDamage: 5 },
+    5: { areaTremorChance: 7, areaTremorSize: 7, areaTremorDamage: 7 },
+    // 12-13: key nodes — not yet defined
+  },
+}
+
+export function getAreaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return AREA_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeAreaBonuses(nodes: number[][]): AreaBonuses {
+  const b: AreaBonuses = {
+    damageIncrease: 0,
+    moreDamage: 0,
+    doubleDamageChance: 0,
+    sizeIncrease: 0,
+    moreSize: 0,
+    lessActionSpeed: 0,
+    tremorChance: 0,
+    tremorDamage: 0,
+    tremorSize: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getAreaNodeEffect(treeIdx, nodeIdx)
+      b.damageIncrease     += eff.areaDamageIncrease ?? 0
+      b.moreDamage         += eff.areaMoreDamage ?? 0
+      b.doubleDamageChance += eff.areaDoubleDamageChance ?? 0
+      b.sizeIncrease       += eff.areaSizeIncrease ?? 0
+      b.moreSize           += eff.areaMoreSize ?? 0
+      b.lessActionSpeed    += eff.areaLessActionSpeed ?? 0
+      b.tremorChance       += eff.areaTremorChance ?? 0
+      b.tremorDamage       += eff.areaTremorDamage ?? 0
+      b.tremorSize         += eff.areaTremorSize ?? 0
+    }
+  }
+  return b
+}
+
 // ── Physical mastery node effects ─────────────────────────────────────────
 // Tree 0: Physical Damage (short)  Tree 1-4: not yet implemented
 
@@ -1391,6 +1492,10 @@ export function getNodeDescription(
     const desc = PHYSICAL_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
+  if (masteryId === 'area') {
+    const desc = AREA_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`
 }
 
@@ -1510,5 +1615,44 @@ const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, stri
     3: 'Lightning actions have +5% increased chance to Electrify you',
     4: '+5% increased action speed while Electrified',
     5: '5% less damage taken from all sources while Electrified',
+  },
+}
+
+const AREA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {  // Area Damage
+    0:  '+5% increased area damage',
+    1:  '+5% chance for area to deal double damage',
+    2:  '+12% increased area damage',
+    3:  '+5% increased area damage',
+    4:  '+5% chance for area to deal double damage',
+    5:  '+20% more area damage',
+    6:  '+5% increased area damage',
+    7:  '+5% chance for area to deal double damage',
+    8:  '+5% chance for area to deal double damage · +5% increased area damage · +5% increased area size',
+    9:  '+5% increased area damage',
+    10: '+5% chance for area to deal double damage',
+    11: '+30% more area damage · 15% less area action speed',
+  },
+  1: {  // Area Size
+    0:  '+5% increased area action radius',
+    1:  '+5% increased area damage',
+    2:  '+12% increased area action radius',
+    3:  '+5% increased area action radius',
+    4:  '+5% increased area damage',
+    5:  '+15% more area action radius',
+    6:  '+5% increased area action radius',
+    7:  '+5% increased area damage',
+    8:  '+8% increased area action radius · +5% increased area damage',
+    9:  '+5% increased area action radius',
+    10: '+5% increased area damage',
+    11: '+10% more area action radius · +10% more area damage · 10% less area action speed',
+  },
+  2: {  // Tremor
+    0: 'Area actions have +5% increased chance to trigger a tremor',
+    1: 'Tremors deal +5% increased damage',
+    2: 'Area actions have +8% increased chance to trigger a tremor · Tremors have +8% increased area radius',
+    3: 'Area actions have +5% increased chance to trigger a tremor',
+    4: 'Tremors deal +5% increased damage',
+    5: 'Area actions have +7% increased chance to trigger a tremor · Tremors have +7% increased area radius · Tremors deal +7% increased damage',
   },
 }
