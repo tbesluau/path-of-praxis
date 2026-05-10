@@ -414,3 +414,11 @@ Two targeting modes:
 - **Self-targeted** (`selfTargeted: true`): the action has no range. Its area radius doubles as the trigger range — the cast fires the moment any enemy enters the area, and the area is centered **on the caster**.
 
 Each enemy in the area receives an independent pending hit, so all per-hit triggers (burn, electrocute, bleed, frenzy, life/mana steal, action XP, etc.) fire once per hit enemy. Per-cast triggers (trance, immolate, doubleCast, mana payment) fire once per cast as usual.
+
+## Tremor
+
+A **multi-action** sourced from the **Area mastery — Tremor tree**. After an area cast resolves, every non-primary victim independently rolls the Tremor chance; on success a tremor is queued targeting that enemy.
+
+Each tremor re-fires the same area action centered on its trigger enemy (regardless of whether the original was self-targeted or enemy-targeted), with a base **0.5× damage and 0.5× area radius** multiplier. The Tremor tree adds increased tremor damage and increased tremor radius bonuses on top of the 0.5× base.
+
+Tremors are **free continuation casts** (no extra mana) and **stop all further multi-actions, including more tremors**. They can hit enemies that were already hit by the original cast or by another tremor — there is no de-dup across waves.
