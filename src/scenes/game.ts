@@ -678,8 +678,8 @@ export function createGameScene(
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
     entity.attackSpeed  = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
     entity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
-    // Self-targeted area actions have no range; their area radius doubles as the trigger range.
-    const baseRangeUnits = def.selfTargeted ? (def.area ?? 0) : def.range
+    // Self-targeted area actions fire at 2/3 of the area radius so the cast catches more enemies.
+    const baseRangeUnits = def.selfTargeted ? (def.area ?? 0) * (2 / 3) : def.range
     entity.attackRange  = baseRangeUnits * balance.player.radius
     if (entity.role === 'player' && def.tags.includes('spell')) {
       const b = getSpellBonuses()
