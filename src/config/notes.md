@@ -28,14 +28,14 @@ The bonuses are applied each heal or regen tick — they do not change stored DP
 
 ## Trance
 
-A **Status** (buff) triggered by the **Spell mastery — Trance tree** (nodes 0, 3, 5 each grant trigger chance). Lasts **3 seconds**; re-triggering refreshes the duration.
+A **Status** (buff) triggered by the **Action mastery — Trance tree** (nodes 0, 3, 5 each grant trigger chance). Lasts **3 seconds**; re-triggering refreshes the duration.
 
-**While Trance is active, spell casts gain:**
+**While Trance is active, actions gain:**
 - Chance to strike an **Additional Target** (Trance multi-target chance; each hit is independent)
 - Increased damage (Trance damage bonus; additive)
-- Increased cast speed (Trance cast speed bonus; additive; compresses the attack cycle)
+- Increased action speed (Trance action speed bonus; additive; compresses the attack cycle)
 
-All percentages are additive within their category across all Trance tree nodes. As long as Trance remains active, any cast (including **Multi-action** casts) is eligible to roll for Additional Target.
+All percentages are additive within their category across all Trance tree nodes. As long as Trance remains active, any action (including **Multi-action** actions) is eligible to roll for Additional Target.
 
 ---
 
@@ -110,7 +110,7 @@ Umbrella term for in-game modifiers triggered by hits, casts, kills, and other e
 **Categories:**
 - **Status** — buff, debuff, or mixed conditions on the player; shown in the effect bar at the top of the screen. Examples: **Trance**, **Feeding Frenzy**, **Immolation**.
 - **Affliction** — damage-over-time effects applied to enemies, with independent stacks per enemy. Example: **Burn**.
-- **Multi-action** — additional casts of a player action triggered by a primary cast or by another Multi-action. Examples: **Double Cast**, **Additional Target**, **Additional Projectile**, **Second Cast**.
+- **Multi-action** — additional actions of a player action triggered by a primary action or by another Multi-action. Examples: **Double Action**, **Additional Target**, **Additional Projectile**, **Second Action**.
 - **Proc** — per-event roll that modifies a single hit. Example: **Double Damage**.
 - **Life Steal / Mana Steal** — per-hit healing or resource recovery. See **Life Steal**.
 
@@ -162,15 +162,15 @@ More multipliers are applied after all **Increased** modifiers have been summed.
 
 A per-cast chance for the hit to deal exactly **2× its normal effective damage**. The roll happens after all other damage modifiers (including **Increased** and **More**) have been applied, so it doubles the final number.
 
-Sourced from the Spell mastery — Damage tree (double damage chance nodes). Multiple nodes add to a single cumulative chance. The roll is independent on every cast — it can proc on primary casts, **Double Cast** casts, and extra-target casts.
+Sourced from the Action mastery — Damage tree (double damage chance nodes). Multiple nodes add to a single cumulative chance. The roll is independent on every action — it can proc on primary actions, **Double Action** actions, and extra-target actions.
 
 ---
 
-## Double Cast
+## Double Action
 
-A **Multi-action** sourced from the Spell mastery — Cast Speed tree (double cast chance nodes). Each successful roll queues a follow-up cast of the same action at **1/5 of the normal cycle delay** after the primary cast. The follow-up targets the same enemy (or the nearest in range if the primary target has died) and pays full mana cost.
+A **Multi-action** sourced from the Action mastery — Action Speed tree (double action chance nodes). Each successful roll queues a follow-up action of the same action at **1/5 of the normal cycle delay** after the primary action. The follow-up targets the same enemy (or the nearest in range if the primary target has died) and pays full mana cost.
 
-Double Cast itself has **no damage modifier** — the follow-up cast deals full damage. Per the standard Multi-action rules, it can roll for **Double Damage**, trigger Statuses, Afflictions, and other Multi-actions; it cannot trigger another Double Cast.
+Double Action itself has **no damage modifier** — the follow-up action deals full damage. Per the standard Multi-action rules, it can roll for **Double Damage**, trigger Statuses, Afflictions, and other Multi-actions; it cannot trigger another Double Action.
 
 ---
 
@@ -219,7 +219,7 @@ A category of **Effect** that applies to the player. Statuses are shown as icons
 **Duration and re-triggering:** each Status has a remaining duration that counts down in real game-time. Triggering a Status that is already active refreshes its duration to the full value rather than stacking a second instance.
 
 **Current statuses:**
-- **Trance** — buff; empowers spell casts (Additional Target chance, increased damage, increased cast speed)
+- **Trance** — buff; empowers all player actions (Additional Target chance, increased damage, increased action speed)
 - **Feeding Frenzy** — buff; amplifies life steal and regeneration
 - **Immolation** — mixed; grants fire damage and burn-chance bonuses while inflicting self-burn DoT on the player
 - **Bloodlust** — buff; physical action speed/damage and bonus bleed apply chance while active
@@ -244,8 +244,8 @@ A category of **Effect** that applies a debuff or damage-over-time on an enemy. 
 A category of **Effect** in which an additional cast of a player action is triggered by a primary cast or by another Multi-action. Each Multi-action fires at a specific delay relative to the primary cooldown and may have its own damage modifier.
 
 **Current multi-actions:**
-- **Double Cast** — follow-up at 1/5 cycle, full damage (Spell mastery)
-- **Additional Target** — follow-up against a different enemy at 1/5 cycle, full damage (Spell mastery, while **Trance** is active)
+- **Double Action** — follow-up at 1/5 cycle, full damage (Action mastery)
+- **Additional Target** — follow-up against a different enemy at 1/5 cycle, full damage (Action mastery, while **Trance** is active)
 - **Additional Projectile** — follow-up at 1/5 cycle, ×0.5 damage (Projectile mastery)
 - **Second Action** — follow-up at 1/5 cycle, ×0.5 damage (**Split Action** rune; triggers on primary action only)
 - **Jump** — follow-up at 1/5 cycle, ×0.6 damage (Lightning mastery); targets a nearby enemy from the previous target's position
@@ -255,7 +255,7 @@ A category of **Effect** in which an additional cast of a player action is trigg
 1. **Proper new action.** Every Multi-action cast is a real cast. It can roll for **Double Damage**, apply **Afflictions**, trigger Statuses, and roll for any other Multi-action — but it can never re-trigger the same Multi-action that produced it.
 2. **Inheritance.** If a Multi-action carries a damage reduction specific to that mechanic, any new Multi-action it triggers inherits that modifier. Modifiers compound through chains: e.g. an Additional Projectile (×0.5) that triggers a Second Cast (×0.5) results in a follow-up at ×0.25 damage.
 3. **Depth multiplier.** Every Multi-action level carries an additional ×0.9 multiplier. A Multi-action directly triggered by a primary cast starts at ×0.9 (before its own type modifier). Each subsequent level compounds: depth 2 is ×0.81, depth 3 is ×0.729, and so on. This stacks multiplicatively with the type-specific modifier from rule 2.
-4. **Trigger order.** When several Multi-actions are eligible to roll on the same cast, they evaluate from the **most generic source to the most specific**: spell-tier Multi-actions first (Double Cast, Additional Target), then projectile-tier (Additional Projectile), then rune-specific (Second Cast), then lightning-specific (Jump). This ordering also determines which queued cast fires first when multiple are pending.
+4. **Trigger order.** When several Multi-actions are eligible to roll on the same action, they evaluate from the **most generic source to the most specific**: action-tier Multi-actions first (Double Action, Additional Target), then projectile-tier (Additional Projectile), then rune-specific (Second Action), then lightning-specific (Jump). This ordering also determines which queued action fires first when multiple are pending.
 
 ---
 
@@ -263,11 +263,11 @@ A category of **Effect** in which an additional cast of a player action is trigg
 
 A **Multi-action** that queues a follow-up cast at **1/5 of the normal cycle** against a different in-range enemy, paying no mana. The follow-up deals full damage with no Multi-action-specific modifier.
 
-**Sources (chances are summed into a single roll per cast):**
-- Spell mastery — Trance tree (multi-target chance nodes), only while **Trance** is active
+**Sources (chances are summed into a single roll per action):**
+- Action mastery — Trance tree (multi-target chance nodes), only while **Trance** is active
 - Strike mastery — Additional Target tree, on any **strike**-tagged action; total chance = strike additional-target chance × (1 + strike additional-target more / 100)
 
-A single action that is both spell- and strike-tagged sums the chances from both pools. Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Projectile**, **Second Cast**, and trigger Statuses or Afflictions. It cannot roll for another Additional Target.
+Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Action**, **Additional Projectile**, **Second Action**, and trigger Statuses or Afflictions. It cannot roll for another Additional Target.
 
 ---
 
@@ -275,7 +275,7 @@ A single action that is both spell- and strike-tagged sums the chances from both
 
 A **Multi-action** triggered by Projectile mastery (extra-projectile chance nodes). Each successful roll queues a follow-up projectile at **1/5 of the normal cycle**, dealing **×0.5 damage** (boosted additively by Projectile mastery extra-damage nodes), preferring a different in-range enemy when available.
 
-Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Target**, **Second Cast**, and trigger Statuses or Afflictions. It cannot roll for another Additional Projectile.
+Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Action**, **Additional Target**, **Second Action**, and trigger Statuses or Afflictions. It cannot roll for another Additional Projectile.
 
 **Exception — Projectile mastery key node:** when this node is taken, the first Additional Projectile rolls once more for a second Additional Projectile. Both are proper new actions; the second cannot roll for a third.
 
@@ -285,11 +285,11 @@ By the **inheritance** rule, any Multi-action triggered from an Additional Proje
 
 ## Second Action
 
-A **Multi-action** triggered by the **Split Action** key rune. Every **primary action** queues a follow-up at **1/5 of the normal cycle**, dealing **×0.5 damage**. Multi-actions (Double Cast, Additional Projectile, etc.) that fire as a result of the primary do not each trigger their own Second Action.
+A **Multi-action** triggered by the **Split Action** key rune. Every **primary action** queues a follow-up at **1/5 of the normal cycle**, dealing **×0.5 damage**. Multi-actions (Double Action, Additional Projectile, etc.) that fire as a result of the primary do not each trigger their own Second Action.
 
-Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Cast**, **Additional Target**, **Additional Projectile**, and trigger Statuses or Afflictions. It cannot trigger another Second Cast.
+Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Action**, **Additional Target**, **Additional Projectile**, and trigger Statuses or Afflictions. It cannot trigger another Second Action.
 
-By the **inheritance** rule, any Multi-action triggered from a Second Cast carries the ×0.5 damage modifier forward — compounded with any further Multi-action modifier on top.
+By the **inheritance** rule, any Multi-action triggered from a Second Action carries the ×0.5 damage modifier forward — compounded with any further Multi-action modifier on top.
 
 ---
 
@@ -313,7 +313,7 @@ Damage mitigation is a source of damage reduction applied to incoming hits. Seve
 **Current sources:**
 - **Resistance** — reduces incoming damage of a matching family (Physical, Rot, or Elemental)
 
-More mitigation types are planned. Some Spell mastery nodes allow spells to bypass all enemy damage mitigation on a per-cast roll.
+More mitigation types are planned. Some Action mastery nodes allow actions to bypass all enemy damage mitigation on a per-action roll.
 
 ---
 
@@ -329,15 +329,15 @@ Resistance is one source of **Mitigation**. **Resistance reduction** effects (e.
 
 ---
 
-## Cast Speed
+## Action Speed
 
-How quickly a player action fires. Higher cast speed shortens the time between casts (the attack cycle), letting you deal more hits per second.
+How quickly a player action fires. Higher action speed shortens the time between actions (the attack cycle), letting you deal more hits per second.
 
-**Sources of increased cast speed:**
-- **Trance** Status — grants a temporary cast speed bonus while active (Spell mastery)
-- Spell mastery cast speed nodes — permanent additive increases
+**Sources of increased action speed:**
+- **Trance** Status — grants a temporary action speed bonus while active (Action mastery)
+- Action mastery action speed nodes — permanent additive increases
 
-Cast speed bonuses are additive within their category. The resulting multiplier shortens the cycle proportionally — doubling cast speed halves the time between casts.
+Action speed bonuses are additive within their category. The resulting multiplier shortens the cycle proportionally — doubling action speed halves the time between actions.
 
 ---
 
@@ -413,7 +413,7 @@ Two targeting modes:
 - **Enemy-targeted**: the action has a `range` like any other; once the targeted enemy enters that range the cast fires, and the area is centered **on the target**.
 - **Self-targeted** (`selfTargeted: true`): the action has no range. Its area radius doubles as the trigger range — the cast fires the moment any enemy enters the area, and the area is centered **on the caster**.
 
-Each enemy in the area receives an independent pending hit, so all per-hit triggers (burn, electrocute, bleed, frenzy, life/mana steal, action XP, etc.) fire once per hit enemy. Per-cast triggers (trance, immolate, doubleCast, mana payment) fire once per cast as usual.
+Each enemy in the area receives an independent pending hit, so all per-hit triggers (burn, electrocute, bleed, frenzy, life/mana steal, action XP, etc.) fire once per hit enemy. Per-action triggers (trance, immolate, doubleAction, mana payment) fire once per action as usual.
 
 ## Knockback
 

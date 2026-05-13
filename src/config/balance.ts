@@ -1,7 +1,7 @@
 /**
  * Game balance configuration — edit freely to tune gameplay.
  *
- * Units are noted inline. attackRange is expressed in "range units"
+ * Units are noted inline. actionRange is expressed in "range units"
  * where 1 unit = player radius, so 1 = melee (touching), 2 = twice
  * that reach, etc.
  */
@@ -16,7 +16,7 @@ export const balance = {
     startingLife:  100,  // on new character creation and after rebirth
     startingMana:  100,
     regenRate:     0.01, // fraction of max life/mana recovered per second
-    // attack stats are defined per-action in src/config/weapons.ts and spells.ts
+    // action stats are defined per-action in src/config/weapons.ts and spells.ts
   },
 
   // ── Enemy teams ─────────────────────────────────────────────────────────

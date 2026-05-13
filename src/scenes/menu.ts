@@ -126,9 +126,6 @@ function mountNewCharacterModal(
   parent: HTMLElement,
   { onClose, onCreate }: { onClose: () => void; onCreate: (name: string, actionId: ActionId) => void },
 ): () => void {
-  const weaponActions = allActions.filter((a): a is ActionDef & { kind: 'weapon' } => a.kind === 'weapon')
-  const spellActions  = allActions.filter((a): a is ActionDef & { kind: 'spell'  } => a.kind === 'spell')
-
   const buildCards = (actions: ActionDef[], selected: ActionId) =>
     actions.map(a => {
       const iconAttr = `data-lucide="${a.icon}"`
@@ -159,12 +156,7 @@ function mountNewCharacterModal(
       </div>
       <div class="modal-field">
         <span class="modal-label">${t('game', 'actionSelectTitle')}</span>
-        <div class="action-tabs">
-          <button class="action-tab action-tab--active" data-tab="weapon">${t('game', 'weaponsTab')}</button>
-          <button class="action-tab" data-tab="spell">${t('game', 'spellsTab')}</button>
-        </div>
-        <div class="action-grid" data-panel="weapon">${buildCards(weaponActions, 'sword')}</div>
-        <div class="action-grid" data-panel="spell" hidden>${buildCards(spellActions, 'sword')}</div>
+        <div class="action-grid">${buildCards(allActions, 'sword')}</div>
       </div>
       <div class="modal-actions">
         <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
@@ -184,13 +176,6 @@ function mountNewCharacterModal(
   const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
 
   let selectedActionId: ActionId = 'sword'
-
-  const tabs   = backdrop.querySelectorAll<HTMLButtonElement>('.action-tab')
-  const panels = backdrop.querySelectorAll<HTMLElement>('[data-panel]')
-  tabs.forEach(tab => tab.addEventListener('click', () => {
-    tabs.forEach(t => t.classList.toggle('action-tab--active', t === tab))
-    panels.forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab })
-  }))
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action-id]').forEach(card =>
     card.addEventListener('click', () => {

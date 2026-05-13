@@ -5,8 +5,8 @@ import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, A
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
-import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId } from '../config/masteries'
-import { computeSpellBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, type SpellBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses } from '../config/mastery-nodes'
+import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId, type ActionTag } from '../config/masteries'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -131,8 +131,8 @@ export function createGameScene(
     return actionProgress[id]?.level ?? 1
   }
 
-  function getSpellBonuses(): SpellBonuses {
-    return computeSpellBonuses(masteryProgress['spell']?.nodes ?? [[], [], [], [], []])
+  function getActionBonuses(): ActionBonuses {
+    return computeActionBonuses(masteryProgress['action']?.nodes ?? [[], [], [], [], []])
   }
 
   function getLifeBonuses(): LifeBonuses {
@@ -721,60 +721,60 @@ export function createGameScene(
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
-    entity.attackSpeed  = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
-    entity.attackDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
+    entity.actionSpeed  = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
+    entity.actionDamage = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
     // Self-targeted area actions fire at 2/3 of the area radius so the cast catches more enemies.
     const baseRangeUnits = def.selfTargeted ? (def.area ?? 0) * (2 / 3) : def.range
-    entity.attackRange  = baseRangeUnits * balance.player.radius
-    if (entity.role === 'player' && def.tags.includes('spell')) {
-      const b = getSpellBonuses()
-      entity.attackDamage *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-      entity.attackSpeed  *= (1 + b.castSpeedIncrease / 100) * (1 + b.moreCastSpeed / 100)
+    entity.actionRange  = baseRangeUnits * balance.player.radius
+    if (entity.role === 'player') {
+      const ab = getActionBonuses()
+      entity.actionDamage *= (1 + ab.damageIncrease / 100) * (1 + ab.moreDamage / 100)
+      entity.actionSpeed  *= (1 + ab.actionSpeedIncrease / 100) * (1 + ab.moreActionSpeed / 100)
     }
     if (entity.role === 'player' && def.tags.includes('projectile')) {
       const pb = getProjectileBonuses()
-      entity.attackDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
-      entity.attackSpeed  *= (1 + pb.actionSpeedIncrease / 100)
-      entity.attackRange  *= (1 + pb.rangeIncrease / 100)
+      entity.actionDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
+      entity.actionSpeed  *= (1 + pb.actionSpeedIncrease / 100)
+      entity.actionRange  *= (1 + pb.rangeIncrease / 100)
     }
     if (entity.role === 'player' && def.tags.includes('strike')) {
       const sb = getStrikeBonuses()
-      entity.attackDamage *= (1 + sb.damageIncrease / 100) * (1 + sb.moreDamage / 100)
-      entity.attackSpeed  *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100)
-      entity.attackRange  *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100)
+      entity.actionDamage *= (1 + sb.damageIncrease / 100) * (1 + sb.moreDamage / 100)
+      entity.actionSpeed  *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100)
+      entity.actionRange  *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100)
     }
     if (entity.role === 'player' && def.tags.includes('lightning')) {
       const lb = getLightningBonuses()
-      entity.attackDamage *= (1 + lb.damageIncrease / 100) * (1 + lb.moreDamage / 100)
-      entity.attackSpeed  *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100)
+      entity.actionDamage *= (1 + lb.damageIncrease / 100) * (1 + lb.moreDamage / 100)
+      entity.actionSpeed  *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100)
     }
     if (entity.role === 'player' && def.tags.includes('fire')) {
       const fb = getFireBonuses()
-      entity.attackDamage *= (1 + fb.damageIncrease / 100) * (1 + fb.moreDamage / 100)
-      entity.attackSpeed  *= (1 + fb.actionSpeedIncrease / 100)
+      entity.actionDamage *= (1 + fb.damageIncrease / 100) * (1 + fb.moreDamage / 100)
+      entity.actionSpeed  *= (1 + fb.actionSpeedIncrease / 100)
     }
     if (entity.role === 'player' && def.tags.includes('physical')) {
       const pb = getPhysicalBonuses()
-      entity.attackDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
-      entity.attackSpeed  *= (1 + pb.actionSpeedIncrease / 100)
+      entity.actionDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
+      entity.actionSpeed  *= (1 + pb.actionSpeedIncrease / 100)
     }
     if (entity.role === 'player' && def.tags.includes('area')) {
       const ab = getAreaBonuses()
-      entity.attackDamage *= (1 + ab.damageIncrease / 100) * (1 + ab.moreDamage / 100)
-      entity.attackSpeed  *= Math.max(0.01, 1 - ab.lessActionSpeed / 100)
+      entity.actionDamage *= (1 + ab.damageIncrease / 100) * (1 + ab.moreDamage / 100)
+      entity.actionSpeed  *= Math.max(0.01, 1 - ab.lessActionSpeed / 100)
       // Self-targeted area uses (2/3 × area radius) as trigger range — grow it with size bonuses
       if (def.selfTargeted) {
-        entity.attackRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+        entity.actionRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
       }
     }
     if (entity.role === 'player') {
       const rb = getRuneBonuses(id)
-      entity.attackDamage *= (1 + rb.damageIncrease / 100) * rb.damageMore
-      entity.attackSpeed  *= (1 + rb.speedIncrease  / 100) * rb.speedMore
-      if (rb.slowHeavy) { entity.attackDamage *= 2; entity.attackSpeed *= 0.5 }
+      entity.actionDamage *= (1 + rb.damageIncrease / 100) * rb.damageMore
+      entity.actionSpeed  *= (1 + rb.speedIncrease  / 100) * rb.speedMore
+      if (rb.slowHeavy) { entity.actionDamage *= 2; entity.actionSpeed *= 0.5 }
       // Global action speed from Mana mastery Maximum Mana tree (node 8)
       const mb = getManaBonuses()
-      if (mb.actionSpeedIncrease > 0) entity.attackSpeed *= (1 + mb.actionSpeedIncrease / 100)
+      if (mb.actionSpeedIncrease > 0) entity.actionSpeed *= (1 + mb.actionSpeedIncrease / 100)
     }
     entityActions.set(entity.id, id)
   }
@@ -1208,13 +1208,11 @@ export function createGameScene(
     const level = getPlayerLevel(playerActionId)
     let dmg = action.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
     let spd = action.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
-    if (action.tags.includes('spell')) {
-      const b = getSpellBonuses()
-      dmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-      spd *= (1 + b.castSpeedIncrease / 100) * (1 + b.moreCastSpeed / 100)
-      if (b.doubleDamageChance > 0) {
-        return { min: dmg * spd, max: dmg * 2 * spd }
-      }
+    const b = getActionBonuses()
+    dmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+    spd *= (1 + b.actionSpeedIncrease / 100) * (1 + b.moreActionSpeed / 100)
+    if (b.doubleDamageChance > 0) {
+      return { min: dmg * spd, max: dmg * 2 * spd }
     }
     return { min: dmg * spd, max: dmg * spd }
   }
@@ -1304,7 +1302,7 @@ export function createGameScene(
 
   battleConfigBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
-    const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id
+    const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id as ActionId
     modalCleanup = mountBattleConfigModal(
       container,
       currentId,
@@ -1590,8 +1588,8 @@ export function createGameScene(
 
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
-  const attackCooldowns = new Map<string, number>()
-  type MultiActionType = 'doubleCast' | 'additionalTarget' | 'additionalProjectile' | 'splitCast' | 'jump' | 'tremor'
+  const actionCooldowns = new Map<string, number>()
+  type MultiActionType = 'doubleAction' | 'additionalTarget' | 'additionalProjectile' | 'splitAction' | 'jump' | 'tremor'
   interface PendingMultiAction {
     type:                   MultiActionType
     inheritedDamageMult:    number   // accumulated ×0.9^depth × parent ownMult
@@ -1601,10 +1599,10 @@ export function createGameScene(
     jumpedTargetIds?:       Set<string> // enemies already hit in the current jump chain
   }
   const MULTI_ACTION_PRIORITY: Record<MultiActionType, number> = {
-    doubleCast: 0, additionalTarget: 1, additionalProjectile: 2, splitCast: 3, jump: 4, tremor: 5,
+    doubleAction: 0, additionalTarget: 1, additionalProjectile: 2, splitAction: 3, jump: 4, tremor: 5,
   }
   const MULTI_ACTION_COOLDOWN_DIV: Record<MultiActionType, number> = {
-    doubleCast: 5, additionalTarget: 5, additionalProjectile: 5, splitCast: 5, jump: 5, tremor: 5,
+    doubleAction: 5, additionalTarget: 5, additionalProjectile: 5, splitAction: 5, jump: 5, tremor: 5,
   }
   const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
@@ -1847,7 +1845,7 @@ export function createGameScene(
       entityContainers.delete(entity.id)
     }
     lifeBarGraphics.delete(entity.id)
-    attackCooldowns.delete(entity.id)
+    actionCooldowns.delete(entity.id)
     pendingMultiActions.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
@@ -2125,7 +2123,7 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
-    if ((id === 'spell' || id === 'projectile' || id === 'strike' || id === 'lightning' || id === 'fire' || id === 'physical') && getAction(playerActionId).tags.includes(id)) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -2151,7 +2149,7 @@ export function createGameScene(
       level: existing.level - 1,
       nodes: defaultMasteryNodes(),
     }
-    if ((id === 'spell' || id === 'projectile' || id === 'strike' || id === 'lightning' || id === 'fire' || id === 'physical') && getAction(playerActionId).tags.includes(id)) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -2324,8 +2322,8 @@ export function createGameScene(
         balance.enemyA.radius,
         { moveSpeed: balance.enemyA.moveSpeed * speedScale * moveSpeedMult, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
-      assignAction(enemy, randomAction().id)
-      enemy.attackDamage *= damageScale * balance.enemyA.damageMultiplier * dmgMult
+      assignAction(enemy, randomAction().id as ActionId)
+      enemy.actionDamage *= damageScale * balance.enemyA.damageMultiplier * dmgMult
       const rMin = tier === 'elite' ? ev.eliteResistMin : tier === 'strong' ? ev.strongResistMin : ev.normalResistMin
       const rMax = tier === 'elite' ? ev.eliteResistMax : tier === 'strong' ? ev.strongResistMax : ev.normalResistMax
       enemy.physRotResist = Math.round(rMin + Math.random() * (rMax - rMin))
@@ -2334,11 +2332,11 @@ export function createGameScene(
         highResistEntities.add(enemy.id)
       }
       if (tier === 'elite') {
-        enemy.attackSpeed *= ev.eliteSpeedMult
+        enemy.actionSpeed *= ev.eliteSpeedMult
         strongEntities.add(enemy.id)
         eliteEntities.add(enemy.id)
       } else if (tier === 'strong') {
-        enemy.attackSpeed *= ev.strongSpeedMult
+        enemy.actionSpeed *= ev.strongSpeedMult
         strongEntities.add(enemy.id)
       }
       enemyLevels.set(enemy.id, enemyProgress.level)
@@ -2766,7 +2764,7 @@ export function createGameScene(
           const gs = balance.world.gridSize
           const dx = target.x - entity.x, dy = target.y - entity.y
           const dist = Math.sqrt(dx * dx + dy * dy)
-          const stopDist = entity.attackRange + target.radius
+          const stopDist = entity.actionRange + target.radius
           if (dist <= stopDist) { Matter.Body.setVelocity(body, { x: 0, y: 0 }); continue }
 
           const fromTx = Math.floor(entity.x / gs), fromTy = Math.floor(entity.y / gs)
@@ -3110,8 +3108,8 @@ export function createGameScene(
           const actionId = entityActions.get(entity.id)
           if (!actionId) continue
           const action = getAction(actionId)
-          const cd = (attackCooldowns.get(entity.id) ?? 0) - ticker.deltaMS
-          attackCooldowns.set(entity.id, cd)
+          const cd = (actionCooldowns.get(entity.id) ?? 0) - ticker.deltaMS
+          actionCooldowns.set(entity.id, cd)
           if (cd > 0) continue
 
           // ── Determine next pending multi-action ───────────────────────────
@@ -3136,20 +3134,20 @@ export function createGameScene(
             const dx = target.x - entity.x
             const dy = target.y - entity.y
             const dist = Math.sqrt(dx * dx + dy * dy)
-            if (dist - target.radius > entity.attackRange) continue
+            if (dist - target.radius > entity.actionRange) continue
           }
 
-          const isPlayerSpell = entity.role === 'player' && action.tags.includes('spell')
-          const spellBonuses = isPlayerSpell ? getSpellBonuses() : null
+          const isPlayer = entity.role === 'player'
+          const actionBonuses = isPlayer ? getActionBonuses() : null
           const isPlayerProjectile = entity.role === 'player' && action.tags.includes('projectile')
           const pb = isPlayerProjectile ? getProjectileBonuses() : null
-          const tranceActive = isPlayerSpell && hasEffect('trance')
+          const tranceActive = isPlayer && hasEffect('trance')
           const rb = entity.role === 'player' ? getRuneBonuses(actionId) : null
 
           // Cast Speed node 11: doubleCast second cast guarantees afflictions; propagates to its branched multi-actions.
           const guaranteedAfflictions =
             pending?.guaranteedAfflictions === true
-            || (pending?.type === 'doubleCast' && spellBonuses?.guaranteedAfflictions === true)
+            || (pending?.type === 'doubleAction' && actionBonuses?.guaranteedAfflictions === true)
 
           // additionalProjectile: prefer the queued different target if still alive and in range
           if (pending?.type === 'additionalProjectile' && pending.target && pending.target !== target) {
@@ -3158,7 +3156,7 @@ export function createGameScene(
               const dx = stored.x - entity.x
               const dy = stored.y - entity.y
               const dist = Math.sqrt(dx * dx + dy * dy)
-              if (dist - stored.radius <= entity.attackRange) target = stored
+              if (dist - stored.radius <= entity.actionRange) target = stored
             }
           }
 
@@ -3168,14 +3166,14 @@ export function createGameScene(
           const isFreeMultiCast = pending?.type === 'additionalTarget' || pending?.type === 'tremor'
           let gateCost = action.manaCost
           let paidCost = action.manaCost
-          if (!isFreeMultiCast && isPlayerSpell && spellBonuses && action.manaCost > 0) {
-            const reduction = spellBonuses.manaCostReduction / 100
-              + (spellBonuses.manaCostRandomReductionMax > 0
-                ? (Math.random() * spellBonuses.manaCostRandomReductionMax) / 100
+          if (!isFreeMultiCast && isPlayer && actionBonuses && action.manaCost > 0) {
+            const reduction = actionBonuses.manaCostReduction / 100
+              + (actionBonuses.manaCostRandomReductionMax > 0
+                ? (Math.random() * actionBonuses.manaCostRandomReductionMax) / 100
                 : 0)
             gateCost = action.manaCost * Math.max(0, 1 - reduction)
             paidCost = gateCost
-            if (spellBonuses.noManaCostChance > 0 && Math.random() * 100 < spellBonuses.noManaCostChance) {
+            if (actionBonuses.noManaCostChance > 0 && Math.random() * 100 < actionBonuses.noManaCostChance) {
               paidCost = 0
             }
           }
@@ -3185,7 +3183,7 @@ export function createGameScene(
           }
           // Gate: additionalTarget free; doubleCast may skip with repeatNoMana; manaless bypasses
           const skipGate = isFreeMultiCast
-            || (pending?.type === 'doubleCast' && spellBonuses?.repeatNoMana === true)
+            || (pending?.type === 'doubleAction' && actionBonuses?.repeatNoMana === true)
             || (rb?.manaless === true)
           if (entity.maxMana > 0 && !skipGate && entity.currentMana < gateCost) continue
 
@@ -3198,7 +3196,7 @@ export function createGameScene(
 
           if (pending) {
             let ownMult = 1.0
-            if (pending.type === 'splitCast') ownMult = 0.5
+            if (pending.type === 'splitAction') ownMult = 0.5
             else if (pending.type === 'additionalProjectile') ownMult = 0.5 * (1 + (pb?.extraDamage ?? 0) / 100)
             else if (pending.type === 'jump') {
               const lbJ = getLightningBonuses()
@@ -3207,16 +3205,16 @@ export function createGameScene(
             else if (pending.type === 'tremor') {
               ownMult = 0.5 * (1 + getAreaBonuses().tremorDamage / 100)
             }
-            effectiveDamage = entity.attackDamage * pending.inheritedDamageMult * ownMult
+            effectiveDamage = entity.actionDamage * pending.inheritedDamageMult * ownMult
             childInherited = pending.inheritedDamageMult * ownMult * 0.9
           } else {
-            effectiveDamage = entity.attackDamage * (rb?.splitCast ? 0.5 : 1.0)
+            effectiveDamage = entity.actionDamage * (rb?.splitCast ? 0.5 : 1.0)
             childInherited = 0.9
           }
 
           // Layered bonuses applied after base × inheritance
-          if (tranceActive && spellBonuses && spellBonuses.tranceDamageIncrease > 0) {
-            effectiveDamage *= 1 + spellBonuses.tranceDamageIncrease / 100
+          if (tranceActive && actionBonuses && actionBonuses.tranceDamageIncrease > 0) {
+            effectiveDamage *= 1 + actionBonuses.tranceDamageIncrease / 100
           }
           if (entity.role === 'player' && action.tags.includes('fire') && hasEffect('immolation')) {
             const fb = getFireBonuses()
@@ -3228,7 +3226,7 @@ export function createGameScene(
           }
           const isPlayerStrike = entity.role === 'player' && action.tags.includes('strike')
           const isPlayerArea = entity.role === 'player' && action.tags.includes('area')
-          const totalDDC = (spellBonuses?.doubleDamageChance ?? 0)
+          const totalDDC = (actionBonuses?.doubleDamageChance ?? 0)
             + (isPlayerStrike ? getStrikeBonuses().doubleDamageChance : 0)
             + (isPlayerProjectile ? (pb?.doubleDamageChance ?? 0) : 0)
             + (isPlayerArea ? getAreaBonuses().doubleDamageChance : 0)
@@ -3236,7 +3234,7 @@ export function createGameScene(
             effectiveDamage *= 2
           }
           if (pb && pb.damagePerRange > 0) {
-            const rangeUnits = entity.attackRange / balance.player.radius
+            const rangeUnits = entity.actionRange / balance.player.radius
             effectiveDamage *= 1 + (rangeUnits * pb.damagePerRange) / 100
           }
           if (entity.role === 'player' && frenzyCharges > 0) {
@@ -3246,10 +3244,10 @@ export function createGameScene(
           }
 
           // ── Cycle duration ────────────────────────────────────────────────
-          const tranceSpeedMult = (tranceActive && spellBonuses && spellBonuses.tranceCastSpeedIncrease > 0)
-            ? 1 + spellBonuses.tranceCastSpeedIncrease / 100
+          const tranceSpeedMult = (tranceActive && actionBonuses && actionBonuses.tranceActionSpeedIncrease > 0)
+            ? 1 + actionBonuses.tranceActionSpeedIncrease / 100
             : 1
-          let effectiveAttackSpeed = entity.attackSpeed
+          let effectiveAttackSpeed = entity.actionSpeed
           if (entity.role === 'enemy' && isElectrocuted(entity)) {
             const lbAtk = getLightningBonuses()
             if (lbAtk.electrocuteSlowOnDamageTaken) {
@@ -3335,8 +3333,8 @@ export function createGameScene(
           }
 
           // ── Status triggers — all casts (including multi-actions) can trigger ──
-          if (isPlayerSpell && spellBonuses && spellBonuses.tranceTriggerChance > 0
-              && Math.random() * 100 < spellBonuses.tranceTriggerChance) {
+          if (isPlayer && actionBonuses && actionBonuses.tranceTriggerChance > 0
+              && Math.random() * 100 < actionBonuses.tranceTriggerChance) {
             applyEffect({ id: 'trance', iconName: 'book', kind: 'buff' }, balance.buffs.tranceDurationMs)
           }
           if (entity.role === 'player' && action.tags.includes('fire')) {
@@ -3372,7 +3370,7 @@ export function createGameScene(
               if (e === target || e.role !== 'enemy') continue
               const ex = e.x - entity.x, ey = e.y - entity.y
               const d = Math.sqrt(ex * ex + ey * ey)
-              if (d - e.radius > entity.attackRange) continue
+              if (d - e.radius > entity.actionRange) continue
               if (d < bestDist) { bestDist = d; best = e }
             }
             return best
@@ -3399,7 +3397,7 @@ export function createGameScene(
           // additionalTarget: trance multi-target + strike additional-target + projectile additional-target (summed)
           if (!blockMultiActions && pending?.type !== 'additionalTarget' && entity.role === 'player') {
             let totalChance = 0
-            if (tranceActive && spellBonuses) totalChance += spellBonuses.tranceMultiTargetChance
+            if (tranceActive && actionBonuses) totalChance += actionBonuses.tranceMultiTargetChance
             if (action.tags.includes('strike')) {
               const sb = getStrikeBonuses()
               totalChance += sb.additionalTargetChance * (1 + sb.additionalTargetMore / 100)
@@ -3411,11 +3409,11 @@ export function createGameScene(
             }
           }
 
-          // doubleCast: not if this cast was a doubleCast
-          if (!blockMultiActions && isPlayerSpell && pending?.type !== 'doubleCast' && spellBonuses
-              && spellBonuses.doubleCastChance > 0
-              && Math.random() * 100 < spellBonuses.doubleCastChance) {
-            queueMA('doubleCast', childInherited)
+          // doubleAction: not if this cast was a doubleCast
+          if (!blockMultiActions && isPlayer && pending?.type !== 'doubleAction' && actionBonuses
+              && actionBonuses.doubleActionChance > 0
+              && Math.random() * 100 < actionBonuses.doubleActionChance) {
+            queueMA('doubleAction', childInherited)
           }
 
           // additionalProjectile: not if this cast was an additionalProjectile,
@@ -3430,7 +3428,7 @@ export function createGameScene(
 
           // splitCast (key rune): only the primary cast triggers the second cast
           if (!blockMultiActions && !pending && entity.role === 'player' && rb?.splitCast) {
-            queueMA('splitCast', childInherited)
+            queueMA('splitAction', childInherited)
           }
 
           // jump: on any lightning-tagged player hit; re-rolls on jump casts only if jumpReroll active
@@ -3440,7 +3438,7 @@ export function createGameScene(
             if (canRollJump && lbJump.jumpChance > 0 && Math.random() * 100 < lbJump.jumpChance) {
               const jumpedSoFar = new Set(pending?.type === 'jump' ? (pending.jumpedTargetIds ?? []) : [])
               jumpedSoFar.add((target as Entity).id)
-              const jumpRange = entity.attackRange * (1 + lbJump.jumpRangeIncrease / 100)
+              const jumpRange = entity.actionRange * (1 + lbJump.jumpRangeIncrease / 100)
               const jumpTarget = selectJumpTarget(target as Entity, jumpedSoFar, jumpRange)
               if (jumpTarget) queueMA('jump', childInherited, jumpTarget, false, jumpedSoFar)
             }
@@ -3461,7 +3459,7 @@ export function createGameScene(
 
           // ── Set cooldown ──────────────────────────────────────────────────
           const nextQueue = pendingMultiActions.get(entity.id)
-          attackCooldowns.set(entity.id,
+          actionCooldowns.set(entity.id,
             nextQueue && nextQueue.length > 0
               ? baseCooldown / MULTI_ACTION_COOLDOWN_DIV[nextQueue[0].type]
               : baseCooldown)
@@ -3640,9 +3638,6 @@ function mountBattleConfigModal(
   onClose: () => void,
   actionProgress: Record<string, ActionProgress>,
 ): () => void {
-  const weaponActions = allActions.filter(a => a.kind === 'weapon')
-  const spellActions  = allActions.filter(a => a.kind === 'spell')
-
   const buildCards = (actions: ActionDef[]) =>
     actions.map(a => {
       const p = actionProgress[a.id]
@@ -3659,8 +3654,6 @@ function mountBattleConfigModal(
           <span class="action-card-meta">${meta}</span>
         </button>`
     }).join('')
-
-  const startOnWeapons = weaponActions.some(a => a.id === currentActionId)
 
   const targetingOpts: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
     { mode: 'nearest',   icon: 'crosshair',    label: 'Nearest',   desc: 'Attack closest enemy' },
@@ -3686,12 +3679,7 @@ function mountBattleConfigModal(
         </button>
       </div>
       <div data-bpanel="action">
-        <div class="action-tabs">
-          <button class="action-tab${startOnWeapons ? ' action-tab--active' : ''}" data-tab="weapon">${t('game', 'weaponsTab')}</button>
-          <button class="action-tab${!startOnWeapons ? ' action-tab--active' : ''}" data-tab="spell">${t('game', 'spellsTab')}</button>
-        </div>
-        <div class="action-grid" data-panel="weapon"${startOnWeapons ? '' : ' hidden'}>${buildCards(weaponActions)}</div>
-        <div class="action-grid" data-panel="spell"${!startOnWeapons ? '' : ' hidden'}>${buildCards(spellActions)}</div>
+        <div class="action-grid">${buildCards(allActions)}</div>
       </div>
       <div data-bpanel="targeting" hidden>
         <div class="targeting-options">
@@ -3715,14 +3703,6 @@ function mountBattleConfigModal(
   bTabs.forEach(tab => tab.addEventListener('click', () => {
     bTabs.forEach(t => t.classList.toggle('battle-tab--active', t === tab))
     bPanels.forEach(p => { p.hidden = p.dataset.bpanel !== tab.dataset.btab })
-  }))
-
-  // Action sub-tab switching (weapon / spell)
-  const actionSubTabs = backdrop.querySelectorAll<HTMLButtonElement>('.action-tab')
-  const actionPanels  = backdrop.querySelectorAll<HTMLElement>('[data-panel]')
-  actionSubTabs.forEach(tab => tab.addEventListener('click', () => {
-    actionSubTabs.forEach(t => t.classList.toggle('action-tab--active', t === tab))
-    actionPanels.forEach(p => { p.hidden = p.dataset.panel !== tab.dataset.tab })
   }))
 
   // Action card selection — apply immediately

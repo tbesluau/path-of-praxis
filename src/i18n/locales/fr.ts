@@ -7,8 +7,7 @@ export const fr: TranslationSchema = {
     deathTitle: 'Vous êtes mort',
     deathRebirth: 'Renaissance',
     actionSelectTitle: 'Actions',
-    weaponsTab: 'Armes',
-    spellsTab: 'Sorts',
+    actionsTab: 'Actions',
   },
   menu: {
     continue: 'Continuer',

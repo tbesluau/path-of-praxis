@@ -13,16 +13,16 @@ export interface Entity {
   maxMana: number
   currentLife: number
   currentMana: number
-  attackSpeed: number  // attacks per second
-  attackDamage: number
-  attackRange: number  // pixels from target edge
+  actionSpeed: number  // actions per second
+  actionDamage: number
+  actionRange: number  // pixels from target edge
   physRotResist?: number  // % damage reduction for physical and rot hits
   eleResist?: number      // % damage reduction for fire, lightning, and cold hits
 }
 
 export function createPlayerEntity(
   stats: Pick<Entity, 'radius' | 'moveSpeed' | 'maxLife' | 'maxMana' | 'currentLife' | 'currentMana'> &
-    Partial<Pick<Entity, 'attackSpeed' | 'attackDamage' | 'attackRange'>>,
+    Partial<Pick<Entity, 'actionSpeed' | 'actionDamage' | 'actionRange'>>,
 ): Entity {
   return {
     id: 'player',
@@ -30,9 +30,9 @@ export function createPlayerEntity(
     team: 'player',
     x: 0,
     y: 0,
-    attackSpeed:  stats.attackSpeed  ?? 1,
-    attackDamage: stats.attackDamage ?? 1,
-    attackRange:  stats.attackRange  ?? 20,
+    actionSpeed:  stats.actionSpeed  ?? 1,
+    actionDamage: stats.actionDamage ?? 1,
+    actionRange:  stats.actionRange  ?? 20,
     radius:       stats.radius,
     moveSpeed:    stats.moveSpeed,
     maxLife:      stats.maxLife,
@@ -48,7 +48,7 @@ export function createEnemyEntity(
   y: number,
   team: EntityTeam = 'enemyA',
   radius = 20,
-  stats?: Partial<Pick<Entity, 'moveSpeed' | 'maxLife' | 'attackSpeed' | 'attackDamage' | 'attackRange'>>,
+  stats?: Partial<Pick<Entity, 'moveSpeed' | 'maxLife' | 'actionSpeed' | 'actionDamage' | 'actionRange'>>,
 ): Entity {
   const maxLife = stats?.maxLife ?? 100
   return {
@@ -63,9 +63,9 @@ export function createEnemyEntity(
     maxMana:      0,
     currentLife:  maxLife,
     currentMana:  0,
-    attackSpeed:  stats?.attackSpeed  ?? 1,
-    attackDamage: stats?.attackDamage ?? 1,
-    attackRange:  stats?.attackRange  ?? 20,
+    actionSpeed:  stats?.actionSpeed  ?? 1,
+    actionDamage: stats?.actionDamage ?? 1,
+    actionRange:  stats?.actionRange  ?? 20,
   }
 }
 
