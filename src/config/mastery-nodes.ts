@@ -186,6 +186,30 @@ export interface NodeEffect {
   areaTremorChance?: number          // additive %; chance per non-primary area victim to queue a tremor
   areaTremorDamage?: number          // additive %; tremor damage bonus on top of the 0.5× base
   areaTremorSize?: number            // additive %; tremor area radius bonus on top of the 0.5× base
+
+  // Area mastery effects (Knockback tree)
+  areaKnockbackChance?: number          // additive %; chance to knock back on area hit
+  areaKnockbackMoveSlowAmount?: number  // additive %; enemy move speed reduction for 2s after knockback
+  areaKnockbackMoreRange?: number       // 'more' %; multiplies base knockback range (base 1 player-radius)
+  areaKnockbackDamageReduction?: number // additive %; knocked-back enemies deal less damage for 2s
+
+  // Projectile mastery effects (Knockback tree)
+  projKnockbackChance?: number          // additive %; chance to knock back on projectile hit
+  projKnockbackMoveSlowAmount?: number  // additive %; enemy move speed reduction for 2s after knockback
+  projKnockbackMoreRange?: number       // 'more' %; multiplies base knockback range (base 0.5 player-radius)
+  projKnockbackDamageReduction?: number // additive %; knocked-back enemies deal less damage for 2s
+
+  // Mana mastery effects (Maximum Mana tree second half)
+  manaActionSpeedIncrease?: number   // additive %; global action speed bonus from mana mastery
+
+  // Mana mastery effects (Maximum Mana node 11)
+  manaMoreLife?: number              // 'more' %; increases maximum life
+
+  // Mana mastery effects (Mana Shield tree)
+  manaShieldAbsorbIncrease?: number      // additive %; fraction of hit damage absorbed by the mana shield
+  manaShieldDamageTakenReduce?: number   // additive %; reduces the 200% base mana cost on absorbed damage
+  manaShieldAllSources?: boolean         // when true, shield intercepts DoT sources too (node 5)
+  manaShieldResistancesApply?: boolean   // when true, player resistances reduce the mana cost (node 11)
 }
 
 export interface SpellBonuses {
@@ -232,6 +256,12 @@ export interface ManaBonuses {
   manaStealIncrease: number     // total additive %; increases mana stolen
   manaStealCapIncrease: number  // total additive %; increases per-hit hard cap (base 1% of max mana)
   feedingFrenzyChance: number   // total additive %; chance to trigger Feeding Frenzy on mana steal
+  actionSpeedIncrease: number   // total additive %; global action speed bonus from Mana tree
+  moreMaxLife: number           // total 'more' %; increases maximum life (Maximum Mana node 11)
+  manaShieldAbsorb: number        // total absorption % (sum of manaShieldAbsorbIncrease)
+  manaShieldDamageTaken: number   // effective damage taken % on mana side (base 200, reduced by nodes)
+  manaShieldAllSources: boolean   // true when node 5 is allocated — shields DoT/affliction sources too
+  manaShieldResistancesApply: boolean // true when node 11 is allocated — resistances reduce mana cost
 }
 
 export interface ProjectileBonuses {
@@ -245,6 +275,10 @@ export interface ProjectileBonuses {
   extraChance: number               // total additive %
   extraDamage: number               // total additive % (stacks on 50% base)
   extraDoubleRoll: boolean
+  knockbackChance: number           // total additive %; chance to knock back on projectile hit
+  knockbackMoveSlowAmount: number   // total additive %; enemy move speed reduction for 2s after knockback
+  knockbackMoreRange: number        // total 'more' %; multiplies base knockback range
+  knockbackDamageReduction: number  // total additive %; knocked-back enemies deal less damage for 2s
 }
 
 export interface LightningBonuses {
@@ -297,6 +331,10 @@ export interface AreaBonuses {
   tremorChance: number         // total additive %; chance per non-primary area victim to queue a tremor
   tremorDamage: number         // total additive %; tremor damage bonus on top of the 0.5× base
   tremorSize: number           // total additive %; tremor area radius bonus on top of the 0.5× base
+  knockbackChance: number          // total additive %; chance to knock back on area hit
+  knockbackMoveSlowAmount: number  // total additive %; enemy move speed reduction for 2s after knockback
+  knockbackMoreRange: number       // total 'more' %; multiplies base knockback range
+  knockbackDamageReduction: number // total additive %; knocked-back enemies deal less damage for 2s
 }
 
 export interface PhysicalBonuses {
@@ -552,14 +590,20 @@ const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { manaReplenishChance: 10 },
     // 12-13: key nodes — not yet defined
   },
-  1: {  // Maximum Mana (short tree — line nodes 0-5, key nodes 12-13)
+  1: {  // Maximum Mana (full tree — line nodes 0-11, key nodes 12-15)
     0: { manaMaxIncrease: 5 },
     1: { manaMaxIncrease: 2, manaRegenIncrease: 2 },
     2: { manaMaxIncrease: 12 },
     3: { manaMaxIncrease: 5 },
     4: { manaMaxIncrease: 2, manaRegenIncrease: 2 },
     5: { manaMoreMax: 20 },
-    // 12-13: key nodes — not yet defined
+    6: { manaMaxIncrease: 5 },
+    7: { manaMaxIncrease: 2, manaRegenIncrease: 2 },
+    8: { manaMaxIncrease: 15, manaRegenIncrease: 5, manaActionSpeedIncrease: 5 },
+    9: { manaMaxIncrease: 5 },
+    10: { manaMaxIncrease: 2, manaRegenIncrease: 2 },
+    11: { manaMoreMax: 20, manaMoreLife: 3 },
+    // 12-15: key nodes — not yet defined
   },
   2: {  // Mana Steal (short tree — line nodes 0-5, key nodes 12-13)
     0: { manaStealPercent: 0.5 },
@@ -569,6 +613,21 @@ const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
     4: { manaStealIncrease: 5 },
     5: { manaFeedingFrenzyChance: 1 },
     // 12-13: key nodes — not yet defined
+  },
+  3: {  // Mana Shield (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { manaShieldAbsorbIncrease: 5 },
+    1:  { manaShieldDamageTakenReduce: 5 },
+    2:  { manaShieldAbsorbIncrease: 10 },
+    3:  { manaShieldAbsorbIncrease: 5 },
+    4:  { manaShieldDamageTakenReduce: 5 },
+    5:  { manaShieldAllSources: true },
+    6:  { manaShieldAbsorbIncrease: 5 },
+    7:  { manaShieldDamageTakenReduce: 5 },
+    8:  { manaShieldAbsorbIncrease: 10 },
+    9:  { manaShieldAbsorbIncrease: 5 },
+    10: { manaShieldDamageTakenReduce: 5 },
+    11: { manaShieldResistancesApply: true },
+    // 12-15: key nodes — not yet defined
   },
 }
 
@@ -580,20 +639,30 @@ export function computeManaBonuses(nodes: number[][]): ManaBonuses {
   const b: ManaBonuses = {
     maxManaIncrease: 0, moreMaxMana: 0, regenIncrease: 0, replenishChance: 0,
     manaStealPercent: 0, manaStealIncrease: 0, manaStealCapIncrease: 0, feedingFrenzyChance: 0,
+    actionSpeedIncrease: 0, moreMaxLife: 0,
+    manaShieldAbsorb: 0, manaShieldDamageTaken: 200,
+    manaShieldAllSources: false, manaShieldResistancesApply: false,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getManaNodeEffect(treeIdx, nodeIdx)
-      b.maxManaIncrease      += eff.manaMaxIncrease ?? 0
-      b.moreMaxMana          += eff.manaMoreMax ?? 0
-      b.regenIncrease        += eff.manaRegenIncrease ?? 0
-      b.replenishChance      += eff.manaReplenishChance ?? 0
-      b.manaStealPercent     += eff.manaStealPercent ?? 0
-      b.manaStealIncrease    += eff.manaStealIncrease ?? 0
-      b.manaStealCapIncrease += eff.manaStealCapIncrease ?? 0
-      b.feedingFrenzyChance  += eff.manaFeedingFrenzyChance ?? 0
+      b.maxManaIncrease            += eff.manaMaxIncrease ?? 0
+      b.moreMaxMana                += eff.manaMoreMax ?? 0
+      b.regenIncrease              += eff.manaRegenIncrease ?? 0
+      b.replenishChance            += eff.manaReplenishChance ?? 0
+      b.manaStealPercent           += eff.manaStealPercent ?? 0
+      b.manaStealIncrease          += eff.manaStealIncrease ?? 0
+      b.manaStealCapIncrease       += eff.manaStealCapIncrease ?? 0
+      b.feedingFrenzyChance        += eff.manaFeedingFrenzyChance ?? 0
+      b.actionSpeedIncrease        += eff.manaActionSpeedIncrease ?? 0
+      b.moreMaxLife                += eff.manaMoreLife ?? 0
+      b.manaShieldAbsorb           += eff.manaShieldAbsorbIncrease ?? 0
+      b.manaShieldDamageTaken      -= eff.manaShieldDamageTakenReduce ?? 0
+      if (eff.manaShieldAllSources) b.manaShieldAllSources = true
+      if (eff.manaShieldResistancesApply) b.manaShieldResistancesApply = true
     }
   }
+  b.manaShieldDamageTaken = Math.max(0, b.manaShieldDamageTaken)
   return b
 }
 
@@ -812,6 +881,15 @@ const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { projDoubleDamageChance: 20, projRangeIncrease: 10 },
     // 12-15: key nodes — not yet defined
   },
+  3: {  // Knockback (short tree — line nodes 0-5, key nodes 12-13)
+    0: { projKnockbackChance: 10 },
+    1: { projKnockbackMoveSlowAmount: 10 },
+    2: { projKnockbackChance: 15, projDamageIncrease: 15 },
+    3: { projKnockbackChance: 10 },
+    4: { projKnockbackMoveSlowAmount: 10 },
+    5: { projKnockbackMoreRange: 30, projKnockbackDamageReduction: 10 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getProjectileNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -830,20 +908,28 @@ export function computeProjectileBonuses(nodes: number[][]): ProjectileBonuses {
     extraChance: 0,
     extraDamage: 0,
     extraDoubleRoll: false,
+    knockbackChance: 0,
+    knockbackMoveSlowAmount: 0,
+    knockbackMoreRange: 0,
+    knockbackDamageReduction: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getProjectileNodeEffect(treeIdx, nodeIdx)
-      b.rangeIncrease            += eff.projRangeIncrease ?? 0
-      b.damageIncrease           += eff.projDamageIncrease ?? 0
-      b.moreDamage               += eff.projMoreDamage ?? 0
-      b.actionSpeedIncrease      += eff.projActionSpeedIncrease ?? 0
-      b.additionalTargetChance   += eff.projAdditionalTargetChance ?? 0
-      b.doubleDamageChance       += eff.projDoubleDamageChance ?? 0
-      b.damagePerRange           += eff.projDamagePerRange ?? 0
-      b.extraChance              += eff.projExtraChance ?? 0
-      b.extraDamage              += eff.projExtraDamage ?? 0
+      b.rangeIncrease              += eff.projRangeIncrease ?? 0
+      b.damageIncrease             += eff.projDamageIncrease ?? 0
+      b.moreDamage                 += eff.projMoreDamage ?? 0
+      b.actionSpeedIncrease        += eff.projActionSpeedIncrease ?? 0
+      b.additionalTargetChance     += eff.projAdditionalTargetChance ?? 0
+      b.doubleDamageChance         += eff.projDoubleDamageChance ?? 0
+      b.damagePerRange             += eff.projDamagePerRange ?? 0
+      b.extraChance                += eff.projExtraChance ?? 0
+      b.extraDamage                += eff.projExtraDamage ?? 0
       if (eff.projExtraDoubleRoll) b.extraDoubleRoll = true
+      b.knockbackChance            += eff.projKnockbackChance ?? 0
+      b.knockbackMoveSlowAmount    += eff.projKnockbackMoveSlowAmount ?? 0
+      b.knockbackMoreRange         += eff.projKnockbackMoreRange ?? 0
+      b.knockbackDamageReduction   += eff.projKnockbackDamageReduction ?? 0
     }
   }
   return b
@@ -1084,6 +1170,15 @@ const AREA_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { areaTremorChance: 7, areaTremorSize: 7, areaTremorDamage: 7 },
     // 12-13: key nodes — not yet defined
   },
+  3: {  // Knockback (short tree — line nodes 0-5, key nodes 12-13)
+    0: { areaKnockbackChance: 10 },
+    1: { areaKnockbackMoveSlowAmount: 10 },
+    2: { areaKnockbackChance: 15, areaDamageIncrease: 15 },
+    3: { areaKnockbackChance: 10 },
+    4: { areaKnockbackMoveSlowAmount: 10 },
+    5: { areaKnockbackMoreRange: 30, areaKnockbackDamageReduction: 10 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getAreaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -1101,19 +1196,27 @@ export function computeAreaBonuses(nodes: number[][]): AreaBonuses {
     tremorChance: 0,
     tremorDamage: 0,
     tremorSize: 0,
+    knockbackChance: 0,
+    knockbackMoveSlowAmount: 0,
+    knockbackMoreRange: 0,
+    knockbackDamageReduction: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getAreaNodeEffect(treeIdx, nodeIdx)
-      b.damageIncrease     += eff.areaDamageIncrease ?? 0
-      b.moreDamage         += eff.areaMoreDamage ?? 0
-      b.doubleDamageChance += eff.areaDoubleDamageChance ?? 0
-      b.sizeIncrease       += eff.areaSizeIncrease ?? 0
-      b.moreSize           += eff.areaMoreSize ?? 0
-      b.lessActionSpeed    += eff.areaLessActionSpeed ?? 0
-      b.tremorChance       += eff.areaTremorChance ?? 0
-      b.tremorDamage       += eff.areaTremorDamage ?? 0
-      b.tremorSize         += eff.areaTremorSize ?? 0
+      b.damageIncrease         += eff.areaDamageIncrease ?? 0
+      b.moreDamage             += eff.areaMoreDamage ?? 0
+      b.doubleDamageChance     += eff.areaDoubleDamageChance ?? 0
+      b.sizeIncrease           += eff.areaSizeIncrease ?? 0
+      b.moreSize               += eff.areaMoreSize ?? 0
+      b.lessActionSpeed        += eff.areaLessActionSpeed ?? 0
+      b.tremorChance           += eff.areaTremorChance ?? 0
+      b.tremorDamage           += eff.areaTremorDamage ?? 0
+      b.tremorSize             += eff.areaTremorSize ?? 0
+      b.knockbackChance        += eff.areaKnockbackChance ?? 0
+      b.knockbackMoveSlowAmount += eff.areaKnockbackMoveSlowAmount ?? 0
+      b.knockbackMoreRange     += eff.areaKnockbackMoreRange ?? 0
+      b.knockbackDamageReduction += eff.areaKnockbackDamageReduction ?? 0
     }
   }
   return b
@@ -1320,12 +1423,18 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     5: '+10% chance for a spell to replenish mana instead of depleting it',
   },
   1: {
-    0: '+5% increased maximum mana',
-    1: '+2% increased maximum mana · +2% increased mana regeneration',
-    2: '+12% increased maximum mana',
-    3: '+5% increased maximum mana',
-    4: '+2% increased maximum mana · +2% increased mana regeneration',
-    5: '20% more maximum mana',
+    0:  '+5% increased maximum mana',
+    1:  '+2% increased maximum mana · +2% increased mana regeneration',
+    2:  '+12% increased maximum mana',
+    3:  '+5% increased maximum mana',
+    4:  '+2% increased maximum mana · +2% increased mana regeneration',
+    5:  '+20% more maximum mana',
+    6:  '+5% increased maximum mana',
+    7:  '+2% increased maximum mana · +2% increased mana regeneration',
+    8:  '+15% increased maximum mana · +5% increased mana regeneration · +5% increased action speed',
+    9:  '+5% increased maximum mana',
+    10: '+2% increased maximum mana · +2% increased mana regeneration',
+    11: '+20% more maximum mana · +3% more maximum life',
   },
   2: {
     0: 'Steal +0.5% of action hit damage as mana',
@@ -1334,6 +1443,20 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: 'Steal +0.5% of action hit damage as mana',
     4: '+5% increased mana stolen',
     5: 'Stealing mana has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
+  },
+  3: {
+    0:  'Mana Shield absorbs +5% of incoming hit damage (converted to mana at 200% cost)',
+    1:  '5% reduced damage taken on the mana side of the shield (base 200%)',
+    2:  'Mana Shield absorbs +10% of incoming hit damage',
+    3:  'Mana Shield absorbs +5% of incoming hit damage',
+    4:  '5% reduced damage taken on the mana side of the shield',
+    5:  'Mana Shield now intercepts all damage sources (damage-over-time, afflictions, immolation)',
+    6:  'Mana Shield absorbs +5% of incoming hit damage',
+    7:  '5% reduced damage taken on the mana side of the shield',
+    8:  'Mana Shield absorbs +10% of incoming hit damage',
+    9:  'Mana Shield absorbs +5% of incoming hit damage',
+    10: '5% reduced damage taken on the mana side of the shield',
+    11: 'Your resistances reduce the mana cost of absorbed damage (same reduction as on the life side)',
   },
 }
 
@@ -1433,20 +1556,32 @@ const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
 
 const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
   0: {
-    0: '+50% increased chance to spawn an additional enemy',
-    1: '+25% increased chance to spawn 2 additional enemies',
-    2: '+1 guaranteed enemy spawn',
-    3: '+50% increased chance to spawn an additional enemy',
-    4: '+25% increased chance to spawn 2 additional enemies',
-    5: '+2 guaranteed enemy spawns · One enemy spawn is at least strong',
+    0:  '+50% increased chance to spawn an additional enemy',
+    1:  '+25% increased chance to spawn 2 additional enemies',
+    2:  '+1 guaranteed enemy spawn',
+    3:  '+50% increased chance to spawn an additional enemy',
+    4:  '+25% increased chance to spawn 2 additional enemies',
+    5:  '+2 guaranteed enemy spawns · One enemy spawn is at least strong',
+    6:  '+50% increased chance to spawn an additional enemy',
+    7:  '+25% increased chance to spawn 2 additional enemies',
+    8:  '+1 guaranteed enemy spawn',
+    9:  '+50% increased chance to spawn an additional enemy',
+    10: '+25% increased chance to spawn 2 additional enemies',
+    11: '+2 guaranteed enemy spawns · One enemy spawn is at least elite',
   },
   1: {
-    0: '+5% increased chance for an enemy to be strong',
-    1: '+10% increased chance for a strong enemy to be elite',
-    2: '+12% increased chance for an enemy to be strong',
-    3: '+5% increased chance for an enemy to be strong',
-    4: '+10% increased chance for a strong enemy to be elite',
-    5: 'One enemy spawn is at least strong · One enemy spawn is at least elite',
+    0:  '+5% increased chance for an enemy to be strong',
+    1:  '+10% increased chance for a strong enemy to be elite',
+    2:  '+12% increased chance for an enemy to be strong',
+    3:  '+5% increased chance for an enemy to be strong',
+    4:  '+10% increased chance for a strong enemy to be elite',
+    5:  'One enemy spawn is at least strong · One enemy spawn is at least elite',
+    6:  '+5% increased chance for an enemy to be strong',
+    7:  '+10% increased chance for a strong enemy to be elite',
+    8:  '+12% increased chance for an enemy to be strong',
+    9:  '+5% increased chance for an enemy to be strong',
+    10: '+10% increased chance for a strong enemy to be elite',
+    11: '+20% increased chance for an enemy to be strong · +20% increased chance for a strong enemy to be elite · +1 guaranteed enemy spawn',
   },
 }
 
@@ -1521,6 +1656,14 @@ const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  '+5% chance to fire an additional projectile',
     10: '+5% increased additional projectile damage',
     11: 'When an additional projectile fires, roll once more for a second additional projectile',
+  },
+  3: {  // Knockback
+    0: 'Projectile hits have +10% chance to knock back the target',
+    1: 'Knocked-back enemies have 10% reduced movement speed for 2 seconds',
+    2: 'Projectile hits have +15% chance to knock back the target · +15% increased projectile damage',
+    3: 'Projectile hits have +10% chance to knock back the target',
+    4: 'Knocked-back enemies have 10% reduced movement speed for 2 seconds',
+    5: '+30% more knockback range · Knocked-back enemies deal 10% less damage for 2 seconds',
   },
 }
 
@@ -1654,5 +1797,13 @@ const AREA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: 'Area actions have +5% increased chance to trigger a tremor',
     4: 'Tremors deal +5% increased damage',
     5: 'Area actions have +7% increased chance to trigger a tremor · Tremors have +7% increased area radius · Tremors deal +7% increased damage',
+  },
+  3: {  // Knockback
+    0: 'Area hits have +10% chance to knock back the target',
+    1: 'Knocked-back enemies have 10% reduced movement speed for 2 seconds',
+    2: 'Area hits have +15% chance to knock back the target · +15% increased area damage',
+    3: 'Area hits have +10% chance to knock back the target',
+    4: 'Knocked-back enemies have 10% reduced movement speed for 2 seconds',
+    5: '+30% more knockback range · Knocked-back enemies deal 10% less damage for 2 seconds',
   },
 }
