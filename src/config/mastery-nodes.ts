@@ -4,25 +4,25 @@ import { nodeType } from './masteries'
 // ── Node effect types ──────────────────────────────────────────────────────
 
 export interface NodeEffect {
-  spellDamageIncrease?: number      // additive %; stacks before the 'more' multiplier
-  spellDoubleDamageChance?: number  // additive %; chance to deal 2× damage on cast
-  spellCastSpeedIncrease?: number   // additive %; stacks before the 'more' multiplier
-  spellMoreDamage?: number          // 'more' %; applied as × (1 + sum/100) after increased
-  spellMoreCastSpeed?: number       // 'more' %; applied as × (1 + sum/100) after increased
-  spellDoubleCastChance?: number    // additive %; chance for a second cast at 1/5 interval
+  actionDamageIncrease?: number      // additive %; stacks before the 'more' multiplier
+  actionDoubleDamageChance?: number  // additive %; chance to deal 2× damage on cast
+  actionSpeedIncrease?: number       // additive %; stacks before the 'more' multiplier
+  actionMoreDamage?: number          // 'more' %; applied as × (1 + sum/100) after increased
+  actionMoreSpeed?: number           // 'more' %; applied as × (1 + sum/100) after increased
+  actionDoubleActionChance?: number  // additive %; chance for a second action at 1/5 interval
 
   // Trance effects (tree 2)
-  spellTranceTriggerChance?: number      // additive %; chance per spell cast to trigger trance buff
-  spellTranceMultiTargetChance?: number  // additive %; chance to hit an extra enemy when in trance
-  spellTranceDamageIncrease?: number     // additive %; damage bonus on casts while in trance
-  spellTranceCastSpeedIncrease?: number  // additive %; cast speed bonus on casts while in trance
+  actionTranceTriggerChance?: number      // additive %; chance per action to trigger trance buff
+  actionTranceMultiTargetChance?: number  // additive %; chance to hit an extra enemy when in trance
+  actionTranceDamageIncrease?: number     // additive %; damage bonus on actions while in trance
+  actionTranceSpeedIncrease?: number      // additive %; action speed bonus on actions while in trance
 
   // Mana cost effects (tree 3)
-  spellManaCostReduction?: number          // additive %; reduces effective mana cost
-  spellNoManaCostChance?: number           // additive %; chance for spell to cost 0 mana (gate still applies)
-  spellManaCostRandomReductionMax?: number // additive % cap; per-cast random reduction in [0, cap]
-  spellRepeatNoMana?: boolean              // when true, repeated casts (e.g. double cast) skip the mana gate
-  spellGuaranteedAfflictions?: boolean    // when true, second-cast hits always apply afflictions
+  actionManaCostReduction?: number          // additive %; reduces effective mana cost
+  actionNoManaCostChance?: number           // additive %; chance for action to cost 0 mana (gate still applies)
+  actionManaCostRandomReductionMax?: number // additive % cap; per-action random reduction in [0, cap]
+  actionRepeatNoMana?: boolean              // when true, repeated actions (e.g. double action) skip the mana gate
+  actionGuaranteedAfflictions?: boolean     // when true, second-action hits always apply afflictions
 
   // Life mastery effects (Maximum Life tree)
   lifeMaxIncrease?: number          // additive %; stacks before the 'more' multiplier
@@ -212,18 +212,18 @@ export interface NodeEffect {
   manaShieldResistancesApply?: boolean   // when true, player resistances reduce the mana cost (node 11)
 }
 
-export interface SpellBonuses {
-  damageIncrease: number     // total additive %
-  moreDamage: number         // total 'more' %
-  castSpeedIncrease: number  // total additive %
-  moreCastSpeed: number      // total 'more' %
-  doubleDamageChance: number // total additive %
-  doubleCastChance: number   // total additive %
+export interface ActionBonuses {
+  damageIncrease: number      // total additive %
+  moreDamage: number          // total 'more' %
+  actionSpeedIncrease: number // total additive %
+  moreActionSpeed: number     // total 'more' %
+  doubleDamageChance: number  // total additive %
+  doubleActionChance: number  // total additive %
 
   tranceTriggerChance: number
   tranceMultiTargetChance: number
   tranceDamageIncrease: number
-  tranceCastSpeedIncrease: number
+  tranceActionSpeedIncrease: number
 
   manaCostReduction: number
   noManaCostChance: number
@@ -388,75 +388,75 @@ export interface FireBonuses {
   burnGroundSlowAmount: number      // total additive %; slow applied to enemies on burning ground tiles
 }
 
-// ── Spell mastery node effects ─────────────────────────────────────────────
-// Tree 0: Spell Damage  Tree 1: Cast Speed  Tree 2: Trance  Tree 3: Mana Cost  Tree 4: not implemented
+// ── Action mastery node effects ────────────────────────────────────────────
+// Tree 0: Action Damage  Tree 1: Action Speed  Tree 2: Trance  Tree 3: Mana Cost  Tree 4: Action Range
 
 type TreeEffects = Partial<Record<number, NodeEffect>>
 
-const SPELL_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Spell Damage
-    0:  { spellDamageIncrease: 5 },
-    1:  { spellDoubleDamageChance: 5 },
-    2:  { spellDamageIncrease: 12 },
-    3:  { spellDamageIncrease: 5 },
-    4:  { spellDoubleDamageChance: 5 },
-    5:  { spellMoreDamage: 20 },
-    6:  { spellDamageIncrease: 5 },
-    7:  { spellDoubleDamageChance: 5 },
-    8:  { spellDoubleDamageChance: 5, spellDamageIncrease: 5, spellCastSpeedIncrease: 5 },
-    9:  { spellDamageIncrease: 5 },
-    10: { spellDoubleDamageChance: 5 },
+const ACTION_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Action Damage
+    0:  { actionDamageIncrease: 5 },
+    1:  { actionDoubleDamageChance: 5 },
+    2:  { actionDamageIncrease: 12 },
+    3:  { actionDamageIncrease: 5 },
+    4:  { actionDoubleDamageChance: 5 },
+    5:  { actionMoreDamage: 20 },
+    6:  { actionDamageIncrease: 5 },
+    7:  { actionDoubleDamageChance: 5 },
+    8:  { actionDoubleDamageChance: 5, actionDamageIncrease: 5, actionSpeedIncrease: 5 },
+    9:  { actionDamageIncrease: 5 },
+    10: { actionDoubleDamageChance: 5 },
     // 11: ignore mitigation — not yet implemented
     // 12-15: key nodes — not yet defined
   },
-  1: {  // Cast Speed
-    0:  { spellCastSpeedIncrease: 4 },
-    1:  { spellDoubleCastChance: 3 },
-    2:  { spellCastSpeedIncrease: 10 },
-    3:  { spellCastSpeedIncrease: 4 },
-    4:  { spellDoubleCastChance: 3 },
-    5:  { spellMoreCastSpeed: 20 },
-    6:  { spellCastSpeedIncrease: 4 },
-    7:  { spellDoubleCastChance: 3 },
-    8:  { spellCastSpeedIncrease: 4, spellDoubleCastChance: 3, spellDamageIncrease: 5 },
-    9:  { spellCastSpeedIncrease: 4 },
-    10: { spellDoubleCastChance: 3 },
-    11: { spellGuaranteedAfflictions: true },
+  1: {  // Action Speed
+    0:  { actionSpeedIncrease: 4 },
+    1:  { actionDoubleActionChance: 3 },
+    2:  { actionSpeedIncrease: 10 },
+    3:  { actionSpeedIncrease: 4 },
+    4:  { actionDoubleActionChance: 3 },
+    5:  { actionMoreSpeed: 20 },
+    6:  { actionSpeedIncrease: 4 },
+    7:  { actionDoubleActionChance: 3 },
+    8:  { actionSpeedIncrease: 4, actionDoubleActionChance: 3, actionDamageIncrease: 5 },
+    9:  { actionSpeedIncrease: 4 },
+    10: { actionDoubleActionChance: 3 },
+    11: { actionGuaranteedAfflictions: true },
     // 12-15: key nodes — not yet defined
   },
   2: {  // Trance (short tree — line nodes 0-5, key nodes 12-13)
-    0: { spellTranceTriggerChance: 2 },
-    1: { spellTranceMultiTargetChance: 5, spellTranceDamageIncrease: 5, spellTranceCastSpeedIncrease: 5 },
-    2: { spellTranceTriggerChance: 5 },
-    3: { spellTranceTriggerChance: 2 },
-    4: { spellTranceMultiTargetChance: 5, spellTranceDamageIncrease: 5, spellTranceCastSpeedIncrease: 5 },
-    5: { spellTranceTriggerChance: 3, spellTranceMultiTargetChance: 8, spellTranceDamageIncrease: 8, spellTranceCastSpeedIncrease: 8 },
+    0: { actionTranceTriggerChance: 2 },
+    1: { actionTranceMultiTargetChance: 5, actionTranceDamageIncrease: 5, actionTranceSpeedIncrease: 5 },
+    2: { actionTranceTriggerChance: 5 },
+    3: { actionTranceTriggerChance: 2 },
+    4: { actionTranceMultiTargetChance: 5, actionTranceDamageIncrease: 5, actionTranceSpeedIncrease: 5 },
+    5: { actionTranceTriggerChance: 3, actionTranceMultiTargetChance: 8, actionTranceDamageIncrease: 8, actionTranceSpeedIncrease: 8 },
     // 12-13: key nodes — not yet defined
   },
   3: {  // Mana Cost (short tree — line nodes 0-5, key nodes 12-13)
-    0: { spellManaCostReduction: 10 },
-    1: { spellNoManaCostChance: 10 },
-    2: { spellManaCostRandomReductionMax: 33 },
-    3: { spellManaCostReduction: 10 },
-    4: { spellNoManaCostChance: 10 },
-    5: { spellManaCostReduction: 10, spellNoManaCostChance: 10, spellRepeatNoMana: true },
+    0: { actionManaCostReduction: 10 },
+    1: { actionNoManaCostChance: 10 },
+    2: { actionManaCostRandomReductionMax: 33 },
+    3: { actionManaCostReduction: 10 },
+    4: { actionNoManaCostChance: 10 },
+    5: { actionManaCostReduction: 10, actionNoManaCostChance: 10, actionRepeatNoMana: true },
     // 12-13: key nodes — not yet defined
   },
 }
 
-export function getSpellNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
-  return SPELL_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+export function getActionNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return ACTION_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
-  const b: SpellBonuses = {
+export function computeActionBonuses(nodes: number[][]): ActionBonuses {
+  const b: ActionBonuses = {
     damageIncrease: 0, moreDamage: 0,
-    castSpeedIncrease: 0, moreCastSpeed: 0,
-    doubleDamageChance: 0, doubleCastChance: 0,
+    actionSpeedIncrease: 0, moreActionSpeed: 0,
+    doubleDamageChance: 0, doubleActionChance: 0,
     tranceTriggerChance: 0,
     tranceMultiTargetChance: 0,
     tranceDamageIncrease: 0,
-    tranceCastSpeedIncrease: 0,
+    tranceActionSpeedIncrease: 0,
     manaCostReduction: 0,
     noManaCostChance: 0,
     manaCostRandomReductionMax: 0,
@@ -465,22 +465,22 @@ export function computeSpellBonuses(nodes: number[][]): SpellBonuses {
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
-      const eff = getSpellNodeEffect(treeIdx, nodeIdx)
-      b.damageIncrease += eff.spellDamageIncrease ?? 0
-      b.moreDamage += eff.spellMoreDamage ?? 0
-      b.castSpeedIncrease += eff.spellCastSpeedIncrease ?? 0
-      b.moreCastSpeed += eff.spellMoreCastSpeed ?? 0
-      b.doubleDamageChance += eff.spellDoubleDamageChance ?? 0
-      b.doubleCastChance += eff.spellDoubleCastChance ?? 0
-      b.tranceTriggerChance += eff.spellTranceTriggerChance ?? 0
-      b.tranceMultiTargetChance += eff.spellTranceMultiTargetChance ?? 0
-      b.tranceDamageIncrease += eff.spellTranceDamageIncrease ?? 0
-      b.tranceCastSpeedIncrease += eff.spellTranceCastSpeedIncrease ?? 0
-      b.manaCostReduction += eff.spellManaCostReduction ?? 0
-      b.noManaCostChance += eff.spellNoManaCostChance ?? 0
-      b.manaCostRandomReductionMax += eff.spellManaCostRandomReductionMax ?? 0
-      if (eff.spellRepeatNoMana) b.repeatNoMana = true
-      if (eff.spellGuaranteedAfflictions) b.guaranteedAfflictions = true
+      const eff = getActionNodeEffect(treeIdx, nodeIdx)
+      b.damageIncrease              += eff.actionDamageIncrease ?? 0
+      b.moreDamage                  += eff.actionMoreDamage ?? 0
+      b.actionSpeedIncrease         += eff.actionSpeedIncrease ?? 0
+      b.moreActionSpeed             += eff.actionMoreSpeed ?? 0
+      b.doubleDamageChance          += eff.actionDoubleDamageChance ?? 0
+      b.doubleActionChance          += eff.actionDoubleActionChance ?? 0
+      b.tranceTriggerChance         += eff.actionTranceTriggerChance ?? 0
+      b.tranceMultiTargetChance     += eff.actionTranceMultiTargetChance ?? 0
+      b.tranceDamageIncrease        += eff.actionTranceDamageIncrease ?? 0
+      b.tranceActionSpeedIncrease   += eff.actionTranceSpeedIncrease ?? 0
+      b.manaCostReduction           += eff.actionManaCostReduction ?? 0
+      b.noManaCostChance            += eff.actionNoManaCostChance ?? 0
+      b.manaCostRandomReductionMax  += eff.actionManaCostRandomReductionMax ?? 0
+      if (eff.actionRepeatNoMana)          b.repeatNoMana = true
+      if (eff.actionGuaranteedAfflictions) b.guaranteedAfflictions = true
     }
   }
   return b
@@ -1315,50 +1315,50 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
 
 // ── Node description text (shown in the node detail modal) ─────────────────
 
-const SPELL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+const ACTION_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
   0: {
-    0:  '+5% increased spell damage',
-    1:  '+5% chance for spell to deal double damage',
-    2:  '+12% increased spell damage',
-    3:  '+5% increased spell damage',
-    4:  '+5% chance for spell to deal double damage',
-    5:  '+20% more spell damage',
-    6:  '+5% increased spell damage',
-    7:  '+5% chance for spell to deal double damage',
-    8:  '+5% chance for spell to deal double damage · +5% increased spell damage · +5% increased spell cast speed',
-    9:  '+5% increased spell damage',
-    10: '+5% chance for spell to deal double damage',
-    11: 'Spells have 50% chance to ignore all enemy damage mitigation',
+    0:  '+5% increased action damage',
+    1:  '+5% chance for action to deal double damage',
+    2:  '+12% increased action damage',
+    3:  '+5% increased action damage',
+    4:  '+5% chance for action to deal double damage',
+    5:  '+20% more action damage',
+    6:  '+5% increased action damage',
+    7:  '+5% chance for action to deal double damage',
+    8:  '+5% chance for action to deal double damage · +5% increased action damage · +5% increased action speed',
+    9:  '+5% increased action damage',
+    10: '+5% chance for action to deal double damage',
+    11: 'Actions have 50% chance to ignore all enemy damage mitigation',
   },
   1: {
-    0:  '+4% increased spell cast speed',
-    1:  '+3% chance for spell to double cast',
-    2:  '+10% increased spell cast speed',
-    3:  '+4% increased spell cast speed',
-    4:  '+3% chance for spell to double cast',
-    5:  '+20% more spell cast speed',
-    6:  '+4% increased spell cast speed',
-    7:  '+3% chance for spell to double cast',
-    8:  '+4% increased spell cast speed · +3% chance for spell to double cast · +5% increased spell damage',
-    9:  '+4% increased spell cast speed',
-    10: '+3% chance for spell to double cast',
-    11: 'When double casting, the second cast is guaranteed to trigger afflictions',
+    0:  '+4% increased action speed',
+    1:  '+3% chance for action to double action',
+    2:  '+10% increased action speed',
+    3:  '+4% increased action speed',
+    4:  '+3% chance for action to double action',
+    5:  '+20% more action speed',
+    6:  '+4% increased action speed',
+    7:  '+3% chance for action to double action',
+    8:  '+4% increased action speed · +3% chance for action to double action · +5% increased action damage',
+    9:  '+4% increased action speed',
+    10: '+3% chance for action to double action',
+    11: 'When double acting, the second action is guaranteed to trigger afflictions',
   },
   2: {
-    0: 'Spells have +2% chance to trigger trance',
-    1: 'Casts in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased cast speed',
-    2: 'Spells have +5% chance to trigger trance',
-    3: 'Spells have +2% chance to trigger trance',
-    4: 'Casts in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased cast speed',
-    5: 'Spells have +3% chance to trigger trance · Casts in trance: +8% chance to target an additional enemy · +8% increased damage · +8% increased cast speed',
+    0: 'Actions have +2% chance to trigger trance',
+    1: 'Actions in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased action speed',
+    2: 'Actions have +5% chance to trigger trance',
+    3: 'Actions have +2% chance to trigger trance',
+    4: 'Actions in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased action speed',
+    5: 'Actions have +3% chance to trigger trance · Actions in trance: +8% chance to target an additional enemy · +8% increased damage · +8% increased action speed',
   },
   3: {
-    0: '+10% reduced spell mana cost',
-    1: '+10% chance for spells to cost no mana',
-    2: 'Spells cost 0–33% reduced mana (random per cast)',
-    3: '+10% reduced spell mana cost',
-    4: '+10% chance for spells to cost no mana',
-    5: '+10% reduced spell mana cost · +10% chance for spells to cost no mana · Repeated casts ignore mana requirement',
+    0: '+10% reduced action mana cost',
+    1: '+10% chance for actions to cost no mana',
+    2: 'Actions cost 0–33% reduced mana (random per action)',
+    3: '+10% reduced action mana cost',
+    4: '+10% chance for actions to cost no mana',
+    5: '+10% reduced action mana cost · +10% chance for actions to cost no mana · Repeated actions ignore mana requirement',
   },
 }
 
@@ -1420,7 +1420,7 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     2: '+12% increased mana regeneration',
     3: '+5% increased mana regeneration',
     4: '+5% increased mana regeneration',
-    5: '+10% chance for a spell to replenish mana instead of depleting it',
+    5: '+10% chance for an action to replenish mana instead of depleting it',
   },
   1: {
     0:  '+5% increased maximum mana',
@@ -1591,8 +1591,8 @@ export function getNodeDescription(
   nodeIdx: number,
   treeLabel: string,
 ): string {
-  if (masteryId === 'spell') {
-    const desc = SPELL_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+  if (masteryId === 'action') {
+    const desc = ACTION_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
   if (masteryId === 'life') {

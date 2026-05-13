@@ -1,12 +1,11 @@
 import { balance } from './balance'
 
-export type ActionTypeTag    = 'spell' | 'weapon'
 export type DamageEssenceTag = 'lightning' | 'fire' | 'cold' | 'physical' | 'rot'
 export type DamageTypeTag    = 'area' | 'projectile' | 'strike'
-export type ActionTag = ActionTypeTag | DamageEssenceTag | DamageTypeTag
+export type ActionTag = DamageEssenceTag | DamageTypeTag
 
 export type MasteryId =
-  | 'weapon' | 'spell'
+  | 'action'
   | 'physical' | 'fire' | 'lightning'
   | 'area' | 'projectile' | 'strike'
   | 'life' | 'mana'
@@ -14,7 +13,7 @@ export type MasteryId =
 
 export interface MasteryTreeDef {
   index: number   // 0-4
-  label: string   // e.g. "Lightning 1"
+  label: string   // e.g. "Action Damage"
   short?: boolean // if true, tree ends after first major (line nodes 0-5; key nodes 12-13 only)
 }
 
@@ -52,13 +51,12 @@ export const masteryCategories: MasteryCategoryDef[] = [
   {
     label: 'Action',
     masteries: [
-      { id: 'weapon', label: 'Weapon', tag: 'weapon', trees: makeTrees('Weapon') },
-      { id: 'spell',  label: 'Spell',  tag: 'spell',  trees: [
-        { index: 0, label: 'Spell Damage' },
-        { index: 1, label: 'Cast Speed' },
-        { index: 2, label: 'Trance',    short: true },
-        { index: 3, label: 'Mana Cost', short: true },
-        { index: 4, label: 'Spell Range' },
+      { id: 'action', label: 'Action', trees: [
+        { index: 0, label: 'Action Damage' },
+        { index: 1, label: 'Action Speed' },
+        { index: 2, label: 'Trance',      short: true },
+        { index: 3, label: 'Mana Cost',   short: true },
+        { index: 4, label: 'Action Range' },
       ] },
     ],
   },

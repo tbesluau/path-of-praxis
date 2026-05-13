@@ -1,15 +1,27 @@
-import { weapons, type WeaponDef } from './weapons'
-import { spells, type SpellDef } from './spells'
+import type { ActionTag } from './masteries'
+import { weapons } from './weapons'
+import { spells } from './spells'
 
-export type { WeaponDef } from './weapons'
-export type { SpellDef } from './spells'
-export type ActionDef = WeaponDef | SpellDef
-export type ActionId = ActionDef['id']
+export interface ActionDef {
+  id: string
+  label: string
+  icon: string
+  iconSystem: 'lucide' | 'game'
+  range: number
+  damage: number
+  speed: number
+  manaCost: number
+  tags: ActionTag[]
+  area?: number
+  selfTargeted?: boolean
+}
+
+export type ActionId = 'sword' | 'bow' | 'fireball' | 'zap' | 'fire-nova'
 
 // Ordered list used for cycling (sword → bow → fireball → zap → …)
 export const allActions: ActionDef[] = [
-  ...Object.values(weapons),
-  ...Object.values(spells),
+  ...(Object.values(weapons) as ActionDef[]),
+  ...(Object.values(spells)  as ActionDef[]),
 ]
 
 export function getAction(id: ActionId): ActionDef {

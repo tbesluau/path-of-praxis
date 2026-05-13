@@ -5,8 +5,7 @@ export interface TranslationSchema {
     deathTitle: string
     deathRebirth: string
     actionSelectTitle: string
-    weaponsTab: string
-    spellsTab: string
+    actionsTab: string
   }
   menu: {
     continue: string
@@ -55,8 +54,7 @@ export const en: TranslationSchema = {
     deathTitle: 'You have died',
     deathRebirth: 'Rebirth',
     actionSelectTitle: 'Actions',
-    weaponsTab: 'Weapons',
-    spellsTab: 'Spells',
+    actionsTab: 'Actions',
   },
   menu: {
     continue: 'Continue',

@@ -19,25 +19,25 @@ describe('entity', () => {
       expect(e.currentMana).toBe(40)
     })
 
-    it('defaults attack stats to 1 / 1 / 20', () => {
+    it('defaults action stats to 1 / 1 / 20', () => {
       const e = createPlayerEntity({
         radius: 20, moveSpeed: 80,
         maxLife: 100, maxMana: 100, currentLife: 50, currentMana: 50,
       })
-      expect(e.attackSpeed).toBe(1)
-      expect(e.attackDamage).toBe(1)
-      expect(e.attackRange).toBe(20)
+      expect(e.actionSpeed).toBe(1)
+      expect(e.actionDamage).toBe(1)
+      expect(e.actionRange).toBe(20)
     })
 
-    it('accepts explicit attack stats', () => {
+    it('accepts explicit action stats', () => {
       const e = createPlayerEntity({
         radius: 20, moveSpeed: 80,
         maxLife: 100, maxMana: 100, currentLife: 100, currentMana: 100,
-        attackSpeed: 2, attackDamage: 5, attackRange: 40,
+        actionSpeed: 2, actionDamage: 5, actionRange: 40,
       })
-      expect(e.attackSpeed).toBe(2)
-      expect(e.attackDamage).toBe(5)
-      expect(e.attackRange).toBe(40)
+      expect(e.actionSpeed).toBe(2)
+      expect(e.actionDamage).toBe(5)
+      expect(e.actionRange).toBe(40)
     })
 
     it('starts at position (0, 0)', () => {
@@ -62,23 +62,23 @@ describe('entity', () => {
       expect(e.y).toBe(300)
     })
 
-    it('defaults attack stats to 1 / 1 / 20', () => {
+    it('defaults action stats to 1 / 1 / 20', () => {
       const e = createEnemyEntity('enemy-2', 0, 0)
-      expect(e.attackSpeed).toBe(1)
-      expect(e.attackDamage).toBe(1)
-      expect(e.attackRange).toBe(20)
+      expect(e.actionSpeed).toBe(1)
+      expect(e.actionDamage).toBe(1)
+      expect(e.actionRange).toBe(20)
     })
 
     it('accepts an explicit team, radius, and stats override', () => {
       const e = createEnemyEntity('enemy-3', 0, 0, 'enemyB', 30, {
-        moveSpeed: 120, maxLife: 200, attackDamage: 3,
+        moveSpeed: 120, maxLife: 200, actionDamage: 3,
       })
       expect(e.team).toBe('enemyB')
       expect(e.radius).toBe(30)
       expect(e.moveSpeed).toBe(120)
       expect(e.maxLife).toBe(200)
       expect(e.currentLife).toBe(200)
-      expect(e.attackDamage).toBe(3)
+      expect(e.actionDamage).toBe(3)
     })
 
     it('defaults enemy to full life and zero mana', () => {
