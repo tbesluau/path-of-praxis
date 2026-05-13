@@ -415,6 +415,22 @@ Two targeting modes:
 
 Each enemy in the area receives an independent pending hit, so all per-hit triggers (burn, electrocute, bleed, frenzy, life/mana steal, action XP, etc.) fire once per hit enemy. Per-cast triggers (trance, immolate, doubleCast, mana payment) fire once per cast as usual.
 
+## Knockback
+
+A physics impulse applied to an enemy on a successful hit roll. The enemy is pushed directly away from the attacker over a brief window (200 ms).
+
+**Base knockback range** (distance the enemy travels):
+- **Area actions**: 1 player-radius unit
+- **Projectile actions**: 0.5 player-radius units
+
+Knockback mastery nodes increase the chance to knock back and can add two timed debuffs to the knocked-back enemy (independent of each other):
+- **Move speed slow** — enemy movement speed is reduced for 2 seconds
+- **Damage reduction** — knocked-back enemy deals less damage to the player for 2 seconds
+
+The "more knockback range" node multiplies the base range for that action type. If an action carries both area and projectile tags, both knockback pools are checked independently and both can trigger.
+
+---
+
 ## Tremor
 
 A **multi-action** sourced from the **Area mastery — Tremor tree**. After an area cast resolves, every non-primary victim independently rolls the Tremor chance; on success a tremor is queued targeting that enemy.

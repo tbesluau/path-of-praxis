@@ -193,6 +193,29 @@ export function createGameScene(
   const bleedStacks = new Map<string, BleedStack>()
   const bleedAccum = new Map<string, { damage: number; timeMs: number }>()
 
+  // ── Knockback debuffs ─────────────────────────────────────────────────────
+  // knockbackState: velocity impulse applied to entity movement each frame for the duration.
+  const knockbackState = new Map<string, { vx: number; vy: number; remainingMs: number }>()
+  // knockbackSlowState: move-speed slow applied to knocked-back enemies.
+  const knockbackSlowState = new Map<string, { amount: number; remainingMs: number }>()
+  // knockbackDamageReductionState: knocked-back enemies deal reduced damage.
+  const knockbackDamageReductionState = new Map<string, { amount: number; remainingMs: number }>()
+
+  function tickKnockbacks(deltaMs: number): void {
+    for (const [id, kb] of [...knockbackState]) {
+      kb.remainingMs -= deltaMs
+      if (kb.remainingMs <= 0) knockbackState.delete(id)
+    }
+    for (const [id, s] of [...knockbackSlowState]) {
+      s.remainingMs -= deltaMs
+      if (s.remainingMs <= 0) knockbackSlowState.delete(id)
+    }
+    for (const [id, d] of [...knockbackDamageReductionState]) {
+      d.remainingMs -= deltaMs
+      if (d.remainingMs <= 0) knockbackDamageReductionState.delete(id)
+    }
+  }
+
   // ── Electrocution debuff ──────────────────────────────────────────────────
   // One entry per entity: remaining duration ms. Re-applying refreshes the timer (no stacking).
   const electrocuteStacks = new Map<string, number>()
@@ -502,8 +525,24 @@ export function createGameScene(
     if (playerImmolation !== null && !playerDead) {
       playerImmolation.remainingMs -= deltaMs
       const elemRes = Math.max(0, Math.min(100, getLifeBonuses().elementalResistance))
-      const selfDmg = playerImmolation.dps * dts * (1 - elemRes / 100)
+      let selfDmg = playerImmolation.dps * dts * (1 - elemRes / 100)
       if (selfDmg > 0) {
+        // Mana Shield node 5: intercept DoT sources
+        const mb = getManaBonuses()
+        if (mb.manaShieldAllSources && mb.manaShieldAbsorb > 0 && playerEntity.currentMana > 0) {
+          const absorbFrac = Math.min(1, mb.manaShieldAbsorb / 100)
+          const absorbed = selfDmg * absorbFrac
+          const manaRate = mb.manaShieldDamageTaken / 100
+          const manaCost = absorbed * manaRate
+          if (playerEntity.currentMana >= manaCost) {
+            playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
+            selfDmg -= absorbed
+          } else {
+            const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
+            playerEntity.currentMana = 0
+            selfDmg -= partialAbsorbed
+          }
+        }
         playerEntity.currentLife = Math.max(0, playerEntity.currentLife - selfDmg)
         damagedIds.add(playerEntity.id)
         playerImmolAccum.damage += selfDmg
@@ -665,9 +704,11 @@ export function createGameScene(
 
   function computePlayerMaxLife(): number {
     const lb = getLifeBonuses()
+    const mb = getManaBonuses()
     return balance.player.maxLife * statBonus(lifeProgress.level)
       * (1 + lb.maxLifeIncrease / 100)
       * (1 + lb.moreMaxLife / 100)
+      * (1 + mb.moreMaxLife / 100)
   }
 
   function computePlayerMaxMana(): number {
@@ -731,6 +772,9 @@ export function createGameScene(
       entity.attackDamage *= (1 + rb.damageIncrease / 100) * rb.damageMore
       entity.attackSpeed  *= (1 + rb.speedIncrease  / 100) * rb.speedMore
       if (rb.slowHeavy) { entity.attackDamage *= 2; entity.attackSpeed *= 0.5 }
+      // Global action speed from Mana mastery Maximum Mana tree (node 8)
+      const mb = getManaBonuses()
+      if (mb.actionSpeedIncrease > 0) entity.attackSpeed *= (1 + mb.actionSpeedIncrease / 100)
     }
     entityActions.set(entity.id, id)
   }
@@ -2089,6 +2133,9 @@ export function createGameScene(
     }
     if (id === 'mana') {
       playerEntity.maxMana = computePlayerMaxMana()
+      // moreMaxLife (Maximum Mana node 11) and actionSpeedIncrease affect life/action stats too
+      playerEntity.maxLife = computePlayerMaxLife()
+      assignAction(playerEntity, playerActionId)
     }
     persistState()
     refreshMasteryDot()
@@ -2112,6 +2159,8 @@ export function createGameScene(
     }
     if (id === 'mana') {
       playerEntity.maxMana = computePlayerMaxMana()
+      playerEntity.maxLife = computePlayerMaxLife()
+      assignAction(playerEntity, playerActionId)
     }
     persistState()
     refreshMasteryDot()
@@ -2766,9 +2815,16 @@ export function createGameScene(
             const breakSlow = getPhysicalBonuses().resistBreakSlowAtZero
             if (breakSlow > 0) ms *= Math.max(0, 1 - breakSlow / 100)
           }
+          // Knockback slow debuff
+          const kbSlow = knockbackSlowState.get(entity.id)
+          if (kbSlow) ms *= Math.max(0, 1 - kbSlow.amount / 100)
+          // Knockback velocity impulse
+          const kb = knockbackState.get(entity.id)
+          const kbVx = kb ? kb.vx * MATTER_BASE_DT : 0
+          const kbVy = kb ? kb.vy * MATTER_BASE_DT : 0
           Matter.Body.setVelocity(body, {
-            x: moveX * ms * MATTER_BASE_DT,
-            y: moveY * ms * MATTER_BASE_DT,
+            x: moveX * ms * MATTER_BASE_DT + kbVx,
+            y: moveY * ms * MATTER_BASE_DT + kbVy,
           })
         }
 
@@ -2865,6 +2921,36 @@ export function createGameScene(
             const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
+          // Knockback damage reduction: knocked-back enemies deal less damage to the player
+          if (target.role === 'player' && attacker.role === 'enemy') {
+            const kbDR = knockbackDamageReductionState.get(attacker.id)
+            if (kbDR) finalDamage *= Math.max(0, 1 - kbDR.amount / 100)
+          }
+          // Mana Shield: intercept a fraction of player-targeted damage to mana before life
+          if (target.role === 'player') {
+            const mb = getManaBonuses()
+            if (mb.manaShieldAbsorb > 0 && playerEntity.currentMana > 0) {
+              const absorbFrac = Math.min(1, mb.manaShieldAbsorb / 100)
+              const absorbed = finalDamage * absorbFrac
+              let manaRate = mb.manaShieldDamageTaken / 100
+              if (mb.manaShieldResistancesApply) {
+                const lbMS = getLifeBonuses()
+                let totalRes = 0
+                if (action.tags.includes('physical') || action.tags.includes('rot')) totalRes += lbMS.physRotResistance
+                if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) totalRes += lbMS.elementalResistance
+                manaRate *= Math.max(0, 1 - Math.min(100, totalRes) / 100)
+              }
+              const manaCost = absorbed * manaRate
+              if (playerEntity.currentMana >= manaCost) {
+                playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
+                finalDamage -= absorbed
+              } else {
+                const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
+                playerEntity.currentMana = 0
+                finalDamage -= partialAbsorbed
+              }
+            }
+          }
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - finalDamage)
           const actualDamage = prevLife - target.currentLife
@@ -2884,6 +2970,51 @@ export function createGameScene(
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
           damagedIds.add(target.id)
+
+          // Knockback: roll on player area/projectile hits to enemy targets
+          if (isPlayerAttacker && target.role === 'enemy' && actualDamage > 0) {
+            let kbChance = 0
+            let kbBaseRange = 0
+            let kbMoreRange = 0
+            let kbSlowAmount = 0
+            let kbDamageReduction = 0
+            if (action.tags.includes('area')) {
+              const ab = getAreaBonuses()
+              kbChance += ab.knockbackChance
+              kbBaseRange = Math.max(kbBaseRange, balance.player.radius * 1.0)
+              kbMoreRange = Math.max(kbMoreRange, ab.knockbackMoreRange)
+              kbSlowAmount = Math.max(kbSlowAmount, ab.knockbackMoveSlowAmount)
+              kbDamageReduction = Math.max(kbDamageReduction, ab.knockbackDamageReduction)
+            }
+            if (action.tags.includes('projectile')) {
+              const pb = getProjectileBonuses()
+              kbChance += pb.knockbackChance
+              kbBaseRange = Math.max(kbBaseRange, balance.player.radius * 0.5)
+              kbMoreRange = Math.max(kbMoreRange, pb.knockbackMoreRange)
+              kbSlowAmount = Math.max(kbSlowAmount, pb.knockbackMoveSlowAmount)
+              kbDamageReduction = Math.max(kbDamageReduction, pb.knockbackDamageReduction)
+            }
+            if (kbChance > 0 && Math.random() * 100 < kbChance) {
+              const kbRange = kbBaseRange * (1 + kbMoreRange / 100)
+              const dx = target.x - attacker.x
+              const dy = target.y - attacker.y
+              const dist = Math.sqrt(dx * dx + dy * dy)
+              const dirX = dist > 0 ? dx / dist : 1
+              const dirY = dist > 0 ? dy / dist : 0
+              const kbSpeedPxPerSec = kbRange / (balance.buffs.knockbackDurationMs / 1000)
+              knockbackState.set(target.id, {
+                vx: dirX * kbSpeedPxPerSec,
+                vy: dirY * kbSpeedPxPerSec,
+                remainingMs: balance.buffs.knockbackDurationMs,
+              })
+              if (kbSlowAmount > 0) {
+                knockbackSlowState.set(target.id, { amount: kbSlowAmount, remainingMs: balance.buffs.knockbackSlowDurationMs })
+              }
+              if (kbDamageReduction > 0) {
+                knockbackDamageReductionState.set(target.id, { amount: kbDamageReduction, remainingMs: balance.buffs.knockbackDamageReductionDurationMs })
+              }
+            }
+          }
 
           // Burning: roll on fire-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && actualDamage > 0) {
@@ -3342,6 +3473,7 @@ export function createGameScene(
         tickBleeds(ticker.deltaMS, damagedIds)
         tickBurnGrounds(ticker.deltaMS, damagedIds)
         tickElectrocutions(ticker.deltaMS)
+        tickKnockbacks(ticker.deltaMS)
         tickElectrocuteEffects()
         tickBurnEffects()
         tickBleedEffects()

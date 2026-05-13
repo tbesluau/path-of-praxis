@@ -83,6 +83,9 @@ export const balance = {
     frenzyMaxCharges:          10, // maximum Frenzy charges (raised to 20 by mastery final node)
     bloodlustDurationMs:     4000, // how long Bloodlust lasts after each trigger
     electrifiedDurationMs:   4000, // how long Electrified lasts after each trigger
+    knockbackDurationMs:      200, // how long the knockback velocity impulse lasts
+    knockbackSlowDurationMs: 2000, // how long the post-knockback move speed slow lasts
+    knockbackDamageReductionDurationMs: 2000, // how long knocked-back enemies deal reduced damage
   },
 
   // ── Damage-type effects (burning, bleeding, electrocuted, ...) ───────────

@@ -94,15 +94,15 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'area',       label: 'Area',       tag: 'area',       trees: [
         { index: 0, label: 'Area Damage' },
         { index: 1, label: 'Area Size' },
-        { index: 2, label: 'Tremor', short: true },
-        { index: 3, label: 'Area 4' },
+        { index: 2, label: 'Tremor',   short: true },
+        { index: 3, label: 'Knockback', short: true },
         { index: 4, label: 'Area 5' },
       ] },
       { id: 'projectile', label: 'Projectile', tag: 'projectile', trees: [
-        { index: 0, label: 'Projectile Range',      short: true },
+        { index: 0, label: 'Projectile Range',  short: true },
         { index: 1, label: 'Multiple Projectiles' },
         { index: 2, label: 'Projectile Damage' },
-        { index: 3, label: 'Projectile 4' },
+        { index: 3, label: 'Knockback',         short: true },
         { index: 4, label: 'Projectile 5' },
       ] },
       { id: 'strike',     label: 'Strike',     tag: 'strike',     trees: [
@@ -126,9 +126,10 @@ export const masteryCategories: MasteryCategoryDef[] = [
       ] },
       { id: 'mana', label: 'Mana', trees: [
         { index: 0, label: 'Mana Regeneration', short: true },
-        { index: 1, label: 'Maximum Mana',       short: true },
-        { index: 2, label: 'Mana Steal',         short: true },
-        ...([4, 5].map(n => ({ index: n - 1, label: `Mana ${n}` }))),
+        { index: 1, label: 'Maximum Mana' },
+        { index: 2, label: 'Mana Steal',        short: true },
+        { index: 3, label: 'Mana Shield' },
+        { index: 4, label: 'Mana 5' },
       ] },
     ],
   },
