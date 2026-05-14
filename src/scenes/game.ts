@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
 import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
@@ -169,6 +169,10 @@ export function createGameScene(
 
   function getAreaBonuses(): AreaBonuses {
     return computeAreaBonuses(masteryProgress['area']?.nodes ?? [[], [], [], [], []])
+  }
+
+  function getMovementBonuses(): MovementBonuses {
+    return computeMovementBonuses(masteryProgress['movement']?.nodes ?? [[], [], [], []])
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -1334,6 +1338,18 @@ export function createGameScene(
   }
   const activeEffects: ActiveEffect[] = []
   let frenzyCharges = 0
+
+  // ── Movement mastery state ───────────────────────────────────────────────
+  let playerAnimLockMs = 0       // ms remaining where player is locked in animation phase
+  let dashCharges = 0
+  let dashChargeTimerMs = 0
+  const DASH_MAX_CHARGES = 1     // soft cap; future key nodes can increase
+  const DASH_DURATION_MS = 100   // 0.1s
+  const DASH_SPEED_MULT = 10     // covers 1s of distance in 0.1s
+  let dashRemainingMs = 0
+  let dashMoveX = 0
+  let dashMoveY = 0
+  let playerIsKiting = false
 
   function computeLifeRegenPerSec(): number {
     const lb = getLifeBonuses()
@@ -2756,18 +2772,47 @@ export function createGameScene(
         updateChunks()
 
         // ── Movement ────────────────────────────────────────────────────────
+        // Per-tick: decrement animation lock, tick dash charge roll
+        if (playerAnimLockMs > 0) playerAnimLockMs = Math.max(0, playerAnimLockMs - ticker.deltaMS)
+        dashChargeTimerMs += ticker.deltaMS
+        if (dashChargeTimerMs >= 1000) {
+          dashChargeTimerMs -= 1000
+          const movBonuses = getMovementBonuses()
+          if (movBonuses.dashChargeChance > 0 && dashCharges < DASH_MAX_CHARGES
+              && Math.random() * 100 < movBonuses.dashChargeChance) {
+            dashCharges++
+          }
+        }
+
         const lbForMove = electrocuteStacks.size > 0 ? getLightningBonuses() : null
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (!body) continue
+
+          // Animation lock: player cannot move during the action animation phase
+          if (entity.role === 'player' && playerAnimLockMs > 0) {
+            Matter.Body.setVelocity(body, { x: 0, y: 0 })
+            continue
+          }
+
           const target = entity.role === 'player' ? selectPlayerTarget(entities) : nearestTarget(entity, entities)
           if (!target) { Matter.Body.setVelocity(body, { x: 0, y: 0 }); continue }
           const gs = balance.world.gridSize
           const dx = target.x - entity.x, dy = target.y - entity.y
           const dist = Math.sqrt(dx * dx + dy * dy)
           const stopDist = entity.actionRange + target.radius
-          if (dist <= stopDist) { Matter.Body.setVelocity(body, { x: 0, y: 0 }); continue }
 
+          // Kite check for player (before stop-distance check to avoid early exit)
+          const playerMb = entity.role === 'player' ? getMovementBonuses() : null
+          const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= entity.actionRange / 2
+
+          if (!shouldKite && dist <= stopDist) {
+            if (entity.role === 'player') playerIsKiting = false
+            Matter.Body.setVelocity(body, { x: 0, y: 0 })
+            continue
+          }
+
+          // Pathfinding toward target (skipped when kiting to avoid wasteful A* calls)
           const fromTx = Math.floor(entity.x / gs), fromTy = Math.floor(entity.y / gs)
           const toTx   = Math.floor(target.x / gs), toTy   = Math.floor(target.y / gs)
           const targetKey = `${toTx},${toTy}`
@@ -2775,29 +2820,92 @@ export function createGameScene(
           const now = performance.now()
           let moveX = dx / dist, moveY = dy / dist  // default: move directly
 
-          let path = entityPaths.get(entity.id)
-          const needsRepath = !path
-            || path.targetTileKey !== targetKey
-            || path.entityTileKey !== entityKey
-            || (path.waypoints.length === 0 && now - path.lastUpdateTime > 500)
-          if (needsRepath) {
-            const waypoints = astar(fromTx, fromTy, toTx, toTy, blockedTiles)
-            path = { waypoints, waypointIdx: 0, targetTileKey: targetKey, entityTileKey: entityKey, lastUpdateTime: now }
-            entityPaths.set(entity.id, path)
-          }
-          const activePath = path!
-          if (activePath.waypoints.length > 0) {
-            while (activePath.waypointIdx < activePath.waypoints.length) {
-              const wp = activePath.waypoints[activePath.waypointIdx]
-              const wpX = (wp.tx + 0.5) * gs, wpY = (wp.ty + 0.5) * gs
-              const wdx = wpX - entity.x, wdy = wpY - entity.y
-              if (wdx * wdx + wdy * wdy < (gs * 0.6) ** 2) { activePath.waypointIdx++; continue }
-              const wd = Math.sqrt(wdx * wdx + wdy * wdy)
-              moveX = wdx / wd; moveY = wdy / wd
-              break
+          if (!shouldKite) {
+            let path = entityPaths.get(entity.id)
+            const needsRepath = !path
+              || path.targetTileKey !== targetKey
+              || path.entityTileKey !== entityKey
+              || (path.waypoints.length === 0 && now - path.lastUpdateTime > 500)
+            if (needsRepath) {
+              const waypoints = astar(fromTx, fromTy, toTx, toTy, blockedTiles)
+              path = { waypoints, waypointIdx: 0, targetTileKey: targetKey, entityTileKey: entityKey, lastUpdateTime: now }
+              entityPaths.set(entity.id, path)
+            }
+            const activePath = path!
+            if (activePath.waypoints.length > 0) {
+              while (activePath.waypointIdx < activePath.waypoints.length) {
+                const wp = activePath.waypoints[activePath.waypointIdx]
+                const wpX = (wp.tx + 0.5) * gs, wpY = (wp.ty + 0.5) * gs
+                const wdx = wpX - entity.x, wdy = wpY - entity.y
+                if (wdx * wdx + wdy * wdy < (gs * 0.6) ** 2) { activePath.waypointIdx++; continue }
+                const wd = Math.sqrt(wdx * wdx + wdy * wdy)
+                moveX = wdx / wd; moveY = wdy / wd
+                break
+              }
             }
           }
 
+          // Player movement: move speed bonuses, kite, and dash
+          if (entity.role === 'player') {
+            const mb = playerMb!
+            const effectiveMs = entity.moveSpeed
+              * (1 + mb.moveSpeedIncrease / 100)
+              * (1 + mb.moveMoreSpeed / 100)
+
+            // Active dash — run to completion
+            if (dashRemainingMs > 0) {
+              dashRemainingMs = Math.max(0, dashRemainingMs - ticker.deltaMS)
+              const dashSpeed = effectiveMs * DASH_SPEED_MULT * (1 + mb.dashDistanceIncrease / 100)
+              Matter.Body.setVelocity(body, {
+                x: dashMoveX * dashSpeed * MATTER_BASE_DT,
+                y: dashMoveY * dashSpeed * MATTER_BASE_DT,
+              })
+              continue
+            }
+
+            playerIsKiting = shouldKite
+            if (shouldKite) {
+              const kiteMoveX = -(dx / dist)
+              const kiteMoveY = -(dy / dist)
+              if (dashCharges > 0 && mb.kiteAllowDash) {
+                dashCharges--
+                dashRemainingMs = DASH_DURATION_MS
+                dashMoveX = kiteMoveX; dashMoveY = kiteMoveY
+                const dashSpeed = effectiveMs * DASH_SPEED_MULT * (1 + mb.dashDistanceIncrease / 100)
+                Matter.Body.setVelocity(body, {
+                  x: dashMoveX * dashSpeed * MATTER_BASE_DT,
+                  y: dashMoveY * dashSpeed * MATTER_BASE_DT,
+                })
+              } else {
+                const kiteMs = effectiveMs * mb.kiteSpeedFraction
+                Matter.Body.setVelocity(body, {
+                  x: kiteMoveX * kiteMs * MATTER_BASE_DT,
+                  y: kiteMoveY * kiteMs * MATTER_BASE_DT,
+                })
+              }
+              continue
+            }
+
+            // Moving toward enemy — trigger dash if a charge is available
+            if (dashCharges > 0) {
+              dashCharges--
+              dashRemainingMs = DASH_DURATION_MS
+              dashMoveX = moveX; dashMoveY = moveY
+              const dashSpeed = effectiveMs * DASH_SPEED_MULT * (1 + mb.dashDistanceIncrease / 100)
+              Matter.Body.setVelocity(body, {
+                x: dashMoveX * dashSpeed * MATTER_BASE_DT,
+                y: dashMoveY * dashSpeed * MATTER_BASE_DT,
+              })
+            } else {
+              Matter.Body.setVelocity(body, {
+                x: moveX * effectiveMs * MATTER_BASE_DT,
+                y: moveY * effectiveMs * MATTER_BASE_DT,
+              })
+            }
+            continue
+          }
+
+          // Enemy movement
           // Velocity is set per Matter base step (1/60 s), not per frame dt;
           // otherwise per-frame displacement scales with dt² and the simulation
           // diverges from a true sped-up x1 at higher gameSpeed.
@@ -2873,6 +2981,10 @@ export function createGameScene(
             if (action.tags.includes('physical') || action.tags.includes('rot')) totalResistance += lb.physRotResistance
             if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) {
               totalResistance += lb.elementalResistance
+            }
+            if (playerIsKiting) {
+              const movB = getMovementBonuses()
+              totalResistance += movB.kiteResistance
             }
             totalResistance = Math.max(0, Math.min(100, totalResistance))
             finalDamage = damage * (1 - totalResistance / 100)
@@ -3311,6 +3423,12 @@ export function createGameScene(
               guaranteedAfflictions,
             })
             spawnPreHitVfx(entity, target, action, preHitDuration)
+          }
+
+          // Lock player movement during the animation phase and cancel any active dash
+          if (entity.role === 'player') {
+            playerAnimLockMs = preHitDuration
+            dashRemainingMs = 0
           }
 
           // ── Mana payment ──────────────────────────────────────────────────
