@@ -12,7 +12,7 @@ export type MasteryId =
   | 'enemy' | 'movement'
 
 export interface MasteryTreeDef {
-  index: number   // 0-4
+  index: number   // 0-based position in the trees array
   label: string   // e.g. "Action Damage"
   short?: boolean // if true, tree ends after first major (line nodes 0-5; key nodes 12-13 only)
 }
@@ -43,10 +43,8 @@ export function nodeDescription(treeDef: MasteryTreeDef, nodeIdx: number): strin
   return `${treeDef.label} ${nodeType(nodeIdx)}`
 }
 
-function makeTrees(label: string): MasteryTreeDef[] {
-  return [1, 2, 3, 4, 5].map(n => ({ index: n - 1, label: `${label} ${n}` }))
-}
-
+// Tree order priority within each size bucket: damage/quantity/maximum → multi-actions → afflictions → buffs/debuffs
+// Large trees come before small trees.
 export const masteryCategories: MasteryCategoryDef[] = [
   {
     label: 'Action',
@@ -54,9 +52,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'action', label: 'Action', trees: [
         { index: 0, label: 'Action Damage' },
         { index: 1, label: 'Action Speed' },
-        { index: 2, label: 'Trance',      short: true },
-        { index: 3, label: 'Mana Cost',   short: true },
-        { index: 4, label: 'Action Range' },
+        { index: 2, label: 'Trance',    short: true },
+        { index: 3, label: 'Mana Cost', short: true },
       ] },
     ],
   },
@@ -67,22 +64,19 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 0, label: 'Physical Damage' },
         { index: 1, label: 'Bleed' },
         { index: 2, label: 'Resistance Breaking', short: true },
-        { index: 3, label: 'Bloodlust', short: true },
-        { index: 4, label: 'Physical 5' },
+        { index: 3, label: 'Bloodlust',           short: true },
       ] },
       { id: 'fire',      label: 'Fire',      tag: 'fire',      trees: [
-        { index: 0, label: 'Burning' },
-        { index: 1, label: 'Immolation', short: true },
-        { index: 2, label: 'Fire Damage' },
-        { index: 3, label: 'Burning Ground', short: true },
-        { index: 4, label: 'Fire 5' },
+        { index: 0, label: 'Fire Damage' },
+        { index: 1, label: 'Burning' },
+        { index: 2, label: 'Burning Ground', short: true },
+        { index: 3, label: 'Immolation',     short: true },
       ] },
       { id: 'lightning', label: 'Lightning', tag: 'lightning', trees: [
-        { index: 0, label: 'Electrocution' },
-        { index: 1, label: 'Jump', short: true },
-        { index: 2, label: 'Lightning Damage' },
+        { index: 0, label: 'Lightning Damage' },
+        { index: 1, label: 'Electrocution' },
+        { index: 2, label: 'Jump',        short: true },
         { index: 3, label: 'Electrifying', short: true },
-        { index: 4, label: 'Lightning 5' },
       ] },
     ],
   },
@@ -92,23 +86,20 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'area',       label: 'Area',       tag: 'area',       trees: [
         { index: 0, label: 'Area Damage' },
         { index: 1, label: 'Area Size' },
-        { index: 2, label: 'Tremor',   short: true },
+        { index: 2, label: 'Tremor',    short: true },
         { index: 3, label: 'Knockback', short: true },
-        { index: 4, label: 'Area 5' },
       ] },
       { id: 'projectile', label: 'Projectile', tag: 'projectile', trees: [
-        { index: 0, label: 'Projectile Range',  short: true },
+        { index: 0, label: 'Projectile Damage' },
         { index: 1, label: 'Multiple Projectiles' },
-        { index: 2, label: 'Projectile Damage' },
-        { index: 3, label: 'Knockback',         short: true },
-        { index: 4, label: 'Projectile 5' },
+        { index: 2, label: 'Projectile Range', short: true },
+        { index: 3, label: 'Knockback',        short: true },
       ] },
       { id: 'strike',     label: 'Strike',     tag: 'strike',     trees: [
         { index: 0, label: 'Strike Damage' },
         { index: 1, label: 'Frenzy' },
-        { index: 2, label: 'Strike Range', short: true },
+        { index: 2, label: 'Strike Range',     short: true },
         { index: 3, label: 'Additional Target', short: true },
-        { index: 4, label: 'Strike 5' },
       ] },
     ],
   },
@@ -117,17 +108,15 @@ export const masteryCategories: MasteryCategoryDef[] = [
     masteries: [
       { id: 'life', label: 'Life', trees: [
         { index: 0, label: 'Maximum Life' },
-        { index: 1, label: 'Life Regeneration', short: true },
-        { index: 2, label: 'Life Steal', short: true },
-        { index: 3, label: 'Resistances' },
-        { index: 4, label: 'Life 5' },
+        { index: 1, label: 'Resistances' },
+        { index: 2, label: 'Life Regeneration', short: true },
+        { index: 3, label: 'Life Steal',        short: true },
       ] },
       { id: 'mana', label: 'Mana', trees: [
-        { index: 0, label: 'Mana Regeneration', short: true },
-        { index: 1, label: 'Maximum Mana' },
-        { index: 2, label: 'Mana Steal',        short: true },
-        { index: 3, label: 'Mana Shield' },
-        { index: 4, label: 'Mana 5' },
+        { index: 0, label: 'Maximum Mana' },
+        { index: 1, label: 'Mana Shield' },
+        { index: 2, label: 'Mana Regeneration', short: true },
+        { index: 3, label: 'Mana Steal',        short: true },
       ] },
     ],
   },
@@ -137,11 +126,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
       { id: 'enemy',    label: 'Enemy',    trees: [
         { index: 0, label: 'Enemy Quantity' },
         { index: 1, label: 'Enemy Quality' },
-        { index: 2, label: 'Enemy 3' },
-        { index: 3, label: 'Enemy 4' },
-        { index: 4, label: 'Enemy 5' },
       ] },
-      { id: 'movement', label: 'Movement', trees: makeTrees('Movement') },
+      { id: 'movement', label: 'Movement', trees: [] },
     ],
   },
 ]

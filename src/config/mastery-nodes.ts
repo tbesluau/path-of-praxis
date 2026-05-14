@@ -490,7 +490,7 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
 // Tree 0: Maximum Life  Tree 1: Life Regeneration (short)  Tree 2-4: not yet implemented
 
 const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Maximum Life
+  0: {  // Maximum Life (full)
     0:  { lifeMaxIncrease: 5 },
     1:  { lifePhysRotResistance: 5 },
     2:  { lifeMaxIncrease: 12 },
@@ -504,25 +504,7 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     10: { lifeElementalResistance: 5 },
     11: { lifeMoreMax: 30 },
   },
-  1: {  // Life Regeneration (short tree — line nodes 0-5, key nodes 12-13)
-    0: { lifeRegenIncrease: 5 },
-    1: { lifeRegenIncrease: 5 },
-    2: { lifeRegenIncrease: 12 },
-    3: { lifeRegenIncrease: 5 },
-    4: { lifeRegenIncrease: 5 },
-    5: { lifeRegenFractionBonus: 0.003 },
-    // 12-13: key nodes — not yet defined
-  },
-  2: {  // Life Steal (short tree — line nodes 0-5, key nodes 12-13)
-    0: { lifeStealPercent: 0.5 },
-    1: { lifeStealIncrease: 5 },
-    2: { lifeStealCapIncrease: 10 },
-    3: { lifeStealPercent: 0.5 },
-    4: { lifeStealIncrease: 5 },
-    5: { lifeFeedingFrenzyChance: 1 },
-    // 12-13: key nodes — not yet defined
-  },
-  3: {  // Resistances (full tree — line nodes 0-11, key nodes 12-15)
+  1: {  // Resistances (full tree — line nodes 0-11, key nodes 12-15)
     0:  { lifePhysRotResistance: 5 },
     1:  { lifeElementalResistance: 5 },
     2:  { lifePhysRotResistance: 7, lifeElementalResistance: 7 },
@@ -535,6 +517,24 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { lifePhysRotResistance: 5 },
     10: { lifeElementalResistance: 5 },
     11: { lifeResistReductionEffectiveness: 50 },
+  },
+  2: {  // Life Regeneration (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lifeRegenIncrease: 5 },
+    1: { lifeRegenIncrease: 5 },
+    2: { lifeRegenIncrease: 12 },
+    3: { lifeRegenIncrease: 5 },
+    4: { lifeRegenIncrease: 5 },
+    5: { lifeRegenFractionBonus: 0.003 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Life Steal (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lifeStealPercent: 0.5 },
+    1: { lifeStealIncrease: 5 },
+    2: { lifeStealCapIncrease: 10 },
+    3: { lifeStealPercent: 0.5 },
+    4: { lifeStealIncrease: 5 },
+    5: { lifeFeedingFrenzyChance: 1 },
+    // 12-13: key nodes — not yet defined
   },
 }
 
@@ -581,16 +581,7 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
 // Tree 0: Mana Regeneration (short)  Tree 1: Maximum Mana (short)  Tree 2-4: not yet implemented
 
 const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Mana Regeneration (short tree — line nodes 0-5, key nodes 12-13)
-    0: { manaRegenIncrease: 5 },
-    1: { manaRegenIncrease: 5 },
-    2: { manaRegenIncrease: 12 },
-    3: { manaRegenIncrease: 5 },
-    4: { manaRegenIncrease: 5 },
-    5: { manaReplenishChance: 10 },
-    // 12-13: key nodes — not yet defined
-  },
-  1: {  // Maximum Mana (full tree — line nodes 0-11, key nodes 12-15)
+  0: {  // Maximum Mana (full tree — line nodes 0-11, key nodes 12-15)
     0: { manaMaxIncrease: 5 },
     1: { manaMaxIncrease: 2, manaRegenIncrease: 2 },
     2: { manaMaxIncrease: 12 },
@@ -605,16 +596,7 @@ const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { manaMoreMax: 20, manaMoreLife: 3 },
     // 12-15: key nodes — not yet defined
   },
-  2: {  // Mana Steal (short tree — line nodes 0-5, key nodes 12-13)
-    0: { manaStealPercent: 0.5 },
-    1: { manaStealIncrease: 5 },
-    2: { manaStealCapIncrease: 10 },
-    3: { manaStealPercent: 0.5 },
-    4: { manaStealIncrease: 5 },
-    5: { manaFeedingFrenzyChance: 1 },
-    // 12-13: key nodes — not yet defined
-  },
-  3: {  // Mana Shield (full tree — line nodes 0-11, key nodes 12-15)
+  1: {  // Mana Shield (full tree — line nodes 0-11, key nodes 12-15)
     0:  { manaShieldAbsorbIncrease: 5 },
     1:  { manaShieldDamageTakenReduce: 5 },
     2:  { manaShieldAbsorbIncrease: 10 },
@@ -628,6 +610,24 @@ const MANA_EFFECTS: Partial<Record<number, TreeEffects>> = {
     10: { manaShieldDamageTakenReduce: 5 },
     11: { manaShieldResistancesApply: true },
     // 12-15: key nodes — not yet defined
+  },
+  2: {  // Mana Regeneration (short tree — line nodes 0-5, key nodes 12-13)
+    0: { manaRegenIncrease: 5 },
+    1: { manaRegenIncrease: 5 },
+    2: { manaRegenIncrease: 12 },
+    3: { manaRegenIncrease: 5 },
+    4: { manaRegenIncrease: 5 },
+    5: { manaReplenishChance: 10 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Mana Steal (short tree — line nodes 0-5, key nodes 12-13)
+    0: { manaStealPercent: 0.5 },
+    1: { manaStealIncrease: 5 },
+    2: { manaStealCapIncrease: 10 },
+    3: { manaStealPercent: 0.5 },
+    4: { manaStealIncrease: 5 },
+    5: { manaFeedingFrenzyChance: 1 },
+    // 12-13: key nodes — not yet defined
   },
 }
 
@@ -670,31 +670,7 @@ export function computeManaBonuses(nodes: number[][]): ManaBonuses {
 // Tree 0: Burning (full)  Tree 1: Immolation (short)  Tree 2: Fire Damage (full)  Tree 3: Burning Ground (short)  Tree 4: not implemented
 
 const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Burning
-    0:  { fireBurnApplyChance: 5 },
-    1:  { fireBurnDamageIncrease: 5 },
-    2:  { fireBurnDamageIncrease: 10, fireBurnDurationIncrease: 10 },
-    3:  { fireBurnApplyChance: 5 },
-    4:  { fireBurnDamageIncrease: 5 },
-    5:  { fireBurnMoreDamage: 30 },
-    6:  { fireBurnApplyChance: 5 },
-    7:  { fireBurnDamageIncrease: 5 },
-    8:  { fireBurningTakeIncreased: 10 },
-    9:  { fireBurnApplyChance: 5 },
-    10: { fireBurnDamageIncrease: 5 },
-    11: { fireBurnSplashFraction: 50 },
-    // 12-15: key nodes — not yet defined
-  },
-  1: {  // Immolation (short tree — line nodes 0-5, key nodes 12-13)
-    0: { fireImmolateChance: 2 },
-    1: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
-    2: { fireImmolateDamageMult: 0.5 },
-    3: { fireImmolateChance: 2 },
-    4: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
-    5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageMult: 0.5 },
-    // 12-13: key nodes — not yet defined
-  },
-  2: {  // Fire Damage (full)
+  0: {  // Fire Damage (full)
     0:  { fireDamageIncrease: 5 },
     1:  { fireActionSpeedIncrease: 3 },
     2:  { fireDamageIncrease: 5, fireBurnApplyChance: 5 },
@@ -709,13 +685,37 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { fireBurnEnemyResistReduction: 20 },
     // 12-15: key nodes — not yet defined
   },
-  3: {  // Burning Ground (short tree — line nodes 0-5, key nodes 12-13)
+  1: {  // Burning (full)
+    0:  { fireBurnApplyChance: 5 },
+    1:  { fireBurnDamageIncrease: 5 },
+    2:  { fireBurnDamageIncrease: 10, fireBurnDurationIncrease: 10 },
+    3:  { fireBurnApplyChance: 5 },
+    4:  { fireBurnDamageIncrease: 5 },
+    5:  { fireBurnMoreDamage: 30 },
+    6:  { fireBurnApplyChance: 5 },
+    7:  { fireBurnDamageIncrease: 5 },
+    8:  { fireBurningTakeIncreased: 10 },
+    9:  { fireBurnApplyChance: 5 },
+    10: { fireBurnDamageIncrease: 5 },
+    11: { fireBurnSplashFraction: 50 },
+    // 12-15: key nodes — not yet defined
+  },
+  2: {  // Burning Ground (short tree — line nodes 0-5, key nodes 12-13)
     0: { fireBurnGroundChance: 5 },
     1: { fireBurnGroundDamageIncrease: 15 },
     2: { fireBurnGroundDamageIncrease: 30, fireBurnGroundDurationIncrease: 30 },
     3: { fireBurnGroundChance: 5 },
     4: { fireBurnGroundDamageIncrease: 15 },
     5: { fireBurnGroundSlowAmount: 20, fireBurnGroundMoreDamage: 10 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Immolation (short tree — line nodes 0-5, key nodes 12-13)
+    0: { fireImmolateChance: 2 },
+    1: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
+    2: { fireImmolateDamageMult: 0.5 },
+    3: { fireImmolateChance: 2 },
+    4: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
+    5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageMult: 0.5 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -842,14 +842,20 @@ export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
 // Tree 0: Projectile Range (short)  Tree 1: Multiple Projectiles (full)  Tree 2-4: not yet implemented
 
 const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Projectile Range (short tree — line nodes 0-5, key nodes 12-13)
-    0: { projRangeIncrease: 5 },
-    1: { projDamageIncrease: 5 },
-    2: { projRangeIncrease: 12 },
-    3: { projRangeIncrease: 5 },
-    4: { projDamageIncrease: 5 },
-    5: { projDamagePerRange: 3 },
-    // 12-13: key nodes — not yet defined
+  0: {  // Projectile Damage (full tree — line nodes 0-11, key nodes 12-15)
+    0:  { projDamageIncrease: 5 },
+    1:  { projAdditionalTargetChance: 5 },
+    2:  { projDamageIncrease: 12 },
+    3:  { projDamageIncrease: 5 },
+    4:  { projAdditionalTargetChance: 5 },
+    5:  { projMoreDamage: 20 },
+    6:  { projDamageIncrease: 5 },
+    7:  { projAdditionalTargetChance: 5 },
+    8:  { projAdditionalTargetChance: 5, projDamageIncrease: 5, projActionSpeedIncrease: 5 },
+    9:  { projDamageIncrease: 5 },
+    10: { projAdditionalTargetChance: 5 },
+    11: { projDoubleDamageChance: 20, projRangeIncrease: 10 },
+    // 12-15: key nodes — not yet defined
   },
   1: {  // Multiple Projectiles (full tree — line nodes 0-11, key nodes 12-15)
     0:  { projExtraChance: 5 },
@@ -866,20 +872,14 @@ const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { projExtraDoubleRoll: true },
     // 12-15: key nodes — not yet defined
   },
-  2: {  // Projectile Damage (full tree — line nodes 0-11, key nodes 12-15)
-    0:  { projDamageIncrease: 5 },
-    1:  { projAdditionalTargetChance: 5 },
-    2:  { projDamageIncrease: 12 },
-    3:  { projDamageIncrease: 5 },
-    4:  { projAdditionalTargetChance: 5 },
-    5:  { projMoreDamage: 20 },
-    6:  { projDamageIncrease: 5 },
-    7:  { projAdditionalTargetChance: 5 },
-    8:  { projAdditionalTargetChance: 5, projDamageIncrease: 5, projActionSpeedIncrease: 5 },
-    9:  { projDamageIncrease: 5 },
-    10: { projAdditionalTargetChance: 5 },
-    11: { projDoubleDamageChance: 20, projRangeIncrease: 10 },
-    // 12-15: key nodes — not yet defined
+  2: {  // Projectile Range (short tree — line nodes 0-5, key nodes 12-13)
+    0: { projRangeIncrease: 5 },
+    1: { projDamageIncrease: 5 },
+    2: { projRangeIncrease: 12 },
+    3: { projRangeIncrease: 5 },
+    4: { projDamageIncrease: 5 },
+    5: { projDamagePerRange: 3 },
+    // 12-13: key nodes — not yet defined
   },
   3: {  // Knockback (short tree — line nodes 0-5, key nodes 12-13)
     0: { projKnockbackChance: 10 },
@@ -939,30 +939,7 @@ export function computeProjectileBonuses(nodes: number[][]): ProjectileBonuses {
 // Tree 0: Electrocution (full)  Tree 1: Jump (short)  Tree 2-4: not yet implemented
 
 const LIGHTNING_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Electrocution
-    0:  { lightningElectrocuteApplyChance: 5 },
-    1:  { lightningElectrocuteDamageTakenIncrease: 3 },
-    2:  { lightningElectrocuteDamageTakenIncrease: 5, lightningElectrocuteDurationIncrease: 10 },
-    3:  { lightningElectrocuteApplyChance: 5 },
-    4:  { lightningElectrocuteDamageTakenIncrease: 3 },
-    5:  { lightningElectrocuteDamageTakenIncrease: 8, lightningElectrocuteDurationIncrease: 20 },
-    6:  { lightningElectrocuteApplyChance: 5 },
-    7:  { lightningElectrocuteDamageTakenIncrease: 3 },
-    8:  { lightningElectrocuteApplyChance: 15 },
-    9:  { lightningElectrocuteApplyChance: 5 },
-    10: { lightningElectrocuteDamageTakenIncrease: 3 },
-    11: { lightningElectrocuteSlowOnDamageTaken: true },
-  },
-  1: {  // Jump (short tree — line nodes 0-5, key nodes 12-13)
-    0: { lightningJumpChance: 20 },
-    1: { lightningJumpDamagePenaltyReduce: 10 },
-    2: { lightningJumpChance: 30, lightningJumpDamagePenaltyReduce: 15 },
-    3: { lightningJumpChance: 20 },
-    4: { lightningJumpDamagePenaltyReduce: 10 },
-    5: { lightningJumpReroll: true, lightningJumpRangeIncrease: 30 },
-    // 12-13: key nodes — not yet defined
-  },
-  2: {  // Lightning Damage (full tree — line nodes 0-11, key nodes 12-15)
+  0: {  // Lightning Damage (full tree — line nodes 0-11, key nodes 12-15)
     0:  { lightningDamageIncrease: 5 },
     1:  { lightningActionSpeedIncrease: 3 },
     2:  { lightningDamageIncrease: 5, lightningElectrocuteApplyChance: 5 },
@@ -976,6 +953,29 @@ const LIGHTNING_EFFECTS: Partial<Record<number, TreeEffects>> = {
     10: { lightningActionSpeedIncrease: 3 },
     11: { lightningMoreDamage: 10, lightningMoreActionSpeed: 5 },
     // 12-15: key nodes — not yet defined
+  },
+  1: {  // Electrocution (full)
+    0:  { lightningElectrocuteApplyChance: 5 },
+    1:  { lightningElectrocuteDamageTakenIncrease: 3 },
+    2:  { lightningElectrocuteDamageTakenIncrease: 5, lightningElectrocuteDurationIncrease: 10 },
+    3:  { lightningElectrocuteApplyChance: 5 },
+    4:  { lightningElectrocuteDamageTakenIncrease: 3 },
+    5:  { lightningElectrocuteDamageTakenIncrease: 8, lightningElectrocuteDurationIncrease: 20 },
+    6:  { lightningElectrocuteApplyChance: 5 },
+    7:  { lightningElectrocuteDamageTakenIncrease: 3 },
+    8:  { lightningElectrocuteApplyChance: 15 },
+    9:  { lightningElectrocuteApplyChance: 5 },
+    10: { lightningElectrocuteDamageTakenIncrease: 3 },
+    11: { lightningElectrocuteSlowOnDamageTaken: true },
+  },
+  2: {  // Jump (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lightningJumpChance: 20 },
+    1: { lightningJumpDamagePenaltyReduce: 10 },
+    2: { lightningJumpChance: 30, lightningJumpDamagePenaltyReduce: 15 },
+    3: { lightningJumpChance: 20 },
+    4: { lightningJumpDamagePenaltyReduce: 10 },
+    5: { lightningJumpReroll: true, lightningJumpRangeIncrease: 30 },
+    // 12-13: key nodes — not yet defined
   },
   3: {  // Electrifying (short tree — line nodes 0-5, key nodes 12-13)
     0: { lightningElectrifyChance: 5 },
@@ -1363,7 +1363,7 @@ const ACTION_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
 }
 
 const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
-  0: {
+  0: {  // Maximum Life
     0:  '+5% increased maximum life',
     1:  '+5% physical and rot resistance',
     2:  '+12% increased maximum life',
@@ -1377,23 +1377,7 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     10: '+5% elemental resistance',
     11: '+30% more maximum life',
   },
-  1: {
-    0: '+5% increased life regeneration',
-    1: '+5% increased life regeneration',
-    2: '+12% increased life regeneration',
-    3: '+5% increased life regeneration',
-    4: '+5% increased life regeneration',
-    5: '+0.3% of maximum life regenerated per second',
-  },
-  2: {
-    0: 'Steal +0.5% of action hit damage as life',
-    1: '+5% increased life stolen',
-    2: '+10% increased life steal hard cap (caps at 1% of maximum life per instance)',
-    3: 'Steal +0.5% of action hit damage as life',
-    4: '+5% increased life stolen',
-    5: 'Stealing life has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
-  },
-  3: {
+  1: {  // Resistances
     0:  '+5% physical and rot resistance',
     1:  '+5% elemental resistance',
     2:  '+7% physical and rot resistance · +7% elemental resistance',
@@ -1407,6 +1391,22 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     10: '+5% elemental resistance',
     11: 'Resistance reduction effects applied to you lose 50% effectiveness',
   },
+  2: {  // Life Regeneration
+    0: '+5% increased life regeneration',
+    1: '+5% increased life regeneration',
+    2: '+12% increased life regeneration',
+    3: '+5% increased life regeneration',
+    4: '+5% increased life regeneration',
+    5: '+0.3% of maximum life regenerated per second',
+  },
+  3: {  // Life Steal
+    0: 'Steal +0.5% of action hit damage as life',
+    1: '+5% increased life stolen',
+    2: '+10% increased life steal hard cap (caps at 1% of maximum life per instance)',
+    3: 'Steal +0.5% of action hit damage as life',
+    4: '+5% increased life stolen',
+    5: 'Stealing life has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
+  },
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -1414,15 +1414,7 @@ const TYPE_LABEL: Record<string, string> = {
 }
 
 const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
-  0: {
-    0: '+5% increased mana regeneration',
-    1: '+5% increased mana regeneration',
-    2: '+12% increased mana regeneration',
-    3: '+5% increased mana regeneration',
-    4: '+5% increased mana regeneration',
-    5: '+10% chance for an action to replenish mana instead of depleting it',
-  },
-  1: {
+  0: {  // Maximum Mana
     0:  '+5% increased maximum mana',
     1:  '+2% increased maximum mana · +2% increased mana regeneration',
     2:  '+12% increased maximum mana',
@@ -1436,15 +1428,7 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     10: '+2% increased maximum mana · +2% increased mana regeneration',
     11: '+20% more maximum mana · +3% more maximum life',
   },
-  2: {
-    0: 'Steal +0.5% of action hit damage as mana',
-    1: '+5% increased mana stolen',
-    2: '+10% increased mana steal hard cap (caps at 1% of maximum mana per instance)',
-    3: 'Steal +0.5% of action hit damage as mana',
-    4: '+5% increased mana stolen',
-    5: 'Stealing mana has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
-  },
-  3: {
+  1: {  // Mana Shield
     0:  'Mana Shield absorbs +5% of incoming hit damage (converted to mana at 200% cost)',
     1:  '5% reduced damage taken on the mana side of the shield (base 200%)',
     2:  'Mana Shield absorbs +10% of incoming hit damage',
@@ -1458,32 +1442,26 @@ const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     10: '5% reduced damage taken on the mana side of the shield',
     11: 'Your resistances reduce the mana cost of absorbed damage (same reduction as on the life side)',
   },
+  2: {  // Mana Regeneration
+    0: '+5% increased mana regeneration',
+    1: '+5% increased mana regeneration',
+    2: '+12% increased mana regeneration',
+    3: '+5% increased mana regeneration',
+    4: '+5% increased mana regeneration',
+    5: '+10% chance for an action to replenish mana instead of depleting it',
+  },
+  3: {  // Mana Steal
+    0: 'Steal +0.5% of action hit damage as mana',
+    1: '+5% increased mana stolen',
+    2: '+10% increased mana steal hard cap (caps at 1% of maximum mana per instance)',
+    3: 'Steal +0.5% of action hit damage as mana',
+    4: '+5% increased mana stolen',
+    5: 'Stealing mana has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
+  },
 }
 
 const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
-  0: {
-    0:  'Fire actions have +5% chance to apply burn',
-    1:  '+5% increased burn damage',
-    2:  '+10% increased burn damage · +10% increased burn duration',
-    3:  'Fire actions have +5% chance to apply burn',
-    4:  '+5% increased burn damage',
-    5:  '+30% more burn damage',
-    6:  'Fire actions have +5% chance to apply burn',
-    7:  '+5% increased burn damage',
-    8:  'Burning enemies take +10% increased damage from all sources',
-    9:  'Fire actions have +5% chance to apply burn',
-    10: '+5% increased burn damage',
-    11: 'Burning enemies splash 50% of their burn damage to nearby non-burning enemies',
-  },
-  1: {
-    0: 'Fire actions have +2% chance to trigger immolation',
-    1: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
-    2: 'Immolation self-burn damage is halved (×0.5)',
-    3: 'Fire actions have +2% chance to trigger immolation',
-    4: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
-    5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage is halved (×0.5)',
-  },
-  2: {
+  0: {  // Fire Damage
     0:  '+5% increased fire damage',
     1:  '+3% increased fire action speed',
     2:  '+5% increased fire damage · Fire actions have +5% chance to apply burn',
@@ -1497,13 +1475,35 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     10: '+3% increased fire action speed',
     11: 'Burning enemies have 20% reduced fire resistance',
   },
-  3: {  // Burning Ground
+  1: {  // Burning
+    0:  'Fire actions have +5% chance to apply burn',
+    1:  '+5% increased burn damage',
+    2:  '+10% increased burn damage · +10% increased burn duration',
+    3:  'Fire actions have +5% chance to apply burn',
+    4:  '+5% increased burn damage',
+    5:  '+30% more burn damage',
+    6:  'Fire actions have +5% chance to apply burn',
+    7:  '+5% increased burn damage',
+    8:  'Burning enemies take +10% increased damage from all sources',
+    9:  'Fire actions have +5% chance to apply burn',
+    10: '+5% increased burn damage',
+    11: 'Burning enemies splash 50% of their burn damage to nearby non-burning enemies',
+  },
+  2: {  // Burning Ground
     0: 'Fire actions have +5% chance to cause burning ground',
     1: '+15% increased burning ground damage',
     2: '+30% increased burning ground damage · +30% increased burning ground duration',
     3: 'Fire actions have +5% chance to cause burning ground',
     4: '+15% increased burning ground damage',
     5: 'Burning ground slows enemy movement and action speed by 20% · +10% more burning ground damage',
+  },
+  3: {  // Immolation
+    0: 'Fire actions have +2% chance to trigger immolation',
+    1: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
+    2: 'Immolation self-burn damage is halved (×0.5)',
+    3: 'Fire actions have +2% chance to trigger immolation',
+    4: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
+    5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage is halved (×0.5)',
   },
 }
 
@@ -1635,15 +1635,7 @@ export function getNodeDescription(
 }
 
 const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
-  0: {
-    0: '+5% increased projectile range',
-    1: '+5% increased projectile damage',
-    2: '+12% increased projectile range',
-    3: '+5% increased projectile range',
-    4: '+5% increased projectile damage',
-    5: '+3% increased projectile damage per 1 range unit (minimum 3% at range 1)',
-  },
-  1: {
+  1: {  // Multiple Projectiles
     0:  '+5% chance to fire an additional projectile at 50% damage',
     1:  '+5% increased additional projectile damage',
     2:  '+7% chance to fire an additional projectile · +7% increased additional projectile damage',
@@ -1656,6 +1648,14 @@ const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  '+5% chance to fire an additional projectile',
     10: '+5% increased additional projectile damage',
     11: 'When an additional projectile fires, roll once more for a second additional projectile',
+  },
+  2: {  // Projectile Range
+    0: '+5% increased projectile range',
+    1: '+5% increased projectile damage',
+    2: '+12% increased projectile range',
+    3: '+5% increased projectile range',
+    4: '+5% increased projectile damage',
+    5: '+3% increased projectile damage per 1 range unit (minimum 3% at range 1)',
   },
   3: {  // Knockback
     0: 'Projectile hits have +10% chance to knock back the target',
@@ -1715,7 +1715,21 @@ const STRIKE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
 }
 
 const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
-  0: {  // Electrocution
+  0: {  // Lightning Damage
+    0:  '+5% increased lightning damage',
+    1:  '+3% increased lightning action speed',
+    2:  '+5% increased lightning damage · Lightning actions have +5% chance to electrocute',
+    3:  '+5% increased lightning damage',
+    4:  '+3% increased lightning action speed',
+    5:  '+10% more lightning damage',
+    6:  '+5% increased lightning damage',
+    7:  '+3% increased lightning action speed',
+    8:  '+12% increased lightning damage',
+    9:  '+5% increased lightning damage',
+    10: '+3% increased lightning action speed',
+    11: '+10% more lightning damage · +5% more lightning action speed',
+  },
+  1: {  // Electrocution
     0:  'Lightning actions have +5% chance to electrocute',
     1:  '+3% increased damage taken from electrocution',
     2:  '+5% increased damage taken from electrocution · +10% increased electrocution duration',
@@ -1729,27 +1743,13 @@ const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, stri
     10: '+3% increased damage taken from electrocution',
     11: 'Electrocuted enemies have their movement and action speed reduced by the electrocution damage taken value',
   },
-  1: {  // Jump
+  2: {  // Jump
     0: 'Lightning actions have +20% increased chance to jump to an additional enemy',
     1: '+10% reduced damage penalty of jump',
     2: 'Lightning actions have +30% increased chance to jump to an additional enemy · +15% reduced damage penalty of jump',
     3: 'Lightning actions have +20% increased chance to jump to an additional enemy',
     4: '+10% reduced damage penalty of jump',
     5: 'Successful jumps re-roll for another jump (unlimited chain) · +30% increased jump range',
-  },
-  2: {  // Lightning Damage
-    0:  '+5% increased lightning damage',
-    1:  '+3% increased lightning action speed',
-    2:  '+5% increased lightning damage · Lightning actions have +5% chance to electrocute',
-    3:  '+5% increased lightning damage',
-    4:  '+3% increased lightning action speed',
-    5:  '+10% more lightning damage',
-    6:  '+5% increased lightning damage',
-    7:  '+3% increased lightning action speed',
-    8:  '+12% increased lightning damage',
-    9:  '+5% increased lightning damage',
-    10: '+3% increased lightning action speed',
-    11: '+10% more lightning damage · +5% more lightning action speed',
   },
   3: {  // Electrifying
     0: 'Lightning actions have +5% increased chance to Electrify you',
