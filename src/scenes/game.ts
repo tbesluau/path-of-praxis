@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick, Swords, Droplets } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick, Swords, Droplets } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
@@ -1097,53 +1097,16 @@ export function createGameScene(
   const el = document.createElement('div')
   el.className = 'scene scene-game'
   el.innerHTML = `
-    <div class="enemy-level-ctrl">
-      <div class="enemy-level-main">
-        <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
-        <span class="enemy-level-display">1 / 1</span>
-        <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png" alt=""></button>
-        <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
-          <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
-          <span class="enemy-autolevel-track"></span>
-          <span class="enemy-autolevel-label">Auto</span>
-        </label>
-      </div>
-      <div class="enemy-xp-bar">
-        <div class="enemy-xp-bar-fill"></div>
-      </div>
-    </div>
-    <div class="game-viewport"><div class="buff-bar"></div></div>
-    <div class="stat-bars">
-      <div class="stat-bar-row">
-        <div class="stat-bar stat-bar--life">
-          <div class="stat-bar-fill stat-bar-fill--life"></div>
-          <span class="stat-bar-label stat-bar-label--life"></span>
-          <span class="stat-bar-regen stat-bar-regen--life"></span>
-        </div>
-        <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
-      </div>
-      <div class="stat-bar-row">
-        <div class="stat-bar stat-bar--mana">
-          <div class="stat-bar-fill stat-bar-fill--mana"></div>
-          <span class="stat-bar-label stat-bar-label--mana"></span>
-          <span class="stat-bar-regen stat-bar-regen--mana"></span>
-        </div>
-        <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
-      </div>
-      <div class="stat-bar-row stat-bar-row--action">
-        <button class="action-icon-btn" aria-label="Runes" style="position:relative">
-          <i data-lucide="sword" aria-hidden="true"></i>
-          <span class="notif-dot rune-notif-dot" hidden></span>
+    <div class="game-top-bar">
+      <div class="game-top-left">
+        <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="Back to menu">
+          <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <div class="stat-bar stat-bar--action">
-          <div class="stat-bar-fill stat-bar-fill--action"></div>
-          <span class="action-level-label">Lv.1</span>
-          <span class="stat-bar-regen stat-bar-regen--action"></span>
-        </div>
+        <button class="game-action-btn game-action-btn--icon" data-action="die" aria-label="Die and rebirth">
+          <i data-lucide="skull" aria-hidden="true"></i>
+        </button>
       </div>
-    </div>
-    <div class="game-hud">
-      <div class="game-hud-buttons">
+      <div class="game-top-center">
         <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
           <i data-lucide="settings-2" aria-hidden="true"></i>
         </button>
@@ -1151,12 +1114,58 @@ export function createGameScene(
           <i data-lucide="award" aria-hidden="true"></i>
           <span class="notif-dot mastery-notif-dot" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-menu" aria-label="Menu">
-          <i data-lucide="menu" aria-hidden="true"></i>
+        <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="Enemy level">
+          <span class="enemy-level-display">1 / 1</span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="character" aria-label="Character">
-          <i data-lucide="user" aria-hidden="true"></i>
-        </button>
+      </div>
+    </div>
+    <div class="game-viewport">
+      <div class="buff-bar"></div>
+      <div class="enemy-level-ctrl">
+        <div class="enemy-level-main">
+          <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
+          <span class="enemy-level-display">1 / 1</span>
+          <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png" alt=""></button>
+          <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
+            <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
+            <span class="enemy-autolevel-track"></span>
+            <span class="enemy-autolevel-label">Auto</span>
+          </label>
+        </div>
+        <div class="enemy-xp-bar">
+          <div class="enemy-xp-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+    <div class="game-bottom-bar">
+      <div class="stat-bars">
+        <div class="stat-bar-row">
+          <div class="stat-bar stat-bar--life">
+            <div class="stat-bar-fill stat-bar-fill--life"></div>
+            <span class="stat-bar-label stat-bar-label--life"></span>
+            <span class="stat-bar-regen stat-bar-regen--life"></span>
+          </div>
+          <div class="stat-level stat-level--life"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+        </div>
+        <div class="stat-bar-row">
+          <div class="stat-bar stat-bar--mana">
+            <div class="stat-bar-fill stat-bar-fill--mana"></div>
+            <span class="stat-bar-label stat-bar-label--mana"></span>
+            <span class="stat-bar-regen stat-bar-regen--mana"></span>
+          </div>
+          <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
+        </div>
+        <div class="stat-bar-row stat-bar-row--action">
+          <button class="action-icon-btn" aria-label="Runes" style="position:relative">
+            <i data-lucide="sword" aria-hidden="true"></i>
+            <span class="notif-dot rune-notif-dot" hidden></span>
+          </button>
+          <div class="stat-bar stat-bar--action">
+            <div class="stat-bar-fill stat-bar-fill--action"></div>
+            <span class="action-level-label">Lv.1</span>
+            <span class="stat-bar-regen stat-bar-regen--action"></span>
+          </div>
+        </div>
       </div>
       <div class="speed-ctrl">
         <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
@@ -1171,10 +1180,11 @@ export function createGameScene(
   `
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
-  createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword, Book } })
+  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull } })
 
   let zoomLevel = getPrefs().zoomLevel ?? 1.0
-  const unmountSettings = mountSettingsButton(el, container, {
+  const topCenter = el.querySelector<HTMLElement>('.game-top-center')!
+  const unmountSettings = mountSettingsButton(topCenter, container, {
     onZoomChange: (z) => {
       zoomLevel = z
       updateCamera()
@@ -1256,13 +1266,14 @@ export function createGameScene(
     )
   }
 
-  const enemyLevelDisplay   = el.querySelector<HTMLElement>('.enemy-level-display')!
+  const enemyCtrlEl         = el.querySelector<HTMLElement>('.enemy-level-ctrl')!
   const enemyLevelDownBtn   = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-down"]')!
   const enemyLevelUpBtn     = el.querySelector<HTMLButtonElement>('[data-action="enemy-level-up"]')!
   const enemyAutoLevelInput = el.querySelector<HTMLInputElement>('.enemy-autolevel-input')!
 
   function updateEnemyLevelUI(): void {
-    enemyLevelDisplay.textContent = `${enemyProgress.level} / ${enemyProgress.maxLevel}`
+    const txt = `${enemyProgress.level} / ${enemyProgress.maxLevel}`
+    el.querySelectorAll<HTMLElement>('.enemy-level-display').forEach(d => { d.textContent = txt })
     enemyLevelDownBtn.disabled = enemyProgress.level <= 1
     enemyLevelUpBtn.disabled   = enemyProgress.level >= enemyProgress.maxLevel
     enemyAutoLevelInput.checked = enemyProgress.autoLevel
@@ -1284,6 +1295,9 @@ export function createGameScene(
     enemyProgress.autoLevel = enemyAutoLevelInput.checked
     if (enemyProgress.autoLevel) { enemyProgress.level = enemyProgress.maxLevel; updateEnemyLevelUI() }
   })
+
+  el.querySelector<HTMLButtonElement>('[data-action="toggle-enemy"]')!
+    .addEventListener('click', () => { enemyCtrlEl.classList.toggle('is-open') })
 
   function awardEnemyXp(amount: number): void {
     runEnemyXp += amount
@@ -1568,22 +1582,13 @@ export function createGameScene(
     navigate('menu')
   }
 
-  el.querySelector<HTMLButtonElement>('[data-action="open-menu"]')!
+  el.querySelector<HTMLButtonElement>('[data-action="go-home"]')!
+    .addEventListener('click', () => saveAndGoHome())
+
+  el.querySelector<HTMLButtonElement>('[data-action="die"]')!
     .addEventListener('click', () => {
-      if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
-      modalCleanup = mountGameMenuModal(container, () => { modalCleanup = null }, {
-        onHome: saveAndGoHome,
-        onFlee: () => {
-          for (const entity of [...entities]) {
-            if (entity.role !== 'player') removeEntity(entity)
-          }
-          scheduleWave(balance.wave.spawnDelay)
-        },
-        onDie: () => {
-          playerEntity.currentLife = 0
-          killEntity(playerEntity)
-        },
-      })
+      playerEntity.currentLife = 0
+      killEntity(playerEntity)
     })
 
   // ── PixiJS ──────────────────────────────────────────────────────────────
@@ -1652,16 +1657,6 @@ export function createGameScene(
     lastUpdateTime: number
   }
   const entityPaths = new Map<string, EntityPath>()
-
-  const charBtn = el.querySelector<HTMLButtonElement>('[data-action="character"]')!
-  charBtn.addEventListener('click', () => {
-    if (modalCleanup) {
-      modalCleanup()
-      modalCleanup = null
-      return
-    }
-    modalCleanup = mountCharacterModal(container, () => { modalCleanup = null }, actionProgress, lifeProgress, manaProgress)
-  })
 
   el.querySelector<HTMLButtonElement>('[data-action="open-mastery"]')!
     .addEventListener('click', () => {
@@ -3625,107 +3620,6 @@ export function createGameScene(
     app = null
     el.remove()
   }
-}
-
-function mountGameMenuModal(
-  parent: HTMLElement,
-  onClose: () => void,
-  actions: { onHome: () => void; onFlee: () => void; onDie: () => void },
-): () => void {
-  const backdrop = document.createElement('div')
-  backdrop.className = 'modal-backdrop'
-  backdrop.innerHTML = `
-    <div class="modal-panel game-menu-panel" role="dialog" aria-modal="true" aria-labelledby="game-menu-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <h2 class="modal-title" id="game-menu-title">Menu</h2>
-      <div class="modal-actions game-menu-actions">
-        <button class="modal-btn modal-btn--primary modal-btn--icon-row" data-action="home">
-          <i data-lucide="home" aria-hidden="true"></i><span>Home Screen</span>
-        </button>
-        <button class="modal-btn modal-btn--primary modal-btn--icon-row" data-action="flee">
-          <i data-lucide="log-out" aria-hidden="true"></i>
-          <span class="menu-btn-text">
-            <span class="menu-btn-title">Flee</span>
-            <small class="menu-btn-desc">Despawn enemies, start next wave</small>
-          </span>
-        </button>
-        <button class="modal-btn modal-btn--danger modal-btn--icon-row" data-action="die">
-          <i data-lucide="skull" aria-hidden="true"></i>
-          <span class="menu-btn-text">
-            <span class="menu-btn-title">Die</span>
-            <small class="menu-btn-desc">Trigger death and rebirth now</small>
-          </span>
-        </button>
-      </div>
-    </div>
-  `
-  parent.appendChild(backdrop)
-  createIcons({ icons: { Home, LogOut, Skull } })
-  const dismiss = () => { backdrop.remove(); onClose() }
-  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', dismiss)
-  backdrop.querySelector<HTMLButtonElement>('[data-action="home"]')!
-    .addEventListener('click', () => { dismiss(); actions.onHome() })
-  backdrop.querySelector<HTMLButtonElement>('[data-action="flee"]')!
-    .addEventListener('click', () => { dismiss(); actions.onFlee() })
-  backdrop.querySelector<HTMLButtonElement>('[data-action="die"]')!
-    .addEventListener('click', () => { dismiss(); actions.onDie() })
-  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) dismiss() })
-  return dismiss
-}
-
-function mountCharacterModal(
-  parent: HTMLElement,
-  onClose: () => void,
-  actionProgress: Record<string, ActionProgress>,
-  lifeProgress: StatProgress,
-  manaProgress: StatProgress,
-): () => void {
-  const char = getCurrentCharacter()
-
-  function statDetailRow(label: string, prog: StatProgress, baseMax: number, cssClass: string): string {
-    const effectiveMax = Math.round(baseMax * (1 + (prog.level - 1) * balance.stat.bonusPerLevel))
-    const xpNeeded = statXpNeeded(prog.level)
-    const detail = prog.level > 1 || prog.xp > 0
-      ? `Lv.${prog.level} &mdash; ${Math.floor(prog.xp)}/${xpNeeded} xp &middot; ${effectiveMax} max`
-      : `${effectiveMax}`
-    return `<div class="char-info-row">
-      <span class="char-info-label">${label}</span>
-      <span class="char-info-value ${cssClass}">${detail}</span>
-    </div>`
-  }
-
-  const actionRows = allActions.map(a => {
-    const p = actionProgress[a.id]
-    if (!p || p.level === 1 && p.xp === 0) return ''
-    const xpNeeded = actionXpNeeded(p.level)
-    return `<div class="char-info-row">
-        <span class="char-info-label">${escapeHtml(a.label)}</span>
-        <span class="char-info-value">Lv.${p.level} &mdash; ${Math.floor(p.xp)}/${xpNeeded} xp</span>
-      </div>`
-  }).join('')
-  const backdrop = document.createElement('div')
-  backdrop.className = 'modal-backdrop'
-  backdrop.innerHTML = `
-    <div class="modal-panel char-info-panel" role="dialog" aria-modal="true" aria-labelledby="char-info-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <h2 class="modal-title" id="char-info-title">${t('character', 'infoTitle')}</h2>
-      <div class="char-info-row">
-        <span class="char-info-label">${t('character', 'nameLabel')}</span>
-        <span class="char-info-value">${char ? escapeHtml(char.name) : '—'}</span>
-      </div>
-      ${statDetailRow(t('character', 'statMaxLife'), lifeProgress, balance.player.maxLife, 'char-info-value--life')}
-      ${statDetailRow(t('character', 'statMaxMana'), manaProgress, balance.player.maxMana, 'char-info-value--mana')}
-      ${actionRows}
-    </div>
-  `
-  parent.appendChild(backdrop)
-  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { backdrop.remove(); onClose() })
-  backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) { backdrop.remove(); onClose() }
-  })
-  return () => backdrop.remove()
 }
 
 function mountBattleConfigModal(
