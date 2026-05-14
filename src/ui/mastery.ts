@@ -16,11 +16,17 @@ import { linkifyNoteTerms, mountNoteModal } from './notes'
 // Both fills are absolutely positioned at the same percentage boundary so the
 // yellow→green seam is exact and never leaks the back-track between them.
 export function renderMasteryBar(oldPct: number, gainPct: number): string {
-  const oldDiv = oldPct > 0
+  const hasOld = oldPct > 0
+  const hasGain = gainPct > 0
+  const oldDiv = hasOld
     ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>`
     : ''
-  const newDiv = gainPct > 0
-    ? `<div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>`
+  // In paired mode the yellow fill has min-width: 9px, so its visual right
+  // edge can exceed oldPct% when that percentage maps to fewer than 9px.
+  // Position the green at max(oldPct%, 9px) so it never overlaps the yellow.
+  const newLeft = hasOld && hasGain ? `max(${oldPct}%, 9px)` : `${oldPct}%`
+  const newDiv = hasGain
+    ? `<div class="mastery-bar-new" style="width:${gainPct}%;left:${newLeft}"></div>`
     : ''
   return `<div class="mastery-bar">${oldDiv}${newDiv}</div>`
 }

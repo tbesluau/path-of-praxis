@@ -1801,7 +1801,9 @@ body::after {
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
   background-position: 0 center, 100% center, 9px center;
   background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, calc(100% - 18px) 18px;
+  /* 2px of overlap on the mid (same trick as the fills) so sub-pixel rounding
+   * can never leave a gap between the mid and the right cap. */
+  background-size: 9px 18px, 9px 18px, calc(100% - 16px) 18px;
 }
 
 /* Solo fill: both caps + mid. Anchored to the left of the track. Width is
