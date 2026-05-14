@@ -1118,6 +1118,17 @@ export function createGameScene(
           <span class="enemy-level-display">1 / 1</span>
         </button>
       </div>
+      <div class="game-top-right">
+        <div class="speed-ctrl">
+          <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
+            <i data-lucide="pause" aria-hidden="true"></i>
+          </button>
+          <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
+          <button class="speed-opt" data-speed="2">×2</button>
+          <button class="speed-opt" data-speed="5">×5</button>
+          <button class="speed-opt" data-speed="10">×10</button>
+        </div>
+      </div>
     </div>
     <div class="game-viewport">
       <div class="buff-bar"></div>
@@ -1166,15 +1177,6 @@ export function createGameScene(
             <span class="stat-bar-regen stat-bar-regen--action"></span>
           </div>
         </div>
-      </div>
-      <div class="speed-ctrl">
-        <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
-          <i data-lucide="pause" aria-hidden="true"></i>
-        </button>
-        <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
-        <button class="speed-opt" data-speed="2">×2</button>
-        <button class="speed-opt" data-speed="5">×5</button>
-        <button class="speed-opt" data-speed="10">×10</button>
       </div>
     </div>
   `
