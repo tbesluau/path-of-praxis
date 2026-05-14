@@ -9,25 +9,20 @@ import { linkifyNoteTerms, mountNoteModal } from './notes'
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 // Renders the mastery progress bar with min-bar semantics:
-// - 0 amount → empty
-// - any amount > 0 → at least a "min-bar" (round caps), grows beyond once the
-//   percentage exceeds the cap-width threshold (handled by CSS via max()).
-// - both > 0 (double bar) → yellow opening cap + green closing cap, each side
-//   uses a 9px cap minimum so there is never any cap overlap.
+// - 0 amount → empty (just the back-track)
+// - any amount > 0 → at least a min-bar (caps clamped via CSS min-width)
+// - both > 0 → the CSS :has() rule strips inner caps so yellow keeps only its
+//   opening cap and green only its closing cap, each at 9px min-width.
+// Both fills are absolutely positioned at the same percentage boundary so the
+// yellow→green seam is exact and never leaks the back-track between them.
 export function renderMasteryBar(oldPct: number, gainPct: number): string {
-  const hasOld = oldPct > 0
-  const hasGain = gainPct > 0
-  if (!hasOld && !hasGain) return '<div class="mastery-bar"></div>'
-  if (hasOld && !hasGain) {
-    return `<div class="mastery-bar"><div class="mastery-bar-fill mastery-bar-fill--solo mastery-bar-fill--yellow" style="flex-basis:max(18px,${oldPct}%)"></div></div>`
-  }
-  if (!hasOld && hasGain) {
-    return `<div class="mastery-bar"><div class="mastery-bar-fill mastery-bar-fill--solo mastery-bar-fill--green" style="flex-basis:max(18px,${gainPct}%)"></div></div>`
-  }
-  return `<div class="mastery-bar">`
-    + `<div class="mastery-bar-fill mastery-bar-fill--left mastery-bar-fill--yellow" style="flex-basis:max(9px,${oldPct}%)"></div>`
-    + `<div class="mastery-bar-fill mastery-bar-fill--right mastery-bar-fill--green" style="flex-basis:max(9px,${gainPct}%)"></div>`
-    + `</div>`
+  const oldDiv = oldPct > 0
+    ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>`
+    : ''
+  const newDiv = gainPct > 0
+    ? `<div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>`
+    : ''
+  return `<div class="mastery-bar">${oldDiv}${newDiv}</div>`
 }
 
 function prog(
