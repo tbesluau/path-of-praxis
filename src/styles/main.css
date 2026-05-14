@@ -191,7 +191,6 @@ body::after {
 /* ── Game scene ── */
 
 .scene-game {
-  overflow: hidden;
   padding: 0;
   /* Cap width so the spawn margin is always significant; centre on ultrawide */
   left: 50%;
@@ -214,7 +213,11 @@ body::after {
   align-items: center;
   padding: 0 var(--space-sm);
   flex-shrink: 0;
-  height: 72px;
+  height: 92px;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
+  /* Extend over the outer .scene-game border on top, left, right so the bar sits flush with the screen edge. */
+  margin: -14px -14px 0 -14px;
 }
 
 .game-top-left {
@@ -269,6 +272,10 @@ body::after {
   gap: var(--space-sm);
   padding: var(--space-xs) var(--space-sm);
   flex-shrink: 0;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
+  /* Extend over the outer .scene-game border on bottom, left, right so the bar sits flush with the screen edge. */
+  margin: 0 -14px -14px -14px;
 }
 
 /* Buff / Debuff bar — anchored to the top-left of the map view */
@@ -656,7 +663,8 @@ body::after {
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBlue_horizontalBlue.png');
 }
 
-.action-icon-wrap {
+.action-icon-wrap,
+.action-icon-btn {
   width: 24px;
   height: 24px;
   flex-shrink: 0;
@@ -664,22 +672,24 @@ body::after {
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/iconCircle_blue.png') center / contain no-repeat;
+  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') center / contain no-repeat;
 }
 
-.action-icon-wrap svg {
+.action-icon-btn {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+.action-icon-btn:hover { opacity: 0.8; }
+.action-icon-btn:active { opacity: 0.6; transform: scale(0.95); }
+
+.action-icon-wrap svg,
+.action-icon-btn svg {
   width: 12px;
   height: 12px;
   stroke-width: 1.75;
-}
-
-/* Runes button — full-height square in the bottom bar */
-.game-action-btn--runes {
-  align-self: stretch;
-  width: auto;
-  height: auto;
-  aspect-ratio: 1;
-  flex-shrink: 0;
 }
 
 .stat-bar--action {
