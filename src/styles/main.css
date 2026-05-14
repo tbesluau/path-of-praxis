@@ -1781,89 +1781,35 @@ body::after {
   gap: var(--space-sm);
 }
 
+/* CSS-only mastery bar: avoids the Kenney cap PNGs which carry an inset
+ * highlight band that reads as a "white bar" between the flat mid and the
+ * rounded edge. Each segment owns its border-radius so min-bar (a value at
+ * the cap-width threshold) renders as a self-contained pill — opening + closing
+ * round bar — and there is never any colour overlap. */
 .mastery-bar {
   flex: 1;
   height: 18px;
   display: flex;
   align-items: stretch;
   position: relative;
-  border-radius: 0;
-  overflow: hidden;
+  border-radius: 9px;
   border: none;
-  background: none;
+  background: rgba(74, 40, 16, 0.25);
 }
 
-.mastery-bar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  /* Left cap and right cap listed first (top layer); mid listed last (bottom).
-   * The caps' rendered area covers any edge pixels of the mid at the seam. */
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
-  background-position: 0 center, 100% center, 9px center;
-  background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, calc(100% - 16px) 18px;
-}
-
-/* New bar segments. Width is set inline via flex-basis: max(<cap>, <pct>%) so
- * tiny values clamp to min-bar without ever overlapping their neighbour. */
 .mastery-bar-fill {
   position: relative;
   height: 18px;
   flex: 0 0 auto;
   z-index: 1;
-  background-repeat: no-repeat;
 }
 
-/* Solo: full bar (left cap + mid + right cap) when only one color is present.
- * Caps listed before mid so they render on top and hide the mid's edge pixels. */
-.mastery-bar-fill--solo {
-  background-position: 0 center, 100% center, 9px center;
-  background-size: 9px 18px, 9px 18px, calc(100% - 16px) 18px;
-}
+.mastery-bar-fill--solo { border-radius: 9px; }
+.mastery-bar-fill--left { border-radius: 9px 0 0 9px; }
+.mastery-bar-fill--right { border-radius: 0 9px 9px 0; }
 
-.mastery-bar-fill--solo.mastery-bar-fill--yellow {
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
-}
-
-.mastery-bar-fill--solo.mastery-bar-fill--green {
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalMid.png');
-}
-
-/* Left: opening cap only (paired with a right-cap sibling).
- * Left cap listed first so it renders on top of the mid's left edge. */
-.mastery-bar-fill--left {
-  background-position: 0 center, 9px center;
-  background-size: 9px 18px, calc(100% - 9px) 18px;
-}
-
-.mastery-bar-fill--left.mastery-bar-fill--yellow {
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
-}
-
-/* Right: closing cap only (paired with a left-cap sibling).
- * Right cap listed first so it renders on top and hides the mid's right edge. */
-.mastery-bar-fill--right {
-  background-position: 100% center, 0 center;
-  background-size: 9px 18px, calc(100% - 7px) 18px;
-}
-
-.mastery-bar-fill--right.mastery-bar-fill--green {
-  background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalMid.png');
-}
+.mastery-bar-fill--yellow { background: #ffcc00; }
+.mastery-bar-fill--green  { background: #73cd4b; }
 
 .mastery-label {
   font-size: 0.78rem;
