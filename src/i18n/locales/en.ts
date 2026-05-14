@@ -50,7 +50,7 @@ export interface TranslationSchema {
 export const en: TranslationSchema = {
   game: {
     title: 'Path of Praxis',
-    subtitle: 'Forge your path',
+    subtitle: 'Theorycraft your Incremental auto-battler',
     deathTitle: 'You have died',
     deathRebirth: 'Rebirth',
     actionSelectTitle: 'Actions',

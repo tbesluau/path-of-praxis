@@ -6,7 +6,7 @@ describe('i18n', () => {
 
   it('returns correct English translations', () => {
     expect(t('game', 'title')).toBe('Path of Praxis')
-    expect(t('game', 'subtitle')).toBe('Forge your path')
+    expect(t('game', 'subtitle')).toBe('Theorycraft your Incremental auto-battler')
     expect(t('menu', 'continue')).toBe('Continue')
     expect(t('menu', 'characters')).toBe('Characters')
     expect(t('menu', 'ladder')).toBe('Ladder')
@@ -16,7 +16,7 @@ describe('i18n', () => {
     setLocale('fr')
     expect(t('menu', 'continue')).toBe('Continuer')
     expect(t('menu', 'ladder')).toBe('Classement')
-    expect(t('game', 'subtitle')).toBe('Forge ta voie')
+    expect(t('game', 'subtitle')).toBe('Theorycrafte ton auto-battler incrémental')
   })
 
   it('falls back to English for unknown browser locale', () => {

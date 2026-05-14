@@ -3,7 +3,7 @@ import type { TranslationSchema } from './en'
 export const fr: TranslationSchema = {
   game: {
     title: 'Path of Praxis',
-    subtitle: 'Forge ta voie',
+    subtitle: 'Theorycrafte ton auto-battler incrémental',
     deathTitle: 'Vous êtes mort',
     deathRebirth: 'Renaissance',
     actionSelectTitle: 'Actions',
