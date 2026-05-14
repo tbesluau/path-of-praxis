@@ -2703,6 +2703,7 @@ export function createGameScene(
       entityTextures.set('bow',      t(112))
       entityTextures.set('fireball', t(84))
       entityTextures.set('zap',      t(100))
+      entityTextures.set('fire-nova', t(100))
 
       if (destroyed) return
 
