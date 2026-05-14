@@ -1149,6 +1149,10 @@ export function createGameScene(
       </div>
     </div>
     <div class="game-bottom-bar">
+      <button class="game-action-btn game-action-btn--icon game-action-btn--runes" aria-label="Runes" style="position:relative">
+        <i data-lucide="sword" aria-hidden="true"></i>
+        <span class="notif-dot rune-notif-dot" hidden></span>
+      </button>
       <div class="stat-bars">
         <div class="stat-bar-row">
           <div class="stat-bar stat-bar--life">
@@ -1167,10 +1171,6 @@ export function createGameScene(
           <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
         </div>
         <div class="stat-bar-row stat-bar-row--action">
-          <button class="action-icon-btn" aria-label="Runes" style="position:relative">
-            <i data-lucide="sword" aria-hidden="true"></i>
-            <span class="notif-dot rune-notif-dot" hidden></span>
-          </button>
           <div class="stat-bar stat-bar--action">
             <div class="stat-bar-fill stat-bar-fill--action"></div>
             <span class="action-level-label">Lv.1</span>
@@ -1206,7 +1206,7 @@ export function createGameScene(
   const actionBarFill    = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
   const actionLevelLabel = el.querySelector<HTMLElement>('.action-level-label')!
   const actionDpsEl      = el.querySelector<HTMLElement>('.stat-bar-regen--action')!
-  const actionIconWrap   = el.querySelector<HTMLButtonElement>('.action-icon-btn')!
+  const actionIconWrap   = el.querySelector<HTMLButtonElement>('.game-action-btn--runes')!
 
   function updateStatLevels(): void {
     const lifePct = Math.round(lifeProgress.xp / statXpNeeded(lifeProgress.level) * 100)
