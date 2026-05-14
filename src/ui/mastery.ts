@@ -361,14 +361,14 @@ function mountMasteryTreeModal(
 
   updatePointsSummary()
 
-  def.trees.forEach((treeDef, treeIdx) => {
+  def.trees.forEach((treeDef) => {
     const entry = document.createElement('div')
     entry.className = 'mastery-tree-entry'
     const label = document.createElement('span')
     label.className = 'mastery-tree-label'
     label.textContent = treeDef.label
     entry.appendChild(label)
-    entry.appendChild(buildTreeNodes(def, treeDef, p, treeIdx))
+    entry.appendChild(buildTreeNodes(def, treeDef, p, treeDef.index))
     list.appendChild(entry)
   })
 
@@ -399,14 +399,14 @@ function mountMasteryTreeModal(
   function rebuildTrees(): void {
     const freshP = prog(masteryProgress, def.id)
     list.innerHTML = ''
-    def.trees.forEach((treeDef, treeIdx) => {
+    def.trees.forEach((treeDef) => {
       const entry = document.createElement('div')
       entry.className = 'mastery-tree-entry'
       const labelEl = document.createElement('span')
       labelEl.className = 'mastery-tree-label'
       labelEl.textContent = treeDef.label
       entry.appendChild(labelEl)
-      entry.appendChild(buildTreeNodes(def, treeDef, freshP, treeIdx))
+      entry.appendChild(buildTreeNodes(def, treeDef, freshP, treeDef.index))
       list.appendChild(entry)
     })
     updatePointsSummary()
