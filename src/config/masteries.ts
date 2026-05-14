@@ -141,3 +141,49 @@ export const allMasteries = masteryCategories.flatMap(c => c.masteries)
 export function masteryXpNeeded(level: number): number {
   return Math.round(balance.mastery.xpPerLevel * Math.pow(balance.mastery.xpGrowth, level - 1))
 }
+
+export interface MasteryGainPreview {
+  fromLv: number
+  toLv: number
+  newXp: number          // XP that would remain after the simulated rebirth
+  levelsGained: number
+  cappedAtMaxLevels: boolean
+  oldPct: number         // % of current bar before gain (0 when level-up occurred)
+  gainPct: number        // % of current bar from gain (0 when no gain)
+}
+
+// Simulates applying xpGain on top of (currentXp, currentLevel) with a per-rebirth
+// level cap. When more XP arrives than the cap allows, the level is clamped and
+// the remaining XP is set just below the next-level threshold so the bar reads as
+// "maxed gain this rebirth" without overflowing into the next rebirth.
+export function previewMasteryGain(
+  currentXp: number,
+  currentLevel: number,
+  xpGain: number,
+  levelCap: number,
+): MasteryGainPreview {
+  const fromLv = currentLevel
+  let xp = currentXp + xpGain
+  let level = currentLevel
+  const maxLv = fromLv + levelCap
+  while (xp >= masteryXpNeeded(level) && level < maxLv) {
+    xp -= masteryXpNeeded(level)
+    level++
+  }
+  let cappedAtMaxLevels = false
+  if (level >= maxLv && xp >= masteryXpNeeded(level)) {
+    xp = masteryXpNeeded(level) - 1
+    cappedAtMaxLevels = true
+  }
+  const levelsGained = level - fromLv
+  const neededNow = masteryXpNeeded(level)
+  let oldPct: number, gainPct: number
+  if (levelsGained > 0) {
+    oldPct = 0
+    gainPct = Math.round((xp / neededNow) * 100)
+  } else {
+    oldPct = Math.round((currentXp / neededNow) * 100)
+    gainPct = Math.min(Math.round((xpGain / neededNow) * 100), 100 - oldPct)
+  }
+  return { fromLv, toLv: level, newXp: xp, levelsGained, cappedAtMaxLevels, oldPct, gainPct }
+}
