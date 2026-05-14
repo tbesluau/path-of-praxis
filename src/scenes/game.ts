@@ -14,8 +14,7 @@ import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 import { mountSettingsButton } from '../ui/settings'
-import { mountZoomControl } from '../ui/zoom'
-import { getPrefs, setPref } from '../core/prefs'
+import { getPrefs } from '../core/prefs'
 import { computeRuneBonuses, unlockedSlotCount, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 
@@ -1174,14 +1173,13 @@ export function createGameScene(
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
   createIcons({ icons: { User, Play, Pause, Menu, Settings2, Award, Sword, Book } })
 
-  const unmountSettings = mountSettingsButton(el, container)
-
   let zoomLevel = getPrefs().zoomLevel ?? 1.0
-  const unmountZoom = mountZoomControl(viewportEl, zoomLevel, (z) => {
-    zoomLevel = z
-    setPref('zoomLevel', z)
-    updateCamera()
-    drawGrid()
+  const unmountSettings = mountSettingsButton(el, container, {
+    onZoomChange: (z) => {
+      zoomLevel = z
+      updateCamera()
+      drawGrid()
+    },
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
@@ -3607,7 +3605,6 @@ export function createGameScene(
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()
-    unmountZoom()
     for (const f of deathFragments) f.g.destroy()
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()

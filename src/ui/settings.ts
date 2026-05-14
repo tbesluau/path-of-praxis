@@ -1,8 +1,9 @@
 import 'flag-icons/css/flag-icons.min.css'
-import { createIcons, Settings, BookOpen } from 'lucide'
+import { createIcons, Settings, BookOpen, Plus, Minus } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref } from '../core/prefs'
+import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
 
 const LOCALE_FLAG_CLASS: Record<Locale, string> = {
@@ -10,7 +11,16 @@ const LOCALE_FLAG_CLASS: Record<Locale, string> = {
   fr: 'fi fi-fr',
 }
 
-export function mountSettingsButton(container: HTMLElement, modalRoot: HTMLElement = container): () => void {
+export interface SettingsButtonOptions {
+  /** Called when the zoom level changes from the settings modal. */
+  onZoomChange?: (zoom: number) => void
+}
+
+export function mountSettingsButton(
+  container: HTMLElement,
+  modalRoot: HTMLElement = container,
+  opts: SettingsButtonOptions = {},
+): () => void {
   const btn = document.createElement('button')
   btn.className = 'settings-btn'
   btn.setAttribute('aria-label', 'Settings')
@@ -33,14 +43,14 @@ export function mountSettingsButton(container: HTMLElement, modalRoot: HTMLEleme
 
   btn.addEventListener('click', () => {
     if (modalCleanup) { closeModal(); return }
-    modalCleanup = mountSettingsModal(modalRoot, closeModal)
+    modalCleanup = mountSettingsModal(modalRoot, closeModal, opts)
     document.addEventListener('keydown', onEscape)
   })
 
   return () => { closeModal(); btn.remove() }
 }
 
-function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => void {
+function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: SettingsButtonOptions): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop settings-modal-backdrop'
 
@@ -53,6 +63,10 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
     const locale = getLocale()
     const prefs = getPrefs()
     const baseUrl = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL
+    const zoomIdx = indexFromZoom(prefs.zoomLevel ?? 1.0)
+    const zoomPct = Math.round(ZOOM_STEPS[zoomIdx] * 100)
+    const atMin = zoomIdx === 0
+    const atMax = zoomIdx === ZOOM_STEPS.length - 1
     backdrop.innerHTML = `
       <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
@@ -69,6 +83,20 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
           </button>
         </div>
         <div class="modal-field">
+          <div class="settings-zoom-row">
+            <span class="modal-label">${t('settings', 'zoomLabel')}</span>
+            <div class="settings-zoom-controls">
+              <button class="settings-zoom-step-btn" data-action="zoom-minus" aria-label="−" ${atMin ? 'disabled' : ''}>
+                <i data-lucide="minus" aria-hidden="true"></i>
+              </button>
+              <span class="settings-zoom-value">${zoomPct}%</span>
+              <button class="settings-zoom-step-btn" data-action="zoom-plus" aria-label="+" ${atMax ? 'disabled' : ''}>
+                <i data-lucide="plus" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-field">
           <label class="settings-toggle-row">
             <span class="modal-label">${t('settings', 'showDamageNumbers')}</span>
             <input type="checkbox" class="settings-toggle-input" data-pref="showDamageNumbers" ${prefs.showDamageNumbers ? 'checked' : ''}>
@@ -77,7 +105,20 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void): () => voi
         </div>
       </div>
     `
-    createIcons({ icons: { BookOpen } })
+    createIcons({ icons: { BookOpen, Plus, Minus } })
+
+    const stepZoom = (delta: 1 | -1): void => {
+      const next = zoomIdx + delta
+      if (next < 0 || next >= ZOOM_STEPS.length) return
+      const z = ZOOM_STEPS[next]
+      setPref('zoomLevel', z)
+      opts.onZoomChange?.(z)
+      render()
+    }
+    backdrop.querySelector<HTMLButtonElement>('[data-action="zoom-plus"]')!
+      .addEventListener('click', () => stepZoom(1))
+    backdrop.querySelector<HTMLButtonElement>('[data-action="zoom-minus"]')!
+      .addEventListener('click', () => stepZoom(-1))
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
       .addEventListener('click', () => { closeSub(); backdrop.remove(); onClose() })
