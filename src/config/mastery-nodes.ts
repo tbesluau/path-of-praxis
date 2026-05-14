@@ -210,6 +210,20 @@ export interface NodeEffect {
   manaShieldDamageTakenReduce?: number   // additive %; reduces the 200% base mana cost on absorbed damage
   manaShieldAllSources?: boolean         // when true, shield intercepts DoT sources too (node 5)
   manaShieldResistancesApply?: boolean   // when true, player resistances reduce the mana cost (node 11)
+
+  // Movement mastery effects (Movement Speed tree)
+  moveSpeedIncrease?: number              // additive %; stacks before the 'more' multiplier
+  moveMoreSpeed?: number                  // 'more' %; applied as × (1 + sum/100) after increased
+  moveDebuffEfficiencyReduce?: number     // additive %; movement debuffs on player have reduced efficiency (data only; no active player debuffs yet)
+
+  // Movement mastery effects (Dash tree)
+  dashChargeChance?: number               // additive percentage-point chance per second to gain a dash charge
+  dashDistanceIncrease?: number           // additive %; increases dash distance (1s-equivalent distance at 0%)
+
+  // Movement mastery effects (Kite tree)
+  kiteSpeedFraction?: number              // additive fraction of effective moveSpeed used to kite (0.25 per small node)
+  kiteResistance?: number                 // flat all-resistance bonus while kiting
+  kiteAllowDash?: true                    // when true, dash can be used to kite (move away from enemies)
 }
 
 export interface ActionBonuses {
@@ -364,6 +378,17 @@ export interface EnemyBonuses {
   eliteChance: number       // total additive percentage points
   minStrongCount: number    // total flat (counts strong-or-elite)
   minEliteCount: number     // total flat
+}
+
+export interface MovementBonuses {
+  moveSpeedIncrease: number              // total additive %
+  moveMoreSpeed: number                  // total 'more' %
+  moveDebuffEfficiencyReduce: number     // total %
+  dashChargeChance: number               // total percentage-point chance per second
+  dashDistanceIncrease: number           // total additive %
+  kiteSpeedFraction: number              // total fraction (0–1, clamped)
+  kiteResistance: number                 // total flat bonus resistance while kiting
+  kiteAllowDash: boolean
 }
 
 export interface FireBonuses {
@@ -1313,6 +1338,74 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
   return b
 }
 
+// ── Movement mastery node effects ─────────────────────────────────────────
+// Tree 0: Movement Speed (large)  Tree 1: Dash (short)  Tree 2: Kite (short)
+
+const MOVEMENT_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Movement Speed (full tree — line nodes 0-11)
+    0:  { moveSpeedIncrease: 5 },
+    1:  { moveSpeedIncrease: 5 },
+    2:  { moveSpeedIncrease: 12 },
+    3:  { moveSpeedIncrease: 5 },
+    4:  { moveSpeedIncrease: 5 },
+    5:  { moveMoreSpeed: 15 },
+    6:  { moveSpeedIncrease: 5 },
+    7:  { moveSpeedIncrease: 5 },
+    8:  { moveSpeedIncrease: 12 },
+    9:  { moveSpeedIncrease: 5 },
+    10: { moveSpeedIncrease: 5 },
+    11: { moveDebuffEfficiencyReduce: 50 },
+  },
+  1: {  // Dash (short tree — line nodes 0-5)
+    0: { dashChargeChance: 20 },
+    1: { dashDistanceIncrease: 10 },
+    2: { dashChargeChance: 30, dashDistanceIncrease: 10 },
+    3: { dashChargeChance: 20 },
+    4: { dashDistanceIncrease: 10 },
+    5: { dashChargeChance: 50 },
+  },
+  2: {  // Kite (short tree — line nodes 0-5)
+    0: { kiteSpeedFraction: 0.25 },
+    1: { kiteSpeedFraction: 0.25 },
+    2: { kiteResistance: 5 },
+    3: { kiteSpeedFraction: 0.25 },
+    4: { kiteSpeedFraction: 0.25 },
+    5: { kiteAllowDash: true },
+  },
+}
+
+export function getMovementNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return MOVEMENT_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeMovementBonuses(nodes: number[][]): MovementBonuses {
+  const b: MovementBonuses = {
+    moveSpeedIncrease: 0,
+    moveMoreSpeed: 0,
+    moveDebuffEfficiencyReduce: 0,
+    dashChargeChance: 0,
+    dashDistanceIncrease: 0,
+    kiteSpeedFraction: 0,
+    kiteResistance: 0,
+    kiteAllowDash: false,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getMovementNodeEffect(treeIdx, nodeIdx)
+      b.moveSpeedIncrease         += eff.moveSpeedIncrease ?? 0
+      b.moveMoreSpeed             += eff.moveMoreSpeed ?? 0
+      b.moveDebuffEfficiencyReduce += eff.moveDebuffEfficiencyReduce ?? 0
+      b.dashChargeChance          += eff.dashChargeChance ?? 0
+      b.dashDistanceIncrease      += eff.dashDistanceIncrease ?? 0
+      b.kiteSpeedFraction         += eff.kiteSpeedFraction ?? 0
+      b.kiteResistance            += eff.kiteResistance ?? 0
+      if (eff.kiteAllowDash) b.kiteAllowDash = true
+    }
+  }
+  b.kiteSpeedFraction = Math.min(1, b.kiteSpeedFraction)
+  return b
+}
+
 // ── Node description text (shown in the node detail modal) ─────────────────
 
 const ACTION_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -1631,6 +1724,10 @@ export function getNodeDescription(
     const desc = AREA_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
+  if (masteryId === 'movement') {
+    const desc = MOVEMENT_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
   return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`
 }
 
@@ -1805,5 +1902,38 @@ const AREA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: 'Area hits have +10% chance to knock back the target',
     4: 'Knocked-back enemies have 10% reduced movement speed for 2 seconds',
     5: '+30% more knockback range · Knocked-back enemies deal 10% less damage for 2 seconds',
+  },
+}
+
+const MOVEMENT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {  // Movement Speed
+    0:  '+5% increased movement speed',
+    1:  '+5% increased movement speed',
+    2:  '+12% increased movement speed',
+    3:  '+5% increased movement speed',
+    4:  '+5% increased movement speed',
+    5:  '+15% more movement speed',
+    6:  '+5% increased movement speed',
+    7:  '+5% increased movement speed',
+    8:  '+12% increased movement speed',
+    9:  '+5% increased movement speed',
+    10: '+5% increased movement speed',
+    11: 'Movement debuffs on you have 50% reduced efficiency',
+  },
+  1: {  // Dash
+    0: '+20% increased chance to gain a Dash charge each second',
+    1: '+10% increased Dash distance',
+    2: '+30% increased chance to gain a Dash charge each second · +10% increased Dash distance',
+    3: '+20% increased chance to gain a Dash charge each second',
+    4: '+10% increased Dash distance',
+    5: '+50% increased chance to gain a Dash charge each second',
+  },
+  2: {  // Kite
+    0: '+25% of your movement speed used to Kite when enemies are within half your action range',
+    1: '+25% of your movement speed used to Kite when enemies are within half your action range',
+    2: '+5 to all resistances while Kiting',
+    3: '+25% of your movement speed used to Kite when enemies are within half your action range',
+    4: '+25% of your movement speed used to Kite when enemies are within half your action range',
+    5: 'Dash can be used to Kite away from enemies',
   },
 }

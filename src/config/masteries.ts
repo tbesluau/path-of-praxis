@@ -127,7 +127,11 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 0, label: 'Enemy Quantity' },
         { index: 1, label: 'Enemy Quality' },
       ] },
-      { id: 'movement', label: 'Movement', trees: [] },
+      { id: 'movement', label: 'Movement', trees: [
+        { index: 0, label: 'Movement Speed' },
+        { index: 1, label: 'Dash', short: true },
+        { index: 2, label: 'Kite', short: true },
+      ] },
     ],
   },
 ]

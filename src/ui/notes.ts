@@ -55,6 +55,8 @@ const NOTE_TERMS: { id: string; pattern: RegExp }[] = [
   { id: 'resistance',            pattern: /\bResistances?\b/gi },
   { id: 'mitigation',            pattern: /\bMitigations?\b/gi },
   { id: 'hit',                   pattern: /\b(?:per hit|direct hit|action hit damage|hit damage|on hit)\b/gi },
+  { id: 'dash',                  pattern: /\bDash(?:es|ing)?\b/gi },
+  { id: 'kite',                  pattern: /\bKites?(?:ing)?\b/gi },
 ]
 
 // Apply a single pattern to an HTML string, protecting already-linked spans.

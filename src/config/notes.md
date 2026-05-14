@@ -438,3 +438,25 @@ A **multi-action** sourced from the **Area mastery — Tremor tree**. After an a
 Each tremor re-fires the same area action centered on its trigger enemy (regardless of whether the original was self-targeted or enemy-targeted), with a base **0.5× damage and 0.5× area radius** multiplier. The Tremor tree adds increased tremor damage and increased tremor radius bonuses on top of the 0.5× base.
 
 Tremors are **free continuation casts** (no extra mana) and **stop all further multi-actions, including more tremors**. They can hit enemies that were already hit by the original cast or by another tremor — there is no de-dup across waves.
+
+---
+
+## Dash
+
+A Dash consumes one charge to cover 1 second of movement in 0.1 seconds (10× speed compression). By default the player can bank up to 1 charge at a time; future key nodes can raise the cap.
+
+Charges are gained via a per-second roll: once per second the game checks whether a new charge is awarded based on the total Dash charge chance from invested Dash mastery nodes. With no Dash nodes allocated the chance is 0% and no charges are ever granted.
+
+By default Dash closes distance toward the nearest enemy. The Kite major node allows Dash to also fire in the kite direction (away from enemies).
+
+A Dash in progress is cancelled immediately when the player's action animation phase begins.
+
+---
+
+## Kite
+
+Kiting moves the player away from the nearest enemy when that enemy is within half the player's action range. Kite speed equals the player's effective movement speed multiplied by the total kite speed fraction from Kite mastery nodes (0.25 per small node, capping at 1.0 at four nodes).
+
+The player never moves during the action animation phase (first one-third of the action cycle). During the waiting phase (remaining two-thirds), kiting takes priority over closing distance toward the next enemy whenever the kite condition is met.
+
+Allocating the Kite strong node grants a flat all-resistance bonus that applies while the kiting condition is active.
