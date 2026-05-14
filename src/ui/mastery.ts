@@ -1,5 +1,5 @@
 import type { MasteryId } from '../config/masteries'
-import { masteryCategories, allMasteries, masteryXpNeeded, nodeType } from '../config/masteries'
+import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
 import { getNodeDescription } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
@@ -419,6 +419,8 @@ export function mountMasteryModal(
   onClose: () => void,
   onAssign: (id: MasteryId, treeIdx: number, nodeIdx: number) => void,
   onReset: (id: MasteryId) => void,
+  getPendingGains: () => Array<{ id: MasteryId; xpGain: number }>,
+  rebirthLevelCap: number,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -437,18 +439,32 @@ export function mountMasteryModal(
   function closeSub(): void { if (subCleanup) { subCleanup(); subCleanup = null } }
 
   function buildRows(): void {
+    const gainById = new Map(getPendingGains().map(g => [g.id, g.xpGain]))
     categoriesEl.innerHTML = masteryCategories.map(cat => {
       const rows = cat.masteries.map(m => {
         const p = prog(masteryProgress, m.id)
-        const xpPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
         const pts = masteryPointsAvailable(p)
+        const xpGain = gainById.get(m.id) ?? 0
+        let oldPct: number, gainPct: number, levelsGained: number, displayLevel: number
+        if (xpGain > 0) {
+          const pv = previewMasteryGain(p.xp, p.level, xpGain, rebirthLevelCap)
+          oldPct = pv.oldPct; gainPct = pv.gainPct
+          levelsGained = pv.levelsGained; displayLevel = pv.toLv
+        } else {
+          oldPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
+          gainPct = 0; levelsGained = 0; displayLevel = p.level
+        }
         return `
           <div class="mastery-row">
             <button class="mastery-name-btn" data-mastery="${m.id}">
               ${m.label}${pts > 0 ? '<span class="notif-dot"></span>' : ''}
             </button>
-            <div class="mastery-bar"><div class="mastery-bar-fill" style="width:${xpPct}%"></div></div>
-            <span class="mastery-level">Lv.${p.level}${pts > 0 ? ` · <span class="mastery-pts">${pts}pt</span>` : ''}</span>
+            <div class="mastery-bar">
+              ${oldPct > 0 ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>` : ''}
+              ${gainPct > 0 ? `<div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>` : ''}
+            </div>
+            <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${displayLevel}${pts > 0 ? ` · <span class="mastery-pts">${pts}pt</span>` : ''}</span>
+            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
           </div>`
       }).join('')
       return `
@@ -477,10 +493,14 @@ export function mountMasteryModal(
   }
 
   buildRows()
+  // Keep the gain preview fresh while the modal is open: XP keeps accruing
+  // in the background, so refresh every 500 ms unless a sub-modal is open
+  // (its own state is independent of these top-level rows).
+  const refreshTimer = window.setInterval(() => { if (!subCleanup) buildRows() }, 500)
 
-  const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
+  const dismiss = (): void => { window.clearInterval(refreshTimer); closeSub(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
-  return () => { closeSub(); backdrop.remove() }
+  return () => { window.clearInterval(refreshTimer); closeSub(); backdrop.remove() }
 }

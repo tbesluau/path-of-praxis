@@ -5,7 +5,7 @@ import { createIcons, User, Play, Pause, Menu, Home, LogOut, Settings2, Timer, A
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
-import { allMasteries, masteryCategories, masteryXpNeeded, type MasteryId, type ActionTag } from '../config/masteries'
+import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
@@ -1674,6 +1674,8 @@ export function createGameScene(
         () => { modalCleanup = null },
         (id, treeIdx, nodeIdx) => { assignMasteryNode(id, treeIdx, nodeIdx) },
         id => { resetMasteryPoints(id) },
+        computeMasteryGains,
+        balance.mastery.rebirthLevelCap,
       )
     })
 
@@ -2018,31 +2020,16 @@ export function createGameScene(
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
         const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-        const fromLv = prog.level
-        let xp = prog.xp
-        let level = prog.level
-        xp += xpGain
-        while (xp >= masteryXpNeeded(level)) { xp -= masteryXpNeeded(level); level++ }
-        const levelsGained = level - fromLv
-        const neededNow = masteryXpNeeded(level)
-        let oldPct: number
-        let gainPct: number
-        if (levelsGained > 0) {
-          oldPct = 0
-          gainPct = Math.round((xp / neededNow) * 100)
-        } else {
-          oldPct = Math.round((prog.xp / neededNow) * 100)
-          gainPct = Math.min(Math.round((xpGain / neededNow) * 100), 100 - oldPct)
-        }
+        const pv = previewMasteryGain(prog.xp, prog.level, xpGain, balance.mastery.rebirthLevelCap)
         return `
           <div class="mastery-row">
             <div class="mastery-bar">
-              ${oldPct > 0 ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>` : ''}
-              ${gainPct > 0 ? `<div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>` : ''}
+              ${pv.oldPct > 0 ? `<div class="mastery-bar-old" style="width:${pv.oldPct}%"></div>` : ''}
+              ${pv.gainPct > 0 ? `<div class="mastery-bar-new" style="width:${pv.gainPct}%;left:${pv.oldPct}%"></div>` : ''}
             </div>
             <span class="mastery-label">${escapeHtml(m.label)}</span>
-            <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${level}</span>
-            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
+            <span class="mastery-level${pv.levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${pv.toLv}</span>
+            ${pv.levelsGained > 0 ? `<span class="mastery-gain-badge">+${pv.levelsGained}</span>` : ''}
           </div>`
       }).join('')
       if (!rowsHtml.trim()) return ''
@@ -2102,13 +2089,9 @@ export function createGameScene(
     for (const { id, xpGain } of gains) {
       const existing = masteryProgress[id]
       const nodes = existing?.nodes ?? defaultMasteryNodes()
-      let { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      xp += xpGain
-      while (xp >= masteryXpNeeded(level)) {
-        xp -= masteryXpNeeded(level)
-        level++
-      }
-      masteryProgress[id] = { xp, level, nodes }
+      const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
+      const preview = previewMasteryGain(xp, level, xpGain, balance.mastery.rebirthLevelCap)
+      masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
     const existingEnemy = masteryProgress['enemy']
