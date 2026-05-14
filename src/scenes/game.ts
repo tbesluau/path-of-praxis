@@ -7,7 +7,7 @@ import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses } from '../config/mastery-nodes'
-import { mountMasteryModal } from '../ui/mastery'
+import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -2023,10 +2023,7 @@ export function createGameScene(
         const pv = previewMasteryGain(prog.xp, prog.level, xpGain, balance.mastery.rebirthLevelCap)
         return `
           <div class="mastery-row">
-            <div class="mastery-bar">
-              ${pv.oldPct > 0 ? `<div class="mastery-bar-old" style="width:${pv.oldPct}%"></div>` : ''}
-              ${pv.gainPct > 0 ? `<div class="mastery-bar-new" style="width:${pv.gainPct}%;left:${pv.oldPct}%"></div>` : ''}
-            </div>
+            ${renderMasteryBar(pv.oldPct, pv.gainPct)}
             <span class="mastery-label">${escapeHtml(m.label)}</span>
             <span class="mastery-level${pv.levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${pv.toLv}</span>
             ${pv.levelsGained > 0 ? `<span class="mastery-gain-badge">+${pv.levelsGained}</span>` : ''}
@@ -2070,14 +2067,17 @@ export function createGameScene(
 
   function computeMasteryGains(): Array<{ id: MasteryId; xpGain: number }> {
     const gainMap = new Map<MasteryId, number>()
+    let totalActionXp = 0
     for (const [actionId, xp] of Object.entries(runActionXp)) {
       if (xp <= 0) continue
+      totalActionXp += xp
       const def = getAction(actionId as ActionId)
       for (const tag of def.tags) {
         const mastery = allMasteries.find(m => m.tag === tag)
         if (mastery) gainMap.set(mastery.id, (gainMap.get(mastery.id) ?? 0) + xp * balance.mastery.actionXpMultiplier)
       }
     }
+    if (totalActionXp > 0) gainMap.set('action', totalActionXp * balance.mastery.actionXpMultiplier)
     if (runLifeXp > 0) gainMap.set('life', runLifeXp)
     if (runManaXp > 0) gainMap.set('mana', runManaXp)
     const movementXp = Math.floor(runDistancePx / 50)

@@ -177,13 +177,16 @@ export function previewMasteryGain(
   }
   const levelsGained = level - fromLv
   const neededNow = masteryXpNeeded(level)
+  // Round percentages but never reduce a positive amount to 0 — the bar should
+  // still show at min-width for any non-zero value (rendered as a min-bar in CSS).
+  const pctRound = (n: number): number => n <= 0 ? 0 : Math.max(1, Math.round(n))
   let oldPct: number, gainPct: number
   if (levelsGained > 0) {
     oldPct = 0
-    gainPct = Math.round((xp / neededNow) * 100)
+    gainPct = pctRound((xp / neededNow) * 100)
   } else {
-    oldPct = Math.round((currentXp / neededNow) * 100)
-    gainPct = Math.min(Math.round((xpGain / neededNow) * 100), 100 - oldPct)
+    oldPct = pctRound((currentXp / neededNow) * 100)
+    gainPct = Math.min(pctRound((xpGain / neededNow) * 100), 100 - oldPct)
   }
   return { fromLv, toLv: level, newXp: xp, levelsGained, cappedAtMaxLevels, oldPct, gainPct }
 }
