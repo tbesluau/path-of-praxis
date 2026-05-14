@@ -8,6 +8,28 @@ import { linkifyNoteTerms, mountNoteModal } from './notes'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+// Renders the mastery progress bar with min-bar semantics:
+// - 0 amount → empty
+// - any amount > 0 → at least a "min-bar" (round caps), grows beyond once the
+//   percentage exceeds the cap-width threshold (handled by CSS via max()).
+// - both > 0 (double bar) → yellow opening cap + green closing cap, each side
+//   uses a 9px cap minimum so there is never any cap overlap.
+export function renderMasteryBar(oldPct: number, gainPct: number): string {
+  const hasOld = oldPct > 0
+  const hasGain = gainPct > 0
+  if (!hasOld && !hasGain) return '<div class="mastery-bar"></div>'
+  if (hasOld && !hasGain) {
+    return `<div class="mastery-bar"><div class="mastery-bar-fill mastery-bar-fill--solo mastery-bar-fill--yellow" style="flex-basis:max(18px,${oldPct}%)"></div></div>`
+  }
+  if (!hasOld && hasGain) {
+    return `<div class="mastery-bar"><div class="mastery-bar-fill mastery-bar-fill--solo mastery-bar-fill--green" style="flex-basis:max(18px,${gainPct}%)"></div></div>`
+  }
+  return `<div class="mastery-bar">`
+    + `<div class="mastery-bar-fill mastery-bar-fill--left mastery-bar-fill--yellow" style="flex-basis:max(9px,${oldPct}%)"></div>`
+    + `<div class="mastery-bar-fill mastery-bar-fill--right mastery-bar-fill--green" style="flex-basis:max(9px,${gainPct}%)"></div>`
+    + `</div>`
+}
+
 function prog(
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
   id: MasteryId,
@@ -459,10 +481,7 @@ export function mountMasteryModal(
             <button class="mastery-name-btn" data-mastery="${m.id}">
               ${m.label}${pts > 0 ? '<span class="notif-dot"></span>' : ''}
             </button>
-            <div class="mastery-bar">
-              ${oldPct > 0 ? `<div class="mastery-bar-old" style="width:${oldPct}%"></div>` : ''}
-              ${gainPct > 0 ? `<div class="mastery-bar-new" style="width:${gainPct}%;left:${oldPct}%"></div>` : ''}
-            </div>
+            ${renderMasteryBar(oldPct, gainPct)}
             <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${displayLevel}${pts > 0 ? ` · <span class="mastery-pts">${pts}pt</span>` : ''}</span>
             ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
           </div>`
