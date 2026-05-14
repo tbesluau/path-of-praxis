@@ -375,7 +375,7 @@ body::after {
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
   background-position: 0 center, 100% center, 13.5px center;
   background-repeat: no-repeat;
-  background-size: 13.5px 27px, 13.5px 27px, calc(100% - 27px) 27px;
+  background-size: 13.5px 27px, 13.5px 27px, calc(100% - 26px) 27px;
 }
 
 .stat-level span {
@@ -427,7 +427,7 @@ body::after {
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
   background-position: 0 center, 100% center, 13.5px center;
   background-repeat: no-repeat;
-  background-size: 13.5px 27px, 13.5px 27px, calc(100% - 27px) 27px;
+  background-size: 13.5px 27px, 13.5px 27px, calc(100% - 26px) 27px;
 }
 
 .stat-bar-fill {
@@ -630,7 +630,7 @@ body::after {
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
   background-position: 0 center, 100% center, 9px center;
   background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, calc(100% - 18px) 18px;
+  background-size: 9px 18px, 9px 18px, calc(100% - 17px) 18px;
 }
 
 .enemy-xp-bar-fill {
