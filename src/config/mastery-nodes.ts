@@ -725,22 +725,22 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { fireBurnSplashFraction: 50 },
     // 12-15: key nodes — not yet defined
   },
-  2: {  // Burning Ground (short tree — line nodes 0-5, key nodes 12-13)
-    0: { fireBurnGroundChance: 5 },
-    1: { fireBurnGroundDamageIncrease: 15 },
-    2: { fireBurnGroundDamageIncrease: 30, fireBurnGroundDurationIncrease: 30 },
-    3: { fireBurnGroundChance: 5 },
-    4: { fireBurnGroundDamageIncrease: 15 },
-    5: { fireBurnGroundSlowAmount: 20, fireBurnGroundMoreDamage: 10 },
-    // 12-13: key nodes — not yet defined
-  },
-  3: {  // Immolation (short tree — line nodes 0-5, key nodes 12-13)
+  2: {  // Immolation (short tree — line nodes 0-5, key nodes 12-13)
     0: { fireImmolateChance: 2 },
     1: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
     2: { fireImmolateDamageMult: 0.5 },
     3: { fireImmolateChance: 2 },
     4: { fireImmolateDamageBonus: 5, fireImmolateBurnChance: 5 },
     5: { fireImmolateChance: 5, fireImmolateDamageBonus: 10, fireImmolateBurnChance: 10, fireImmolateDamageMult: 0.5 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Burning Ground (short tree — line nodes 0-5, key nodes 12-13)
+    0: { fireBurnGroundChance: 5 },
+    1: { fireBurnGroundDamageIncrease: 15 },
+    2: { fireBurnGroundDamageIncrease: 30, fireBurnGroundDurationIncrease: 30 },
+    3: { fireBurnGroundChance: 5 },
+    4: { fireBurnGroundDamageIncrease: 15 },
+    5: { fireBurnGroundSlowAmount: 20, fireBurnGroundMoreDamage: 10 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -993,22 +993,22 @@ const LIGHTNING_EFFECTS: Partial<Record<number, TreeEffects>> = {
     10: { lightningElectrocuteDamageTakenIncrease: 3 },
     11: { lightningElectrocuteSlowOnDamageTaken: true },
   },
-  2: {  // Jump (short tree — line nodes 0-5, key nodes 12-13)
-    0: { lightningJumpChance: 20 },
-    1: { lightningJumpDamagePenaltyReduce: 10 },
-    2: { lightningJumpChance: 30, lightningJumpDamagePenaltyReduce: 15 },
-    3: { lightningJumpChance: 20 },
-    4: { lightningJumpDamagePenaltyReduce: 10 },
-    5: { lightningJumpReroll: true, lightningJumpRangeIncrease: 30 },
-    // 12-13: key nodes — not yet defined
-  },
-  3: {  // Electrifying (short tree — line nodes 0-5, key nodes 12-13)
+  2: {  // Electrifying (short tree — line nodes 0-5, key nodes 12-13)
     0: { lightningElectrifyChance: 5 },
     1: { lightningElectrifyActionSpeed: 5 },
     2: { lightningElectrifyDurationIncrease: 25, lightningElectrifyActionSpeed: 5 },
     3: { lightningElectrifyChance: 5 },
     4: { lightningElectrifyActionSpeed: 5 },
     5: { lightningElectrifyDamageReduction: 5 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Jump (short tree — line nodes 0-5, key nodes 12-13)
+    0: { lightningJumpChance: 20 },
+    1: { lightningJumpDamagePenaltyReduce: 10 },
+    2: { lightningJumpChance: 30, lightningJumpDamagePenaltyReduce: 15 },
+    3: { lightningJumpChance: 20 },
+    4: { lightningJumpDamagePenaltyReduce: 10 },
+    5: { lightningJumpReroll: true, lightningJumpRangeIncrease: 30 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -1281,22 +1281,22 @@ const PHYSICAL_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { physicalBleedIgnoreResistance: true },
     // 12-15: key nodes — not yet defined
   },
-  2: {  // Resistance Breaking (short tree — line nodes 0-5, key nodes 12-13)
-    0: { physicalResistBreakChance: 5 },
-    1: { physicalDamageIncrease: 5 },
-    2: { physicalResistBreakChance: 7, physicalActionSpeedIncrease: 3 },
-    3: { physicalResistBreakChance: 5 },
-    4: { physicalDamageIncrease: 5 },
-    5: { physicalResistBreakSlowAtZero: 20 },
-    // 12-13: key nodes — not yet defined
-  },
-  3: {  // Bloodlust (short tree — line nodes 0-5, key nodes 12-13)
+  2: {  // Bloodlust (short tree — line nodes 0-5, key nodes 12-13)
     0: { physicalBloodlustChance: 5 },
     1: { physicalBloodlustActionSpeed: 5 },
     2: { physicalBloodlustActionSpeed: 5, physicalBloodlustDamage: 12, physicalBloodlustBleedChance: 10 },
     3: { physicalBloodlustChance: 5 },
     4: { physicalBloodlustActionSpeed: 5 },
     5: { physicalBloodlustActionSpeed: 5, physicalBloodlustDamage: 12, physicalBloodlustDurationIncrease: 25 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Resistance Breaking (short tree — line nodes 0-5, key nodes 12-13)
+    0: { physicalResistBreakChance: 5 },
+    1: { physicalDamageIncrease: 5 },
+    2: { physicalResistBreakChance: 7, physicalActionSpeedIncrease: 3 },
+    3: { physicalResistBreakChance: 5 },
+    4: { physicalDamageIncrease: 5 },
+    5: { physicalResistBreakSlowAtZero: 20 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -1582,21 +1582,21 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     10: '+5% increased burn damage',
     11: 'Burning enemies splash 50% of their burn damage to nearby non-burning enemies',
   },
-  2: {  // Burning Ground
-    0: 'Fire actions have +5% chance to cause burning ground',
-    1: '+15% increased burning ground damage',
-    2: '+30% increased burning ground damage · +30% increased burning ground duration',
-    3: 'Fire actions have +5% chance to cause burning ground',
-    4: '+15% increased burning ground damage',
-    5: 'Burning ground slows enemy movement and action speed by 20% · +10% more burning ground damage',
-  },
-  3: {  // Immolation
+  2: {  // Immolation
     0: 'Fire actions have +2% chance to trigger immolation',
     1: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
     2: 'Immolation self-burn damage is halved (×0.5)',
     3: 'Fire actions have +2% chance to trigger immolation',
     4: 'While immolating: +5% increased fire damage · +5% increased chance to burn',
     5: 'Fire actions have +5% chance to trigger immolation · While immolating: +10% increased fire damage · +10% increased chance to burn · Immolation self-burn damage is halved (×0.5)',
+  },
+  3: {  // Burning Ground
+    0: 'Fire actions have +5% chance to cause burning ground',
+    1: '+15% increased burning ground damage',
+    2: '+30% increased burning ground damage · +30% increased burning ground duration',
+    3: 'Fire actions have +5% chance to cause burning ground',
+    4: '+15% increased burning ground damage',
+    5: 'Burning ground slows enemy movement and action speed by 20% · +10% more burning ground damage',
   },
 }
 
@@ -1629,21 +1629,21 @@ const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     10: '+5% increased bleed damage',
     11: 'Bleeding ignores enemy physical resistance',
   },
-  2: {  // Resistance Breaking
-    0: 'Physical actions have +5% chance to permanently reduce enemy physical and rot resistance by 1%',
-    1: '+5% increased physical damage',
-    2: 'Physical actions have +7% chance to permanently reduce enemy physical and rot resistance by 1% · +3% increased physical action speed',
-    3: 'Physical actions have +5% chance to permanently reduce enemy physical and rot resistance by 1%',
-    4: '+5% increased physical damage',
-    5: 'Enemies at 0% physical and rot resistance have their action and movement speed reduced by 20%',
-  },
-  3: {  // Bloodlust
+  2: {  // Bloodlust
     0: '+5% increased chance to trigger Bloodlust when inflicting bleeding',
     1: 'Bloodlust grants +5% increased physical action speed',
     2: 'Bloodlust grants +5% increased physical action speed and +12% increased physical damage · Physical actions during Bloodlust have +10% increased chance to cause bleeding',
     3: '+5% increased chance to trigger Bloodlust when inflicting bleeding',
     4: 'Bloodlust grants +5% increased physical action speed',
     5: 'Bloodlust grants +5% increased physical action speed and +12% increased physical damage · +25% increased Bloodlust duration',
+  },
+  3: {  // Resistance Breaking
+    0: 'Physical actions have +5% chance to permanently reduce enemy physical and rot resistance by 1%',
+    1: '+5% increased physical damage',
+    2: 'Physical actions have +7% chance to permanently reduce enemy physical and rot resistance by 1% · +3% increased physical action speed',
+    3: 'Physical actions have +5% chance to permanently reduce enemy physical and rot resistance by 1%',
+    4: '+5% increased physical damage',
+    5: 'Enemies at 0% physical and rot resistance have their action and movement speed reduced by 20%',
   },
 }
 
@@ -1840,21 +1840,21 @@ const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, stri
     10: '+3% increased damage taken from electrocution',
     11: 'Electrocuted enemies have their movement and action speed reduced by the electrocution damage taken value',
   },
-  2: {  // Jump
-    0: 'Lightning actions have +20% increased chance to jump to an additional enemy',
-    1: '+10% reduced damage penalty of jump',
-    2: 'Lightning actions have +30% increased chance to jump to an additional enemy · +15% reduced damage penalty of jump',
-    3: 'Lightning actions have +20% increased chance to jump to an additional enemy',
-    4: '+10% reduced damage penalty of jump',
-    5: 'Successful jumps re-roll for another jump (unlimited chain) · +30% increased jump range',
-  },
-  3: {  // Electrifying
+  2: {  // Electrifying
     0: 'Lightning actions have +5% increased chance to Electrify you',
     1: '+5% increased action speed while Electrified',
     2: '+25% increased Electrified duration · +5% increased action speed while Electrified',
     3: 'Lightning actions have +5% increased chance to Electrify you',
     4: '+5% increased action speed while Electrified',
     5: '5% less damage taken from all sources while Electrified',
+  },
+  3: {  // Jump
+    0: 'Lightning actions have +20% increased chance to jump to an additional enemy',
+    1: '+10% reduced damage penalty of jump',
+    2: 'Lightning actions have +30% increased chance to jump to an additional enemy · +15% reduced damage penalty of jump',
+    3: 'Lightning actions have +20% increased chance to jump to an additional enemy',
+    4: '+10% reduced damage penalty of jump',
+    5: 'Successful jumps re-roll for another jump (unlimited chain) · +30% increased jump range',
   },
 }
 
