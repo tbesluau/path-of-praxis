@@ -3655,11 +3655,6 @@ function mountBattleConfigModal(
     const card = document.createElement('button')
     card.className = 'action-trigger-card'
 
-    const label = document.createElement('div')
-    label.className = 'action-trigger-label'
-    label.innerHTML = `<i data-lucide="timer" aria-hidden="true"></i>${t('game', 'triggerAutoAction')}`
-
-    card.appendChild(label)
     card.appendChild(buildActionThumbnail(action))
     triggerList.appendChild(card)
 
