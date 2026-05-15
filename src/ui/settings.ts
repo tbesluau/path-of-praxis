@@ -1,19 +1,31 @@
 import 'flag-icons/css/flag-icons.min.css'
-import { createIcons, Settings, BookOpen, Plus, Minus } from 'lucide'
+import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref } from '../core/prefs'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
+import type { TargetingMode } from '../core/character'
 
 const LOCALE_FLAG_CLASS: Record<Locale, string> = {
   en: 'fi fi-gb',
   fr: 'fi fi-fr',
 }
 
+const TARGETING_OPTS: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
+  { mode: 'nearest',   icon: 'crosshair',    label: 'Nearest',   desc: 'Attack closest enemy' },
+  { mode: 'weakest',   icon: 'trending-down', label: 'Weakest',   desc: 'Focus low HP' },
+  { mode: 'strongest', icon: 'trending-up',   label: 'Strongest', desc: 'Focus high HP' },
+  { mode: 'random',    icon: 'shuffle',       label: 'Random',    desc: 'Pick random target' },
+]
+
 export interface SettingsButtonOptions {
   /** Called when the zoom level changes from the settings modal. */
   onZoomChange?: (zoom: number) => void
+  /** Returns the current targeting mode (called when the targeting modal opens). */
+  getTargetingMode?: () => TargetingMode
+  /** Called when the user selects a new targeting mode. */
+  onTargetingChange?: (mode: TargetingMode) => void
 }
 
 export function mountSettingsButton(
@@ -82,6 +94,13 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${locale === 'en' ? t('settings', 'langEn') : t('settings', 'langFr')}"></span>
           </button>
         </div>
+        ${opts.getTargetingMode ? `
+        <div class="modal-field">
+          <button class="settings-section-btn" data-action="targeting">
+            <i data-lucide="crosshair" aria-hidden="true"></i>
+            <span>${t('game', 'targetingTitle')}</span>
+          </button>
+        </div>` : ''}
         <div class="modal-field">
           <div class="settings-zoom-row">
             <span class="modal-label">${t('settings', 'zoomLabel')}</span>
@@ -105,7 +124,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         </div>
       </div>
     `
-    createIcons({ icons: { BookOpen, Plus, Minus } })
+    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair } })
 
     const stepZoom = (delta: 1 | -1): void => {
       const next = zoomIdx + delta
@@ -142,6 +161,16 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
       .addEventListener('change', (e) => {
         setPref('showDamageNumbers', (e.target as HTMLInputElement).checked)
       })
+
+    const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')
+    if (targetingBtn && opts.getTargetingMode && opts.onTargetingChange) {
+      const getMode = opts.getTargetingMode
+      const onChange = opts.onTargetingChange
+      targetingBtn.addEventListener('click', () => {
+        closeSub()
+        subCleanup = mountTargetingModal(parent, getMode, onChange, () => { subCleanup = null })
+      })
+    }
   }
 
   // Append to DOM before render so createIcons can find elements in the document.
@@ -201,6 +230,57 @@ function mountLanguageModal(
   })
 
   backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) { backdrop.remove(); onClose() }
+  })
+
+  return () => backdrop.remove()
+}
+
+// ── Targeting modal ───────────────────────────────────────────────────────
+
+function mountTargetingModal(
+  parent: HTMLElement,
+  getTargetingMode: () => TargetingMode,
+  onTargetingChange: (mode: TargetingMode) => void,
+  onClose: () => void,
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+  const currentMode = getTargetingMode()
+
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="targeting-title">
+      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <h2 class="modal-title" id="targeting-title">${t('game', 'targetingTitle')}</h2>
+      <div class="targeting-options">
+        ${TARGETING_OPTS.map(o => `
+          <button class="targeting-opt${currentMode === o.mode ? ' targeting-opt--active' : ''}" data-targeting="${o.mode}">
+            <i data-lucide="${o.icon}" aria-hidden="true"></i>
+            <span class="targeting-opt-name">${o.label}</span>
+            <small class="targeting-opt-desc">${o.desc}</small>
+          </button>`).join('')}
+      </div>
+    </div>
+  `
+
+  parent.appendChild(backdrop)
+
+  createIcons({ icons: { Crosshair, TrendingDown, TrendingUp, Shuffle } })
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', () => { backdrop.remove(); onClose() })
+
+  backdrop.querySelectorAll<HTMLButtonElement>('[data-targeting]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset['targeting'] as TargetingMode
+      backdrop.querySelectorAll('[data-targeting]').forEach(b =>
+        b.classList.toggle('targeting-opt--active', b === btn),
+      )
+      onTargetingChange(mode)
+    })
+  })
+
+  backdrop.addEventListener('click', e => {
     if (e.target === backdrop) { backdrop.remove(); onClose() }
   })
 

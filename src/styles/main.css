@@ -123,8 +123,6 @@ body::after {
 .menu-btn,
 .enemy-level-btn,
 .game-action-btn,
-.battle-tab,
-.action-tab,
 .modal-btn--primary,
 .modal-btn--ghost,
 .lang-option,
@@ -781,71 +779,7 @@ body::after {
   width: min(440px, 94vw);
 }
 
-.battle-tabs {
-  display: flex;
-  gap: var(--space-xs);
-}
-
-.battle-tab {
-  flex: 1;
-  height: 52px;
-  border: 14px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') 14 fill stretch;
-  border-radius: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform var(--transition-fast);
-}
-
-.battle-tab:hover:not(.battle-tab--active) {
-  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');  transform: translateY(2px);
-}
-
-.battle-tab--active {
-  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
-  color: #fff;
-}
-
-.battle-tab svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 1.75;
-}
-
-/* ── Action sub-tabs ── */
-
-.action-tabs {
-  display: flex;
-  gap: var(--space-xs);
-}
-
-.action-tab {
-  flex: 1;
-  min-height: 44px;
-  border: 14px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
-  border-radius: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform var(--transition-fast);
-}
-
-.action-tab:hover:not(.action-tab--active) {
-  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');  transform: translateY(2px);
-}
-
-.action-tab--active {
-  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
-  color: #fff;
-}
+/* ── Action grid (used in menu scene) ── */
 
 .action-grid {
   display: grid;
@@ -901,10 +835,246 @@ body::after {
   text-transform: uppercase;
 }
 
-.action-card-meta {
+/* ── Trigger list ── */
+
+.trigger-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.action-trigger-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
+  background: transparent;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  transition: filter var(--transition-fast);
+}
+
+.action-trigger-card:hover {
+  filter: brightness(1.1);
+}
+
+.action-trigger-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.action-trigger-label svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Action thumbnail (trigger card + picker) ── */
+
+.action-thumbnail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.action-thumb-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.action-thumb-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.action-thumb-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.5;
+}
+
+.action-thumb-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.action-thumb-attrs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.action-thumb-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.action-thumb-tag {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.action-thumb-tag svg {
+  width: 10px;
+  height: 10px;
+}
+
+.tag--physical { background: #5a4a3a; color: #e0d0b0; }
+.tag--fire     { background: #7a2010; color: #ffc090; }
+.tag--lightning { background: #5a5000; color: #ffe060; }
+.tag--cold     { background: #103060; color: #a0d0ff; }
+.tag--rot      { background: #3a1060; color: #c080ff; }
+
+.action-thumb-stat {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.action-thumb-stat svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+}
+
+.action-thumb-specials {
+  display: flex;
+  gap: 6px;
+}
+
+.action-thumb-special-slot {
+  height: 20px;
+  flex: 1;
+  border-radius: 3px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.action-thumb-special-slot--filled {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 0 6px;
+}
+
+/* Legend modifier: labels instead of values */
+.action-thumbnail--legend .action-thumb-name {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.action-thumbnail--legend .action-thumb-stat {
+  color: rgba(255, 255, 255, 0.45);
   font-size: 0.65rem;
-  opacity: 0.55;
-  letter-spacing: 0.04em;
+}
+
+.action-thumbnail--legend .action-thumb-special-slot {
+  color: rgba(255, 255, 255, 0.35);
+  border-style: dashed;
+}
+
+/* ── Action picker modal ── */
+
+.picker-backdrop {
+  z-index: 30;
+}
+
+.action-picker-panel {
+  width: min(480px, 94vw);
+}
+
+.action-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.action-picker-legend {
+  padding: var(--space-xs) var(--space-sm);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.action-picker-btn {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  padding: var(--space-xs) var(--space-sm);
+  transition: filter var(--transition-fast);
+}
+
+.action-picker-btn:hover:not(.action-picker-btn--selected) {
+  filter: brightness(1.1);
+}
+
+.action-picker-btn--selected {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_beige.png');
+}
+
+/* ── Settings section button (for Targeting) ── */
+
+.settings-section-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  width: 100%;
+  min-height: 44px;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter var(--transition-fast);
+}
+
+.settings-section-btn:hover {
+  filter: brightness(1.1);
+}
+
+.settings-section-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* ── Targeting options ── */
@@ -968,14 +1138,6 @@ body::after {
   opacity: 0.55;
   letter-spacing: 0.03em;
   text-align: center;
-}
-
-.wip-notice {
-  text-align: center;
-  color: #5a3010;
-  font-size: 0.875rem;
-  padding: var(--space-xl) var(--space-md);
-  opacity: 0.7;
 }
 
 /* ── Menu disabled state ── */
