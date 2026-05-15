@@ -122,6 +122,13 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span class="settings-toggle-track" aria-hidden="true"></span>
           </label>
         </div>
+        <div class="modal-field">
+          <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'showDpsMeter')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-pref="showDpsMeter" ${prefs.showDpsMeter ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
       </div>
     `
     createIcons({ icons: { BookOpen, Plus, Minus, Crosshair } })
@@ -160,6 +167,10 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLInputElement>('[data-pref="showDamageNumbers"]')!
       .addEventListener('change', (e) => {
         setPref('showDamageNumbers', (e.target as HTMLInputElement).checked)
+      })
+    backdrop.querySelector<HTMLInputElement>('[data-pref="showDpsMeter"]')!
+      .addEventListener('change', (e) => {
+        setPref('showDpsMeter', (e.target as HTMLInputElement).checked)
       })
 
     const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')

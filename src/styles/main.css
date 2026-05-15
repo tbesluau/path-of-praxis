@@ -287,6 +287,56 @@ body::after {
   pointer-events: none;
   z-index: 10;
 }
+
+/* ── DPS meter ── */
+
+.dps-meter {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.dps-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dps-bar {
+  flex-shrink: 0;
+  min-width: 2px;
+}
+
+.dps-row--action .dps-bar {
+  height: 7px;
+  background: #ffe0a0;
+}
+
+.dps-row--sub .dps-bar {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.dps-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+}
+
+.dps-label--sub {
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+  padding-left: 6px;
+}
 .buff-icon {
   position: relative;
   width: 32px;

@@ -469,6 +469,7 @@ export function createGameScene(
         const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
         awardXp(maxStack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        recordDps(maxStack.sourceActionId, actual, 'affliction')
         const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
         burnAccum.set(entityId, acc)
@@ -586,6 +587,7 @@ export function createGameScene(
         const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
         awardXp(stack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        recordDps(stack.sourceActionId, actual, 'affliction')
         const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
         bleedAccum.set(entityId, acc)
@@ -629,6 +631,7 @@ export function createGameScene(
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(e.id)
             awardXp(tile.sourceActionId, actual * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+            recordDps(tile.sourceActionId, actual, 'affliction')
             const acc = burnGroundAccum.get(e.id) ?? { damage: 0, timeMs: 0 }
             acc.damage += actual
             burnGroundAccum.set(e.id, acc)
@@ -1132,6 +1135,7 @@ export function createGameScene(
     </div>
     <div class="game-viewport">
       <div class="buff-bar"></div>
+      <div class="dps-meter" hidden></div>
       <div class="enemy-level-ctrl">
         <span class="enemy-level-title">Enemy level</span>
         <div class="enemy-level-main">
@@ -1183,7 +1187,34 @@ export function createGameScene(
   `
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
+  const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
   createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull } })
+
+  function updateDpsMeter(): void {
+    if (!getPrefs().showDpsMeter) { dpsMeterEl.hidden = true; return }
+    const data = computeDps()
+    if (data.size === 0) { dpsMeterEl.hidden = true; return }
+    dpsMeterEl.hidden = false
+
+    let maxDps = 0
+    for (const v of data.values()) maxDps = Math.max(maxDps, v.direct + v.multi + v.affliction)
+    if (maxDps <= 0) { dpsMeterEl.hidden = true; return }
+
+    const bar = (val: number): string =>
+      `<div class="dps-bar" style="width:${(val / maxDps * 25).toFixed(1)}vw"></div>`
+
+    let html = ''
+    for (const [actionId, v] of data) {
+      const total = v.direct + v.multi + v.affliction
+      const label = allActions.find(a => a.id === actionId)?.label ?? actionId
+      html += `<div class="dps-row dps-row--action">${bar(total)}<span class="dps-label">${label} — ${total.toFixed(1)}</span></div>`
+      if (v.direct > 0)     html += `<div class="dps-row dps-row--sub">${bar(v.direct)}<span class="dps-label dps-label--sub">Direct — ${v.direct.toFixed(1)}</span></div>`
+      if (v.multi > 0)      html += `<div class="dps-row dps-row--sub">${bar(v.multi)}<span class="dps-label dps-label--sub">Multi-action — ${v.multi.toFixed(1)}</span></div>`
+      if (v.affliction > 0) html += `<div class="dps-row dps-row--sub">${bar(v.affliction)}<span class="dps-label dps-label--sub">Affliction — ${v.affliction.toFixed(1)}</span></div>`
+    }
+    dpsMeterEl.innerHTML = html
+  }
+  const dpsMeterInterval = setInterval(updateDpsMeter, 200)
 
   let zoomLevel = getPrefs().zoomLevel ?? 1.0
   const topCenter = el.querySelector<HTMLElement>('.game-top-center')!
@@ -1636,9 +1667,29 @@ export function createGameScene(
     actionId:              ActionId
     countdown:             number   // ms remaining until impact
     guaranteedAfflictions: boolean
+    isMultiAction:         boolean
   }
   const pendingHits = new Map<string, PendingHit>()  // keyed by unique hit id (entity.id:seq)
   let hitSeq = 0
+
+  const DPS_WINDOW_MS = 20_000
+  type DpsKind = 'direct' | 'multi' | 'affliction'
+  interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
+  const dpsLog: DpsEvent[] = []
+  function recordDps(actionId: ActionId, dmg: number, kind: DpsKind): void {
+    dpsLog.push({ t: Date.now(), actionId, dmg, kind })
+  }
+  function computeDps(): Map<ActionId, { direct: number; multi: number; affliction: number }> {
+    const cutoff = Date.now() - DPS_WINDOW_MS
+    while (dpsLog.length > 0 && dpsLog[0].t < cutoff) dpsLog.shift()
+    const out = new Map<ActionId, { direct: number; multi: number; affliction: number }>()
+    for (const e of dpsLog) {
+      const r = out.get(e.actionId) ?? { direct: 0, multi: 0, affliction: 0 }
+      r[e.kind] += e.dmg / (DPS_WINDOW_MS / 1000)
+      out.set(e.actionId, r)
+    }
+    return out
+  }
   const strongEntities = new Set<string>()    // strong-or-elite enemies (elite is a subset)
   const eliteEntities = new Set<string>()
   const highResistEntities = new Set<string>() // enemies with physRot or ele resist ≥ threshold
@@ -1972,6 +2023,7 @@ export function createGameScene(
     runManaXp = 0
     runEnemyXp = 0
     runDistancePx = 0
+    dpsLog.length = 0
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
 
@@ -3074,6 +3126,7 @@ export function createGameScene(
         // ── Attacks ─────────────────────────────────────────────────────────
         const damagedIds = new Set<string>()
         let playerManaSpent = false
+        let currentHitIsMulti = false  // set before each applyHit call, read inside for DPS tracking
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
         const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false): void => {
@@ -3182,6 +3235,7 @@ export function createGameScene(
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
+            recordDps(actionId, actualDamage, currentHitIsMulti ? 'multi' : 'direct')
           }
           if (target.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1
@@ -3322,6 +3376,7 @@ export function createGameScene(
           pendingHits.delete(entityId)
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
+          currentHitIsMulti = ph.isMultiAction
           applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
           spawnPostHitVfx(ph.attacker, ph.target, ph.action)
         }
@@ -3520,7 +3575,7 @@ export function createGameScene(
               pendingHits.set(`${entity.id}:${++hitSeq}`, {
                 attacker: entity, target: v, damage: effectiveDamage,
                 action, actionId, countdown: preHitDuration,
-                guaranteedAfflictions,
+                guaranteedAfflictions, isMultiAction: pending !== null,
               })
               areaVictims.push(v)
             }
@@ -3529,7 +3584,7 @@ export function createGameScene(
             pendingHits.set(`${entity.id}:${++hitSeq}`, {
               attacker: entity, target, damage: effectiveDamage,
               action, actionId, countdown: preHitDuration,
-              guaranteedAfflictions,
+              guaranteedAfflictions, isMultiAction: pending !== null,
             })
             spawnPreHitVfx(entity, target, action, preHitDuration)
           }
@@ -3730,6 +3785,7 @@ export function createGameScene(
     destroyed = true
     stopRegen()
     clearInterval(saveInterval)
+    clearInterval(dpsMeterInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()
