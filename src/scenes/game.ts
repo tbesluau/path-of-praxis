@@ -133,11 +133,13 @@ export function createGameScene(
 
   // When "Full mastery" is on, every node of every tree is treated as assigned.
   // Effects undefined for a (tree, node) return {} from get*NodeEffect, so unused indices are harmless.
-  const ALL_TREE_NODES = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-  const ALL_NODES_5: number[][] = [ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES]
-  const ALL_NODES_4: number[][] = [ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES]
+  // Arrays are built inline (rather than from module-level consts) so the function is safe to call
+  // from other hoisted functions during scene setup, before any module-level const initializers run.
   function masteryNodes(id: MasteryId, width: 4 | 5): number[][] {
-    if (getPrefs().fullMastery) return width === 5 ? ALL_NODES_5 : ALL_NODES_4
+    if (getPrefs().fullMastery) {
+      const all = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      return width === 5 ? [all, all, all, all, all] : [all, all, all, all]
+    }
     return masteryProgress[id]?.nodes ?? (width === 5 ? [[], [], [], [], []] : [[], [], [], []])
   }
 
@@ -1696,6 +1698,12 @@ export function createGameScene(
   const MULTI_ACTION_COOLDOWN_DIV: Record<MultiActionType, number> = {
     doubleAction: 5, additionalTarget: 5, additionalProjectile: 5, splitAction: 5, jump: 5, tremor: 5,
   }
+  // Cap the per-entity multi-action queue at the cooldown divisor — i.e. the number
+  // of multi-action ticks that fit inside one primary cooldown. Without this, actions
+  // with many overlapping multi-action sources (e.g. bolt: doubleAction + additionalTarget
+  // + additionalProjectile + splitAction + jump, all at once, with chain-rerolls enabled)
+  // can spawn children faster than they drain, growing the queue without bound.
+  const MAX_MULTI_QUEUE = Math.max(...Object.values(MULTI_ACTION_COOLDOWN_DIV))
   const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
   interface PendingHit {
@@ -3705,9 +3713,12 @@ export function createGameScene(
             return best
           }
 
-          // Insert a multi-action into the per-entity queue sorted by priority
+          // Insert a multi-action into the per-entity queue sorted by priority.
+          // Cap at MAX_MULTI_QUEUE so a single primary cast can't kick off a chain that
+          // grows the queue faster than it drains.
           const queueMA = (type: MultiActionType, inherited: number, maTarget?: Entity, chainProjectile?: boolean, jumpedTargetIds?: Set<string>): void => {
             const arr = pendingMultiActions.get(entity.id) ?? []
+            if (arr.length >= MAX_MULTI_QUEUE) return
             const idx = arr.findIndex(x => MULTI_ACTION_PRIORITY[x.type] > MULTI_ACTION_PRIORITY[type])
             const entry: PendingMultiAction = { type, inheritedDamageMult: inherited, target: maTarget }
             if (chainProjectile) entry.isChainProjectile = true
