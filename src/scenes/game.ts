@@ -788,7 +788,7 @@ export function createGameScene(
     let { xp, level, maxLevel } = prev
     // Prestige accelerates XP gain: past peak level → faster leveling next life
     const rb = getRuneBonuses(actionId)
-    const scaledXp = amount * Math.sqrt(maxLevel) * (1 + rb.xpIncrease / 100) * rb.xpMore
+    const scaledXp = amount * (1 + (maxLevel - 1) * 0.1) * (1 + rb.xpIncrease / 100) * rb.xpMore
     xp += scaledXp
     runActionXp[actionId] = (runActionXp[actionId] ?? 0) + scaledXp
     let leveled = false
@@ -1263,12 +1263,14 @@ export function createGameScene(
     if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
     const action = getAction(playerActionId)
     const level = actionProgress[playerActionId]?.level ?? 1
+    const maxLevel = actionProgress[playerActionId]?.maxLevel ?? 1
     const r = getActionRunes(playerActionId)
     runesModalCleanup = mountRunesModal(
       el,
       playerActionId,
       action.label,
       level,
+      maxLevel,
       r,
       (slotIdx, runeId) => { assignRune(playerActionId, slotIdx, runeId) },
       () => { runesModalCleanup = null },
