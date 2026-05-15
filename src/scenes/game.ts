@@ -2437,11 +2437,11 @@ export function createGameScene(
         g.fill({ color: 0xffee66, alpha: 1 })
       })
     }
-    // zap: no pre-hit animation (instant strike)
+    // zap, bolt: no pre-hit animation (instant strike)
   }
 
   // Pre-hit VFX for area actions: an expanding ring at the area centre.
-  function spawnAreaPreHitVfx(_attacker: Entity, center: Entity, areaRadiusPx: number, action: ActionDef, preHitDuration: number): void {
+  function spawnAreaPreHitVfx(attacker: Entity, center: Entity, areaRadiusPx: number, action: ActionDef, preHitDuration: number): void {
     const cx = center.x, cy = center.y
     if (action.id === 'fire-nova') {
       addVfx(preHitDuration, (g, p) => {
@@ -2466,7 +2466,45 @@ export function createGameScene(
           g.fill({ color: i % 2 ? 0xffaa33 : 0xffee66, alpha: 1 - p * 0.3 })
         }
       })
+    } else if (action.id === 'lightning-nova') {
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const r = areaRadiusPx * p
+        const pulse = 1 + 0.08 * Math.sin(p * 30)
+        g.circle(cx, cy, r * pulse)
+        g.stroke({ color: 0x66ddff, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
+        g.circle(cx, cy, r * 0.85 * pulse)
+        g.stroke({ color: 0xaaeeff, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
+        g.fill({ color: 0x88e8ff, alpha: 0.45 + p * 0.4 })
+        g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
+        g.fill({ color: 0xffffff, alpha: 0.7 + p * 0.3 })
+        for (let i = 0; i < 14; i++) {
+          const a = (i / 14) * Math.PI * 2 + i * 0.3
+          const sd = areaRadiusPx * (0.2 + p * 0.85)
+          g.circle(cx + Math.cos(a) * sd, cy + Math.sin(a) * sd, Math.max(0.5, 2.5 * (1 - p * 0.5)))
+          g.fill({ color: i % 2 ? 0x99ddff : 0xffffff, alpha: 1 - p * 0.3 })
+        }
+      })
+    } else if (action.id === 'grenade') {
+      // Lobbed projectile flying from attacker to impact centre over the full windup.
+      const ax = attacker.x, ay = attacker.y
+      const dx = cx - ax, dy = cy - ay
+      const arcLift = Math.min(80, Math.sqrt(dx * dx + dy * dy) * 0.25)
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const px = ax + dx * p
+        const py = ay + dy * p - Math.sin(p * Math.PI) * arcLift
+        const r = 7 + p * 4
+        g.circle(px, py, r)
+        g.fill({ color: 0x332211, alpha: 0.95 })
+        g.circle(px, py, r * 0.55)
+        g.fill({ color: 0xff8800, alpha: 0.7 + Math.sin(p * 40) * 0.25 })
+        g.circle(px, py, r * 0.25)
+        g.fill({ color: 0xffd060, alpha: 0.95 })
+      })
     }
+    // hammer-slam: no pre-hit animation (instant impact)
   }
 
   // Post-hit VFX: spawned when damage lands, duration does not affect game timing.
@@ -2598,6 +2636,81 @@ export function createGameScene(
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.85 })
         g.circle(ax, ay, tr * 0.5)
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.6 })
+      })
+    } else if (action.id === 'grenade') {
+      addVfx(310, (g, p) => {
+        g.clear()
+        g.circle(tx, ty, tr * (0.8 + p * 4))
+        g.stroke({ color: 0xff8800, width: 5 * (1 - p), alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.5 + p * 3))
+        g.stroke({ color: 0xffcc33, width: 3 * (1 - p), alpha: (1 - p) * 0.7 })
+        g.circle(tx, ty, tr * (0.9 + p * 1.8))
+        g.fill({ color: 0xff5500, alpha: (1 - p) * 0.55 })
+        g.circle(tx, ty, tr * (0.5 + p * 0.9))
+        g.fill({ color: 0xffee66, alpha: (1 - p) * 0.85 })
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + i * 0.5
+          const d = tr * (0.5 + p * 2.6)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3 * (1 - p)))
+          g.fill({ color: i % 2 ? 0xffaa00 : 0xffee66, alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'hammer-slam') {
+      addVfx(180, (g, p) => {
+        g.clear()
+        // Single fast-expanding shockwave ring with cracks.
+        g.circle(tx, ty, tr * (0.8 + p * 3))
+        g.stroke({ color: 0xffffff, width: 5 * (1 - p), alpha: (1 - p) * 0.9 })
+        g.circle(tx, ty, tr * (0.5 + p * 2.2))
+        g.stroke({ color: 0xcccccc, width: 3 * (1 - p), alpha: (1 - p) * 0.7 })
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + i * 0.3
+          const r0 = tr * 0.4
+          const r1 = tr * (0.9 + p * 1.6)
+          g.moveTo(tx + Math.cos(a) * r0, ty + Math.sin(a) * r0)
+          g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
+          g.stroke({ color: 0xeeeeee, width: 2 * (1 - p), alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'lightning-nova') {
+      addVfx(260, (g, p) => {
+        g.clear()
+        g.circle(tx, ty, tr * (0.7 + p * 1.8))
+        g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.6 })
+        g.circle(tx, ty, tr * (0.45 + p * 1.0))
+        g.fill({ color: 0xaaeeff, alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.25 + p * 0.5))
+        g.fill({ color: 0xffffff, alpha: (1 - p) * 0.95 })
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + i * 0.4
+          const d = tr * (0.5 + p * 2.0)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 2.5 * (1 - p)))
+          g.fill({ color: i % 2 ? 0x99ddff : 0xffffff, alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'bolt') {
+      addVfx(120, (g, p) => {
+        g.clear()
+        // Quick flicker: cyan ring + white center, plus a short zigzag streak from attacker.
+        const dx = tx - ax, dy = ty - ay
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        const nx = dx / len, ny = dy / len
+        const px = -ny, py = nx
+        const segments = 6
+        g.moveTo(ax, ay)
+        for (let i = 1; i <= segments; i++) {
+          const t = i / segments
+          const fade = 1 - Math.abs(t - 0.5) * 2
+          const r = Math.sin(p * 100 + i * 12.9898) * 43758.5453
+          const noise = (r - Math.floor(r)) - 0.5
+          const off = noise * len * 0.12 * fade
+          g.lineTo(ax + dx * t + px * off, ay + dy * t + py * off)
+        }
+        g.stroke({ color: 0xffffff, width: 2.5 * (1 - p), alpha: (1 - p) * 0.95 })
+        g.circle(tx, ty, tr * (1.0 + p * 0.4))
+        g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.5 })
+        g.circle(tx, ty, tr * (0.5 + p * 0.2))
+        g.fill({ color: 0xffffff, alpha: (1 - p) * 0.9 })
       })
     }
   }
