@@ -143,7 +143,7 @@ export const balance = {
     xpPerLevel:         1000, // XP required for mastery level 1 → 2
     xpGrowth:           1.5,  // each subsequent level costs xpGrowth× the previous
     actionXpMultiplier: 0.2,  // fraction of run action XP that feeds tag masteries
-    maxLevel:           6,    // absolute max mastery level (level 1 → +5 levels)
+    levelsPerRebirth:   5,    // max mastery levels gained per rebirth
   },
 
   // ── Enemy leveling ────────────────────────────────────────────────────────
