@@ -41,7 +41,6 @@ export function createMenuScene(
     <div class="menu-content">
       <header class="menu-header">
         <h1 class="game-title">${t('game', 'title')}</h1>
-        <p class="game-subtitle">${t('game', 'subtitle')}</p>
       </header>
       <nav class="menu-nav" aria-label="${t('menu', 'nav')}">
         <button class="menu-btn" data-action="continue">

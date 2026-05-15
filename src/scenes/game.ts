@@ -1133,6 +1133,7 @@ export function createGameScene(
     <div class="game-viewport">
       <div class="buff-bar"></div>
       <div class="enemy-level-ctrl">
+        <span class="enemy-level-title">Enemy level</span>
         <div class="enemy-level-main">
           <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
           <span class="enemy-level-display">1 / 1</span>
