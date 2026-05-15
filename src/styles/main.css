@@ -497,6 +497,15 @@ body::after {
   transform: translateX(-50%) translateY(0);
 }
 
+.enemy-level-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .enemy-level-main {
   display: flex;
   align-items: center;

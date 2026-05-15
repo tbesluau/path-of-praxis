@@ -463,11 +463,12 @@ export function mountMasteryModal(
 
   function buildRows(): void {
     const gainById = new Map(getPendingGains().map(g => [g.id, g.xpGain]))
-    categoriesEl.innerHTML = masteryCategories.map(cat => {
-      const rows = cat.masteries.map(m => {
+    categoriesEl.innerHTML = masteryCategories.flatMap(cat => {
+      const rows = cat.masteries.flatMap(m => {
         const p = prog(masteryProgress, m.id)
         const pts = masteryPointsAvailable(p)
         const xpGain = gainById.get(m.id) ?? 0
+        if (p.level === 1 && p.xp === 0 && xpGain === 0) return []
         let oldPct: number, gainPct: number, levelsGained: number, displayLevel: number
         if (xpGain > 0) {
           const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth)
@@ -477,7 +478,7 @@ export function mountMasteryModal(
           oldPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
           gainPct = 0; levelsGained = 0; displayLevel = p.level
         }
-        return `
+        return [`
           <div class="mastery-row">
             <button class="mastery-name-btn" data-mastery="${m.id}">
               ${m.label}${pts > 0 ? '<span class="notif-dot"></span>' : ''}
@@ -485,13 +486,14 @@ export function mountMasteryModal(
             ${renderMasteryBar(oldPct, gainPct)}
             <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${displayLevel}${pts > 0 ? ` · <span class="mastery-pts">${pts}pt</span>` : ''}</span>
             ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
-          </div>`
-      }).join('')
-      return `
+          </div>`]
+      })
+      if (rows.length === 0) return []
+      return [`
         <div class="mastery-category">
           <div class="mastery-category-label">${cat.label}</div>
-          ${rows}
-        </div>`
+          ${rows.join('')}
+        </div>`]
     }).join('')
 
     // Wire mastery-name buttons (open tree modal)
