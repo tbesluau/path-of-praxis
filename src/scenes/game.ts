@@ -1691,10 +1691,23 @@ export function createGameScene(
     }
   }
 
+  function enemySpriteKey(action: ActionDef): 'fireball' | 'zap' | 'bow' | 'sword' {
+    const elemental = action.tags.some(tag => tag === 'fire' || tag === 'cold' || tag === 'lightning')
+    const ranged = action.range > 4
+    if (elemental) return ranged ? 'fireball' : 'zap'
+    return ranged ? 'bow' : 'sword'
+  }
+
   function initEntityDisplay(entity: Entity): void {
     if (!app || entityContainers.has(entity.id)) return
     const c = new Container()
-    const texKey = entity.role === 'player' ? 'player' : (entityActions.get(entity.id) ?? 'sword')
+    let texKey: string
+    if (entity.role === 'player') {
+      texKey = 'player'
+    } else {
+      const actionId = entityActions.get(entity.id) ?? 'sword' as ActionId
+      texKey = enemySpriteKey(getAction(actionId as ActionId))
+    }
     const tex = entityTextures.get(texKey)
     if (tex) {
       const s = new Sprite(tex)
@@ -2703,7 +2716,6 @@ export function createGameScene(
       entityTextures.set('bow',      t(112))
       entityTextures.set('fireball', t(84))
       entityTextures.set('zap',      t(100))
-      entityTextures.set('fire-nova', t(100))
 
       if (destroyed) return
 
