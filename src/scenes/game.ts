@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, TrendingDown, TrendingUp, Shuffle, Book, Drumstick, Swords, Droplets } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
@@ -14,6 +14,7 @@ import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 import { mountSettingsButton } from '../ui/settings'
+import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons } from '../ui/action-picker'
 import { getPrefs } from '../core/prefs'
 import { computeRuneBonuses, unlockedSlotCount, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
@@ -1192,6 +1193,12 @@ export function createGameScene(
       updateCamera()
       drawGrid()
     },
+    getTargetingMode: () => targetingMode,
+    onTargetingChange: (mode) => {
+      targetingMode = mode
+      playerRandomTargetId = null
+      persistState()
+    },
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
@@ -1324,7 +1331,6 @@ export function createGameScene(
     modalCleanup = mountBattleConfigModal(
       container,
       currentId,
-      targetingMode,
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
@@ -1332,13 +1338,7 @@ export function createGameScene(
         updateActionIcon()
         persistState()
       },
-      (mode) => {
-        targetingMode = mode
-        playerRandomTargetId = null
-        persistState()
-      },
       () => { modalCleanup = null },
-      actionProgress,
     )
   })
 
@@ -3627,108 +3627,71 @@ export function createGameScene(
 function mountBattleConfigModal(
   parent: HTMLElement,
   currentActionId: ActionId,
-  currentTargeting: TargetingMode,
   onSelectAction: (id: ActionId) => void,
-  onSelectTargeting: (mode: TargetingMode) => void,
   onClose: () => void,
-  actionProgress: Record<string, ActionProgress>,
 ): () => void {
-  const buildCards = (actions: ActionDef[]) =>
-    actions.map(a => {
-      const p = actionProgress[a.id]
-      const level = p?.level ?? 1
-      const maxLevel = p?.maxLevel ?? 1
-      const meta = maxLevel > 1
-        ? `Lv.${level} · ${Math.sqrt(maxLevel).toFixed(1)}xp`
-        : `Lv.${level}`
-      const iconAttr = `data-lucide="${a.icon}"`
-      return `
-        <button class="action-card${a.id === currentActionId ? ' action-card--selected' : ''}" data-action-id="${a.id}">
-          <i ${iconAttr} aria-hidden="true"></i>
-          <span class="action-card-name">${escapeHtml(a.label)}</span>
-          <span class="action-card-meta">${meta}</span>
-        </button>`
-    }).join('')
-
-  const targetingOpts: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
-    { mode: 'nearest',   icon: 'crosshair',    label: 'Nearest',   desc: 'Attack closest enemy' },
-    { mode: 'weakest',   icon: 'trending-down', label: 'Weakest',   desc: 'Focus low HP' },
-    { mode: 'strongest', icon: 'trending-up',   label: 'Strongest', desc: 'Focus high HP' },
-    { mode: 'random',    icon: 'shuffle',       label: 'Random',    desc: 'Pick random target' },
-  ]
+  let selectedActionId = currentActionId
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
-  backdrop.innerHTML = `
-    <div class="modal-panel battle-config-panel" role="dialog" aria-modal="true">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <div class="battle-tabs">
-        <button class="battle-tab battle-tab--active" data-btab="action" aria-label="Actions">
-          <i data-lucide="sword" aria-hidden="true"></i>
-        </button>
-        <button class="battle-tab" data-btab="targeting" aria-label="Targeting">
-          <i data-lucide="crosshair" aria-hidden="true"></i>
-        </button>
-        <button class="battle-tab" data-btab="effects" aria-label="Effects">
-          <i data-lucide="timer" aria-hidden="true"></i>
-        </button>
-      </div>
-      <div data-bpanel="action">
-        <div class="action-grid">${buildCards(allActions)}</div>
-      </div>
-      <div data-bpanel="targeting" hidden>
-        <div class="targeting-options">
-          ${targetingOpts.map(o => `
-            <button class="targeting-opt${currentTargeting === o.mode ? ' targeting-opt--active' : ''}" data-targeting="${o.mode}">
-              <i data-lucide="${o.icon}" aria-hidden="true"></i>
-              <span class="targeting-opt-name">${o.label}</span>
-              <small class="targeting-opt-desc">${o.desc}</small>
-            </button>`).join('')}
-        </div>
-      </div>
-      <div data-bpanel="effects" hidden>
-        <p class="wip-notice">Timed &amp; automatic effects &mdash; coming soon</p>
-      </div>
-    </div>
+
+  const panel = document.createElement('div')
+  panel.className = 'modal-panel battle-config-panel'
+  panel.setAttribute('role', 'dialog')
+  panel.setAttribute('aria-modal', 'true')
+  panel.innerHTML = `
+    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+    <h2 class="modal-title">${t('game', 'triggersTitle')}</h2>
+    <div class="trigger-list"></div>
   `
 
-  // Battle tab switching
-  const bTabs   = backdrop.querySelectorAll<HTMLButtonElement>('[data-btab]')
-  const bPanels = backdrop.querySelectorAll<HTMLElement>('[data-bpanel]')
-  bTabs.forEach(tab => tab.addEventListener('click', () => {
-    bTabs.forEach(t => t.classList.toggle('battle-tab--active', t === tab))
-    bPanels.forEach(p => { p.hidden = p.dataset.bpanel !== tab.dataset.btab })
-  }))
+  const triggerList = panel.querySelector<HTMLElement>('.trigger-list')!
 
-  // Action card selection — apply immediately
-  backdrop.querySelectorAll<HTMLButtonElement>('[data-action-id]').forEach(card =>
+  function renderTriggerCard(): void {
+    const action = getAction(selectedActionId)
+    triggerList.innerHTML = ''
+
+    const card = document.createElement('button')
+    card.className = 'action-trigger-card'
+
+    const label = document.createElement('div')
+    label.className = 'action-trigger-label'
+    label.innerHTML = `<i data-lucide="timer" aria-hidden="true"></i>${t('game', 'triggerAutoAction')}`
+
+    card.appendChild(label)
+    card.appendChild(buildActionThumbnail(action))
+    triggerList.appendChild(card)
+
     card.addEventListener('click', () => {
-      const id = card.dataset.actionId as ActionId
-      backdrop.querySelectorAll('[data-action-id]').forEach(c =>
-        c.classList.toggle('action-card--selected', c === card),
+      mountActionPickerModal(
+        parent,
+        allActions,
+        selectedActionId,
+        (id) => {
+          selectedActionId = id as ActionId
+          onSelectAction(id as ActionId)
+          renderTriggerCard()
+          refreshActionThumbnailIcons()
+          createIcons({ icons: { Timer } })
+        },
+        () => { /* picker closed */ },
       )
-      onSelectAction(id)
-    }),
-  )
+    })
 
-  // Targeting option selection — apply immediately
-  backdrop.querySelectorAll<HTMLButtonElement>('[data-targeting]').forEach(btn =>
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.targeting as TargetingMode
-      backdrop.querySelectorAll('[data-targeting]').forEach(b =>
-        b.classList.toggle('targeting-opt--active', b === btn),
-      )
-      onSelectTargeting(mode)
-    }),
-  )
+    refreshActionThumbnailIcons()
+    createIcons({ icons: { Timer } })
+  }
+
+  renderTriggerCard()
 
   const dismiss = () => { backdrop.remove(); onClose() }
-  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+  panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
+
+  backdrop.appendChild(panel)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
   parent.appendChild(backdrop)
-  createIcons({ icons: { Timer, Sword, Crosshair, Flame, Zap, TrendingDown, TrendingUp, Shuffle } })
   return () => backdrop.remove()
 }
 

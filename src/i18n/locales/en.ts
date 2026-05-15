@@ -5,7 +5,15 @@ export interface TranslationSchema {
     deathTitle: string
     deathRebirth: string
     actionSelectTitle: string
-    actionsTab: string
+    triggersTitle: string
+    triggerAutoAction: string
+    actionPickerTitle: string
+    legendDamageBase: string
+    legendDamage: string
+    legendSpeed: string
+    legendArea: string
+    legendSpecialSlot: string
+    targetingTitle: string
   }
   menu: {
     continue: string
@@ -54,7 +62,15 @@ export const en: TranslationSchema = {
     deathTitle: 'You have died',
     deathRebirth: 'Rebirth',
     actionSelectTitle: 'Actions',
-    actionsTab: 'Actions',
+    triggersTitle: 'Action Triggers',
+    triggerAutoAction: 'Auto-action',
+    actionPickerTitle: 'Choose action',
+    legendDamageBase: 'Dmg base',
+    legendDamage: 'Damage',
+    legendSpeed: 'Speed',
+    legendArea: 'Area',
+    legendSpecialSlot: 'Effect',
+    targetingTitle: 'Targeting',
   },
   menu: {
     continue: 'Continue',

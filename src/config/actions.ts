@@ -2,6 +2,14 @@ import type { ActionTag } from './masteries'
 import { weapons } from './weapons'
 import { spells } from './spells'
 
+export type SpecialTagKind = 'afflictionChance' | 'buff' | 'manaRestore' | 'cooldownReduce' | 'other'
+
+export interface SpecialTag {
+  kind: SpecialTagKind
+  label: string
+  value?: number
+}
+
 export interface ActionDef {
   id: string
   label: string
@@ -14,6 +22,7 @@ export interface ActionDef {
   tags: ActionTag[]
   area?: number
   selfTargeted?: boolean
+  specialTags?: SpecialTag[]
 }
 
 export type ActionId = 'sword' | 'bow' | 'fireball' | 'zap' | 'fire-nova'
