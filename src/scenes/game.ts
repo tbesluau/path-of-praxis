@@ -3730,12 +3730,13 @@ export function createGameScene(
           }
 
           // ── Roll for new multi-actions ────────────────────────────────────
-          // Any cast can trigger any type except the one it was itself.
-          // Tremors stop ALL further multi-actions, including more tremors.
-          const blockMultiActions = pending?.type === 'tremor'
+          // Only the primary cast (pending === null) spawns multi-actions. Children never chain,
+          // so the queue fills cleanly from one primary, drains over up to MAX_MULTI_QUEUE ticks,
+          // then the primary fires again at full damage. This prevents the deep-chain decay
+          // (inheritedDamageMult^N × ownMult^N) that drove per-hit damage to ~0 over a second or two.
 
           // additionalTarget: trance multi-target + strike additional-target + projectile additional-target (summed)
-          if (!blockMultiActions && pending?.type !== 'additionalTarget' && entity.role === 'player') {
+          if (!pending && entity.role === 'player') {
             let totalChance = 0
             if (tranceActive && actionBonuses) totalChance += actionBonuses.tranceMultiTargetChance
             if (action.tags.includes('strike')) {
@@ -3749,34 +3750,29 @@ export function createGameScene(
             }
           }
 
-          // doubleAction: not if this cast was a doubleCast
-          if (!blockMultiActions && isPlayer && pending?.type !== 'doubleAction' && actionBonuses
+          // doubleAction
+          if (!pending && isPlayer && actionBonuses
               && actionBonuses.doubleActionChance > 0
               && Math.random() * 100 < actionBonuses.doubleActionChance) {
             queueMA('doubleAction', childInherited)
           }
 
-          // additionalProjectile: not if this cast was an additionalProjectile,
-          // UNLESS extraDoubleRoll is active and this cast was the first (non-chain) additional projectile
-          if (!blockMultiActions && isPlayerProjectile && pb && pb.extraChance > 0) {
-            const isFirstAdditional = pending?.type === 'additionalProjectile' && !pending.isChainProjectile
-            const canRoll = pending?.type !== 'additionalProjectile' || (pb.extraDoubleRoll && isFirstAdditional)
-            if (canRoll && Math.random() * 100 < pb.extraChance) {
-              queueMA('additionalProjectile', childInherited, pickOtherTarget() ?? (target as Entity), isFirstAdditional)
-            }
+          // additionalProjectile
+          if (!pending && isPlayerProjectile && pb && pb.extraChance > 0
+              && Math.random() * 100 < pb.extraChance) {
+            queueMA('additionalProjectile', childInherited, pickOtherTarget() ?? (target as Entity), false)
           }
 
-          // splitCast (key rune): only the primary cast triggers the second cast
-          if (!blockMultiActions && !pending && entity.role === 'player' && rb?.splitCast) {
+          // splitCast (key rune)
+          if (!pending && entity.role === 'player' && rb?.splitCast) {
             queueMA('splitAction', childInherited)
           }
 
-          // jump: on any lightning-tagged player hit; re-rolls on jump casts only if jumpReroll active
-          if (!blockMultiActions && entity.role === 'player' && action.tags.includes('lightning')) {
+          // jump: on any lightning-tagged player primary hit
+          if (!pending && entity.role === 'player' && action.tags.includes('lightning')) {
             const lbJump = getLightningBonuses()
-            const canRollJump = pending?.type !== 'jump' || lbJump.jumpReroll
-            if (canRollJump && lbJump.jumpChance > 0 && Math.random() * 100 < lbJump.jumpChance) {
-              const jumpedSoFar = new Set(pending?.type === 'jump' ? (pending.jumpedTargetIds ?? []) : [])
+            if (lbJump.jumpChance > 0 && Math.random() * 100 < lbJump.jumpChance) {
+              const jumpedSoFar = new Set<string>()
               jumpedSoFar.add((target as Entity).id)
               const jumpRange = entity.actionRange * (1 + lbJump.jumpRangeIncrease / 100)
               const jumpTarget = selectJumpTarget(target as Entity, jumpedSoFar, jumpRange)
@@ -3784,8 +3780,8 @@ export function createGameScene(
             }
           }
 
-          // tremor: roll once per non-primary area victim (player area casts only; tremor itself does not re-trigger)
-          if (!blockMultiActions && isPlayerArea && areaVictims.length > 0) {
+          // tremor: roll once per non-primary area victim
+          if (!pending && isPlayerArea && areaVictims.length > 0) {
             const tremorChance = getAreaBonuses().tremorChance
             if (tremorChance > 0) {
               for (const v of areaVictims) {
