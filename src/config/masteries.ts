@@ -185,7 +185,9 @@ export function previewMasteryGain(
     gainPct = 0
   } else if (levelsGained > 0) {
     oldPct = 0
-    gainPct = pctRound((xp / neededNow) * 100)
+    // Always show at least a min-bar when a level was gained, even if remaining
+    // XP is 0 (exact boundary hit or absolute-max-level reached this rebirth).
+    gainPct = Math.max(1, pctRound((xp / neededNow) * 100))
   } else {
     oldPct = pctRound((currentXp / neededNow) * 100)
     gainPct = Math.min(pctRound((xpGain / neededNow) * 100), 100 - oldPct)
