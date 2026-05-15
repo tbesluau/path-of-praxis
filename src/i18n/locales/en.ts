@@ -13,6 +13,7 @@ export interface TranslationSchema {
     legendSpeed: string
     legendRange: string
     legendArea: string
+    legendMana: string
     targetingTitle: string
   }
   menu: {
@@ -70,6 +71,7 @@ export const en: TranslationSchema = {
     legendSpeed: 'Speed',
     legendRange: 'Range',
     legendArea: 'Area',
+    legendMana: 'Mana',
     targetingTitle: 'Targeting',
   },
   menu: {

@@ -1,4 +1,4 @@
-import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight } from 'lucide'
+import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube } from 'lucide'
 import type { ActionDef } from '../config/actions'
 import type { DamageEssenceTag, DamageTypeTag } from '../config/masteries'
 import { t } from '../i18n'
@@ -52,6 +52,7 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
         <span class="action-thumb-stat"><i data-lucide="timer" aria-hidden="true"></i>${t('game', 'legendSpeed')}</span>
         <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${t('game', 'legendRange')}</span>
         <span class="action-thumb-stat"><i data-lucide="radius" aria-hidden="true"></i>${t('game', 'legendArea')}</span>
+        <span class="action-thumb-stat"><i data-lucide="test-tube" aria-hidden="true"></i>${t('game', 'legendMana')}</span>
       </div>
       <div class="action-thumb-tags"></div>
     `
@@ -94,13 +95,14 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
       <span class="action-thumb-stat"><i data-lucide="timer" aria-hidden="true"></i>${speedPerSec}/s</span>
       <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${displayRange}</span>
       ${areaHtml}
+      <span class="action-thumb-stat"><i data-lucide="test-tube" aria-hidden="true"></i>${action.manaCost}</span>
     </div>
     <div class="action-thumb-tags">${tagsHtml}${specialsHtml}</div>
   `
   return wrap
 }
 
-const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight }
+const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube }
 
 export function refreshActionThumbnailIcons(): void {
   createIcons({ icons: PICKER_ICONS })

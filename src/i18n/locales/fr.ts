@@ -15,6 +15,7 @@ export const fr: TranslationSchema = {
     legendSpeed: 'Vitesse',
     legendRange: 'Portée',
     legendArea: 'Zone',
+    legendMana: 'Mana',
     targetingTitle: 'Ciblage',
   },
   menu: {
