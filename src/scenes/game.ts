@@ -799,11 +799,9 @@ export function createGameScene(
       leveled = true
     }
     actionProgress[actionId] = { xp, level, maxLevel }
+    if (leveled) applyAutoRunes(actionId)
     if (actionId === playerActionId) {
-      if (leveled) {
-        assignAction(playerEntity, actionId)
-        applyAutoRunes(actionId)
-      }
+      if (leveled) assignAction(playerEntity, actionId)
       updateActionBar()
     }
   }
@@ -874,6 +872,7 @@ export function createGameScene(
   }
 
   assignAction(playerEntity, playerActionId)
+  applyAutoRunes(playerActionId)
 
   // ── Physics ─────────────────────────────────────────────────────────────
 
@@ -1334,6 +1333,7 @@ export function createGameScene(
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
+        applyAutoRunes(id)
         updateActionBar()
         updateActionIcon()
         persistState()
@@ -1670,7 +1670,7 @@ export function createGameScene(
         (id, treeIdx, nodeIdx) => { assignMasteryNode(id, treeIdx, nodeIdx) },
         id => { resetMasteryPoints(id) },
         computeMasteryGains,
-        balance.mastery.rebirthLevelCap,
+        balance.mastery.maxLevel,
       )
     })
 
@@ -2015,7 +2015,7 @@ export function createGameScene(
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
         const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-        const pv = previewMasteryGain(prog.xp, prog.level, xpGain, balance.mastery.rebirthLevelCap)
+        const pv = previewMasteryGain(prog.xp, prog.level, xpGain, balance.mastery.maxLevel)
         return `
           <div class="mastery-row">
             ${renderMasteryBar(pv.oldPct, pv.gainPct)}
@@ -2085,7 +2085,7 @@ export function createGameScene(
       const existing = masteryProgress[id]
       const nodes = existing?.nodes ?? defaultMasteryNodes()
       const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      const preview = previewMasteryGain(xp, level, xpGain, balance.mastery.rebirthLevelCap)
+      const preview = previewMasteryGain(xp, level, xpGain, balance.mastery.maxLevel)
       masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)

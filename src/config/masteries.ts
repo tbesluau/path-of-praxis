@@ -152,27 +152,25 @@ export interface MasteryGainPreview {
   gainPct: number        // % of current bar from gain (0 when no gain)
 }
 
-// Simulates applying xpGain on top of (currentXp, currentLevel) with a per-rebirth
-// level cap. When more XP arrives than the cap allows, the level is clamped and
-// the remaining XP is set just below the next-level threshold so the bar reads as
-// "maxed gain this rebirth" without overflowing into the next rebirth.
+// Simulates applying xpGain on top of (currentXp, currentLevel) with an absolute
+// max-level cap. Once a mastery reaches maxLevel it stops accumulating XP — its
+// stored XP is reset to 0 and any incoming XP beyond the cap is discarded.
 export function previewMasteryGain(
   currentXp: number,
   currentLevel: number,
   xpGain: number,
-  levelCap: number,
+  maxLevel: number,
 ): MasteryGainPreview {
   const fromLv = currentLevel
   let xp = currentXp + xpGain
   let level = currentLevel
-  const maxLv = fromLv + levelCap
-  while (xp >= masteryXpNeeded(level) && level < maxLv) {
+  while (xp >= masteryXpNeeded(level) && level < maxLevel) {
     xp -= masteryXpNeeded(level)
     level++
   }
   let cappedAtMaxLevels = false
-  if (level >= maxLv && xp >= masteryXpNeeded(level)) {
-    xp = masteryXpNeeded(level) - 1
+  if (level >= maxLevel) {
+    xp = 0
     cappedAtMaxLevels = true
   }
   const levelsGained = level - fromLv
@@ -181,7 +179,11 @@ export function previewMasteryGain(
   // still show at min-width for any non-zero value (rendered as a min-bar in CSS).
   const pctRound = (n: number): number => n <= 0 ? 0 : Math.max(1, Math.round(n))
   let oldPct: number, gainPct: number
-  if (levelsGained > 0) {
+  if (cappedAtMaxLevels && levelsGained === 0) {
+    // Already at absolute max — incoming XP is discarded, show no bar movement.
+    oldPct = 0
+    gainPct = 0
+  } else if (levelsGained > 0) {
     oldPct = 0
     gainPct = pctRound((xp / neededNow) * 100)
   } else {
