@@ -369,11 +369,12 @@ body::after {
   inset: 0;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
-  background-position: 0 center, 100% center, 0 center;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png');
+  background-position: 0 center, 13.5px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 13.5px 27px, 13.5px 27px, 100% 27px;
+  background-size: 13.5px 27px, calc(100% - 27px) 27px, 13.5px 27px;
+  background-color: rgba(0, 0, 0, 0.10);
 }
 
 .stat-level span {
@@ -393,17 +394,17 @@ body::after {
   width: var(--xp-pct, 0%);
   min-width: 27px;
   z-index: 1;
-  background-position: 0 center, 100% center, 0 center;
+  background-position: 0 center, 13.5px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 13.5px 27px, 13.5px 27px, 100% 27px;
+  background-size: 13.5px 27px, calc(100% - 27px) 27px, 13.5px 27px;
 }
 
 .stat-level--life .stat-level-fill,
 .stat-level--mana .stat-level-fill {
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png');
 }
 
 .stat-bar {
@@ -421,11 +422,12 @@ body::after {
   inset: 0;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
-  background-position: 0 center, 100% center, 0 center;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png');
+  background-position: 0 center, 13.5px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 13.5px 27px, 13.5px 27px, 100% 27px;
+  background-size: 13.5px 27px, calc(100% - 27px) 27px, 13.5px 27px;
+  background-color: rgba(0, 0, 0, 0.10);
 }
 
 .stat-bar-fill {
@@ -435,9 +437,9 @@ body::after {
   height: 27px;
   min-width: 27px;
   z-index: 1;
-  background-position: 0 center, 100% center, 0 center;
+  background-position: 0 center, 13.5px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 13.5px 27px, 13.5px 27px, 100% 27px;
+  background-size: 13.5px 27px, calc(100% - 27px) 27px, 13.5px 27px;
 }
 
 /* ── Stat bar text labels ── */
@@ -624,11 +626,12 @@ body::after {
   inset: 0;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
-  background-position: 0 center, 100% center, 0 center;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png');
+  background-position: 0 center, 9px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, 100% 18px;
+  background-size: 9px 18px, calc(100% - 18px) 18px, 9px 18px;
+  background-color: rgba(0, 0, 0, 0.10);
 }
 
 .enemy-xp-bar-fill {
@@ -640,25 +643,25 @@ body::after {
   z-index: 1;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
-  background-position: 0 center, 100% center, 0 center;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png');
+  background-position: 0 center, 9px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, 100% 18px;
+  background-size: 9px 18px, calc(100% - 18px) 18px, 9px 18px;
 }
 
 .stat-bar-fill--life {
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barRed_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barRed_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barRed_horizontalMid.png');
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barRed_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barRed_horizontalRight.png');
 }
 
 .stat-bar-fill--mana {
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBlue_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBlue_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBlue_horizontalBlue.png');
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBlue_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBlue_horizontalRight.png');
 }
 
 .action-icon-wrap,
@@ -716,8 +719,8 @@ body::after {
 .stat-bar-fill--action {
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png');
 }
 
 .char-info-value--life {
@@ -1985,11 +1988,12 @@ body::after {
   inset: 0;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png');
-  background-position: 0 center, 100% center, 0 center;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barBack_horizontalRight.png');
+  background-position: 0 center, 9px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, 100% 18px;
+  background-size: 9px 18px, calc(100% - 18px) 18px, 9px 18px;
+  background-color: rgba(0, 0, 0, 0.10);
 }
 
 .mastery-bar-old {
@@ -2001,11 +2005,11 @@ body::after {
   z-index: 1;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
-  background-position: 0 center, 100% center, 0 center;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalRight.png');
+  background-position: 0 center, 9px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, 100% 18px;
+  background-size: 9px 18px, calc(100% - 18px) 18px, 9px 18px;
 }
 
 .mastery-bar-new {
@@ -2016,30 +2020,30 @@ body::after {
   z-index: 2;
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalLeft.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalMid.png');
-  background-position: 0 center, 100% center, 0 center;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalRight.png');
+  background-position: 0 center, 9px center, 100% center;
   background-repeat: no-repeat;
-  background-size: 9px 18px, 9px 18px, 100% 18px;
+  background-size: 9px 18px, calc(100% - 18px) 18px, 9px 18px;
 }
 
-/* Paired mode: yellow contributes only the opening cap, green only the closing
- * cap. Mid fills the full element width below the cap in each case. */
+/* Paired mode: yellow keeps only opening cap + mid (no right cap), green keeps
+ * only mid + closing cap (no left cap). Together they form one seamless fill. */
 .mastery-bar:has(.mastery-bar-old):has(.mastery-bar-new) .mastery-bar-old {
   background-image:
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalLeft.png'),
     url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
-  background-position: 0 center, 0 center;
-  background-size: 9px 18px, 100% 18px;
+  background-position: 0 center, 9px center;
+  background-size: 9px 18px, calc(100% - 9px) 18px;
   min-width: 9px;
 }
 
 .mastery-bar:has(.mastery-bar-old):has(.mastery-bar-new) .mastery-bar-new {
   background-image:
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalRight.png'),
-    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalMid.png');
-  background-position: 100% center, 0 center;
-  background-size: 9px 18px, 100% 18px;
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalMid.png'),
+    url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalRight.png');
+  background-position: 0 center, 100% center;
+  background-size: calc(100% - 9px) 18px, 9px 18px;
   min-width: 9px;
 }
 
