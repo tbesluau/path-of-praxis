@@ -864,7 +864,7 @@ export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
 }
 
 // ── Projectile mastery node effects ───────────────────────────────────────
-// Tree 0: Projectile Range (short)  Tree 1: Multiple Projectiles (full)  Tree 2-4: not yet implemented
+// Tree 0: Projectile Damage (full)  Tree 1: Multiple Projectiles (full)  Tree 2: Projectile Range (short)  Tree 3: Knockback (short)
 
 const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Projectile Damage (full tree — line nodes 0-11, key nodes 12-15)
@@ -1732,6 +1732,20 @@ export function getNodeDescription(
 }
 
 const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {  // Projectile Damage
+    0:  '+5% increased projectile damage',
+    1:  '+5% chance to hit an additional target',
+    2:  '+12% increased projectile damage',
+    3:  '+5% increased projectile damage',
+    4:  '+5% chance to hit an additional target',
+    5:  '+20% more projectile damage',
+    6:  '+5% increased projectile damage',
+    7:  '+5% chance to hit an additional target',
+    8:  '+5% chance to hit an additional target · +5% increased projectile damage · +5% increased action speed',
+    9:  '+5% increased projectile damage',
+    10: '+5% chance to hit an additional target',
+    11: '+20% chance to deal double damage · +10% increased projectile range',
+  },
   1: {  // Multiple Projectiles
     0:  '+5% chance to fire an additional projectile at 50% damage',
     1:  '+5% increased additional projectile damage',
