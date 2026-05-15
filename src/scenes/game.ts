@@ -131,48 +131,58 @@ export function createGameScene(
     return actionProgress[id]?.level ?? 1
   }
 
+  // When "Full mastery" is on, every node of every tree is treated as assigned.
+  // Effects undefined for a (tree, node) return {} from get*NodeEffect, so unused indices are harmless.
+  const ALL_TREE_NODES = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+  const ALL_NODES_5: number[][] = [ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES]
+  const ALL_NODES_4: number[][] = [ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES]
+  function masteryNodes(id: MasteryId, width: 4 | 5): number[][] {
+    if (getPrefs().fullMastery) return width === 5 ? ALL_NODES_5 : ALL_NODES_4
+    return masteryProgress[id]?.nodes ?? (width === 5 ? [[], [], [], [], []] : [[], [], [], []])
+  }
+
   function getActionBonuses(): ActionBonuses {
-    return computeActionBonuses(masteryProgress['action']?.nodes ?? [[], [], [], [], []])
+    return computeActionBonuses(masteryNodes('action', 5))
   }
 
   function getLifeBonuses(): LifeBonuses {
-    return computeLifeBonuses(masteryProgress['life']?.nodes ?? [[], [], [], [], []])
+    return computeLifeBonuses(masteryNodes('life', 5))
   }
 
   function getManaBonuses(): ManaBonuses {
-    return computeManaBonuses(masteryProgress['mana']?.nodes ?? [[], [], [], [], []])
+    return computeManaBonuses(masteryNodes('mana', 5))
   }
 
   function getFireBonuses(): FireBonuses {
-    return computeFireBonuses(masteryProgress['fire']?.nodes ?? [[], [], [], [], []])
+    return computeFireBonuses(masteryNodes('fire', 5))
   }
 
   function getEnemyBonuses(): EnemyBonuses {
-    return computeEnemyBonuses(masteryProgress['enemy']?.nodes ?? [[], [], [], [], []])
+    return computeEnemyBonuses(masteryNodes('enemy', 5))
   }
 
   function getProjectileBonuses(): ProjectileBonuses {
-    return computeProjectileBonuses(masteryProgress['projectile']?.nodes ?? [[], [], [], [], []])
+    return computeProjectileBonuses(masteryNodes('projectile', 5))
   }
 
   function getLightningBonuses(): LightningBonuses {
-    return computeLightningBonuses(masteryProgress['lightning']?.nodes ?? [[], [], [], [], []])
+    return computeLightningBonuses(masteryNodes('lightning', 5))
   }
 
   function getStrikeBonuses(): StrikeBonuses {
-    return computeStrikeBonuses(masteryProgress['strike']?.nodes ?? [[], [], [], [], []])
+    return computeStrikeBonuses(masteryNodes('strike', 5))
   }
 
   function getPhysicalBonuses(): PhysicalBonuses {
-    return computePhysicalBonuses(masteryProgress['physical']?.nodes ?? [[], [], [], [], []])
+    return computePhysicalBonuses(masteryNodes('physical', 5))
   }
 
   function getAreaBonuses(): AreaBonuses {
-    return computeAreaBonuses(masteryProgress['area']?.nodes ?? [[], [], [], [], []])
+    return computeAreaBonuses(masteryNodes('area', 5))
   }
 
   function getMovementBonuses(): MovementBonuses {
-    return computeMovementBonuses(masteryProgress['movement']?.nodes ?? [[], [], [], []])
+    return computeMovementBonuses(masteryNodes('movement', 4))
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────

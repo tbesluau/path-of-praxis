@@ -129,6 +129,13 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span class="settings-toggle-track" aria-hidden="true"></span>
           </label>
         </div>
+        <div class="modal-field">
+          <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'fullMastery')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-pref="fullMastery" ${prefs.fullMastery ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
       </div>
     `
     createIcons({ icons: { BookOpen, Plus, Minus, Crosshair } })
@@ -171,6 +178,10 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLInputElement>('[data-pref="showDpsMeter"]')!
       .addEventListener('change', (e) => {
         setPref('showDpsMeter', (e.target as HTMLInputElement).checked)
+      })
+    backdrop.querySelector<HTMLInputElement>('[data-pref="fullMastery"]')!
+      .addEventListener('change', (e) => {
+        setPref('fullMastery', (e.target as HTMLInputElement).checked)
       })
 
     const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')

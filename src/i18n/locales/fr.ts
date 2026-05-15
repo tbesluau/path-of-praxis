@@ -50,6 +50,7 @@ export const fr: TranslationSchema = {
     discord: 'Discord',
     showDamageNumbers: 'Afficher les dégâts',
     showDpsMeter: 'Compteur DPS',
+    fullMastery: 'Maîtrise complète',
     zoomLabel: 'Zoom',
   },
   guide: {
