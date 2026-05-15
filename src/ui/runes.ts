@@ -68,6 +68,7 @@ export function mountRunesModal(
   _actionId: string,
   actionLabel: string,
   actionLevel: number,
+  actionMaxLevel: number,
   runes: ActionRunes,
   onAssign: (slotIdx: number, runeId: RuneId | null) => void,
   onClose: () => void,
@@ -124,7 +125,7 @@ export function mountRunesModal(
       <div class="modal-panel runes-panel" role="dialog" aria-modal="true" aria-labelledby="runes-title">
         <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
         <h2 class="modal-title" id="runes-title">${actionLabel} Runes</h2>
-        <p class="runes-level-hint">Action Lv. ${actionLevel} — ${unlocked}/6 slots unlocked</p>
+        <p class="runes-level-hint">Action Lv. ${actionLevel} — ${unlocked}/6 slots unlocked — +${(actionMaxLevel - 1) * 10}% XP</p>
         <div class="rune-slots">${slotsHtml}</div>
       </div>
     `
