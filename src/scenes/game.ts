@@ -131,48 +131,58 @@ export function createGameScene(
     return actionProgress[id]?.level ?? 1
   }
 
+  // When "Full mastery" is on, every node of every tree is treated as assigned.
+  // Effects undefined for a (tree, node) return {} from get*NodeEffect, so unused indices are harmless.
+  const ALL_TREE_NODES = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+  const ALL_NODES_5: number[][] = [ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES]
+  const ALL_NODES_4: number[][] = [ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES, ALL_TREE_NODES]
+  function masteryNodes(id: MasteryId, width: 4 | 5): number[][] {
+    if (getPrefs().fullMastery) return width === 5 ? ALL_NODES_5 : ALL_NODES_4
+    return masteryProgress[id]?.nodes ?? (width === 5 ? [[], [], [], [], []] : [[], [], [], []])
+  }
+
   function getActionBonuses(): ActionBonuses {
-    return computeActionBonuses(masteryProgress['action']?.nodes ?? [[], [], [], [], []])
+    return computeActionBonuses(masteryNodes('action', 5))
   }
 
   function getLifeBonuses(): LifeBonuses {
-    return computeLifeBonuses(masteryProgress['life']?.nodes ?? [[], [], [], [], []])
+    return computeLifeBonuses(masteryNodes('life', 5))
   }
 
   function getManaBonuses(): ManaBonuses {
-    return computeManaBonuses(masteryProgress['mana']?.nodes ?? [[], [], [], [], []])
+    return computeManaBonuses(masteryNodes('mana', 5))
   }
 
   function getFireBonuses(): FireBonuses {
-    return computeFireBonuses(masteryProgress['fire']?.nodes ?? [[], [], [], [], []])
+    return computeFireBonuses(masteryNodes('fire', 5))
   }
 
   function getEnemyBonuses(): EnemyBonuses {
-    return computeEnemyBonuses(masteryProgress['enemy']?.nodes ?? [[], [], [], [], []])
+    return computeEnemyBonuses(masteryNodes('enemy', 5))
   }
 
   function getProjectileBonuses(): ProjectileBonuses {
-    return computeProjectileBonuses(masteryProgress['projectile']?.nodes ?? [[], [], [], [], []])
+    return computeProjectileBonuses(masteryNodes('projectile', 5))
   }
 
   function getLightningBonuses(): LightningBonuses {
-    return computeLightningBonuses(masteryProgress['lightning']?.nodes ?? [[], [], [], [], []])
+    return computeLightningBonuses(masteryNodes('lightning', 5))
   }
 
   function getStrikeBonuses(): StrikeBonuses {
-    return computeStrikeBonuses(masteryProgress['strike']?.nodes ?? [[], [], [], [], []])
+    return computeStrikeBonuses(masteryNodes('strike', 5))
   }
 
   function getPhysicalBonuses(): PhysicalBonuses {
-    return computePhysicalBonuses(masteryProgress['physical']?.nodes ?? [[], [], [], [], []])
+    return computePhysicalBonuses(masteryNodes('physical', 5))
   }
 
   function getAreaBonuses(): AreaBonuses {
-    return computeAreaBonuses(masteryProgress['area']?.nodes ?? [[], [], [], [], []])
+    return computeAreaBonuses(masteryNodes('area', 5))
   }
 
   function getMovementBonuses(): MovementBonuses {
-    return computeMovementBonuses(masteryProgress['movement']?.nodes ?? [[], [], [], []])
+    return computeMovementBonuses(masteryNodes('movement', 4))
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -469,7 +479,7 @@ export function createGameScene(
         const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
         awardXp(maxStack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
-        recordDps(maxStack.sourceActionId, actual, 'affliction')
+        recordDps(maxStack.sourceActionId, actual, 'affliction:burn')
         const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
         burnAccum.set(entityId, acc)
@@ -587,7 +597,7 @@ export function createGameScene(
         const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
         awardXp(stack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
-        recordDps(stack.sourceActionId, actual, 'affliction')
+        recordDps(stack.sourceActionId, actual, 'affliction:bleed')
         const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
         bleedAccum.set(entityId, acc)
@@ -631,7 +641,7 @@ export function createGameScene(
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(e.id)
             awardXp(tile.sourceActionId, actual * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
-            recordDps(tile.sourceActionId, actual, 'affliction')
+            recordDps(tile.sourceActionId, actual, 'affliction:groundFire')
             const acc = burnGroundAccum.get(e.id) ?? { damage: 0, timeMs: 0 }
             acc.damage += actual
             burnGroundAccum.set(e.id, acc)
@@ -1190,6 +1200,13 @@ export function createGameScene(
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
   createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull } })
 
+  const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
+    doubleAction: 'Double cast', additionalTarget: 'Bonus target', additionalProjectile: 'Extra projectile',
+    splitAction: 'Split cast', jump: 'Chain jump', tremor: 'Tremor',
+  }
+  const DPS_AFFLICTION_LABELS: Record<string, string> = {
+    'affliction:burn': 'Burn', 'affliction:bleed': 'Bleed', 'affliction:groundFire': 'Ground fire',
+  }
   function updateDpsMeter(): void {
     if (!getPrefs().showDpsMeter) { dpsMeterEl.hidden = true; return }
     const data = computeDps()
@@ -1197,20 +1214,35 @@ export function createGameScene(
     dpsMeterEl.hidden = false
 
     let maxDps = 0
-    for (const v of data.values()) maxDps = Math.max(maxDps, v.direct + v.multi + v.affliction)
+    for (const byKind of data.values()) {
+      let total = 0
+      for (const v of byKind.values()) total += v
+      maxDps = Math.max(maxDps, total)
+    }
     if (maxDps <= 0) { dpsMeterEl.hidden = true; return }
 
     const bar = (val: number): string =>
       `<div class="dps-bar" style="width:${(val / maxDps * 25).toFixed(1)}vw"></div>`
 
     let html = ''
-    for (const [actionId, v] of data) {
-      const total = v.direct + v.multi + v.affliction
+    for (const [actionId, byKind] of data) {
+      let total = 0
+      for (const v of byKind.values()) total += v
       const label = allActions.find(a => a.id === actionId)?.label ?? actionId
-      html += `<div class="dps-row dps-row--action">${bar(total)}<span class="dps-label">${label} — ${total.toFixed(1)}</span></div>`
-      if (v.direct > 0)     html += `<div class="dps-row dps-row--sub">${bar(v.direct)}<span class="dps-label dps-label--sub">Direct — ${v.direct.toFixed(1)}</span></div>`
-      if (v.multi > 0)      html += `<div class="dps-row dps-row--sub">${bar(v.multi)}<span class="dps-label dps-label--sub">Multi-action — ${v.multi.toFixed(1)}</span></div>`
-      if (v.affliction > 0) html += `<div class="dps-row dps-row--sub">${bar(v.affliction)}<span class="dps-label dps-label--sub">Affliction — ${v.affliction.toFixed(1)}</span></div>`
+      html += `<div class="dps-row dps-row--action">${bar(total)}<span class="dps-label">${label} — ${fmtDps(total)}</span></div>`
+
+      const direct = byKind.get('direct') ?? 0
+      if (direct > 0) html += `<div class="dps-row dps-row--sub">${bar(direct)}<span class="dps-label dps-label--sub">Direct — ${fmtDps(direct)}</span></div>`
+
+      for (const [kind, val] of byKind) {
+        if (!kind.startsWith('multi:') || val <= 0) continue
+        const subLabel = DPS_MULTI_LABELS[kind.slice(6) as MultiActionType] ?? kind.slice(6)
+        html += `<div class="dps-row dps-row--sub">${bar(val)}<span class="dps-label dps-label--sub">${subLabel} — ${fmtDps(val)}</span></div>`
+      }
+      for (const [kind, val] of byKind) {
+        if (!kind.startsWith('affliction:') || val <= 0) continue
+        html += `<div class="dps-row dps-row--sub">${bar(val)}<span class="dps-label dps-label--sub">${DPS_AFFLICTION_LABELS[kind] ?? kind} — ${fmtDps(val)}</span></div>`
+      }
     }
     dpsMeterEl.innerHTML = html
   }
@@ -1667,26 +1699,33 @@ export function createGameScene(
     actionId:              ActionId
     countdown:             number   // ms remaining until impact
     guaranteedAfflictions: boolean
-    isMultiAction:         boolean
+    multiActionType?:      MultiActionType
   }
   const pendingHits = new Map<string, PendingHit>()  // keyed by unique hit id (entity.id:seq)
   let hitSeq = 0
 
   const DPS_WINDOW_MS = 20_000
-  type DpsKind = 'direct' | 'multi' | 'affliction'
+  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire'
   interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
   const dpsLog: DpsEvent[] = []
   function recordDps(actionId: ActionId, dmg: number, kind: DpsKind): void {
     dpsLog.push({ t: Date.now(), actionId, dmg, kind })
   }
-  function computeDps(): Map<ActionId, { direct: number; multi: number; affliction: number }> {
+  function fmtDps(n: number): string {
+    const f = (x: number) => x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)
+    if (n >= 1e9) return f(n / 1e9) + 'b'
+    if (n >= 1e6) return f(n / 1e6) + 'm'
+    if (n >= 1e3) return f(n / 1e3) + 'k'
+    return f(n)
+  }
+  function computeDps(): Map<ActionId, Map<string, number>> {
     const cutoff = Date.now() - DPS_WINDOW_MS
     while (dpsLog.length > 0 && dpsLog[0].t < cutoff) dpsLog.shift()
-    const out = new Map<ActionId, { direct: number; multi: number; affliction: number }>()
+    const out = new Map<ActionId, Map<string, number>>()
     for (const e of dpsLog) {
-      const r = out.get(e.actionId) ?? { direct: 0, multi: 0, affliction: 0 }
-      r[e.kind] += e.dmg / (DPS_WINDOW_MS / 1000)
-      out.set(e.actionId, r)
+      let byKind = out.get(e.actionId)
+      if (!byKind) { byKind = new Map(); out.set(e.actionId, byKind) }
+      byKind.set(e.kind, (byKind.get(e.kind) ?? 0) + e.dmg / (DPS_WINDOW_MS / 1000))
     }
     return out
   }
@@ -3126,7 +3165,7 @@ export function createGameScene(
         // ── Attacks ─────────────────────────────────────────────────────────
         const damagedIds = new Set<string>()
         let playerManaSpent = false
-        let currentHitIsMulti = false  // set before each applyHit call, read inside for DPS tracking
+        let currentHitMultiType: MultiActionType | undefined = undefined  // set before each applyHit call, read inside for DPS tracking
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
         const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false): void => {
@@ -3235,7 +3274,7 @@ export function createGameScene(
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
-            recordDps(actionId, actualDamage, currentHitIsMulti ? 'multi' : 'direct')
+            recordDps(actionId, actualDamage, currentHitMultiType ? `multi:${currentHitMultiType}` : 'direct')
           }
           if (target.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1
@@ -3376,7 +3415,7 @@ export function createGameScene(
           pendingHits.delete(entityId)
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
-          currentHitIsMulti = ph.isMultiAction
+          currentHitMultiType = ph.multiActionType
           applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
           spawnPostHitVfx(ph.attacker, ph.target, ph.action)
         }
@@ -3575,7 +3614,7 @@ export function createGameScene(
               pendingHits.set(`${entity.id}:${++hitSeq}`, {
                 attacker: entity, target: v, damage: effectiveDamage,
                 action, actionId, countdown: preHitDuration,
-                guaranteedAfflictions, isMultiAction: pending !== null,
+                guaranteedAfflictions, multiActionType: pending?.type,
               })
               areaVictims.push(v)
             }
@@ -3584,7 +3623,7 @@ export function createGameScene(
             pendingHits.set(`${entity.id}:${++hitSeq}`, {
               attacker: entity, target, damage: effectiveDamage,
               action, actionId, countdown: preHitDuration,
-              guaranteedAfflictions, isMultiAction: pending !== null,
+              guaranteedAfflictions, multiActionType: pending?.type,
             })
             spawnPreHitVfx(entity, target, action, preHitDuration)
           }
