@@ -1304,7 +1304,6 @@ export function createGameScene(
   })
   enemyAutoLevelInput.addEventListener('change', () => {
     enemyProgress.autoLevel = enemyAutoLevelInput.checked
-    if (enemyProgress.autoLevel) { enemyProgress.level = enemyProgress.maxLevel; updateEnemyLevelUI() }
   })
 
   el.querySelector<HTMLButtonElement>('[data-action="toggle-enemy"]')!
@@ -1316,7 +1315,6 @@ export function createGameScene(
     while (enemyProgress.xp >= enemyMaxLevelXpNeeded(enemyProgress.maxLevel)) {
       enemyProgress.xp -= enemyMaxLevelXpNeeded(enemyProgress.maxLevel)
       enemyProgress.maxLevel++
-      if (enemyProgress.autoLevel) enemyProgress.level = enemyProgress.maxLevel
     }
     updateEnemyLevelUI()
   }
@@ -1917,8 +1915,8 @@ export function createGameScene(
     playerEntity.maxLife = computePlayerMaxLife()
     playerEntity.maxMana = computePlayerMaxMana()
 
-    // Enemy: max level persists; selected level and auto-level reset
-    enemyProgress = { ...enemyProgress, level: 1, autoLevel: false }
+    // Enemy: max level and auto-level persist; selected level resets so auto can climb back wave-by-wave
+    enemyProgress = { ...enemyProgress, level: 1 }
     updateEnemyLevelUI()
 
     // Clear any in-progress fragments immediately
@@ -2230,6 +2228,11 @@ export function createGameScene(
     if (!app) return
     waveScheduled = false
     enemySpawnTimeout = null
+
+    if (enemyProgress.autoLevel && enemyProgress.level < enemyProgress.maxLevel) {
+      enemyProgress.level++
+      updateEnemyLevelUI()
+    }
 
     const eb = getEnemyBonuses()
 
