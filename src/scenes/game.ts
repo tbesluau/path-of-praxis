@@ -1207,41 +1207,48 @@ export function createGameScene(
   const DPS_AFFLICTION_LABELS: Record<string, string> = {
     'affliction:burn': 'Burn', 'affliction:bleed': 'Bleed', 'affliction:groundFire': 'Ground fire',
   }
+  // Smoothed scale denominator so bars don't visually wobble when the top action's DPS fluctuates.
+  // Jumps up instantly to new peaks; decays toward instant max with ~2s half-life at the 200 ms tick.
+  let smoothedDpsMax = 0
   function updateDpsMeter(): void {
     if (!getPrefs().showDpsMeter) { dpsMeterEl.hidden = true; return }
     const data = computeDps()
-    if (data.size === 0) { dpsMeterEl.hidden = true; return }
+    if (data.size === 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     dpsMeterEl.hidden = false
 
-    let maxDps = 0
+    let instantMax = 0
     for (const byKind of data.values()) {
       let total = 0
       for (const v of byKind.values()) total += v
-      maxDps = Math.max(maxDps, total)
+      instantMax = Math.max(instantMax, total)
     }
-    if (maxDps <= 0) { dpsMeterEl.hidden = true; return }
+    if (instantMax <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
+    smoothedDpsMax = instantMax >= smoothedDpsMax ? instantMax : smoothedDpsMax * 0.93 + instantMax * 0.07
+    const maxDps = smoothedDpsMax
 
     const bar = (val: number): string =>
-      `<div class="dps-bar" style="width:${(val / maxDps * 25).toFixed(1)}vw"></div>`
+      `<div class="dps-bar-track"><div class="dps-bar" style="width:${(val / maxDps * 100).toFixed(1)}%"></div></div>`
+    const row = (cls: string, name: string, val: number): string =>
+      `<div class="dps-row ${cls}"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${bar(val)}</div>`
 
     let html = ''
     for (const [actionId, byKind] of data) {
       let total = 0
       for (const v of byKind.values()) total += v
       const label = allActions.find(a => a.id === actionId)?.label ?? actionId
-      html += `<div class="dps-row dps-row--action">${bar(total)}<span class="dps-label">${label} — ${fmtDps(total)}</span></div>`
+      html += row('dps-row--action', label, total)
 
       const direct = byKind.get('direct') ?? 0
-      if (direct > 0) html += `<div class="dps-row dps-row--sub">${bar(direct)}<span class="dps-label dps-label--sub">Direct — ${fmtDps(direct)}</span></div>`
+      if (direct > 0) html += row('dps-row--sub', 'Direct', direct)
 
       for (const [kind, val] of byKind) {
         if (!kind.startsWith('multi:') || val <= 0) continue
         const subLabel = DPS_MULTI_LABELS[kind.slice(6) as MultiActionType] ?? kind.slice(6)
-        html += `<div class="dps-row dps-row--sub">${bar(val)}<span class="dps-label dps-label--sub">${subLabel} — ${fmtDps(val)}</span></div>`
+        html += row('dps-row--sub', subLabel, val)
       }
       for (const [kind, val] of byKind) {
         if (!kind.startsWith('affliction:') || val <= 0) continue
-        html += `<div class="dps-row dps-row--sub">${bar(val)}<span class="dps-label dps-label--sub">${DPS_AFFLICTION_LABELS[kind] ?? kind} — ${fmtDps(val)}</span></div>`
+        html += row('dps-row--sub', DPS_AFFLICTION_LABELS[kind] ?? kind, val)
       }
     }
     dpsMeterEl.innerHTML = html
