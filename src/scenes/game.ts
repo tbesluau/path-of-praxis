@@ -1696,7 +1696,7 @@ export function createGameScene(
     doubleAction: 0, additionalTarget: 1, additionalProjectile: 2, splitAction: 3, jump: 4, tremor: 5,
   }
   const MULTI_ACTION_COOLDOWN_DIV: Record<MultiActionType, number> = {
-    doubleAction: 5, additionalTarget: 5, additionalProjectile: 5, splitAction: 5, jump: 5, tremor: 5,
+    doubleAction: 10, additionalTarget: 10, additionalProjectile: 10, splitAction: 10, jump: 10, tremor: 10,
   }
   // Cap the per-entity multi-action queue at the cooldown divisor — i.e. the number
   // of multi-action ticks that fit inside one primary cooldown. Without this, actions
