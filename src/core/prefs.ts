@@ -2,11 +2,13 @@ const STORAGE_KEY = 'pop:prefs'
 
 export interface Prefs {
   showDamageNumbers: boolean
+  showDpsMeter:      boolean
   zoomLevel:         number
 }
 
 const defaults: Prefs = {
   showDamageNumbers: true,
+  showDpsMeter:      false,
   zoomLevel:         1.0,
 }
 

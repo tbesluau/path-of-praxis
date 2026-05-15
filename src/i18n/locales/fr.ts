@@ -49,6 +49,7 @@ export const fr: TranslationSchema = {
     guide: 'Guide',
     discord: 'Discord',
     showDamageNumbers: 'Afficher les dégâts',
+    showDpsMeter: 'Compteur DPS',
     zoomLabel: 'Zoom',
   },
   guide: {
