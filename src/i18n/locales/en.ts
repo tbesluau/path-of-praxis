@@ -11,8 +11,8 @@ export interface TranslationSchema {
     legendDamageBase: string
     legendDamage: string
     legendSpeed: string
+    legendRange: string
     legendArea: string
-    legendSpecialSlot: string
     targetingTitle: string
   }
   menu: {
@@ -68,8 +68,8 @@ export const en: TranslationSchema = {
     legendDamageBase: 'Dmg base',
     legendDamage: 'Damage',
     legendSpeed: 'Speed',
+    legendRange: 'Range',
     legendArea: 'Area',
-    legendSpecialSlot: 'Effect',
     targetingTitle: 'Targeting',
   },
   menu: {

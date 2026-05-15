@@ -13,8 +13,8 @@ export const fr: TranslationSchema = {
     legendDamageBase: 'Base dégâts',
     legendDamage: 'Dégâts',
     legendSpeed: 'Vitesse',
+    legendRange: 'Portée',
     legendArea: 'Zone',
-    legendSpecialSlot: 'Effet',
     targetingTitle: 'Ciblage',
   },
   menu: {
