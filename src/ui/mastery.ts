@@ -443,7 +443,7 @@ export function mountMasteryModal(
   onAssign: (id: MasteryId, treeIdx: number, nodeIdx: number) => void,
   onReset: (id: MasteryId) => void,
   getPendingGains: () => Array<{ id: MasteryId; xpGain: number }>,
-  maxLevel: number,
+  levelsPerRebirth: number,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -470,7 +470,7 @@ export function mountMasteryModal(
         const xpGain = gainById.get(m.id) ?? 0
         let oldPct: number, gainPct: number, levelsGained: number, displayLevel: number
         if (xpGain > 0) {
-          const pv = previewMasteryGain(p.xp, p.level, xpGain, maxLevel)
+          const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth)
           oldPct = pv.oldPct; gainPct = pv.gainPct
           levelsGained = pv.levelsGained; displayLevel = pv.toLv
         } else {

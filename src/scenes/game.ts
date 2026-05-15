@@ -1670,7 +1670,7 @@ export function createGameScene(
         (id, treeIdx, nodeIdx) => { assignMasteryNode(id, treeIdx, nodeIdx) },
         id => { resetMasteryPoints(id) },
         computeMasteryGains,
-        balance.mastery.maxLevel,
+        balance.mastery.levelsPerRebirth,
       )
     })
 
@@ -2015,7 +2015,7 @@ export function createGameScene(
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
         const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-        const pv = previewMasteryGain(prog.xp, prog.level, xpGain, balance.mastery.maxLevel)
+        const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth)
         return `
           <div class="mastery-row">
             ${renderMasteryBar(pv.oldPct, pv.gainPct)}
@@ -2085,7 +2085,7 @@ export function createGameScene(
       const existing = masteryProgress[id]
       const nodes = existing?.nodes ?? defaultMasteryNodes()
       const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      const preview = previewMasteryGain(xp, level, xpGain, balance.mastery.maxLevel)
+      const preview = previewMasteryGain(xp, level, xpGain, level + balance.mastery.levelsPerRebirth)
       masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
