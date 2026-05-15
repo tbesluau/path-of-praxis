@@ -834,6 +834,28 @@ body::after {
   gap: var(--space-sm);
 }
 
+.action-trigger-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.action-trigger-title {
+  align-self: center;
+  position: relative;
+  z-index: 1;
+  margin-bottom: -10px;
+  padding: 2px 18px;
+  border: 12px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  text-align: center;
+}
+
 .action-trigger-card {
   width: 100%;
   text-align: left;
@@ -850,22 +872,6 @@ body::after {
 
 .action-trigger-card:hover {
   filter: brightness(1.1);
-}
-
-.action-trigger-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.action-trigger-label svg {
-  width: 12px;
-  height: 12px;
 }
 
 /* ── Action thumbnail (trigger card + picker) ── */

@@ -43,10 +43,6 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
 
   if (legend) {
     wrap.innerHTML = `
-      <div class="action-thumb-header">
-        <div class="action-thumb-icon"><i data-lucide="sword" aria-hidden="true"></i></div>
-        <span class="action-thumb-name">${t('game', 'legendDamageBase')}</span>
-      </div>
       <div class="action-thumb-stats">
         <span class="action-thumb-stat"><i data-lucide="sword" aria-hidden="true"></i>${t('game', 'legendDamage')}</span>
         <span class="action-thumb-stat"><i data-lucide="timer" aria-hidden="true"></i>${t('game', 'legendSpeed')}</span>
@@ -54,7 +50,6 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
         <span class="action-thumb-stat"><i data-lucide="radius" aria-hidden="true"></i>${t('game', 'legendArea')}</span>
         <span class="action-thumb-stat"><i data-lucide="test-tube" aria-hidden="true"></i>${t('game', 'legendMana')}</span>
       </div>
-      <div class="action-thumb-tags"></div>
     `
     return wrap
   }
