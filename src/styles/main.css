@@ -904,11 +904,26 @@ body::after {
   color: #fff;
 }
 
-.action-thumb-attrs {
+.action-thumb-stats {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xs);
+  gap: var(--space-sm);
+}
+
+.action-thumb-stat {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.action-thumb-stat svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
 }
 
 .action-thumb-tags {
@@ -933,50 +948,13 @@ body::after {
   height: 10px;
 }
 
-.tag--physical { background: #5a4a3a; color: #e0d0b0; }
-.tag--fire     { background: #7a2010; color: #ffc090; }
+.tag--physical  { background: #5a4a3a; color: #e0d0b0; }
+.tag--fire      { background: #7a2010; color: #ffc090; }
 .tag--lightning { background: #5a5000; color: #ffe060; }
-.tag--cold     { background: #103060; color: #a0d0ff; }
-.tag--rot      { background: #3a1060; color: #c080ff; }
-
-.action-thumb-stat {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.action-thumb-stat svg {
-  width: 12px;
-  height: 12px;
-  opacity: 0.7;
-}
-
-.action-thumb-specials {
-  display: flex;
-  gap: 6px;
-}
-
-.action-thumb-special-slot {
-  height: 20px;
-  flex: 1;
-  border-radius: 3px;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.6rem;
-  color: rgba(255, 255, 255, 0.25);
-}
-
-.action-thumb-special-slot--filled {
-  border-style: solid;
-  border-color: rgba(255, 255, 255, 0.4);
-  color: rgba(255, 255, 255, 0.85);
-  padding: 0 6px;
-}
+.tag--cold      { background: #103060; color: #a0d0ff; }
+.tag--rot       { background: #3a1060; color: #c080ff; }
+.tag--neutral   { background: #2a2a2a; color: rgba(255, 255, 255, 0.75); }
+.tag--special   { background: #4a3a10; color: #ffe0a0; }
 
 /* Legend modifier: labels instead of values */
 .action-thumbnail--legend .action-thumb-name {
@@ -988,11 +966,6 @@ body::after {
 .action-thumbnail--legend .action-thumb-stat {
   color: rgba(255, 255, 255, 0.45);
   font-size: 0.65rem;
-}
-
-.action-thumbnail--legend .action-thumb-special-slot {
-  color: rgba(255, 255, 255, 0.35);
-  border-style: dashed;
 }
 
 /* ── Action picker modal ── */

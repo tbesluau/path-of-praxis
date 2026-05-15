@@ -1,6 +1,6 @@
-import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Droplets, Timer, Crosshair } from 'lucide'
+import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight } from 'lucide'
 import type { ActionDef } from '../config/actions'
-import type { DamageEssenceTag } from '../config/masteries'
+import type { DamageEssenceTag, DamageTypeTag } from '../config/masteries'
 import { t } from '../i18n'
 
 const ESSENCE_ICON: Record<DamageEssenceTag, string> = {
@@ -21,8 +21,20 @@ const ESSENCE_CLASS: Record<DamageEssenceTag, string> = {
 
 const ESSENCE_TAGS: DamageEssenceTag[] = ['physical', 'fire', 'lightning', 'cold', 'rot']
 
+const DAMAGE_TYPE_ICON: Record<DamageTypeTag, string> = {
+  strike: 'swords',
+  projectile: 'move-right',
+  area: 'radius',
+}
+
+const DAMAGE_TYPE_TAGS: DamageTypeTag[] = ['strike', 'projectile', 'area']
+
 function isEssenceTag(tag: string): tag is DamageEssenceTag {
   return ESSENCE_TAGS.includes(tag as DamageEssenceTag)
+}
+
+function isDamageTypeTag(tag: string): tag is DamageTypeTag {
+  return DAMAGE_TYPE_TAGS.includes(tag as DamageTypeTag)
 }
 
 export function buildActionThumbnail(action: ActionDef, legend = false): HTMLElement {
@@ -35,61 +47,60 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
         <div class="action-thumb-icon"><i data-lucide="sword" aria-hidden="true"></i></div>
         <span class="action-thumb-name">${t('game', 'legendDamageBase')}</span>
       </div>
-      <div class="action-thumb-attrs">
-        <span class="action-thumb-stat"><i data-lucide="droplets" aria-hidden="true"></i>${t('game', 'legendDamage')}</span>
+      <div class="action-thumb-stats">
+        <span class="action-thumb-stat"><i data-lucide="sword" aria-hidden="true"></i>${t('game', 'legendDamage')}</span>
         <span class="action-thumb-stat"><i data-lucide="timer" aria-hidden="true"></i>${t('game', 'legendSpeed')}</span>
-        <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${t('game', 'legendArea')}</span>
+        <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${t('game', 'legendRange')}</span>
+        <span class="action-thumb-stat"><i data-lucide="radius" aria-hidden="true"></i>${t('game', 'legendArea')}</span>
       </div>
-      <div class="action-thumb-specials">
-        <span class="action-thumb-special-slot">${t('game', 'legendSpecialSlot')} 1</span>
-        <span class="action-thumb-special-slot">${t('game', 'legendSpecialSlot')} 2</span>
-        <span class="action-thumb-special-slot">${t('game', 'legendSpecialSlot')} 3</span>
-      </div>
+      <div class="action-thumb-tags"></div>
     `
     return wrap
   }
 
-  const essenceTags = action.tags.filter(isEssenceTag)
+  const tagsHtml = action.tags.map(tag => {
+    if (isEssenceTag(tag)) {
+      return `<span class="action-thumb-tag ${ESSENCE_CLASS[tag]}">
+        <i data-lucide="${ESSENCE_ICON[tag]}" aria-hidden="true"></i>${tag}
+      </span>`
+    }
+    if (isDamageTypeTag(tag)) {
+      return `<span class="action-thumb-tag tag--neutral">
+        <i data-lucide="${DAMAGE_TYPE_ICON[tag]}" aria-hidden="true"></i>${tag}
+      </span>`
+    }
+    return ''
+  }).join('')
 
-  const tagsHtml = essenceTags.length > 0
-    ? essenceTags.map(tag => `
-        <span class="action-thumb-tag ${ESSENCE_CLASS[tag]}">
-          <i data-lucide="${ESSENCE_ICON[tag]}" aria-hidden="true"></i>${tag}
-        </span>`).join('')
-    : ''
+  const specialsHtml = (action.specialTags ?? []).map(st => {
+    const val = st.value != null ? ` ${st.value}` : ''
+    return `<span class="action-thumb-tag tag--special">${st.label}${val}</span>`
+  }).join('')
 
   const speedPerSec = (1 / action.speed).toFixed(1)
+  const displayRange = action.selfTargeted ? 0 : action.range
 
   const areaHtml = action.area != null
-    ? `<span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${action.area}</span>`
+    ? `<span class="action-thumb-stat"><i data-lucide="radius" aria-hidden="true"></i>${action.area}</span>`
     : ''
-
-  const specialSlots = Array.from({ length: 3 }, (_, i) => {
-    const st = action.specialTags?.[i]
-    if (st) {
-      const val = st.value != null ? ` ${st.value}` : ''
-      return `<span class="action-thumb-special-slot action-thumb-special-slot--filled">${st.label}${val}</span>`
-    }
-    return `<span class="action-thumb-special-slot"></span>`
-  }).join('')
 
   wrap.innerHTML = `
     <div class="action-thumb-header">
       <div class="action-thumb-icon"><i data-lucide="${action.icon}" aria-hidden="true"></i></div>
       <span class="action-thumb-name">${action.label}</span>
     </div>
-    <div class="action-thumb-attrs">
-      ${tagsHtml ? `<div class="action-thumb-tags">${tagsHtml}</div>` : ''}
-      <span class="action-thumb-stat"><i data-lucide="droplets" aria-hidden="true"></i>${action.damage}</span>
+    <div class="action-thumb-stats">
+      <span class="action-thumb-stat"><i data-lucide="sword" aria-hidden="true"></i>${action.damage}</span>
       <span class="action-thumb-stat"><i data-lucide="timer" aria-hidden="true"></i>${speedPerSec}/s</span>
+      <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${displayRange}</span>
       ${areaHtml}
     </div>
-    <div class="action-thumb-specials">${specialSlots}</div>
+    <div class="action-thumb-tags">${tagsHtml}${specialsHtml}</div>
   `
   return wrap
 }
 
-const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Droplets, Timer, Crosshair }
+const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight }
 
 export function refreshActionThumbnailIcons(): void {
   createIcons({ icons: PICKER_ICONS })
