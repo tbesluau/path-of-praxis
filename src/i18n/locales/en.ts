@@ -8,7 +8,6 @@ export interface TranslationSchema {
     triggersTitle: string
     triggerAutoAction: string
     actionPickerTitle: string
-    legendDamageBase: string
     legendDamage: string
     legendSpeed: string
     legendRange: string
@@ -64,9 +63,8 @@ export const en: TranslationSchema = {
     deathRebirth: 'Rebirth',
     actionSelectTitle: 'Actions',
     triggersTitle: 'Action Triggers',
-    triggerAutoAction: 'Auto-action',
+    triggerAutoAction: 'Auto attack',
     actionPickerTitle: 'Choose action',
-    legendDamageBase: 'Dmg base',
     legendDamage: 'Damage',
     legendSpeed: 'Speed',
     legendRange: 'Range',

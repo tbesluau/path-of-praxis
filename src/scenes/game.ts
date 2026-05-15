@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Timer, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
@@ -3652,11 +3652,20 @@ function mountBattleConfigModal(
     const action = getAction(selectedActionId)
     triggerList.innerHTML = ''
 
+    const wrap = document.createElement('div')
+    wrap.className = 'action-trigger-wrap'
+
+    const title = document.createElement('div')
+    title.className = 'action-trigger-title'
+    title.textContent = t('game', 'triggerAutoAction')
+    wrap.appendChild(title)
+
     const card = document.createElement('button')
     card.className = 'action-trigger-card'
-
     card.appendChild(buildActionThumbnail(action))
-    triggerList.appendChild(card)
+    wrap.appendChild(card)
+
+    triggerList.appendChild(wrap)
 
     card.addEventListener('click', () => {
       mountActionPickerModal(
@@ -3667,18 +3676,13 @@ function mountBattleConfigModal(
           selectedActionId = id as ActionId
           onSelectAction(id as ActionId)
           renderTriggerCard()
-          refreshActionThumbnailIcons()
-          createIcons({ icons: { Timer } })
         },
         () => { /* picker closed */ },
       )
     })
 
     refreshActionThumbnailIcons()
-    createIcons({ icons: { Timer } })
   }
-
-  renderTriggerCard()
 
   const dismiss = () => { backdrop.remove(); onClose() }
   panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
@@ -3688,6 +3692,7 @@ function mountBattleConfigModal(
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
   parent.appendChild(backdrop)
+  renderTriggerCard()
   return () => backdrop.remove()
 }
 
