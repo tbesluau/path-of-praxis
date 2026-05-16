@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, Bomb, Hammer, LoaderPinwheel, CloudLightning } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
@@ -1324,7 +1324,7 @@ export function createGameScene(
   function updateActionIcon(): void {
     const action = getAction(playerActionId)
     actionIconWrap.innerHTML = `<i data-lucide="${action.icon}" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>`
-    createIcons({ icons: { Sword, Crosshair, Flame, Zap } })
+    createIcons({ icons: { Sword, Crosshair, Flame, Zap, Bomb, Hammer, LoaderPinwheel, CloudLightning } })
     refreshRuneDot()
   }
 
