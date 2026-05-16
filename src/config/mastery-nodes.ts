@@ -224,6 +224,17 @@ export interface NodeEffect {
   kiteSpeedFraction?: number              // additive fraction of effective moveSpeed used to kite (0.25 per small node)
   kiteResistance?: number                 // flat all-resistance bonus while kiting
   kiteAllowDash?: true                    // when true, dash can be used to kite (move away from enemies)
+
+  // Action mastery — ignore enemy damage mitigation (tree 0 final major)
+  actionIgnoreMitigationChance?: number   // additive %; chance for any action hit to ignore enemy resistance
+
+  // Critical Hit mastery effects
+  critChanceBaseAdd?: number              // additive percentage points; added to the action's base crit chance
+  critChanceIncrease?: number             // additive %; stacks before the 'more' multiplier
+  critChanceMore?: number                 // 'more' %; multiplicative after increased
+  critDamageIncrease?: number             // additive %; adds on top of the +100% baseline (e.g. 100 → ×3)
+  critDamageMore?: number                 // 'more' %; multiplicative after increased
+  critIgnoreMitigationChance?: number     // additive %; chance for crits specifically to ignore enemy resistance
 }
 
 export interface ActionBonuses {
@@ -244,6 +255,7 @@ export interface ActionBonuses {
   manaCostRandomReductionMax: number
   repeatNoMana: boolean
   guaranteedAfflictions: boolean
+  ignoreMitigationChance: number  // total additive %; chance for any action hit to ignore enemy resistance
 }
 
 export interface LifeBonuses {
@@ -431,7 +443,7 @@ const ACTION_EFFECTS: Partial<Record<number, TreeEffects>> = {
     8:  { actionDoubleDamageChance: 5, actionDamageIncrease: 5, actionSpeedIncrease: 5 },
     9:  { actionDamageIncrease: 5 },
     10: { actionDoubleDamageChance: 5 },
-    // 11: ignore mitigation — not yet implemented
+    11: { actionIgnoreMitigationChance: 20 },
     // 12-15: key nodes — not yet defined
   },
   1: {  // Action Speed
@@ -487,6 +499,7 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
     manaCostRandomReductionMax: 0,
     repeatNoMana: false,
     guaranteedAfflictions: false,
+    ignoreMitigationChance: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -504,8 +517,76 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
       b.manaCostReduction           += eff.actionManaCostReduction ?? 0
       b.noManaCostChance            += eff.actionNoManaCostChance ?? 0
       b.manaCostRandomReductionMax  += eff.actionManaCostRandomReductionMax ?? 0
+      b.ignoreMitigationChance      += eff.actionIgnoreMitigationChance ?? 0
       if (eff.actionRepeatNoMana)          b.repeatNoMana = true
       if (eff.actionGuaranteedAfflictions) b.guaranteedAfflictions = true
+    }
+  }
+  return b
+}
+
+// ── Critical Hit mastery node effects ─────────────────────────────────────
+// Tree 0: Critical Damage  Tree 1: Critical Chance
+
+const CRIT_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Critical Damage
+    0:  { critDamageIncrease: 10 },
+    1:  { critDamageIncrease: 10 },
+    2:  { critDamageIncrease: 20, critChanceIncrease: 10 },
+    3:  { critDamageIncrease: 10 },
+    4:  { critDamageIncrease: 10 },
+    5:  { critIgnoreMitigationChance: 20 },
+    6:  { critDamageIncrease: 10 },
+    7:  { critDamageIncrease: 10 },
+    8:  { critDamageIncrease: 20, critChanceIncrease: 10 },
+    9:  { critDamageIncrease: 10 },
+    10: { critDamageIncrease: 10 },
+    11: { critDamageMore: 20 },
+  },
+  1: {  // Critical Chance
+    0:  { critChanceIncrease: 10 },
+    1:  { critChanceIncrease: 10 },
+    2:  { critChanceIncrease: 20, critDamageIncrease: 10 },
+    3:  { critChanceIncrease: 10 },
+    4:  { critChanceIncrease: 10 },
+    5:  { critChanceBaseAdd: 3 },
+    6:  { critChanceIncrease: 10 },
+    7:  { critChanceIncrease: 10 },
+    8:  { critChanceIncrease: 20, critDamageIncrease: 10 },
+    9:  { critChanceIncrease: 10 },
+    10: { critChanceIncrease: 10 },
+    11: { critChanceMore: 20 },
+  },
+}
+
+export function getCriticalHitNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return CRIT_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export interface CriticalHitBonuses {
+  chanceBaseAdd: number     // percentage points added to the action's base crit chance
+  chanceIncrease: number    // total additive %
+  chanceMore: number        // total 'more' %
+  damageIncrease: number    // total additive %; adds to the +100% baseline
+  damageMore: number        // total 'more' %
+  ignoreMitigationChance: number  // total additive %; crits-only chance to ignore enemy resistance
+}
+
+export function computeCriticalHitBonuses(nodes: number[][]): CriticalHitBonuses {
+  const b: CriticalHitBonuses = {
+    chanceBaseAdd: 0, chanceIncrease: 0, chanceMore: 0,
+    damageIncrease: 0, damageMore: 0,
+    ignoreMitigationChance: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getCriticalHitNodeEffect(treeIdx, nodeIdx)
+      b.chanceBaseAdd          += eff.critChanceBaseAdd ?? 0
+      b.chanceIncrease         += eff.critChanceIncrease ?? 0
+      b.chanceMore             += eff.critChanceMore ?? 0
+      b.damageIncrease         += eff.critDamageIncrease ?? 0
+      b.damageMore             += eff.critDamageMore ?? 0
+      b.ignoreMitigationChance += eff.critIgnoreMitigationChance ?? 0
     }
   }
   return b
@@ -1421,7 +1502,7 @@ const ACTION_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     8:  '+5% chance for action to deal double damage · +5% increased action damage · +5% increased action speed',
     9:  '+5% increased action damage',
     10: '+5% chance for action to deal double damage',
-    11: 'Actions have 50% chance to ignore all enemy damage mitigation',
+    11: 'Action hits have 20% increased chance to ignore all enemy damage mitigation',
   },
   1: {
     0:  '+4% increased action speed',
@@ -1452,6 +1533,37 @@ const ACTION_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     3: '+10% reduced action mana cost',
     4: '+10% chance for actions to cost no mana',
     5: '+10% reduced action mana cost · +10% chance for actions to cost no mana · Repeated actions ignore mana requirement',
+  },
+}
+
+const CRIT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {  // Critical Damage
+    0:  '+10% increased critical hit damage',
+    1:  '+10% increased critical hit damage',
+    2:  '+20% increased critical hit damage · +10% increased chance to perform a critical hit',
+    3:  '+10% increased critical hit damage',
+    4:  '+10% increased critical hit damage',
+    5:  'Critical hits have +20% increased chance to ignore all enemy damage mitigation',
+    6:  '+10% increased critical hit damage',
+    7:  '+10% increased critical hit damage',
+    8:  '+20% increased critical hit damage · +10% increased chance to perform a critical hit',
+    9:  '+10% increased critical hit damage',
+    10: '+10% increased critical hit damage',
+    11: '+20% more critical hit damage',
+  },
+  1: {  // Critical Chance
+    0:  '+10% increased chance to perform a critical hit',
+    1:  '+10% increased chance to perform a critical hit',
+    2:  '+20% increased chance to perform a critical hit · +10% increased critical hit damage',
+    3:  '+10% increased chance to perform a critical hit',
+    4:  '+10% increased chance to perform a critical hit',
+    5:  '+3% base action critical hit chance',
+    6:  '+10% increased chance to perform a critical hit',
+    7:  '+10% increased chance to perform a critical hit',
+    8:  '+20% increased chance to perform a critical hit · +10% increased critical hit damage',
+    9:  '+10% increased chance to perform a critical hit',
+    10: '+10% increased chance to perform a critical hit',
+    11: '+20% more chance to perform a critical hit',
   },
 }
 
@@ -1686,6 +1798,10 @@ export function getNodeDescription(
 ): string {
   if (masteryId === 'action') {
     const desc = ACTION_DESCRIPTIONS[treeIdx]?.[nodeIdx]
+    if (desc !== undefined) return desc
+  }
+  if (masteryId === 'criticalHit') {
+    const desc = CRIT_DESCRIPTIONS[treeIdx]?.[nodeIdx]
     if (desc !== undefined) return desc
   }
   if (masteryId === 'life') {

@@ -45,7 +45,7 @@ function critChancePct(tags: ActionDef['tags']): number | null {
   return null
 }
 
-export function buildActionThumbnail(action: ActionDef, legend = false, showCritChance = false): HTMLElement {
+export function buildActionThumbnail(action: ActionDef, legend = false, showCritChance = false, critBaseAdd = 0): HTMLElement {
   const wrap = document.createElement('div')
   wrap.className = `action-thumbnail${legend ? ' action-thumbnail--legend' : ''}`
 
@@ -91,7 +91,7 @@ export function buildActionThumbnail(action: ActionDef, legend = false, showCrit
 
   const crit = showCritChance ? critChancePct(action.tags) : null
   const critHtml = crit != null
-    ? `<span class="action-thumb-stat action-thumb-stat--crit"><i data-lucide="star" aria-hidden="true"></i>${crit}%</span>`
+    ? `<span class="action-thumb-stat action-thumb-stat--crit"><i data-lucide="star" aria-hidden="true"></i>${Math.round(crit)}%${critBaseAdd > 0 ? ` + ${Math.round(critBaseAdd)}%` : ''}</span>`
     : ''
 
   wrap.innerHTML = `
@@ -125,6 +125,7 @@ export function mountActionPickerModal(
   onSelect: (actionId: string) => void,
   onClose: () => void,
   showCritChance = false,
+  critBaseAdd = 0,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop picker-backdrop'
@@ -157,7 +158,7 @@ export function mountActionPickerModal(
     const btn = document.createElement('button')
     btn.className = `action-picker-btn${action.id === currentActionId ? ' action-picker-btn--selected' : ''}`
     btn.dataset['actionId'] = action.id
-    btn.appendChild(buildActionThumbnail(action, false, showCritChance))
+    btn.appendChild(buildActionThumbnail(action, false, showCritChance, critBaseAdd))
     btn.addEventListener('click', () => {
       onSelect(action.id)
       backdrop.remove()
