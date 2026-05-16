@@ -43,6 +43,8 @@ export function mountAscentModal(
       `
     }).join('')
 
+    const arrowLeft = `${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png`
+    const arrowRight = `${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png`
     const pointsHtml = UP_SLOTS.map(slot => {
       const val = allocations[slot.key]
       const canAdd = available > 0 && val < slot.max
@@ -51,11 +53,11 @@ export function mountAscentModal(
         <div class="universe-point-row">
           <span class="universe-point-name">${slot.label}</span>
           <div class="universe-point-ctrl">
-            <button class="universe-point-btn modal-btn" data-slot="${slot.key}" data-delta="-1"
-              ${canRemove ? '' : 'disabled'}>−</button>
+            <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="-1" aria-label="Remove point"
+              ${canRemove ? '' : 'disabled'}><img class="enemy-level-arrow" src="${arrowLeft}" alt=""></button>
             <span class="universe-point-value">${val}</span>
-            <button class="universe-point-btn modal-btn" data-slot="${slot.key}" data-delta="1"
-              ${canAdd ? '' : 'disabled'}>+</button>
+            <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="1" aria-label="Add point"
+              ${canAdd ? '' : 'disabled'}><img class="enemy-level-arrow" src="${arrowRight}" alt=""></button>
           </div>
           <span class="universe-point-max">/ ${slot.max}</span>
         </div>
