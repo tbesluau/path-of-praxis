@@ -2608,8 +2608,85 @@ export function createGameScene(
         g.circle(px, py, r * 0.25)
         g.fill({ color: 0xffd060, alpha: 0.95 })
       })
+    } else if (action.id === 'hammer-slam') {
+      // Combined windup + slam: telegraph during preHitDuration, then a heavy
+      // shockwave aftermath lasting an extra ~700 ms past impact.
+      const aftermath = 700
+      const total = preHitDuration + aftermath
+      const windupFrac = preHitDuration / total
+      addVfx(total, (g, p) => {
+        g.clear()
+        if (p < windupFrac) {
+          const wp = p / windupFrac
+          const ease = wp * wp
+          // Faint outer telegraph at the full strike radius
+          g.circle(cx, cy, areaRadiusPx)
+          g.stroke({ color: 0xddaa55, width: 1.5, alpha: 0.25 + ease * 0.45 })
+          // Charge ring growing under the caster
+          g.circle(cx, cy, areaRadiusPx * (0.15 + ease * 0.35))
+          g.stroke({ color: 0xffcc66, width: 2 + ease * 4, alpha: 0.3 + ease * 0.7 })
+          // Build-up glow
+          g.circle(cx, cy, areaRadiusPx * 0.18 * (1 + ease * 0.4))
+          g.fill({ color: 0xffaa33, alpha: 0.25 + ease * 0.55 })
+          // Hammer raised above the caster: rises smoothly to ~110 px up, then crashes down at wp >= 0.85
+          const lift = wp < 0.85
+            ? -(20 + 90 * Math.sin((wp / 0.85) * (Math.PI / 2)))
+            : -(110 * Math.pow(1 - (wp - 0.85) / 0.15, 2))
+          const hx = cx, hy = cy + lift
+          // Handle
+          g.rect(hx - 2.5, hy + 4, 5, 22)
+          g.fill({ color: 0x553311, alpha: 0.9 })
+          // Head
+          const headHalfW = 14, headH = 11
+          g.rect(hx - headHalfW, hy - headH * 0.5, headHalfW * 2, headH)
+          g.fill({ color: 0x888888, alpha: 0.95 })
+          g.rect(hx - headHalfW, hy - headH * 0.5, headHalfW * 2, headH)
+          g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 })
+          // Pre-impact flash at the very end of windup
+          if (wp > 0.92) {
+            const fp = (wp - 0.92) / 0.08
+            g.circle(cx, cy, areaRadiusPx * 0.3 * fp)
+            g.fill({ color: 0xffffff, alpha: fp * 0.85 })
+          }
+        } else {
+          const sp = (p - windupFrac) / (1 - windupFrac)
+          // White impact flash (fades fast)
+          if (sp < 0.25) {
+            const fp = sp / 0.25
+            g.circle(cx, cy, areaRadiusPx * (0.4 + fp * 0.6))
+            g.fill({ color: 0xffffff, alpha: (1 - fp) * 0.85 })
+          }
+          // Primary shockwave ring expanding past the strike radius
+          const r1 = areaRadiusPx * (0.2 + sp * 1.15)
+          g.circle(cx, cy, r1)
+          g.stroke({ color: 0xffeecc, width: Math.max(1, 9 * (1 - sp)), alpha: (1 - sp) * 0.95 })
+          // Secondary shockwave trailing behind
+          const r2 = areaRadiusPx * (0.05 + sp * 0.85)
+          g.circle(cx, cy, r2)
+          g.stroke({ color: 0xcc8844, width: Math.max(1, 6 * (1 - sp)), alpha: (1 - sp) * 0.75 })
+          // Inner glow at impact
+          g.circle(cx, cy, areaRadiusPx * 0.25 * (1 - sp * 0.6))
+          g.fill({ color: 0xffaa33, alpha: (1 - sp) * 0.6 })
+          // Radial cracks
+          for (let i = 0; i < 12; i++) {
+            const a = (i / 12) * Math.PI * 2 + i * 0.27
+            const cr0 = areaRadiusPx * 0.1
+            const cr1 = areaRadiusPx * (0.4 + sp * 0.95)
+            g.moveTo(cx + Math.cos(a) * cr0, cy + Math.sin(a) * cr0)
+            g.lineTo(cx + Math.cos(a) * cr1, cy + Math.sin(a) * cr1)
+            g.stroke({ color: 0xeedfb6, width: Math.max(0.5, 2.5 * (1 - sp)), alpha: (1 - sp) * 0.85 })
+          }
+          // Dust + debris flying outward with a small hop
+          for (let i = 0; i < 18; i++) {
+            const a = (i / 18) * Math.PI * 2 + i * 0.41
+            const d = areaRadiusPx * (0.3 + sp * 1.0)
+            const yhop = -Math.sin(sp * Math.PI) * 6
+            g.circle(cx + Math.cos(a) * d, cy + Math.sin(a) * d + yhop, Math.max(0.5, 3.5 * (1 - sp)))
+            g.fill({ color: i % 3 === 0 ? 0xffffff : i % 3 === 1 ? 0xddbb88 : 0x886644, alpha: (1 - sp) * 0.85 })
+          }
+        }
+      })
     }
-    // hammer-slam: no pre-hit animation (instant impact)
   }
 
   // Post-hit VFX: spawned when damage lands, duration does not affect game timing.
@@ -2761,20 +2838,29 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'hammer-slam') {
-      addVfx(180, (g, p) => {
+      addVfx(360, (g, p) => {
         g.clear()
-        // Single fast-expanding shockwave ring with cracks.
-        g.circle(tx, ty, tr * (0.8 + p * 3))
-        g.stroke({ color: 0xffffff, width: 5 * (1 - p), alpha: (1 - p) * 0.9 })
-        g.circle(tx, ty, tr * (0.5 + p * 2.2))
-        g.stroke({ color: 0xcccccc, width: 3 * (1 - p), alpha: (1 - p) * 0.7 })
-        for (let i = 0; i < 8; i++) {
-          const a = (i / 8) * Math.PI * 2 + i * 0.3
+        // Two fast-expanding rings around the target
+        g.circle(tx, ty, tr * (0.8 + p * 3.2))
+        g.stroke({ color: 0xffffff, width: 6 * (1 - p), alpha: (1 - p) * 0.95 })
+        g.circle(tx, ty, tr * (0.5 + p * 2.4))
+        g.stroke({ color: 0xddccaa, width: 4 * (1 - p), alpha: (1 - p) * 0.8 })
+        // Radial cracks reaching well past the target's body
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + i * 0.3
           const r0 = tr * 0.4
-          const r1 = tr * (0.9 + p * 1.6)
+          const r1 = tr * (1.0 + p * 1.9)
           g.moveTo(tx + Math.cos(a) * r0, ty + Math.sin(a) * r0)
           g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
-          g.stroke({ color: 0xeeeeee, width: 2 * (1 - p), alpha: 1 - p })
+          g.stroke({ color: 0xeeeeee, width: 2.5 * (1 - p), alpha: 1 - p })
+        }
+        // Dust burst with a small hop
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + i * 0.5
+          const d = tr * (0.4 + p * 2.0)
+          const yhop = -Math.sin(p * Math.PI) * 5
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d + yhop, Math.max(0.5, 3 * (1 - p)))
+          g.fill({ color: i % 2 ? 0xddbb88 : 0xffffff, alpha: 1 - p })
         }
       })
     } else if (action.id === 'lightning-nova') {
