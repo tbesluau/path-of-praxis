@@ -77,13 +77,15 @@ export interface NodeEffect {
   fireImmolateDamageMult?: number      // multiplicative; each node multiplies self-burn dps (e.g. 0.5 = halved)
 
   // Enemy mastery effects
-  enemyExtraOneChance?: number    // additive percentage points to base "+1 enemy" wave roll
-  enemyExtraTwoChance?: number    // additive percentage points to base "+2 enemies" wave roll
-  enemyGuaranteedExtra?: number   // additive flat extra enemies per wave
-  enemyStrongChance?: number      // additive percentage points to per-enemy "strong" roll
-  enemyEliteChance?: number       // additive percentage points to "strong → elite" upgrade roll
-  enemyMinStrongCount?: number    // additive flat: at least this many enemies in a wave are strong-or-better
-  enemyMinEliteCount?: number     // additive flat: at least this many enemies in a wave are elite
+  enemyExtraOneChance?: number         // additive percentage points to base "+1 enemy" wave roll
+  enemyExtraTwoChance?: number         // additive percentage points to base "+2 enemies" wave roll
+  enemyGuaranteedExtra?: number        // additive flat extra enemies per wave
+  enemyStrongChance?: number           // additive percentage points to per-enemy "strong" roll
+  enemyEliteChance?: number            // additive percentage points to "strong → elite" upgrade roll
+  enemyMinStrongCount?: number         // additive flat: at least this many enemies in a wave are strong-or-better
+  enemyMinEliteCount?: number          // additive flat: at least this many enemies in a wave are elite
+  enemyEliteToChampionChance?: number  // additive percentage points to "elite → champion" upgrade roll
+  enemyChampionToBossChance?: number   // additive percentage points to "champion → boss" upgrade roll
 
   // Lightning mastery effects (Electrocution tree)
   lightningElectrocuteApplyChance?: number          // additive %; bonus chance to electrocute on lightning hits
@@ -390,6 +392,8 @@ export interface EnemyBonuses {
   eliteChance: number       // total additive percentage points
   minStrongCount: number    // total flat (counts strong-or-elite)
   minEliteCount: number     // total flat
+  championChance: number    // total additive percentage points (elite → champion; tree 2, requires 2 ascensions)
+  bossChance: number        // total additive percentage points (champion → boss; tree 2, requires 2 ascensions)
 }
 
 export interface MovementBonuses {
@@ -880,7 +884,7 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
 }
 
 // ── Enemy mastery node effects ─────────────────────────────────────────────
-// Tree 0: Enemy Quantity (short)  Tree 1: Enemy Quality (short)  Tree 2-4: not yet implemented
+// Tree 0: Enemy Quantity  Tree 1: Enemy Quality  Tree 2: Champions and Bosses (short)
 
 const ENEMY_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Enemy Quantity (full tree — line nodes 0-11, key nodes 12-15)
@@ -913,6 +917,15 @@ const ENEMY_EFFECTS: Partial<Record<number, TreeEffects>> = {
     11: { enemyStrongChance: 20, enemyEliteChance: 20, enemyGuaranteedExtra: 1 },
     // 12-15: key nodes — not yet defined
   },
+  2: {  // Champions and Bosses (short tree — line nodes 0-5, key nodes 12-13; requires 2 ascensions)
+    0: { enemyEliteToChampionChance: 5 },
+    1: { enemyStrongChance: 5, enemyEliteChance: 5 },
+    2: { enemyStrongChance: 5, enemyEliteChance: 5, enemyEliteToChampionChance: 5 },
+    3: { enemyEliteToChampionChance: 5 },
+    4: { enemyStrongChance: 5, enemyEliteChance: 5 },
+    5: { enemyChampionToBossChance: 1 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getEnemyNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -928,17 +941,21 @@ export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
     eliteChance: 0,
     minStrongCount: 0,
     minEliteCount: 0,
+    championChance: 0,
+    bossChance: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getEnemyNodeEffect(treeIdx, nodeIdx)
-      b.extraOneChance += eff.enemyExtraOneChance ?? 0
-      b.extraTwoChance += eff.enemyExtraTwoChance ?? 0
-      b.guaranteedExtra += eff.enemyGuaranteedExtra ?? 0
-      b.strongChance += eff.enemyStrongChance ?? 0
-      b.eliteChance += eff.enemyEliteChance ?? 0
-      b.minStrongCount += eff.enemyMinStrongCount ?? 0
-      b.minEliteCount += eff.enemyMinEliteCount ?? 0
+      b.extraOneChance              += eff.enemyExtraOneChance ?? 0
+      b.extraTwoChance              += eff.enemyExtraTwoChance ?? 0
+      b.guaranteedExtra             += eff.enemyGuaranteedExtra ?? 0
+      b.strongChance                += eff.enemyStrongChance ?? 0
+      b.eliteChance                 += eff.enemyEliteChance ?? 0
+      b.minStrongCount              += eff.enemyMinStrongCount ?? 0
+      b.minEliteCount               += eff.enemyMinEliteCount ?? 0
+      b.championChance              += eff.enemyEliteToChampionChance ?? 0
+      b.bossChance                  += eff.enemyChampionToBossChance ?? 0
     }
   }
   return b
@@ -1787,6 +1804,14 @@ const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
     9:  '+5% increased chance for an enemy to be strong',
     10: '+10% increased chance for a strong enemy to be elite',
     11: '+20% increased chance for an enemy to be strong · +20% increased chance for a strong enemy to be elite · +1 guaranteed enemy spawn',
+  },
+  2: {
+    0: '+5% chance for an elite enemy to become a champion',
+    1: '+5% increased chance for an enemy to be strong · +5% increased chance for a strong enemy to be elite',
+    2: '+5% chance for an enemy to be strong · +5% chance for a strong enemy to be elite · +5% chance for an elite to become a champion',
+    3: '+5% chance for an elite enemy to become a champion',
+    4: '+5% increased chance for an enemy to be strong · +5% increased chance for a strong enemy to be elite',
+    5: '+1% chance for a champion enemy to become a boss',
   },
 }
 

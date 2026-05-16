@@ -61,6 +61,20 @@ export const balance = {
     eliteDamageMin:  1.5,  eliteDamageMax: 2.5,
     eliteSpeedMult:  1.2,             // applied to BOTH attack speed AND move speed
     eliteXpMultiplier:  3,
+    championChance:     0,             // probability that an elite is upgraded to "champion" (mastery-only, requires 2 ascensions)
+    championLifeMin:    3,   championLifeMax:    5,
+    championDamageMin:  3,   championDamageMax:  5,
+    championResistMin: 40,   championResistMax:  70,
+    championActionSpeedMult: 2,
+    championXpMultiplier: 5,
+    championSizeMult:   1.5,
+    bossChance:         0,             // probability that a champion is upgraded to "boss" (mastery-only)
+    bossLifeMin:       12,   bossLifeMax:       15,
+    bossDamageMin:     12,   bossDamageMax:     15,
+    bossResistMin:     80,   bossResistMax:     90,
+    bossActionSpeedMult: 2,
+    bossXpMultiplier:  10,
+    bossSizeMult:       1.5,
     normalResistMin:  0,  normalResistMax: 20,  // % resist range for normal enemies (physRot and ele rolled separately)
     strongResistMin: 10,  strongResistMax: 40,  // % resist range for strong enemies
     eliteResistMin:  25,  eliteResistMax:  50,  // % resist range for elite enemies
