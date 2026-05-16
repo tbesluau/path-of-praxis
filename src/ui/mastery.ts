@@ -468,7 +468,7 @@ export function mountMasteryModal(
         const p = prog(masteryProgress, m.id)
         const pts = masteryPointsAvailable(p)
         const xpGain = gainById.get(m.id) ?? 0
-        if (p.level === 1 && p.xp === 0 && xpGain === 0) return []
+        if (m.id !== 'enemy' && p.level === 1 && p.xp === 0 && xpGain === 0) return []
         let oldPct: number, gainPct: number, levelsGained: number, displayLevel: number
         if (xpGain > 0) {
           const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth)
