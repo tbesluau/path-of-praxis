@@ -1255,7 +1255,7 @@ export function createGameScene(
     }
     dpsMeterEl.innerHTML = html
   }
-  const dpsMeterInterval = setInterval(updateDpsMeter, 200)
+  const dpsMeterInterval = setInterval(updateDpsMeter, 1000)
 
   let zoomLevel = getPrefs().zoomLevel ?? 1.0
   const topCenter = el.querySelector<HTMLElement>('.game-top-center')!
