@@ -5,7 +5,7 @@ export type DamageTypeTag    = 'area' | 'projectile' | 'strike'
 export type ActionTag = DamageEssenceTag | DamageTypeTag
 
 export type MasteryId =
-  | 'action'
+  | 'action' | 'criticalHit'
   | 'physical' | 'fire' | 'lightning'
   | 'area' | 'projectile' | 'strike'
   | 'life' | 'mana'
@@ -54,6 +54,10 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 1, label: 'Action Speed' },
         { index: 2, label: 'Trance',    short: true },
         { index: 3, label: 'Mana Cost', short: true },
+      ] },
+      { id: 'criticalHit', label: 'Critical Hit', trees: [
+        { index: 0, label: 'Critical Damage' },
+        { index: 1, label: 'Critical Chance', short: true },
       ] },
     ],
   },

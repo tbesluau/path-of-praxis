@@ -170,4 +170,12 @@ export const balance = {
     universePointMaxB:      10,
   },
 
+  // ── Critical hits ─────────────────────────────────────────────────────────
+  criticalHit: {
+    chanceProjectile: 0.05,  // 5% base chance for projectile actions
+    chanceArea:       0.03,  // 3% base chance for area actions
+    chanceStrike:     0.07,  // 7% base chance for strike actions
+    damageMultiplier: 2,     // ×2 damage on a critical hit
+  },
+
 } as const

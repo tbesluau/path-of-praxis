@@ -57,10 +57,11 @@ export interface RunProgress {
   manaXp: number
   enemyXp: number
   distancePx: number
+  critXp: number
 }
 
 export function defaultRunProgress(): RunProgress {
-  return { actionXp: {}, lifeXp: 0, manaXp: 0, enemyXp: 0, distancePx: 0 }
+  return { actionXp: {}, lifeXp: 0, manaXp: 0, enemyXp: 0, distancePx: 0, critXp: 0 }
 }
 
 export interface UniversePointAllocations {

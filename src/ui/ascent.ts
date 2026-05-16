@@ -2,7 +2,7 @@ import { balance } from '../config/balance'
 import type { UniversePointAllocations } from '../core/character'
 
 const THRESHOLDS: { count: number; label: string }[] = [
-  { count: 1, label: 'Critical strike' },
+  { count: 1, label: 'Critical hit' },
   { count: 2, label: 'Bosses' },
   { count: 3, label: 'Time-based action trigger' },
 ]
