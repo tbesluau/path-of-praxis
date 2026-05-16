@@ -177,7 +177,7 @@ export function createGameScene(
 
   function getEnemyBonuses(): EnemyBonuses {
     const nodes = masteryNodes('enemy', 5)
-    if (ascentCount < 2) nodes[2] = []
+    if (ascentCount < 2 && !getPrefs().fullMastery) nodes[2] = []
     return computeEnemyBonuses(nodes)
   }
 
