@@ -1,13 +1,14 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, Bomb, Hammer, LoaderPinwheel, CloudLightning } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, Bomb, Hammer, LoaderPinwheel, CloudLightning, ArrowUp } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
+import { mountAscentModal } from '../ui/ascent'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -100,7 +101,7 @@ export function createGameScene(
     currentLife: char?.currentLife ?? balance.player.startingLife,
     currentMana: char?.currentMana ?? balance.player.startingMana,
     radius: balance.player.radius,
-    moveSpeed: balance.player.moveSpeed,
+    moveSpeed: balance.player.moveSpeed * (1 + (char?.ascentCount ?? 0) * balance.ascent.moveSpeedPerAscent),
   })
 
   const entities: Entity[] = [playerEntity]
@@ -481,6 +482,7 @@ export function createGameScene(
         const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
         awardXp(maxStack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        awardAscentXp(actual)
         recordDps(maxStack.sourceActionId, actual, 'affliction:burn')
         const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
@@ -599,6 +601,7 @@ export function createGameScene(
         const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
         awardXp(stack.sourceActionId, actual * xpMult)
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        awardAscentXp(actual)
         recordDps(stack.sourceActionId, actual, 'affliction:bleed')
         const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
@@ -643,6 +646,7 @@ export function createGameScene(
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(e.id)
             awardXp(tile.sourceActionId, actual * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+            awardAscentXp(actual)
             recordDps(tile.sourceActionId, actual, 'affliction:groundFire')
             const acc = burnGroundAccum.get(e.id) ?? { damage: 0, timeMs: 0 }
             acc.damage += actual
@@ -799,6 +803,7 @@ export function createGameScene(
   }
 
   function awardXp(actionId: ActionId, amount: number): void {
+    amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
     const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     let { xp, level, maxLevel } = prev
     // Prestige accelerates XP gain: past peak level → faster leveling next life
@@ -863,6 +868,7 @@ export function createGameScene(
   }
 
   function awardStatXp(stat: 'life' | 'mana', amount: number): void {
+    amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
     if (stat === 'life') runLifeXp += amount
     else runManaXp += amount
     let prog = stat === 'life' ? lifeProgress : manaProgress
@@ -1072,6 +1078,11 @@ export function createGameScene(
   let playerRandomTargetId: string | null = null
   let targetingMode: TargetingMode = char?.targetingMode ?? 'nearest'
 
+  // Ascension state — persists through rebirths and across sessions
+  let ascentCount = char?.ascentCount ?? 0
+  let ascentXp    = char?.ascentXp ?? 0
+  let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
+
   // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
   let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
   let runLifeXp = char?.runProgress?.lifeXp ?? 0
@@ -1104,6 +1115,9 @@ export function createGameScene(
       masteryProgress,
       currentRunProgress(),
       actionRunes,
+      ascentCount,
+      ascentXp,
+      universePointAllocations,
     )
   }
   let playerPrevX = 0
@@ -1128,6 +1142,9 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries" style="position:relative">
           <i data-lucide="award" aria-hidden="true"></i>
           <span class="notif-dot mastery-notif-dot" hidden></span>
+        </button>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" aria-label="Ascent" hidden>
+          <i data-lucide="arrow-up" aria-hidden="true"></i>
         </button>
         <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="Enemy level">
           <span class="enemy-level-display">1 / 1</span>
@@ -1161,6 +1178,13 @@ export function createGameScene(
         </div>
         <div class="enemy-xp-bar">
           <div class="enemy-xp-bar-fill"></div>
+        </div>
+        <div class="ascent-bar-section" hidden>
+          <span class="ascent-bar-title">Ascent</span>
+          <div class="ascent-xp-bar">
+            <div class="ascent-xp-bar-fill"></div>
+          </div>
+          <button class="ascent-action-btn" data-action="ascend" hidden>Ascend to a new universe</button>
         </div>
       </div>
     </div>
@@ -1199,7 +1223,7 @@ export function createGameScene(
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
-  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull } })
+  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull, ArrowUp } })
 
   const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
     doubleAction: 'Double action', additionalTarget: 'Bonus target', additionalProjectile: 'Extra projectile',
@@ -1360,6 +1384,41 @@ export function createGameScene(
     enemyAutoLevelInput.checked = enemyProgress.autoLevel
     const xpMax = enemyMaxLevelXpNeeded(enemyProgress.maxLevel)
     enemyXpBarFill.style.width = `${Math.min(100, Math.round(enemyProgress.xp / xpMax * 100))}%`
+    updateAscentBar()
+  }
+
+  // ── Ascension helpers ──────────────────────────────────────────────────────
+
+  function ascentRequiredLevel(): number {
+    return balance.ascent.requiredEnemyLevelBase + ascentCount * balance.ascent.requiredLevelStep
+  }
+  function ascentXpNeeded(): number {
+    return Math.round(balance.ascent.xpMultiplier * enemyMaxLevelXpNeeded(ascentRequiredLevel()))
+  }
+  function isAscentUnlocked(): boolean {
+    return enemyProgress.maxLevel >= ascentRequiredLevel()
+  }
+  function updateAscentBar(): void {
+    const section = el.querySelector<HTMLElement>('.ascent-bar-section')!
+    if (!isAscentUnlocked()) { section.hidden = true; return }
+    section.hidden = false
+    const xpNeeded = ascentXpNeeded()
+    const isFull = ascentXp >= xpNeeded
+    const bar = section.querySelector<HTMLElement>('.ascent-xp-bar')!
+    const barFill = section.querySelector<HTMLElement>('.ascent-xp-bar-fill')!
+    const btn = section.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
+    bar.hidden = isFull
+    btn.hidden = !isFull
+    if (!isFull) barFill.style.width = `${(ascentXp / xpNeeded * 100).toFixed(1)}%`
+  }
+  function updateAscentButtonVisibility(): void {
+    const btn = el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
+    btn.hidden = ascentCount < 1
+  }
+  function awardAscentXp(amount: number): void {
+    if (!isAscentUnlocked()) return
+    ascentXp = Math.min(ascentXpNeeded(), ascentXp + amount)
+    updateAscentBar()
   }
 
   enemyLevelDownBtn.addEventListener('click', () => {
@@ -1380,6 +1439,7 @@ export function createGameScene(
     .addEventListener('click', () => { enemyCtrlEl.classList.toggle('is-open') })
 
   function awardEnemyXp(amount: number): void {
+    amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
     runEnemyXp += amount
     enemyProgress.xp += amount
     while (enemyProgress.xp >= enemyMaxLevelXpNeeded(enemyProgress.maxLevel)) {
@@ -1390,6 +1450,7 @@ export function createGameScene(
   }
 
   updateEnemyLevelUI()
+  updateAscentButtonVisibility()
 
   const speedPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
   const speedOptBtns = el.querySelectorAll<HTMLButtonElement>('.speed-opt')
@@ -1782,6 +1843,32 @@ export function createGameScene(
       )
     })
 
+  el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
+    .addEventListener('click', () => {
+      if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
+      modalCleanup = mountAscentModal(
+        container,
+        () => ascentCount,
+        () => ({ ...universePointAllocations }),
+        (slot, delta) => {
+          const alloc = universePointAllocations[slot] + delta
+          const maxForSlot = slot === 'placeholderA'
+            ? balance.ascent.universePointMaxA
+            : balance.ascent.universePointMaxB
+          const totalSpent = (Object.values(universePointAllocations) as number[]).reduce((s, v) => s + v, 0)
+          const available = ascentCount - totalSpent
+          if (delta > 0 && (available <= 0 || alloc > maxForSlot)) return
+          if (delta < 0 && alloc < 0) return
+          universePointAllocations = { ...universePointAllocations, [slot]: alloc }
+          persistState()
+        },
+        () => { modalCleanup = null },
+      )
+    })
+
+  el.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
+    .addEventListener('click', () => { ascend() })
+
   actionIconWrap.addEventListener('click', () => { openRunesModal() })
 
   function drawLifeBar(entity: Entity): void {
@@ -2086,6 +2173,34 @@ export function createGameScene(
     runSnapshot = captureRunSnapshot()
     persistState()
     scheduleWave(balance.wave.spawnDelay)
+  }
+
+  function ascend(): void {
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+
+    ascentCount++
+    ascentXp = 0
+    // universePointAllocations persists; action is preserved
+
+    // Deep reset: everything including prestige multipliers (unlike rebirth)
+    for (const id of Object.keys(actionProgress)) {
+      actionProgress[id] = { xp: 0, level: 1, maxLevel: 1 }
+    }
+    masteryProgress = {}
+    lifeProgress = { xp: 0, level: 1 }
+    manaProgress = { xp: 0, level: 1 }
+    enemyProgress = { xp: 0, level: 1, maxLevel: 1, autoLevel: false }
+    for (const id of Object.keys(actionRunes)) {
+      actionRunes[id] = { selected: [null, null, null, null, null, null], history: [], autoApply: true }
+    }
+
+    // Re-apply move speed with new ascentCount
+    playerEntity.moveSpeed = balance.player.moveSpeed * (1 + ascentCount * balance.ascent.moveSpeedPerAscent)
+
+    updateAscentButtonVisibility()
+    persistState()
+    rebirth()  // handles entity/physics reset, player stats, UI refresh, wave scheduling
   }
 
   function mountDeathModal(): () => void {
@@ -3361,6 +3476,7 @@ export function createGameScene(
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
             awardXp(actionId, actualDamage * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
+            awardAscentXp(actualDamage)
             spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
@@ -3648,6 +3764,10 @@ export function createGameScene(
             const dmgBonus = sb.frenzyFlatDamage + frenzyCharges * sb.frenzyDamagePerCharge
             if (dmgBonus > 0) effectiveDamage *= 1 + dmgBonus / 100
           }
+          // Ascent: independent damage multiplier per ascension
+          if (entity.role === 'player' && ascentCount > 0) {
+            effectiveDamage *= 1 + ascentCount * balance.ascent.damagePerAscent
+          }
 
           // ── Cycle duration ────────────────────────────────────────────────
           const tranceSpeedMult = (tranceActive && actionBonuses && actionBonuses.tranceActionSpeedIncrease > 0)
@@ -3681,6 +3801,10 @@ export function createGameScene(
           if (entity.role === 'player' && hasEffect('electrified')) {
             const lbSpeed = getLightningBonuses()
             if (lbSpeed.electrifyActionSpeed > 0) effectiveAttackSpeed *= 1 + lbSpeed.electrifyActionSpeed / 100
+          }
+          // Ascent: independent action speed multiplier per ascension
+          if (entity.role === 'player' && ascentCount > 0) {
+            effectiveAttackSpeed *= 1 + ascentCount * balance.ascent.actionSpeedPerAscent
           }
           const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
