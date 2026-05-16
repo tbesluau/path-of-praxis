@@ -63,6 +63,11 @@ export function defaultRunProgress(): RunProgress {
   return { actionXp: {}, lifeXp: 0, manaXp: 0, enemyXp: 0, distancePx: 0 }
 }
 
+export interface UniversePointAllocations {
+  placeholderA: number
+  placeholderB: number
+}
+
 export interface Character {
   id: string
   name: string
@@ -80,6 +85,9 @@ export interface Character {
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>
   runProgress: RunProgress
   actionRunes: Partial<Record<string, ActionRunes>>
+  ascentCount: number
+  ascentXp: number
+  universePointAllocations: UniversePointAllocations
 }
 
 interface SaveData {
@@ -114,6 +122,9 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     ) as Partial<Record<MasteryId, MasteryProgress>>,
     runProgress: c.runProgress ?? defaultRunProgress(),
     actionRunes: c.actionRunes ?? {},
+    ascentCount: c.ascentCount ?? 0,
+    ascentXp: c.ascentXp ?? 0,
+    universePointAllocations: c.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 },
   }
 }
 
@@ -173,6 +184,9 @@ export function createCharacter(name: string, actionId: string): Character {
     masteryProgress: {},
     runProgress: defaultRunProgress(),
     actionRunes: {},
+    ascentCount: 0,
+    ascentXp: 0,
+    universePointAllocations: { placeholderA: 0, placeholderB: 0 },
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -207,6 +221,9 @@ export function saveCharacterState(
   masteryProgress?: Partial<Record<MasteryId, MasteryProgress>>,
   runProgress?: RunProgress,
   actionRunes?: Partial<Record<string, ActionRunes>>,
+  ascentCount?: number,
+  ascentXp?: number,
+  universePointAllocations?: UniversePointAllocations,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -222,5 +239,8 @@ export function saveCharacterState(
   if (masteryProgress !== undefined) char.masteryProgress = masteryProgress
   if (runProgress !== undefined) char.runProgress = runProgress
   if (actionRunes !== undefined) char.actionRunes = actionRunes
+  if (ascentCount !== undefined) char.ascentCount = ascentCount
+  if (ascentXp !== undefined) char.ascentXp = ascentXp
+  if (universePointAllocations !== undefined) char.universePointAllocations = universePointAllocations
   write(data)
 }

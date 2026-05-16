@@ -157,4 +157,17 @@ export const balance = {
     xpMultiplierPerLevel: 1.1, // per-enemy-level XP multiplier: 1.1^(level-1) applied to action/life/mana XP
   },
 
+  // ── Ascension ─────────────────────────────────────────────────────────────
+  ascent: {
+    requiredEnemyLevelBase: 30,   // first ascension needs enemy maxLevel ≥ 30
+    requiredLevelStep:       5,   // each subsequent ascension raises the requirement by 5
+    xpMultiplier:            5,   // ascent bar = xpMultiplier × enemy max-level XP at required level
+    damagePerAscent:        0.10, // +10% damage per ascent count (additive, independent multiplier)
+    xpGainPerAscent:        0.10, // +10% all XP per ascent count
+    actionSpeedPerAscent:   0.05, // +5% action speed per ascent count
+    moveSpeedPerAscent:     0.05, // +5% move speed per ascent count
+    universePointMaxA:      10,
+    universePointMaxB:      10,
+  },
+
 } as const
