@@ -1,4 +1,4 @@
-import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube } from 'lucide'
+import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning } from 'lucide'
 import type { ActionDef } from '../config/actions'
 import type { DamageEssenceTag, DamageTypeTag } from '../config/masteries'
 import { t } from '../i18n'
@@ -97,7 +97,7 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
   return wrap
 }
 
-const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube }
+const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning }
 
 export function refreshActionThumbnailIcons(): void {
   createIcons({ icons: PICKER_ICONS })
