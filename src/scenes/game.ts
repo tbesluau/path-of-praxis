@@ -152,6 +152,17 @@ export function createGameScene(
     return computeCriticalHitBonuses(masteryNodes('criticalHit', 5))
   }
 
+  // Universe point A: +10% multi-action speed per point (queue cap and cooldown div scale together).
+  function multiActionSpeedMult(): number {
+    return 1 + universePointAllocations.placeholderA * 0.10
+  }
+
+  // Total additive crit-base-chance bonus, in percentage points. Combines the
+  // Critical Chance major node and the universe point B allocation (+1% each).
+  function critBaseAddTotal(): number {
+    return getCriticalHitBonuses().chanceBaseAdd + universePointAllocations.placeholderB
+  }
+
   function getLifeBonuses(): LifeBonuses {
     return computeLifeBonuses(masteryNodes('life', 5))
   }
@@ -1469,7 +1480,7 @@ export function createGameScene(
       container,
       currentId,
       ascentCount >= 1,
-      getCriticalHitBonuses().chanceBaseAdd,
+      critBaseAddTotal(),
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
@@ -2607,7 +2618,7 @@ export function createGameScene(
     const basePct = baseCritChancePct(tags)
     if (basePct <= 0) return 0
     const cb = getCriticalHitBonuses()
-    const totalPct = (basePct + cb.chanceBaseAdd) * (1 + cb.chanceIncrease / 100) * (1 + cb.chanceMore / 100)
+    const totalPct = (basePct + critBaseAddTotal()) * (1 + cb.chanceIncrease / 100) * (1 + cb.chanceMore / 100)
     return Math.min(1, totalPct / 100)
   }
 
@@ -3988,7 +3999,10 @@ export function createGameScene(
           // grows the queue faster than it drains.
           const queueMA = (type: MultiActionType, inherited: number, maTarget?: Entity, chainProjectile?: boolean, jumpedTargetIds?: Set<string>): void => {
             const arr = pendingMultiActions.get(entity.id) ?? []
-            if (arr.length >= MAX_MULTI_QUEUE) return
+            const cap = entity.role === 'player'
+              ? Math.floor(MAX_MULTI_QUEUE * multiActionSpeedMult())
+              : MAX_MULTI_QUEUE
+            if (arr.length >= cap) return
             const idx = arr.findIndex(x => MULTI_ACTION_PRIORITY[x.type] > MULTI_ACTION_PRIORITY[type])
             const entry: PendingMultiAction = { type, inheritedDamageMult: inherited, target: maTarget }
             if (chainProjectile) entry.isChainProjectile = true
@@ -4065,9 +4079,10 @@ export function createGameScene(
 
           // ── Set cooldown ──────────────────────────────────────────────────
           const nextQueue = pendingMultiActions.get(entity.id)
+          const maMult = entity.role === 'player' ? multiActionSpeedMult() : 1
           actionCooldowns.set(entity.id,
             nextQueue && nextQueue.length > 0
-              ? baseCooldown / MULTI_ACTION_COOLDOWN_DIV[nextQueue[0].type]
+              ? baseCooldown / (MULTI_ACTION_COOLDOWN_DIV[nextQueue[0].type] * maMult)
               : baseCooldown)
         }
         if (playerManaSpent) updateBars()

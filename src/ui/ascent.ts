@@ -8,8 +8,8 @@ const THRESHOLDS: { count: number; label: string }[] = [
 ]
 
 const UP_SLOTS: { key: keyof UniversePointAllocations; label: string; max: number }[] = [
-  { key: 'placeholderA', label: 'Placeholder A', max: balance.ascent.universePointMaxA },
-  { key: 'placeholderB', label: 'Placeholder B', max: balance.ascent.universePointMaxB },
+  { key: 'placeholderA', label: '10% increased multi-action speed', max: balance.ascent.universePointMaxA },
+  { key: 'placeholderB', label: '+1% base action critical hit chance', max: balance.ascent.universePointMaxB },
 ]
 
 export function mountAscentModal(
