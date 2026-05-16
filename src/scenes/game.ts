@@ -176,7 +176,9 @@ export function createGameScene(
   }
 
   function getEnemyBonuses(): EnemyBonuses {
-    return computeEnemyBonuses(masteryNodes('enemy', 5))
+    const nodes = masteryNodes('enemy', 5)
+    if (ascentCount < 2) nodes[2] = []
+    return computeEnemyBonuses(nodes)
   }
 
   function getProjectileBonuses(): ProjectileBonuses {
@@ -1826,11 +1828,15 @@ export function createGameScene(
     }
     return out
   }
-  const strongEntities = new Set<string>()    // strong-or-elite enemies (elite is a subset)
-  const eliteEntities = new Set<string>()
-  const highResistEntities = new Set<string>() // enemies with physRot or ele resist ≥ threshold
+  const strongEntities = new Set<string>()      // strong-or-better enemies
+  const eliteEntities = new Set<string>()        // elite-or-better enemies
+  const championEntities = new Set<string>()     // champion-or-boss enemies
+  const bossEntities = new Set<string>()         // boss enemies
+  const highResistEntities = new Set<string>()   // enemies with physRot or ele resist ≥ threshold
 
   function tierXpMult(entityId: string): number {
+    if (bossEntities.has(entityId)) return balance.enemyVariance.bossXpMultiplier
+    if (championEntities.has(entityId)) return balance.enemyVariance.championXpMultiplier
     if (eliteEntities.has(entityId)) return balance.enemyVariance.eliteXpMultiplier
     if (strongEntities.has(entityId)) return balance.enemyVariance.strongXpMultiplier
     return 1
@@ -1937,7 +1943,22 @@ export function createGameScene(
       c.addChild(bar)
       lifeBarGraphics.set(entity.id, bar)
       drawLifeBar(entity)
-      if (strongEntities.has(entity.id)) {
+      if (bossEntities.has(entity.id)) {
+        const halo = new Graphics()
+        halo.circle(0, 0, entity.radius + 10)
+        halo.stroke({ color: 0xff8800, width: 4, alpha: 0.8 })
+        c.addChildAt(halo, 0)
+      } else if (championEntities.has(entity.id)) {
+        const halo = new Graphics()
+        halo.circle(0, 0, entity.radius + 8)
+        halo.stroke({ color: 0xffffff, width: 3, alpha: 0.75 })
+        c.addChildAt(halo, 0)
+        const diamond = new Graphics()
+        diamond.poly([0, -7, 7, 0, 0, 7, -7, 0])
+        diamond.fill({ color: 0xffd700 })
+        diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 12))
+        c.addChild(diamond)
+      } else if (strongEntities.has(entity.id)) {
         const diamond = new Graphics()
         diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
         diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
@@ -2089,6 +2110,8 @@ export function createGameScene(
     pendingMultiActions.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
+    championEntities.delete(entity.id)
+    bossEntities.delete(entity.id)
     highResistEntities.delete(entity.id)
     enemyLevels.delete(entity.id)
     entityActions.delete(entity.id)
@@ -2502,14 +2525,24 @@ export function createGameScene(
     if (Math.random() < ext2Chance) count += 2
 
     // Determine tier per spawn (random rolls), then enforce minimum guarantees
-    type Tier = 'normal' | 'strong' | 'elite'
+    type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss'
     const ev = balance.enemyVariance
     const strongRoll = Math.min(1, ev.strongChance + eb.strongChance / 100)
     const eliteRoll = Math.min(1, ev.eliteChance + eb.eliteChance / 100)
+    const championRoll = Math.min(1, ev.championChance + eb.championChance / 100)
+    const bossRoll = Math.min(1, ev.bossChance + eb.bossChance / 100)
     const tiers: Tier[] = []
     for (let i = 0; i < count; i++) {
       if (Math.random() < strongRoll) {
-        tiers.push(Math.random() < eliteRoll ? 'elite' : 'strong')
+        if (Math.random() < eliteRoll) {
+          if (Math.random() < championRoll) {
+            tiers.push(Math.random() < bossRoll ? 'boss' : 'champion')
+          } else {
+            tiers.push('elite')
+          }
+        } else {
+          tiers.push('strong')
+        }
       } else {
         tiers.push('normal')
       }
@@ -2560,7 +2593,13 @@ export function createGameScene(
       const damageScale = enemyDamageScale()
       const lifeScale = enemyLifeScale()
       let lifeMult: number, dmgMult: number
-      if (tier === 'elite') {
+      if (tier === 'boss') {
+        lifeMult = ev.bossLifeMin      + Math.random() * (ev.bossLifeMax      - ev.bossLifeMin)
+        dmgMult  = ev.bossDamageMin    + Math.random() * (ev.bossDamageMax    - ev.bossDamageMin)
+      } else if (tier === 'champion') {
+        lifeMult = ev.championLifeMin  + Math.random() * (ev.championLifeMax  - ev.championLifeMin)
+        dmgMult  = ev.championDamageMin + Math.random() * (ev.championDamageMax - ev.championDamageMin)
+      } else if (tier === 'elite') {
         lifeMult = ev.eliteLifeMin   + Math.random() * (ev.eliteLifeMax   - ev.eliteLifeMin)
         dmgMult  = ev.eliteDamageMin + Math.random() * (ev.eliteDamageMax - ev.eliteDamageMin)
       } else if (tier === 'strong') {
@@ -2572,24 +2611,44 @@ export function createGameScene(
       }
 
       const speedScale = 1 + balance.enemyLevel.speedAddPerLevel * (enemyProgress.level - 1)
-      const moveSpeedMult = tier === 'elite' ? ev.eliteSpeedMult : 1
+      const moveSpeedMult = (tier === 'boss' || tier === 'champion') ? ev.eliteSpeedMult
+                          : tier === 'elite' ? ev.eliteSpeedMult : 1
+      const sizeMult = tier === 'boss' ? ev.bossSizeMult : tier === 'champion' ? ev.championSizeMult : 1
+      const spawnRadius = Math.round(balance.enemyA.radius * sizeMult)
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
         spawnX, spawnY,
         'enemyA',
-        balance.enemyA.radius,
+        spawnRadius,
         { moveSpeed: balance.enemyA.moveSpeed * speedScale * moveSpeedMult, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
       assignAction(enemy, randomAction().id as ActionId)
       enemy.actionDamage *= damageScale * balance.enemyA.damageMultiplier * dmgMult
-      const rMin = tier === 'elite' ? ev.eliteResistMin : tier === 'strong' ? ev.strongResistMin : ev.normalResistMin
-      const rMax = tier === 'elite' ? ev.eliteResistMax : tier === 'strong' ? ev.strongResistMax : ev.normalResistMax
+      const rMin = tier === 'boss'      ? ev.bossResistMin
+                 : tier === 'champion'  ? ev.championResistMin
+                 : tier === 'elite'     ? ev.eliteResistMin
+                 : tier === 'strong'    ? ev.strongResistMin : ev.normalResistMin
+      const rMax = tier === 'boss'      ? ev.bossResistMax
+                 : tier === 'champion'  ? ev.championResistMax
+                 : tier === 'elite'     ? ev.eliteResistMax
+                 : tier === 'strong'    ? ev.strongResistMax : ev.normalResistMax
       enemy.physRotResist = Math.round(rMin + Math.random() * (rMax - rMin))
       enemy.eleResist     = Math.round(rMin + Math.random() * (rMax - rMin))
       if (enemy.physRotResist >= ev.highResistThreshold || enemy.eleResist >= ev.highResistThreshold) {
         highResistEntities.add(enemy.id)
       }
-      if (tier === 'elite') {
+      if (tier === 'boss') {
+        enemy.actionSpeed *= ev.bossActionSpeedMult
+        bossEntities.add(enemy.id)
+        championEntities.add(enemy.id)
+        eliteEntities.add(enemy.id)
+        strongEntities.add(enemy.id)
+      } else if (tier === 'champion') {
+        enemy.actionSpeed *= ev.championActionSpeedMult
+        championEntities.add(enemy.id)
+        eliteEntities.add(enemy.id)
+        strongEntities.add(enemy.id)
+      } else if (tier === 'elite') {
         enemy.actionSpeed *= ev.eliteSpeedMult
         strongEntities.add(enemy.id)
         eliteEntities.add(enemy.id)
