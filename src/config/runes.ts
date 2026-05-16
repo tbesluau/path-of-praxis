@@ -27,7 +27,7 @@ export interface RuneBonuses {
 }
 
 export const SLOT_TYPES: RuneType[] = ['minor', 'major', 'minor', 'minor', 'major', 'key']
-export const SLOT_UNLOCK_LEVELS = [5, 10, 15, 20, 25, 30]
+export const SLOT_UNLOCK_LEVELS = [5, 10, 15, 22, 30, 40]
 
 export const allRunes: RuneDef[] = [
   { id: 'minorDmg',   type: 'minor', label: 'Damage',     desc: '+15% increased action damage' },
