@@ -1203,7 +1203,7 @@ export function createGameScene(
   createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull } })
 
   const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
-    doubleAction: 'Double cast', additionalTarget: 'Bonus target', additionalProjectile: 'Extra projectile',
+    doubleAction: 'Double action', additionalTarget: 'Bonus target', additionalProjectile: 'Extra projectile',
     splitAction: 'Split cast', jump: 'Chain jump', tremor: 'Tremor',
   }
   const DPS_AFFLICTION_LABELS: Record<string, string> = {
