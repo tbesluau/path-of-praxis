@@ -2628,20 +2628,6 @@ export function createGameScene(
           // Build-up glow
           g.circle(cx, cy, areaRadiusPx * 0.18 * (1 + ease * 0.4))
           g.fill({ color: 0xffaa33, alpha: 0.25 + ease * 0.55 })
-          // Hammer raised above the caster: rises smoothly to ~110 px up, then crashes down at wp >= 0.85
-          const lift = wp < 0.85
-            ? -(20 + 90 * Math.sin((wp / 0.85) * (Math.PI / 2)))
-            : -(110 * Math.pow(1 - (wp - 0.85) / 0.15, 2))
-          const hx = cx, hy = cy + lift
-          // Handle
-          g.rect(hx - 2.5, hy + 4, 5, 22)
-          g.fill({ color: 0x553311, alpha: 0.9 })
-          // Head
-          const headHalfW = 14, headH = 11
-          g.rect(hx - headHalfW, hy - headH * 0.5, headHalfW * 2, headH)
-          g.fill({ color: 0x888888, alpha: 0.95 })
-          g.rect(hx - headHalfW, hy - headH * 0.5, headHalfW * 2, headH)
-          g.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 })
           // Pre-impact flash at the very end of windup
           if (wp > 0.92) {
             const fp = (wp - 0.92) / 0.08
