@@ -10,7 +10,7 @@ export const balance = {
   // ── Player ──────────────────────────────────────────────────────────────
   player: {
     radius:        20,   // pixels
-    moveSpeed:     80,   // pixels per second
+    moveSpeed:    120,   // pixels per second
     maxLife:       100,
     maxMana:       100,
     startingLife:  100,  // on new character creation and after rebirth
@@ -22,14 +22,14 @@ export const balance = {
   // ── Enemy teams ─────────────────────────────────────────────────────────
   enemyA: {
     radius:           20,   // pixels
-    moveSpeed:        40,   // pixels per second
+    moveSpeed:        60,   // pixels per second
     maxLife:          50,
     damageMultiplier: 0.5,  // applied on top of the action's base damage
   },
 
   enemyB: {
     radius:           20,   // pixels
-    moveSpeed:        40,   // pixels per second
+    moveSpeed:        60,   // pixels per second
     maxLife:          50,
     damageMultiplier: 0.5,
   },

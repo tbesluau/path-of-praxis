@@ -1141,7 +1141,6 @@ export function createGameScene(
           <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
           <button class="speed-opt" data-speed="2">×2</button>
           <button class="speed-opt" data-speed="5">×5</button>
-          <button class="speed-opt" data-speed="10">×10</button>
         </div>
       </div>
     </div>
@@ -3228,7 +3227,7 @@ export function createGameScene(
 
         // ── Physics step ────────────────────────────────────────────────────
         // Substep so each Matter step stays near its design timestep (~16.7 ms),
-        // keeping integration stable at high gameSpeed (deltaMS up to ~167 ms).
+        // keeping integration stable at high gameSpeed (deltaMS up to ~83 ms at 5×).
         let physicsRemaining = ticker.deltaMS
         while (physicsRemaining > 0) {
           const step = Math.min(physicsRemaining, PHYSICS_MAX_STEP_MS)
