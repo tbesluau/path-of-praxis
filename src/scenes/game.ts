@@ -1722,8 +1722,12 @@ export function createGameScene(
   type DpsKind = 'direct' | `multi:${MultiActionType}` | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire'
   interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
   const dpsLog: DpsEvent[] = []
+  // Game-time clock — advances by ticker.deltaMS each frame (which is already
+  // scaled by app.ticker.speed = gameSpeed). Using this instead of Date.now()
+  // keeps DPS values stable across game-speed changes.
+  let gameTimeMs = 0
   function recordDps(actionId: ActionId, dmg: number, kind: DpsKind): void {
-    dpsLog.push({ t: Date.now(), actionId, dmg, kind })
+    dpsLog.push({ t: gameTimeMs, actionId, dmg, kind })
   }
   function fmtDps(n: number): string {
     const f = (x: number) => x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)
@@ -1733,7 +1737,7 @@ export function createGameScene(
     return f(n)
   }
   function computeDps(): Map<ActionId, Map<string, number>> {
-    const cutoff = Date.now() - DPS_WINDOW_MS
+    const cutoff = gameTimeMs - DPS_WINDOW_MS
     while (dpsLog.length > 0 && dpsLog[0].t < cutoff) dpsLog.shift()
     const out = new Map<ActionId, Map<string, number>>()
     for (const e of dpsLog) {
@@ -3022,6 +3026,7 @@ export function createGameScene(
       app.renderer.on('resize', () => { drawGrid(); updateCamera() })
 
       app.ticker.add((ticker) => {
+        gameTimeMs += ticker.deltaMS
         // ── Death fragment animation (always runs while ticker is active) ───
         for (let i = deathFragments.length - 1; i >= 0; i--) {
           const f = deathFragments[i]
