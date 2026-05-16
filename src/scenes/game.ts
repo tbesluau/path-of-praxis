@@ -2825,7 +2825,7 @@ export function createGameScene(
   }
 
   // Post-hit VFX: spawned when damage lands, duration does not affect game timing.
-  function spawnPostHitVfx(attacker: Entity, target: Entity, action: ActionDef): void {
+  function spawnPostHitVfx(attacker: Entity, target: Entity, action: ActionDef, multiActionType?: MultiActionType): void {
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const tr = target.radius
@@ -2973,14 +2973,15 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'hammer-slam') {
+      // Primary hammer-slam's main shockwave is rendered by spawnAreaPreHitVfx on the
+      // caster. Only emit a per-victim nova when the hit is from a tremor proc.
+      if (multiActionType !== 'tremor') return
       addVfx(360, (g, p) => {
         g.clear()
-        // Two fast-expanding rings around the target
         g.circle(tx, ty, tr * (0.8 + p * 3.2))
         g.stroke({ color: 0xffffff, width: 6 * (1 - p), alpha: (1 - p) * 0.95 })
         g.circle(tx, ty, tr * (0.5 + p * 2.4))
         g.stroke({ color: 0xddccaa, width: 4 * (1 - p), alpha: (1 - p) * 0.8 })
-        // Radial cracks reaching well past the target's body
         for (let i = 0; i < 10; i++) {
           const a = (i / 10) * Math.PI * 2 + i * 0.3
           const r0 = tr * 0.4
@@ -2989,7 +2990,6 @@ export function createGameScene(
           g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
           g.stroke({ color: 0xeeeeee, width: 2.5 * (1 - p), alpha: 1 - p })
         }
-        // Dust burst with a small hop
         for (let i = 0; i < 12; i++) {
           const a = (i / 12) * Math.PI * 2 + i * 0.5
           const d = tr * (0.4 + p * 2.0)
@@ -3669,7 +3669,7 @@ export function createGameScene(
           if (!entities.includes(ph.attacker)) continue
           currentHitMultiType = ph.multiActionType
           applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
-          spawnPostHitVfx(ph.attacker, ph.target, ph.action)
+          spawnPostHitVfx(ph.attacker, ph.target, ph.action, ph.multiActionType)
         }
 
         for (const entity of entities) {
