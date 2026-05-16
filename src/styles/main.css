@@ -1179,6 +1179,10 @@ body::after {
   opacity: 0.7;
 }
 
+.action-thumb-stat--crit {
+  color: #ffee44;
+}
+
 .action-thumb-tags {
   display: flex;
   gap: 4px;

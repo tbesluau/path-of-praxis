@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, Bomb, Hammer, LoaderPinwheel, CloudLightning, ArrowUp } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, Bomb, Hammer, LoaderPinwheel, CloudLightning, ArrowUp, Star } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations } from '../core/character'
@@ -1089,6 +1089,7 @@ export function createGameScene(
   let runManaXp = char?.runProgress?.manaXp ?? 0
   let runEnemyXp = char?.runProgress?.enemyXp ?? 0
   let runDistancePx = char?.runProgress?.distancePx ?? 0
+  let runCritXp = char?.runProgress?.critXp ?? 0
 
   function currentRunProgress(): RunProgress {
     return {
@@ -1097,6 +1098,7 @@ export function createGameScene(
       manaXp: runManaXp,
       enemyXp: runEnemyXp,
       distancePx: runDistancePx,
+      critXp: runCritXp,
     }
   }
 
@@ -1223,7 +1225,7 @@ export function createGameScene(
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
-  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull, ArrowUp } })
+  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull, ArrowUp, Star } })
 
   const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
     doubleAction: 'Double action', additionalTarget: 'Bonus target', additionalProjectile: 'Extra projectile',
@@ -1462,6 +1464,7 @@ export function createGameScene(
     modalCleanup = mountBattleConfigModal(
       container,
       currentId,
+      ascentCount >= 1,
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
@@ -2166,6 +2169,7 @@ export function createGameScene(
     runManaXp = 0
     runEnemyXp = 0
     runDistancePx = 0
+    runCritXp = 0
     dpsLog.length = 0
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
@@ -2310,6 +2314,8 @@ export function createGameScene(
       }
     }
     if (totalActionXp > 0) gainMap.set('action', totalActionXp * balance.mastery.actionXpMultiplier)
+    // criticalHit mastery: awards 2× the standard rate so it levels at half the base requirement
+    if (runCritXp > 0) gainMap.set('criticalHit', runCritXp * balance.mastery.actionXpMultiplier * 2)
     if (runLifeXp > 0) gainMap.set('life', runLifeXp)
     if (runManaXp > 0) gainMap.set('mana', runManaXp)
     const movementXp = Math.floor(runDistancePx / 50)
@@ -2583,6 +2589,31 @@ export function createGameScene(
   }
 
   // ── VFX ──────────────────────────────────────────────────────────────────
+
+  function critChanceForAction(tags: ActionTag[]): number {
+    if (tags.includes('strike')) return balance.criticalHit.chanceStrike
+    if (tags.includes('area')) return balance.criticalHit.chanceArea
+    if (tags.includes('projectile')) return balance.criticalHit.chanceProjectile
+    return 0
+  }
+
+  function spawnCritVfx(x: number, y: number, r: number): void {
+    addVfx(320, (g, p) => {
+      g.clear()
+      g.position.set(x, y)
+      const alpha = 1 - p
+      g.circle(0, 0, r + p * r * 2)
+      g.stroke({ color: 0xffee44, width: 2.5 * alpha, alpha: alpha * 0.7 })
+      for (let i = 0; i < 8; i++) {
+        const ang = (Math.PI * 2 * i) / 8
+        const inner = r * 0.3
+        const outer = r * 0.5 + p * r * 2.8
+        g.moveTo(Math.cos(ang) * inner, Math.sin(ang) * inner)
+        g.lineTo(Math.cos(ang) * outer, Math.sin(ang) * outer)
+        g.stroke({ color: 0xffee44, width: Math.max(0.5, 2 * alpha), alpha })
+      }
+    })
+  }
 
   function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void): void {
     if (!app) return
@@ -3438,6 +3469,15 @@ export function createGameScene(
             const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
+          // Critical hit (player vs enemy only)
+          let isCrit = false
+          if (attacker.role === 'player' && target.role === 'enemy') {
+            const critChance = critChanceForAction(action.tags)
+            if (critChance > 0 && Math.random() < critChance) {
+              isCrit = true
+              finalDamage *= balance.criticalHit.damageMultiplier
+            }
+          }
           // Knockback damage reduction: knocked-back enemies deal less damage to the player
           if (target.role === 'player' && attacker.role === 'enemy') {
             const kbDR = knockbackDamageReductionState.get(attacker.id)
@@ -3477,7 +3517,13 @@ export function createGameScene(
             awardXp(actionId, actualDamage * xpMult)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
             awardAscentXp(actualDamage)
-            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
+            if (isCrit) {
+              runCritXp += actualDamage
+              spawnCritVfx(target.x, target.y, target.radius)
+              spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffee44)
+            } else {
+              spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xffffff)
+            }
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
             recordDps(actionId, actualDamage, currentHitMultiType ? `multi:${currentHitMultiType}` : 'direct')
@@ -4066,6 +4112,7 @@ export function createGameScene(
 function mountBattleConfigModal(
   parent: HTMLElement,
   currentActionId: ActionId,
+  showCritChance: boolean,
   onSelectAction: (id: ActionId) => void,
   onClose: () => void,
 ): () => void {
@@ -4100,7 +4147,7 @@ function mountBattleConfigModal(
 
     const card = document.createElement('button')
     card.className = 'action-trigger-card'
-    card.appendChild(buildActionThumbnail(action))
+    card.appendChild(buildActionThumbnail(action, false, showCritChance))
     wrap.appendChild(card)
 
     triggerList.appendChild(wrap)
@@ -4116,6 +4163,7 @@ function mountBattleConfigModal(
           renderTriggerCard()
         },
         () => { /* picker closed */ },
+        showCritChance,
       )
     })
 

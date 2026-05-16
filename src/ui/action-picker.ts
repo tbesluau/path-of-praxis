@@ -1,6 +1,7 @@
-import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning } from 'lucide'
+import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star } from 'lucide'
 import type { ActionDef } from '../config/actions'
 import type { DamageEssenceTag, DamageTypeTag } from '../config/masteries'
+import { balance } from '../config/balance'
 import { t } from '../i18n'
 
 const ESSENCE_ICON: Record<DamageEssenceTag, string> = {
@@ -37,7 +38,14 @@ function isDamageTypeTag(tag: string): tag is DamageTypeTag {
   return DAMAGE_TYPE_TAGS.includes(tag as DamageTypeTag)
 }
 
-export function buildActionThumbnail(action: ActionDef, legend = false): HTMLElement {
+function critChancePct(tags: ActionDef['tags']): number | null {
+  if (tags.includes('strike')) return balance.criticalHit.chanceStrike * 100
+  if (tags.includes('area')) return balance.criticalHit.chanceArea * 100
+  if (tags.includes('projectile')) return balance.criticalHit.chanceProjectile * 100
+  return null
+}
+
+export function buildActionThumbnail(action: ActionDef, legend = false, showCritChance = false): HTMLElement {
   const wrap = document.createElement('div')
   wrap.className = `action-thumbnail${legend ? ' action-thumbnail--legend' : ''}`
 
@@ -49,6 +57,7 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
         <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${t('game', 'legendRange')}</span>
         <span class="action-thumb-stat"><i data-lucide="radius" aria-hidden="true"></i>${t('game', 'legendArea')}</span>
         <span class="action-thumb-stat"><i data-lucide="test-tube" aria-hidden="true"></i>${t('game', 'legendMana')}</span>
+        ${showCritChance ? '<span class="action-thumb-stat action-thumb-stat--crit"><i data-lucide="star" aria-hidden="true"></i>Crit</span>' : ''}
       </div>
     `
     return wrap
@@ -80,6 +89,11 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
     ? `<span class="action-thumb-stat"><i data-lucide="radius" aria-hidden="true"></i>${action.area}</span>`
     : ''
 
+  const crit = showCritChance ? critChancePct(action.tags) : null
+  const critHtml = crit != null
+    ? `<span class="action-thumb-stat action-thumb-stat--crit"><i data-lucide="star" aria-hidden="true"></i>${crit}%</span>`
+    : ''
+
   wrap.innerHTML = `
     <div class="action-thumb-header">
       <div class="action-thumb-icon"><i data-lucide="${action.icon}" aria-hidden="true"></i></div>
@@ -91,13 +105,14 @@ export function buildActionThumbnail(action: ActionDef, legend = false): HTMLEle
       <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${displayRange}</span>
       ${areaHtml}
       <span class="action-thumb-stat"><i data-lucide="test-tube" aria-hidden="true"></i>${action.manaCost}</span>
+      ${critHtml}
     </div>
     <div class="action-thumb-tags">${tagsHtml}${specialsHtml}</div>
   `
   return wrap
 }
 
-const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning }
+const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star }
 
 export function refreshActionThumbnailIcons(): void {
   createIcons({ icons: PICKER_ICONS })
@@ -109,6 +124,7 @@ export function mountActionPickerModal(
   currentActionId: string,
   onSelect: (actionId: string) => void,
   onClose: () => void,
+  showCritChance = false,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop picker-backdrop'
@@ -133,6 +149,7 @@ export function mountActionPickerModal(
   legendWrap.appendChild(buildActionThumbnail(
     { id: '__legend__', label: '', icon: 'sword', iconSystem: 'lucide', range: 0, damage: 0, speed: 1, manaCost: 0, tags: [] },
     true,
+    showCritChance,
   ))
   list.appendChild(legendWrap)
 
@@ -140,7 +157,7 @@ export function mountActionPickerModal(
     const btn = document.createElement('button')
     btn.className = `action-picker-btn${action.id === currentActionId ? ' action-picker-btn--selected' : ''}`
     btn.dataset['actionId'] = action.id
-    btn.appendChild(buildActionThumbnail(action))
+    btn.appendChild(buildActionThumbnail(action, false, showCritChance))
     btn.addEventListener('click', () => {
       onSelect(action.id)
       backdrop.remove()
