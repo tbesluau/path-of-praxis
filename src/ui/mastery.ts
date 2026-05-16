@@ -461,14 +461,23 @@ export function mountMasteryModal(
   let subCleanup: (() => void) | null = null
   function closeSub(): void { if (subCleanup) { subCleanup(); subCleanup = null } }
 
-  function buildRows(): void {
+  interface RowState {
+    oldPct: number
+    gainPct: number
+    levelsGained: number
+    displayLevel: number
+    pts: number
+  }
+
+  function computeVisibleRows(): Array<{ catLabel: string; id: MasteryId; label: string; state: RowState }> {
     const gainById = new Map(getPendingGains().map(g => [g.id, g.xpGain]))
-    categoriesEl.innerHTML = masteryCategories.flatMap(cat => {
-      const rows = cat.masteries.flatMap(m => {
+    const out: Array<{ catLabel: string; id: MasteryId; label: string; state: RowState }> = []
+    for (const cat of masteryCategories) {
+      for (const m of cat.masteries) {
         const p = prog(masteryProgress, m.id)
         const pts = masteryPointsAvailable(p)
         const xpGain = gainById.get(m.id) ?? 0
-        if (m.id !== 'enemy' && p.level === 1 && p.xp === 0 && xpGain === 0) return []
+        if (m.id !== 'enemy' && p.level === 1 && p.xp === 0 && xpGain === 0) continue
         let oldPct: number, gainPct: number, levelsGained: number, displayLevel: number
         if (xpGain > 0) {
           const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth)
@@ -478,47 +487,105 @@ export function mountMasteryModal(
           oldPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
           gainPct = 0; levelsGained = 0; displayLevel = p.level
         }
-        return [`
-          <div class="mastery-row">
-            <button class="mastery-name-btn" data-mastery="${m.id}">
-              ${m.label}${pts > 0 ? '<span class="notif-dot"></span>' : ''}
-            </button>
-            ${renderMasteryBar(oldPct, gainPct)}
-            <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${displayLevel}${pts > 0 ? ` · <span class="mastery-pts">${pts}pt</span>` : ''}</span>
-            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
-          </div>`]
-      })
-      if (rows.length === 0) return []
-      return [`
-        <div class="mastery-category">
-          <div class="mastery-category-label">${cat.label}</div>
-          ${rows.join('')}
-        </div>`]
-    }).join('')
+        out.push({ catLabel: cat.label, id: m.id, label: m.label, state: { oldPct, gainPct, levelsGained, displayLevel, pts } })
+      }
+    }
+    return out
+  }
 
-    // Wire mastery-name buttons (open tree modal)
-    categoriesEl.querySelectorAll<HTMLButtonElement>('.mastery-name-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset['mastery'] as MasteryId
-        const def = allMasteries.find(m => m.id === id)!
-        closeSub()
-        // The tree modal stays open across assigns/resets, so we must NOT clear
-        // subCleanup in those callbacks — only when the tree modal itself closes.
-        subCleanup = mountMasteryTreeModal(
-          parent, def, masteryProgress,
-          (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
-          () => { onReset(id); buildRows() },
-          () => { subCleanup = null },
-        )
-      })
+  function applyRowState(rowEl: HTMLElement, label: string, s: RowState): void {
+    const btnLabel = rowEl.querySelector<HTMLElement>('.mastery-name-label')!
+    btnLabel.textContent = label
+    const dot = rowEl.querySelector<HTMLElement>('.mastery-name-btn .notif-dot')!
+    dot.hidden = s.pts === 0
+    const barWrap = rowEl.querySelector<HTMLElement>('.mastery-bar-wrap')!
+    barWrap.innerHTML = renderMasteryBar(s.oldPct, s.gainPct)
+    const levelEl = rowEl.querySelector<HTMLElement>('.mastery-level')!
+    levelEl.className = `mastery-level${s.levelsGained > 0 ? ' mastery-level--gain' : ''}`
+    levelEl.innerHTML = `Lv.${s.displayLevel}${s.pts > 0 ? ` · <span class="mastery-pts">${s.pts}pt</span>` : ''}`
+    const badge = rowEl.querySelector<HTMLElement>('.mastery-gain-badge')!
+    if (s.levelsGained > 0) { badge.textContent = `+${s.levelsGained}`; badge.hidden = false }
+    else { badge.hidden = true }
+  }
+
+  function wireRowButton(rowEl: HTMLElement): void {
+    const btn = rowEl.querySelector<HTMLButtonElement>('.mastery-name-btn')!
+    btn.addEventListener('click', () => {
+      const id = btn.dataset['mastery'] as MasteryId
+      const def = allMasteries.find(m => m.id === id)!
+      closeSub()
+      // The tree modal stays open across assigns/resets, so we must NOT clear
+      // subCleanup in those callbacks — only when the tree modal itself closes.
+      subCleanup = mountMasteryTreeModal(
+        parent, def, masteryProgress,
+        (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
+        () => { onReset(id); buildRows() },
+        () => { subCleanup = null },
+      )
     })
+  }
+
+  // Full rebuild — replaces all category DOM. Triggered on first mount and when
+  // the visible-mastery set changes (a new mastery becomes eligible).
+  function buildRows(): void {
+    const visible = computeVisibleRows()
+    const byCategory = new Map<string, typeof visible>()
+    for (const r of visible) {
+      const list = byCategory.get(r.catLabel) ?? []
+      list.push(r)
+      byCategory.set(r.catLabel, list)
+    }
+
+    categoriesEl.innerHTML = ''
+    for (const [catLabel, rows] of byCategory) {
+      const catEl = document.createElement('div')
+      catEl.className = 'mastery-category'
+      const labelEl = document.createElement('div')
+      labelEl.className = 'mastery-category-label'
+      labelEl.textContent = catLabel
+      catEl.appendChild(labelEl)
+      for (const r of rows) {
+        const rowEl = document.createElement('div')
+        rowEl.className = 'mastery-row'
+        rowEl.dataset['masteryId'] = r.id
+        rowEl.innerHTML = `
+          <button class="mastery-name-btn" data-mastery="${r.id}">
+            <span class="mastery-name-label"></span>
+            <span class="notif-dot" hidden></span>
+          </button>
+          <div class="mastery-bar-wrap"></div>
+          <span class="mastery-level"></span>
+          <span class="mastery-gain-badge" hidden></span>
+        `
+        applyRowState(rowEl, r.label, r.state)
+        wireRowButton(rowEl)
+        catEl.appendChild(rowEl)
+      }
+      categoriesEl.appendChild(catEl)
+    }
+  }
+
+  // In-place refresh — only touches text/bar widths/hidden state, preserves
+  // existing buttons (and their click handlers) so a click in flight isn't
+  // dropped when the interval fires between mousedown and mouseup.
+  function refreshRows(): void {
+    const visible = computeVisibleRows()
+    const newIds = visible.map(r => r.id)
+    const currentRowEls = Array.from(categoriesEl.querySelectorAll<HTMLElement>('[data-mastery-id]'))
+    const currentIds = currentRowEls.map(el => el.dataset['masteryId'] as MasteryId)
+    const sameStructure = currentIds.length === newIds.length
+      && currentIds.every((id, i) => id === newIds[i])
+    if (!sameStructure) { buildRows(); return }
+    for (let i = 0; i < visible.length; i++) {
+      applyRowState(currentRowEls[i], visible[i].label, visible[i].state)
+    }
   }
 
   buildRows()
   // Keep the gain preview fresh while the modal is open: XP keeps accruing
   // in the background, so refresh every 500 ms unless a sub-modal is open
   // (its own state is independent of these top-level rows).
-  const refreshTimer = window.setInterval(() => { if (!subCleanup) buildRows() }, 500)
+  const refreshTimer = window.setInterval(() => { if (!subCleanup) refreshRows() }, 500)
 
   const dismiss = (): void => { window.clearInterval(refreshTimer); closeSub(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
