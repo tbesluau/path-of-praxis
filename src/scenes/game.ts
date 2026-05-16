@@ -1243,14 +1243,13 @@ export function createGameScene(
       const direct = byKind.get('direct') ?? 0
       if (direct > 0) html += row('dps-row--sub', 'Direct', direct)
 
-      for (const [kind, val] of byKind) {
-        if (!kind.startsWith('multi:') || val <= 0) continue
-        const subLabel = DPS_MULTI_LABELS[kind.slice(6) as MultiActionType] ?? kind.slice(6)
-        html += row('dps-row--sub', subLabel, val)
+      for (const type of Object.keys(DPS_MULTI_LABELS) as MultiActionType[]) {
+        const val = byKind.get(`multi:${type}`) ?? 0
+        if (val > 0) html += row('dps-row--sub', DPS_MULTI_LABELS[type], val)
       }
-      for (const [kind, val] of byKind) {
-        if (!kind.startsWith('affliction:') || val <= 0) continue
-        html += row('dps-row--sub', DPS_AFFLICTION_LABELS[kind] ?? kind, val)
+      for (const key of Object.keys(DPS_AFFLICTION_LABELS)) {
+        const val = byKind.get(key) ?? 0
+        if (val > 0) html += row('dps-row--sub', DPS_AFFLICTION_LABELS[key], val)
       }
     }
     dpsMeterEl.innerHTML = html
