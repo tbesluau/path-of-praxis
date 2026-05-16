@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
@@ -146,6 +146,10 @@ export function createGameScene(
 
   function getActionBonuses(): ActionBonuses {
     return computeActionBonuses(masteryNodes('action', 5))
+  }
+
+  function getCriticalHitBonuses(): CriticalHitBonuses {
+    return computeCriticalHitBonuses(masteryNodes('criticalHit', 5))
   }
 
   function getLifeBonuses(): LifeBonuses {
@@ -1465,6 +1469,7 @@ export function createGameScene(
       container,
       currentId,
       ascentCount >= 1,
+      getCriticalHitBonuses().chanceBaseAdd,
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
@@ -2590,11 +2595,25 @@ export function createGameScene(
 
   // ── VFX ──────────────────────────────────────────────────────────────────
 
-  function critChanceForAction(tags: ActionTag[]): number {
-    if (tags.includes('strike')) return balance.criticalHit.chanceStrike
-    if (tags.includes('area')) return balance.criticalHit.chanceArea
-    if (tags.includes('projectile')) return balance.criticalHit.chanceProjectile
+  // Returns the action's base crit chance as a 0..100 percentage, before mastery scaling.
+  function baseCritChancePct(tags: ActionTag[]): number {
+    if (tags.includes('strike')) return balance.criticalHit.chanceStrike * 100
+    if (tags.includes('area')) return balance.criticalHit.chanceArea * 100
+    if (tags.includes('projectile')) return balance.criticalHit.chanceProjectile * 100
     return 0
+  }
+
+  function critChanceForAction(tags: ActionTag[]): number {
+    const basePct = baseCritChancePct(tags)
+    if (basePct <= 0) return 0
+    const cb = getCriticalHitBonuses()
+    const totalPct = (basePct + cb.chanceBaseAdd) * (1 + cb.chanceIncrease / 100) * (1 + cb.chanceMore / 100)
+    return Math.min(1, totalPct / 100)
+  }
+
+  function critDamageMultiplier(): number {
+    const cb = getCriticalHitBonuses()
+    return (balance.criticalHit.damageMultiplier + cb.damageIncrease / 100) * (1 + cb.damageMore / 100)
   }
 
   function spawnCritVfx(x: number, y: number, r: number): void {
@@ -3456,8 +3475,21 @@ export function createGameScene(
             const totalDmgTaken = balance.effects.electrocutionBaseDamageTakenPct + lbElec.electrocuteDamageTakenIncrease
             finalDamage *= 1 + totalDmgTaken / 100
           }
-          // Enemy resistance: last calculation before applying the hit
-          if (target.role === 'enemy') {
+          // Critical hit + ignore-mitigation rolls (player vs enemy only).
+          // Rolled BEFORE the resistance multiplier so we can skip it on ignore.
+          let isCrit = false
+          let ignoreMitigation = false
+          if (attacker.role === 'player' && target.role === 'enemy') {
+            const critChance = critChanceForAction(action.tags)
+            if (critChance > 0 && Math.random() < critChance) isCrit = true
+            const ab = getActionBonuses()
+            const cb = getCriticalHitBonuses()
+            const ignoreChance = ab.ignoreMitigationChance + (isCrit ? cb.ignoreMitigationChance : 0)
+            if (ignoreChance > 0 && Math.random() * 100 < ignoreChance) ignoreMitigation = true
+          }
+          // Enemy resistance: last damage-mitigation step before applying the hit.
+          // Skipped when ignoreMitigation rolled true above.
+          if (target.role === 'enemy' && !ignoreMitigation) {
             let physRotR = 0
             let eleR = 0
             if (action.tags.includes('physical') || action.tags.includes('rot')) physRotR = target.physRotResist ?? 0
@@ -3469,15 +3501,8 @@ export function createGameScene(
             const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
-          // Critical hit (player vs enemy only)
-          let isCrit = false
-          if (attacker.role === 'player' && target.role === 'enemy') {
-            const critChance = critChanceForAction(action.tags)
-            if (critChance > 0 && Math.random() < critChance) {
-              isCrit = true
-              finalDamage *= balance.criticalHit.damageMultiplier
-            }
-          }
+          // Apply crit damage multiplier after resistance (commutative, but reads more naturally here).
+          if (isCrit) finalDamage *= critDamageMultiplier()
           // Knockback damage reduction: knocked-back enemies deal less damage to the player
           if (target.role === 'player' && attacker.role === 'enemy') {
             const kbDR = knockbackDamageReductionState.get(attacker.id)
@@ -4113,6 +4138,7 @@ function mountBattleConfigModal(
   parent: HTMLElement,
   currentActionId: ActionId,
   showCritChance: boolean,
+  critBaseAdd: number,
   onSelectAction: (id: ActionId) => void,
   onClose: () => void,
 ): () => void {
@@ -4147,7 +4173,7 @@ function mountBattleConfigModal(
 
     const card = document.createElement('button')
     card.className = 'action-trigger-card'
-    card.appendChild(buildActionThumbnail(action, false, showCritChance))
+    card.appendChild(buildActionThumbnail(action, false, showCritChance, critBaseAdd))
     wrap.appendChild(card)
 
     triggerList.appendChild(wrap)
@@ -4164,6 +4190,7 @@ function mountBattleConfigModal(
         },
         () => { /* picker closed */ },
         showCritChance,
+        critBaseAdd,
       )
     })
 

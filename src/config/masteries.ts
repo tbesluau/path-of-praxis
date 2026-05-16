@@ -57,7 +57,7 @@ export const masteryCategories: MasteryCategoryDef[] = [
       ] },
       { id: 'criticalHit', label: 'Critical Hit', trees: [
         { index: 0, label: 'Critical Damage' },
-        { index: 1, label: 'Critical Chance', short: true },
+        { index: 1, label: 'Critical Chance' },
       ] },
     ],
   },
