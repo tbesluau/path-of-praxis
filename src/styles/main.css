@@ -1129,6 +1129,18 @@ body::after {
   gap: 6px;
 }
 
+.action-thumbnail--empty {
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-thumb-empty-label {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: rgba(26, 10, 2, 0.45);
+}
+
 .action-thumb-header {
   display: flex;
   align-items: center;
