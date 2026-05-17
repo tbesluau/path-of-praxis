@@ -149,7 +149,6 @@ function mountNewCharacterModal(
         <div class="new-char-action-slot"></div>
       </div>
       <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
         <button class="modal-btn modal-btn--primary" data-action="create" disabled>${t('character', 'create')}</button>
       </div>
     </div>
@@ -160,13 +159,19 @@ function mountNewCharacterModal(
   const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
   const createBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="create"]')!
   const actionSlot = backdrop.querySelector<HTMLElement>('.new-char-action-slot')!
-  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', onClose)
-  const cancelBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
   const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
 
   let selectedActionId: ActionId | null = null
   let pickerCleanup: (() => void) | null = null
+
+  function dismiss(): void {
+    if (pickerCleanup) { pickerCleanup(); pickerCleanup = null }
+    backdrop.remove()
+    onClose()
+  }
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', dismiss)
 
   function syncCreateBtn(): void {
     const trimmed = input.value.trim()
@@ -209,13 +214,11 @@ function mountNewCharacterModal(
     if (!createBtn.disabled) onCreate(input.value.trim(), selectedActionId!)
   })
 
-  cancelBtn.addEventListener('click', onClose)
-
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) onClose()
+    if (e.target === backdrop) dismiss()
   })
 
-  return () => { if (pickerCleanup) pickerCleanup(); backdrop.remove() }
+  return dismiss
 }
 
 function mountLoadCharacterModal(
