@@ -1,7 +1,8 @@
-import { createIcons, Play, FolderOpen, Trophy, Trash2, Sword, Crosshair, Flame, Zap } from 'lucide'
+import { createIcons, Play, FolderOpen, Trophy, Trash2 } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import { mountSettingsButton } from '../ui/settings'
+import { buildActionThumbnail, refreshActionThumbnailIcons, mountActionPickerModal } from '../ui/action-picker'
 import type { SceneId } from '../core/router'
 import {
   getCharacters,
@@ -11,7 +12,7 @@ import {
   deleteCharacter,
   MAX_SLOTS,
 } from '../core/character'
-import { allActions, type ActionId, type ActionDef } from '../config/actions'
+import { allActions, type ActionId } from '../config/actions'
 
 interface Particle {
   x: number
@@ -125,16 +126,6 @@ function mountNewCharacterModal(
   parent: HTMLElement,
   { onClose, onCreate }: { onClose: () => void; onCreate: (name: string, actionId: ActionId) => void },
 ): () => void {
-  const buildCards = (actions: ActionDef[], selected: ActionId) =>
-    actions.map(a => {
-      const iconAttr = `data-lucide="${a.icon}"`
-      return `
-      <button class="action-card${a.id === selected ? ' action-card--selected' : ''}" data-action-id="${a.id}">
-        <i ${iconAttr} aria-hidden="true"></i>
-        <span class="action-card-name">${a.label}</span>
-      </button>`
-    }).join('')
-
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
@@ -155,7 +146,7 @@ function mountNewCharacterModal(
       </div>
       <div class="modal-field">
         <span class="modal-label">${t('game', 'actionSelectTitle')}</span>
-        <div class="action-grid">${buildCards(allActions, 'sword')}</div>
+        <div class="new-char-action-slot"></div>
       </div>
       <div class="modal-actions">
         <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('character', 'cancel')}</button>
@@ -165,26 +156,38 @@ function mountNewCharacterModal(
   `
 
   parent.appendChild(backdrop)
-  createIcons({ icons: { Sword, Crosshair, Flame, Zap } })
 
   const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
   const createBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="create"]')!
+  const actionSlot = backdrop.querySelector<HTMLElement>('.new-char-action-slot')!
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', onClose)
   const cancelBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
   const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
 
   let selectedActionId: ActionId = 'sword'
+  let pickerCleanup: (() => void) | null = null
 
-  backdrop.querySelectorAll<HTMLButtonElement>('[data-action-id]').forEach(card =>
-    card.addEventListener('click', () => {
-      selectedActionId = card.dataset.actionId as ActionId
-      backdrop.querySelectorAll('[data-action-id]').forEach(c =>
-        c.classList.toggle('action-card--selected', c === card),
+  function renderThumbnail(): void {
+    actionSlot.innerHTML = ''
+    const btn = document.createElement('button')
+    btn.className = 'action-trigger-card'
+    btn.appendChild(buildActionThumbnail(allActions.find(a => a.id === selectedActionId)!))
+    actionSlot.appendChild(btn)
+    refreshActionThumbnailIcons()
+    btn.addEventListener('click', () => {
+      if (pickerCleanup) { pickerCleanup(); pickerCleanup = null }
+      pickerCleanup = mountActionPickerModal(
+        parent,
+        allActions,
+        selectedActionId,
+        (id) => { selectedActionId = id as ActionId; renderThumbnail() },
+        () => { pickerCleanup = null },
       )
-    }),
-  )
+    })
+  }
 
+  renderThumbnail()
   input.focus()
 
   input.addEventListener('input', () => {
@@ -210,7 +213,7 @@ function mountNewCharacterModal(
     if (e.target === backdrop) onClose()
   })
 
-  return () => backdrop.remove()
+  return () => { if (pickerCleanup) pickerCleanup(); backdrop.remove() }
 }
 
 function mountLoadCharacterModal(
