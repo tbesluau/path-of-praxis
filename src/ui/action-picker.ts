@@ -45,9 +45,15 @@ function critChancePct(tags: ActionDef['tags']): number | null {
   return null
 }
 
-export function buildActionThumbnail(action: ActionDef, legend = false, showCritChance = false, critBaseAdd = 0): HTMLElement {
+export function buildActionThumbnail(action: ActionDef | null, legend = false, showCritChance = false, critBaseAdd = 0): HTMLElement {
   const wrap = document.createElement('div')
   wrap.className = `action-thumbnail${legend ? ' action-thumbnail--legend' : ''}`
+
+  if (!action) {
+    wrap.classList.add('action-thumbnail--empty')
+    wrap.innerHTML = '<span class="action-thumb-empty-label">Select an action</span>'
+    return wrap
+  }
 
   if (legend) {
     wrap.innerHTML = `
@@ -121,7 +127,7 @@ export function refreshActionThumbnailIcons(): void {
 export function mountActionPickerModal(
   container: HTMLElement,
   actions: ActionDef[],
-  currentActionId: string,
+  currentActionId: string | null,
   onSelect: (actionId: string) => void,
   onClose: () => void,
   showCritChance = false,

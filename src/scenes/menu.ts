@@ -165,14 +165,21 @@ function mountNewCharacterModal(
   const cancelBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!
   const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
 
-  let selectedActionId: ActionId = 'sword'
+  let selectedActionId: ActionId | null = null
   let pickerCleanup: (() => void) | null = null
+
+  function syncCreateBtn(): void {
+    const trimmed = input.value.trim()
+    const isDuplicate = trimmed.length > 0 && getCharacters().some(c => c.name === trimmed)
+    errorMsg.textContent = isDuplicate ? t('character', 'nameTaken') : ''
+    createBtn.disabled = trimmed.length === 0 || isDuplicate || selectedActionId === null
+  }
 
   function renderThumbnail(): void {
     actionSlot.innerHTML = ''
     const btn = document.createElement('button')
     btn.className = 'action-trigger-card'
-    btn.appendChild(buildActionThumbnail(allActions.find(a => a.id === selectedActionId)!))
+    btn.appendChild(buildActionThumbnail(selectedActionId ? allActions.find(a => a.id === selectedActionId) ?? null : null))
     actionSlot.appendChild(btn)
     refreshActionThumbnailIcons()
     btn.addEventListener('click', () => {
@@ -181,7 +188,7 @@ function mountNewCharacterModal(
         parent,
         allActions,
         selectedActionId,
-        (id) => { selectedActionId = id as ActionId; renderThumbnail() },
+        (id) => { selectedActionId = id as ActionId; renderThumbnail(); syncCreateBtn() },
         () => { pickerCleanup = null },
       )
     })
@@ -190,21 +197,16 @@ function mountNewCharacterModal(
   renderThumbnail()
   input.focus()
 
-  input.addEventListener('input', () => {
-    const trimmed = input.value.trim()
-    const isDuplicate = trimmed.length > 0 && getCharacters().some(c => c.name === trimmed)
-    errorMsg.textContent = isDuplicate ? t('character', 'nameTaken') : ''
-    createBtn.disabled = trimmed.length === 0 || isDuplicate
-  })
+  input.addEventListener('input', syncCreateBtn)
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !createBtn.disabled) {
-      onCreate(input.value.trim(), selectedActionId)
+      onCreate(input.value.trim(), selectedActionId!)
     }
   })
 
   createBtn.addEventListener('click', () => {
-    if (!createBtn.disabled) onCreate(input.value.trim(), selectedActionId)
+    if (!createBtn.disabled) onCreate(input.value.trim(), selectedActionId!)
   })
 
   cancelBtn.addEventListener('click', onClose)
