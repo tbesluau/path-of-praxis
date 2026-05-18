@@ -2214,6 +2214,10 @@ body::after {
   gap: var(--space-sm);
 }
 
+.mastery-bar-wrap {
+  flex: 1;
+}
+
 .mastery-bar {
   flex: 1;
   height: 18px;
