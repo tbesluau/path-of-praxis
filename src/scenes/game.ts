@@ -2559,10 +2559,12 @@ export function createGameScene(
     // Determine tier per spawn (random rolls), then enforce minimum guarantees
     type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss'
     const ev = balance.enemyVariance
+    // Champions and bosses are gated until the second ascension is reached.
+    const championBossAllowed = ascentCount >= 2 || getPrefs().fullMastery
     const strongRoll = Math.min(1, ev.strongChance + eb.strongChance / 100)
     const eliteRoll = Math.min(1, ev.eliteChance + eb.eliteChance / 100)
-    const championRoll = Math.min(1, ev.championChance + eb.championChance / 100)
-    const bossRoll = Math.min(1, ev.bossChance + eb.bossChance / 100)
+    const championRoll = championBossAllowed ? Math.min(1, ev.championChance + eb.championChance / 100) : 0
+    const bossRoll = championBossAllowed ? Math.min(1, ev.bossChance + eb.bossChance / 100) : 0
     const tiers: Tier[] = []
     for (let i = 0; i < count; i++) {
       if (Math.random() < strongRoll) {
@@ -2706,6 +2708,8 @@ export function createGameScene(
   }
 
   function critChanceForAction(tags: ActionTag[]): number {
+    // Critical hits don't exist until the first ascension is reached.
+    if (ascentCount < 1 && !getPrefs().fullMastery) return 0
     const basePct = baseCritChancePct(tags)
     if (basePct <= 0) return 0
     const cb = getCriticalHitBonuses()
