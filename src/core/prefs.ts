@@ -36,3 +36,7 @@ export function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void {
   p[key] = value
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)) } catch { /* storage disabled */ }
 }
+
+export function isCheatMode(): boolean {
+  return new URLSearchParams(location.search).get('cheat') === 'bro'
+}

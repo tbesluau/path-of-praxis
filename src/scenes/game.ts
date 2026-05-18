@@ -16,7 +16,7 @@ import { allActions, getAction, randomAction, type ActionId, type ActionDef } fr
 import type { SceneId } from '../core/router'
 import { mountSettingsButton } from '../ui/settings'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons } from '../ui/action-picker'
-import { getPrefs } from '../core/prefs'
+import { getPrefs, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, unlockedSlotCount, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 
@@ -1176,7 +1176,7 @@ export function createGameScene(
           </button>
           <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
           <button class="speed-opt" data-speed="2">×2</button>
-          <button class="speed-opt" data-speed="5">×5</button>
+          ${isCheatMode() ? '<button class="speed-opt" data-speed="5">×5</button>' : ''}
         </div>
       </div>
     </div>

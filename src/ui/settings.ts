@@ -2,7 +2,7 @@ import 'flag-icons/css/flag-icons.min.css'
 import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
-import { getPrefs, setPref } from '../core/prefs'
+import { getPrefs, setPref, isCheatMode } from '../core/prefs'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
 import type { TargetingMode } from '../core/character'
@@ -129,13 +129,14 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span class="settings-toggle-track" aria-hidden="true"></span>
           </label>
         </div>
+        ${isCheatMode() ? `
         <div class="modal-field">
           <label class="settings-toggle-row">
             <span class="modal-label">${t('settings', 'fullMastery')}</span>
             <input type="checkbox" class="settings-toggle-input" data-pref="fullMastery" ${prefs.fullMastery ? 'checked' : ''}>
             <span class="settings-toggle-track" aria-hidden="true"></span>
           </label>
-        </div>
+        </div>` : ''}
       </div>
     `
     createIcons({ icons: { BookOpen, Plus, Minus, Crosshair } })
@@ -179,8 +180,8 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
       .addEventListener('change', (e) => {
         setPref('showDpsMeter', (e.target as HTMLInputElement).checked)
       })
-    backdrop.querySelector<HTMLInputElement>('[data-pref="fullMastery"]')!
-      .addEventListener('change', (e) => {
+    backdrop.querySelector<HTMLInputElement>('[data-pref="fullMastery"]')
+      ?.addEventListener('change', (e) => {
         setPref('fullMastery', (e.target as HTMLInputElement).checked)
       })
 
