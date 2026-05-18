@@ -1251,6 +1251,11 @@ export function createGameScene(
   const DPS_AFFLICTION_LABELS: Record<string, string> = {
     'affliction:burn': 'Burn', 'affliction:bleed': 'Bleed', 'affliction:groundFire': 'Ground fire',
   }
+  const DPS_MULTI_TYPES = Object.keys(DPS_MULTI_LABELS) as MultiActionType[]
+  const DPS_AFFLICTION_KEYS = Object.keys(DPS_AFFLICTION_LABELS)
+  const COL_DIRECT = '#ffe0a0'
+  const COL_MULTI  = '#ff9944'
+  const COL_CRIT   = '#ffee44'
   // Smoothed scale denominator so bars don't visually wobble when the top action's DPS fluctuates.
   // Jumps up instantly to new peaks; decays toward instant max with ~2s half-life at the 200 ms tick.
   let smoothedDpsMax = 0
@@ -1260,38 +1265,65 @@ export function createGameScene(
     if (data.size === 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     dpsMeterEl.hidden = false
 
+    // hit:base and hit:crit are auxiliary (they duplicate hit data) — exclude from scale computation.
     let instantMax = 0
     for (const byKind of data.values()) {
       let total = 0
-      for (const v of byKind.values()) total += v
+      for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
       instantMax = Math.max(instantMax, total)
     }
     if (instantMax <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     smoothedDpsMax = instantMax >= smoothedDpsMax ? instantMax : smoothedDpsMax * 0.93 + instantMax * 0.07
     const maxDps = smoothedDpsMax
 
-    const bar = (val: number): string =>
-      `<div class="dps-bar-track"><div class="dps-bar" style="width:${(val / maxDps * 100).toFixed(1)}%"></div></div>`
-    const row = (cls: string, name: string, val: number): string =>
-      `<div class="dps-row ${cls}"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${bar(val)}</div>`
+    const pct = (v: number) => (v / maxDps * 100).toFixed(1)
+
+    const singleBar = (val: number): string =>
+      `<div class="dps-bar-track"><div class="dps-bar" style="width:${pct(val)}%"></div></div>`
+
+    const splitBar = (segA: number, colA: string, segB: number, colB: string): string => {
+      const total = segA + segB
+      if (total <= 0) return '<div class="dps-bar-track"></div>'
+      const segs = (segA > 0 ? `<div style="flex:${segA};background:${colA}"></div>` : '')
+                 + (segB > 0 ? `<div style="flex:${segB};background:${colB}"></div>` : '')
+      return `<div class="dps-bar-track"><div class="dps-split-bar" style="width:${pct(total)}%">${segs}</div></div>`
+    }
+
+    const actionRow = (name: string, val: number): string =>
+      `<div class="dps-row dps-row--action"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${singleBar(val)}</div>`
+
+    const comboRow = (nameHtml: string, val: number, barHtml: string): string =>
+      `<div class="dps-row dps-row--combo"><span class="dps-name">${nameHtml}</span><span class="dps-value">${fmtDps(val)}</span>${barHtml}</div>`
+
+    const subRow = (name: string, val: number): string =>
+      `<div class="dps-row dps-row--sub"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${singleBar(val)}</div>`
 
     let html = ''
     for (const [actionId, byKind] of data) {
       let total = 0
-      for (const v of byKind.values()) total += v
+      for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
       const label = allActions.find(a => a.id === actionId)?.label ?? actionId
-      html += row('dps-row--action', label, total)
+      html += actionRow(label, total)
 
-      const direct = byKind.get('direct') ?? 0
-      if (direct > 0) html += row('dps-row--sub', 'Direct', direct)
+      const direct   = byKind.get('direct') ?? 0
+      const multiDps = DPS_MULTI_TYPES.reduce((s, t) => s + (byKind.get(`multi:${t}`) ?? 0), 0)
+      const totalHit = direct + multiDps
 
-      for (const type of Object.keys(DPS_MULTI_LABELS) as MultiActionType[]) {
-        const val = byKind.get(`multi:${type}`) ?? 0
-        if (val > 0) html += row('dps-row--sub', DPS_MULTI_LABELS[type], val)
+      if (totalHit > 0) {
+        const multiLabel = `Hit (<span style="color:${COL_MULTI}">multi-action</span>)`
+        html += comboRow(multiLabel, totalHit, splitBar(direct, COL_DIRECT, multiDps, COL_MULTI))
       }
-      for (const key of Object.keys(DPS_AFFLICTION_LABELS)) {
+
+      if (ascentCount >= 1 && totalHit > 0) {
+        const base      = byKind.get('hit:base') ?? 0
+        const critBonus = byKind.get('hit:crit') ?? 0
+        const critLabel = `Hit (<span style="color:${COL_CRIT}">crit</span>)`
+        html += comboRow(critLabel, base + critBonus, splitBar(base, COL_DIRECT, critBonus, COL_CRIT))
+      }
+
+      for (const key of DPS_AFFLICTION_KEYS) {
         const val = byKind.get(key) ?? 0
-        if (val > 0) html += row('dps-row--sub', DPS_AFFLICTION_LABELS[key], val)
+        if (val > 0) html += subRow(DPS_AFFLICTION_LABELS[key], val)
       }
     }
     dpsMeterEl.innerHTML = html
@@ -1800,7 +1832,7 @@ export function createGameScene(
   let hitSeq = 0
 
   const DPS_WINDOW_MS = 20_000
-  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire'
+  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire'
   interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
   const dpsLog: DpsEvent[] = []
   // Game-time clock — advances by ticker.deltaMS each frame (which is already
@@ -3622,6 +3654,11 @@ export function createGameScene(
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
             recordDps(actionId, actualDamage, currentHitMultiType ? `multi:${currentHitMultiType}` : 'direct')
+            // Base vs crit split: the first 1× of damage is always base, the remainder is crit bonus
+            const critMult = isCrit ? critDamageMultiplier() : 1
+            const baseDmg = actualDamage / critMult
+            recordDps(actionId, baseDmg, 'hit:base')
+            if (isCrit) recordDps(actionId, actualDamage - baseDmg, 'hit:crit')
           }
           if (target.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1

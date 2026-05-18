@@ -319,6 +319,18 @@ body::after {
   color: rgba(255, 255, 255, 0.65);
 }
 
+.dps-row--combo {
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.dps-split-bar {
+  height: 5px;
+  display: flex;
+  overflow: hidden;
+}
+
 .dps-name {
   flex: 1;
   text-align: right;
