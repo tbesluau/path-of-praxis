@@ -1184,6 +1184,7 @@ export function createGameScene(
       <div class="buff-bar"></div>
       <div class="dps-meter" hidden></div>
       <div class="enemy-level-ctrl">
+        <span class="notif-dot enemy-notif-dot" hidden></span>
         <span class="enemy-level-title">Enemy level</span>
         <div class="enemy-level-main">
           <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
@@ -1451,7 +1452,12 @@ export function createGameScene(
   }
   function updateAscentBar(): void {
     const section = el.querySelector<HTMLElement>('.ascent-bar-section')!
-    if (!isAscentUnlocked()) { section.hidden = true; return }
+    const notifDot = el.querySelector<HTMLElement>('.enemy-notif-dot')!
+    if (!isAscentUnlocked()) {
+      section.hidden = true
+      notifDot.hidden = true
+      return
+    }
     section.hidden = false
     const xpNeeded = ascentXpNeeded()
     const isFull = ascentXp >= xpNeeded
@@ -1460,6 +1466,7 @@ export function createGameScene(
     const btn = section.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
     bar.hidden = isFull
     btn.hidden = !isFull
+    notifDot.hidden = !isFull
     if (!isFull) barFill.style.width = `${(ascentXp / xpNeeded * 100).toFixed(1)}%`
   }
   function updateAscentButtonVisibility(): void {
@@ -1902,27 +1909,31 @@ export function createGameScene(
       )
     })
 
+  function openAscentModal(): void {
+    modalCleanup = mountAscentModal(
+      container,
+      () => ascentCount,
+      () => ({ ...universePointAllocations }),
+      (slot, delta) => {
+        const alloc = universePointAllocations[slot] + delta
+        const maxForSlot = slot === 'placeholderA'
+          ? balance.ascent.universePointMaxA
+          : balance.ascent.universePointMaxB
+        const totalSpent = (Object.values(universePointAllocations) as number[]).reduce((s, v) => s + v, 0)
+        const available = ascentCount - totalSpent
+        if (delta > 0 && (available <= 0 || alloc > maxForSlot)) return
+        if (delta < 0 && alloc < 0) return
+        universePointAllocations = { ...universePointAllocations, [slot]: alloc }
+        persistState()
+      },
+      () => { modalCleanup = null },
+    )
+  }
+
   el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
     .addEventListener('click', () => {
       if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
-      modalCleanup = mountAscentModal(
-        container,
-        () => ascentCount,
-        () => ({ ...universePointAllocations }),
-        (slot, delta) => {
-          const alloc = universePointAllocations[slot] + delta
-          const maxForSlot = slot === 'placeholderA'
-            ? balance.ascent.universePointMaxA
-            : balance.ascent.universePointMaxB
-          const totalSpent = (Object.values(universePointAllocations) as number[]).reduce((s, v) => s + v, 0)
-          const available = ascentCount - totalSpent
-          if (delta > 0 && (available <= 0 || alloc > maxForSlot)) return
-          if (delta < 0 && alloc < 0) return
-          universePointAllocations = { ...universePointAllocations, [slot]: alloc }
-          persistState()
-        },
-        () => { modalCleanup = null },
-      )
+      openAscentModal()
     })
 
   el.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
@@ -2288,6 +2299,9 @@ export function createGameScene(
     updateAscentButtonVisibility()
     persistState()
     rebirth()  // handles entity/physics reset, player stats, UI refresh, wave scheduling
+    // After the reset, surface the ascent modal so players can immediately
+    // see/redistribute their newly-earned universe point.
+    openAscentModal()
   }
 
   function mountDeathModal(): () => void {
