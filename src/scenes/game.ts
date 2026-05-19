@@ -2357,13 +2357,21 @@ export function createGameScene(
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
         const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-        const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth)
+        let oldPct: number, gainPct: number, levelsGained: number, toLv: number
+        if (m.id === 'enemy') {
+          // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
+          toLv = xpGain; levelsGained = Math.max(0, toLv - prog.level)
+          oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
+        } else {
+          const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth)
+          oldPct = pv.oldPct; gainPct = pv.gainPct; levelsGained = pv.levelsGained; toLv = pv.toLv
+        }
         return `
           <div class="mastery-row">
-            ${renderMasteryBar(pv.oldPct, pv.gainPct)}
+            ${renderMasteryBar(oldPct, gainPct)}
             <span class="mastery-label">${escapeHtml(m.label)}</span>
-            <span class="mastery-level${pv.levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${pv.toLv}</span>
-            ${pv.levelsGained > 0 ? `<span class="mastery-gain-badge">+${pv.levelsGained}</span>` : ''}
+            <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${toLv}</span>
+            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
           </div>`
       }).join('')
       if (!rowsHtml.trim()) return ''
@@ -2421,6 +2429,9 @@ export function createGameScene(
     if (runManaXp > 0) gainMap.set('mana', runManaXp)
     const movementXp = Math.floor(runDistancePx / 50)
     if (movementXp > 0) gainMap.set('movement', movementXp)
+    // Enemy mastery is non-XP-based; use xpGain as a sentinel carrying the new absolute level
+    const enemyCurrentLevel = masteryProgress['enemy']?.level ?? 1
+    if (enemyProgress.maxLevel > enemyCurrentLevel) gainMap.set('enemy', enemyProgress.maxLevel)
     return Array.from(gainMap.entries()).map(([id, xpGain]) => ({ id, xpGain }))
   }
 
