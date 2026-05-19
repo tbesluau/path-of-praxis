@@ -182,6 +182,11 @@ export const balance = {
     moveSpeedPerAscent:     0.05, // +5% move speed per ascent count
     universePointMaxA:      10,
     universePointMaxB:      10,
+    slot2UnlockAscent:       3,    // ascentCount required for 2nd action trigger slot
+    slot3UnlockAscent:       5,    // ascentCount required for 3rd action trigger slot
+    slot2DamagePenalty:     0.75,  // global damage multiplier for slot 2
+    slot3DamagePenalty:     0.50,  // global damage multiplier for slot 3
+    timeTriggerIntervalMs: 2000,   // fire period (ms) for the time-based trigger type
   },
 
   // ── Critical hits ─────────────────────────────────────────────────────────

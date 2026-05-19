@@ -4,7 +4,7 @@ import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, Bomb, Hammer, LoaderPinwheel, CloudLightning, ArrowUp, Star } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
@@ -1103,6 +1103,8 @@ export function createGameScene(
   let ascentCount = char?.ascentCount ?? 0
   let ascentXp    = char?.ascentXp ?? 0
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
+  let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
+  const extraSlotTimers: number[] = []  // ms remaining per slot (time-based trigger)
 
   // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
   let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
@@ -1141,6 +1143,7 @@ export function createGameScene(
       ascentCount,
       ascentXp,
       universePointAllocations,
+      extraSlots,
     )
   }
   let playerPrevX = 0
@@ -1521,17 +1524,26 @@ export function createGameScene(
   battleConfigBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
     const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id as ActionId
+    const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
+      : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
     modalCleanup = mountBattleConfigModal(
       container,
       currentId,
       ascentCount >= 1,
       critBaseAddTotal(),
+      activeExtraSlotCount,
+      extraSlots.map(s => ({ ...s })),
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
         applyAutoRunes(id)
         updateActionBar()
         updateActionIcon()
+        persistState()
+      },
+      (slotIndex, actionId) => {
+        if (!extraSlots[slotIndex]) extraSlots[slotIndex] = { actionId: null, triggerType: 'timeBased' }
+        extraSlots[slotIndex] = { ...extraSlots[slotIndex], actionId }
         persistState()
       },
       () => { modalCleanup = null },
@@ -2269,6 +2281,7 @@ export function createGameScene(
     dpsLog.length = 0
     pendingProliferateSpawns = 0
     proliferateSourceEntities.clear()
+    extraSlotTimers.length = 0
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
 
@@ -2299,6 +2312,8 @@ export function createGameScene(
 
     // Re-apply move speed with new ascentCount
     playerEntity.moveSpeed = balance.player.moveSpeed * (1 + ascentCount * balance.ascent.moveSpeedPerAscent)
+    // extraSlots configuration persists; only reset timers
+    extraSlotTimers.length = 0
 
     updateAscentButtonVisibility()
     persistState()
@@ -4241,6 +4256,85 @@ export function createGameScene(
         }
         if (playerManaSpent) updateBars()
 
+        // ── Extra action slot tick (time-based triggers) ──────────────────────
+        {
+          const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
+            : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
+          let extraManaSpent = false
+          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+            const slot = extraSlots[slotI]
+            if (!slot?.actionId || slot.triggerType !== 'timeBased') continue
+            const prev = extraSlotTimers[slotI] ?? balance.ascent.timeTriggerIntervalMs
+            const next = prev - ticker.deltaMS
+            extraSlotTimers[slotI] = next
+            if (next > 0) continue
+            extraSlotTimers[slotI] = balance.ascent.timeTriggerIntervalMs
+            const slotActionId = slot.actionId as ActionId
+            const slotDef = getAction(slotActionId)
+            if (playerEntity.currentMana < slotDef.manaCost) continue
+            const slotTarget = selectPlayerTarget(entities)
+            if (!slotTarget) continue
+            const sdx = slotTarget.x - playerEntity.x, sdy = slotTarget.y - playerEntity.y
+            const slotRange = slotDef.range * balance.player.radius + slotTarget.radius
+            if (Math.sqrt(sdx * sdx + sdy * sdy) > slotRange) continue
+
+            playerEntity.currentMana = Math.max(0, playerEntity.currentMana - slotDef.manaCost)
+            extraManaSpent = true
+
+            // Base damage from level
+            const slotLevel = actionProgress[slotActionId]?.level ?? 1
+            let slotDmg = slotDef.damage
+              * Math.pow(balance.action.damageMult, slotLevel - 1)
+              * (1 + (slotLevel - 1) * balance.action.damageAddPerLevel)
+            // Time-based multiplier: DPS-neutral vs auto-attack at native speed
+            const leveledSpeed = slotDef.speed * (1 + (slotLevel - 1) * balance.action.speedBonusPerLevel)
+            const effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
+            slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * effectiveSlotSpeed
+            // Global slot penalty
+            slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
+            // Mastery bonuses (same pattern as assignAction)
+            const slotAb = getActionBonuses()
+            slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
+            if (slotDef.tags.includes('projectile')) {
+              const b = getProjectileBonuses()
+              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+            }
+            if (slotDef.tags.includes('strike')) {
+              const b = getStrikeBonuses()
+              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+            }
+            if (slotDef.tags.includes('lightning')) {
+              const b = getLightningBonuses()
+              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+            }
+            if (slotDef.tags.includes('fire')) {
+              const b = getFireBonuses()
+              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+            }
+            if (slotDef.tags.includes('physical')) {
+              const b = getPhysicalBonuses()
+              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+            }
+            if (slotDef.tags.includes('area')) {
+              const b = getAreaBonuses()
+              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
+            }
+            const slotRb = getRuneBonuses(slotActionId)
+            slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
+            if (slotRb.slowHeavy) slotDmg *= 2
+            if (ascentCount > 0) slotDmg *= 1 + ascentCount * balance.ascent.damagePerAscent
+
+            pendingHits.set(`extra:${slotI}:${++hitSeq}`, {
+              attacker: playerEntity, target: slotTarget,
+              damage: slotDmg, action: slotDef, actionId: slotActionId,
+              countdown: 0, guaranteedAfflictions: false,
+            })
+            awardXp(slotActionId, slotDmg)
+            awardAscentXp(slotDmg)
+          }
+          if (extraManaSpent) updateBars()
+        }
+
         // ── Burning effect tick (registers burned entities for death pass) ─
         tickBurns(ticker.deltaMS, damagedIds)
         tickBleeds(ticker.deltaMS, damagedIds)
@@ -4308,7 +4402,10 @@ function mountBattleConfigModal(
   currentActionId: ActionId,
   showCritChance: boolean,
   critBaseAdd: number,
+  activeExtraSlotCount: number,
+  currentExtraSlots: ExtraActionSlot[],
   onSelectAction: (id: ActionId) => void,
+  onSelectExtraSlot: (slotIndex: number, actionId: string) => void,
   onClose: () => void,
 ): () => void {
   let selectedActionId = currentActionId
@@ -4329,9 +4426,9 @@ function mountBattleConfigModal(
   const triggerList = panel.querySelector<HTMLElement>('.trigger-list')!
 
   function renderTriggerCard(): void {
-    const action = getAction(selectedActionId)
     triggerList.innerHTML = ''
 
+    // ── Slot 1: Auto attack ───────────────────────────────────────────────
     const wrap = document.createElement('div')
     wrap.className = 'action-trigger-wrap'
 
@@ -4342,26 +4439,68 @@ function mountBattleConfigModal(
 
     const card = document.createElement('button')
     card.className = 'action-trigger-card'
-    card.appendChild(buildActionThumbnail(action, false, showCritChance, critBaseAdd))
+    card.appendChild(buildActionThumbnail(getAction(selectedActionId), false, showCritChance, critBaseAdd))
     wrap.appendChild(card)
-
     triggerList.appendChild(wrap)
 
     card.addEventListener('click', () => {
       mountActionPickerModal(
-        parent,
-        allActions,
-        selectedActionId,
-        (id) => {
-          selectedActionId = id as ActionId
-          onSelectAction(id as ActionId)
-          renderTriggerCard()
-        },
-        () => { /* picker closed */ },
-        showCritChance,
-        critBaseAdd,
+        parent, allActions, selectedActionId,
+        (id) => { selectedActionId = id as ActionId; onSelectAction(id as ActionId); renderTriggerCard() },
+        () => {},
+        showCritChance, critBaseAdd,
       )
     })
+
+    // ── Extra slots (slot 2 / slot 3) ─────────────────────────────────────
+    const SLOT_PENALTIES = [balance.ascent.slot2DamagePenalty, balance.ascent.slot3DamagePenalty]
+    for (let i = 0; i < activeExtraSlotCount; i++) {
+      const slot = currentExtraSlots[i] ?? { actionId: null, triggerType: 'timeBased' as const }
+      const penalty = SLOT_PENALTIES[i]
+
+      const extraWrap = document.createElement('div')
+      extraWrap.className = 'action-trigger-wrap action-trigger-wrap--extra'
+
+      const typeRow = document.createElement('div')
+      typeRow.className = 'action-trigger-type-row'
+
+      const typeBtn = document.createElement('button')
+      typeBtn.className = 'action-trigger-type-btn'
+      typeBtn.textContent = 'Time-based'
+
+      const penaltyLabel = document.createElement('span')
+      penaltyLabel.className = 'action-trigger-penalty'
+      penaltyLabel.textContent = `×${penalty}`
+
+      typeRow.appendChild(typeBtn)
+      typeRow.appendChild(penaltyLabel)
+      extraWrap.appendChild(typeRow)
+
+      const extraCard = document.createElement('button')
+      extraCard.className = 'action-trigger-card'
+      if (slot.actionId) {
+        extraCard.appendChild(buildActionThumbnail(getAction(slot.actionId as ActionId), false, showCritChance, critBaseAdd))
+      } else {
+        const empty = document.createElement('div')
+        empty.className = 'action-trigger-empty'
+        extraCard.appendChild(empty)
+      }
+      extraCard.addEventListener('click', () => {
+        const fallbackId = slot.actionId as ActionId ?? allActions[0].id as ActionId
+        mountActionPickerModal(
+          parent, allActions, fallbackId,
+          (id) => {
+            currentExtraSlots[i] = { ...currentExtraSlots[i], actionId: id as string }
+            onSelectExtraSlot(i, id as string)
+            renderTriggerCard()
+          },
+          () => {},
+          showCritChance, critBaseAdd,
+        )
+      })
+      extraWrap.appendChild(extraCard)
+      triggerList.appendChild(extraWrap)
+    }
 
     refreshActionThumbnailIcons()
   }
