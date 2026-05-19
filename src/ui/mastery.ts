@@ -479,7 +479,11 @@ export function mountMasteryModal(
         const xpGain = gainById.get(m.id) ?? 0
         if (m.id !== 'enemy' && m.id !== 'action' && p.level === 1 && p.xp === 0 && xpGain === 0) continue
         let oldPct: number, gainPct: number, levelsGained: number, displayLevel: number
-        if (xpGain > 0) {
+        if (m.id === 'enemy' && xpGain > 0) {
+          // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
+          displayLevel = xpGain; levelsGained = Math.max(0, xpGain - p.level)
+          oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
+        } else if (xpGain > 0) {
           const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth)
           oldPct = pv.oldPct; gainPct = pv.gainPct
           levelsGained = pv.levelsGained; displayLevel = pv.toLv
