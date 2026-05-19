@@ -4,7 +4,8 @@ import type { UniversePointAllocations } from '../core/character'
 const THRESHOLDS: { count: number; label: string }[] = [
   { count: 1, label: 'Critical hit and its mastery' },
   { count: 2, label: 'Champions and Bosses tree in the enemy mastery' },
-  { count: 3, label: 'Time-based action trigger' },
+  { count: 3, label: '+1 action trigger slot' },
+  { count: 5, label: '+1 action trigger slot' },
 ]
 
 const UP_SLOTS: { key: keyof UniversePointAllocations; label: string; max: number }[] = [

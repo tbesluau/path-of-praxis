@@ -69,6 +69,11 @@ export interface UniversePointAllocations {
   placeholderB: number
 }
 
+export interface ExtraActionSlot {
+  actionId: string | null
+  triggerType: 'timeBased'
+}
+
 export interface Character {
   id: string
   name: string
@@ -89,6 +94,7 @@ export interface Character {
   ascentCount: number
   ascentXp: number
   universePointAllocations: UniversePointAllocations
+  extraSlots: ExtraActionSlot[]
 }
 
 interface SaveData {
@@ -147,6 +153,10 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     ascentCount: c.ascentCount ?? 0,
     ascentXp: c.ascentXp ?? 0,
     universePointAllocations: c.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 },
+    extraSlots: (c.extraSlots ?? []).map(s => ({
+      actionId: s.actionId ?? null,
+      triggerType: s.triggerType ?? 'timeBased',
+    })),
   }
 }
 
@@ -209,6 +219,7 @@ export function createCharacter(name: string, actionId: string): Character {
     ascentCount: 0,
     ascentXp: 0,
     universePointAllocations: { placeholderA: 0, placeholderB: 0 },
+    extraSlots: [],
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -246,6 +257,7 @@ export function saveCharacterState(
   ascentCount?: number,
   ascentXp?: number,
   universePointAllocations?: UniversePointAllocations,
+  extraSlots?: ExtraActionSlot[],
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -264,5 +276,6 @@ export function saveCharacterState(
   if (ascentCount !== undefined) char.ascentCount = ascentCount
   if (ascentXp !== undefined) char.ascentXp = ascentXp
   if (universePointAllocations !== undefined) char.universePointAllocations = universePointAllocations
+  if (extraSlots !== undefined) char.extraSlots = extraSlots
   write(data)
 }
