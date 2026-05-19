@@ -110,7 +110,12 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     currentLife: c.currentLife ?? maxLife,
     currentMana: c.currentMana ?? maxMana,
     actionId: c.actionId ?? 'sword',
-    actionProgress: c.actionProgress ?? {},
+    actionProgress: Object.fromEntries(
+      Object.entries(c.actionProgress ?? {}).map(([k, v]) => [
+        k,
+        { xp: v.xp ?? 0, level: v.level ?? 1, maxLevel: v.maxLevel ?? Math.max(1, v.level ?? 1) },
+      ]),
+    ),
     lifeProgress: c.lifeProgress ?? { xp: 0, level: 1 },
     manaProgress: c.manaProgress ?? { xp: 0, level: 1 },
     enemyProgress: c.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
@@ -118,10 +123,26 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     masteryProgress: Object.fromEntries(
       Object.entries(c.masteryProgress ?? {}).map(([k, v]) => [
         k,
-        { xp: v.xp, level: v.level, nodes: v.nodes ?? defaultMasteryNodes() },
+        {
+          xp: Number.isFinite(v.xp) ? v.xp : 0,
+          level: Number.isFinite(v.level) ? v.level : 1,
+          nodes: v.nodes ?? defaultMasteryNodes(),
+        },
       ]),
     ) as Partial<Record<MasteryId, MasteryProgress>>,
-    runProgress: c.runProgress ?? defaultRunProgress(),
+    runProgress: c.runProgress ? {
+      // Scrub any NaN/missing fields a corrupted save may have left behind so
+      // mastery gains aren't permanently poisoned.
+      actionXp: Object.fromEntries(
+        Object.entries(c.runProgress.actionXp ?? {})
+          .map(([k, v]) => [k, Number.isFinite(v) ? v : 0]),
+      ),
+      lifeXp: Number.isFinite(c.runProgress.lifeXp) ? c.runProgress.lifeXp : 0,
+      manaXp: Number.isFinite(c.runProgress.manaXp) ? c.runProgress.manaXp : 0,
+      enemyXp: Number.isFinite(c.runProgress.enemyXp) ? c.runProgress.enemyXp : 0,
+      distancePx: Number.isFinite(c.runProgress.distancePx) ? c.runProgress.distancePx : 0,
+      critXp: Number.isFinite(c.runProgress.critXp) ? c.runProgress.critXp : 0,
+    } : defaultRunProgress(),
     actionRunes: c.actionRunes ?? {},
     ascentCount: c.ascentCount ?? 0,
     ascentXp: c.ascentXp ?? 0,
