@@ -69,7 +69,7 @@ export const balance = {
     championXpMultiplier: 5,
     championSizeMult:   1.5,
     bossChance:         0,             // probability that a champion is upgraded to "boss" (mastery-only)
-    bossLifeMin:       12,   bossLifeMax:       15,
+    bossLifeMin:       24,   bossLifeMax:       30,
     bossDamageMin:     12,   bossDamageMax:     15,
     bossResistMin:     80,   bossResistMax:     90,
     bossActionSpeedMult: 2,
@@ -164,7 +164,7 @@ export const balance = {
   enemyLevel: {
     xpPerMaxLevel:      1000, // XP required for max-level 1 → 2
     xpGrowth:           1.5,  // each subsequent max-level costs xpGrowth× the previous
-    lifeMultiplier:      1.2, // multiplicative per-level bonus on enemy life
+    lifeMultiplier:      1.229, // multiplicative per-level bonus on enemy life (~2× at lv30 vs 1.2)
     damageMultiplier:    1.1, // multiplicative per-level bonus on enemy damage
     lifeAddPerLevel:     0.30, // additive life bonus per level above 1, stacks on top of lifeMultiplier
     speedAddPerLevel:    0.025, // additive move-speed bonus per level above 1

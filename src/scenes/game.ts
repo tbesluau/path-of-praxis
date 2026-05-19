@@ -1865,6 +1865,8 @@ export function createGameScene(
   const championEntities = new Set<string>()     // champion-or-boss enemies
   const bossEntities = new Set<string>()         // boss enemies
   const highResistEntities = new Set<string>()   // enemies with physRot or ele resist ≥ threshold
+  const proliferateSourceEntities = new Set<string>()  // enemies from this tree (don't roll for proliferate on kill)
+  let pendingProliferateSpawns = 0  // extra enemies to add to the next wave from proliferate kills
 
   function tierXpMult(entityId: string): number {
     if (bossEntities.has(entityId)) return balance.enemyVariance.bossXpMultiplier
@@ -2145,6 +2147,7 @@ export function createGameScene(
     championEntities.delete(entity.id)
     bossEntities.delete(entity.id)
     highResistEntities.delete(entity.id)
+    proliferateSourceEntities.delete(entity.id)
     enemyLevels.delete(entity.id)
     entityActions.delete(entity.id)
     entityPaths.delete(entity.id)
@@ -2161,6 +2164,13 @@ export function createGameScene(
 
   // On-death hook: runs the shatter animation then cleans up the entity.
   function killEntity(entity: Entity): void {
+    // Proliferate roll: enemies not spawned by this tree get a chance to add one to the next wave.
+    if (entity.role === 'enemy' && !proliferateSourceEntities.has(entity.id)) {
+      const eb = getEnemyBonuses()
+      if (eb.proliferateChance > 0 && Math.random() < eb.proliferateChance / 100) {
+        pendingProliferateSpawns++
+      }
+    }
     spawnDeathFragments(entity)
     removeEntity(entity)
     if (entity.role === 'player') {
@@ -2242,6 +2252,8 @@ export function createGameScene(
     runDistancePx = 0
     runCritXp = 0
     dpsLog.length = 0
+    pendingProliferateSpawns = 0
+    proliferateSourceEntities.clear()
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
 
@@ -2556,6 +2568,13 @@ export function createGameScene(
     if (Math.random() < ext1Chance) count++
     if (Math.random() < ext2Chance) count += 2
 
+    // Proliferation: consume pending additional spawns from previous wave's kills (tree 3).
+    // Apply "more" multiplier on top of (base + proliferate additional), then reset both.
+    const baseCount = count
+    count += pendingProliferateSpawns
+    pendingProliferateSpawns = 0
+    if (eb.moreSpawned > 0) count = Math.ceil(count * (1 + eb.moreSpawned / 100))
+
     // Determine tier per spawn (random rolls), then enforce minimum guarantees
     type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss'
     const ev = balance.enemyVariance
@@ -2691,6 +2710,8 @@ export function createGameScene(
         strongEntities.add(enemy.id)
       }
       enemyLevels.set(enemy.id, enemyProgress.level)
+      // Enemies beyond the base wave count came from this tree (proliferate/more) and don't roll.
+      if (i >= baseCount) proliferateSourceEntities.add(enemy.id)
       entities.push(enemy)
       createEntityBody(enemy)
       initEntityDisplay(enemy)

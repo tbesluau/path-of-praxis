@@ -86,6 +86,8 @@ export interface NodeEffect {
   enemyMinEliteCount?: number          // additive flat: at least this many enemies in a wave are elite
   enemyEliteToChampionChance?: number  // additive percentage points to "elite → champion" upgrade roll
   enemyChampionToBossChance?: number   // additive percentage points to "champion → boss" upgrade roll
+  enemyProliferateChance?: number      // additive percentage points; per-kill chance to spawn an additional enemy next wave
+  enemyMoreSpawned?: number            // additive 'more' percentage points; multiplies total wave count (normal + tree additional)
 
   // Lightning mastery effects (Electrocution tree)
   lightningElectrocuteApplyChance?: number          // additive %; bonus chance to electrocute on lightning hits
@@ -394,6 +396,8 @@ export interface EnemyBonuses {
   minEliteCount: number     // total flat
   championChance: number    // total additive percentage points (elite → champion; tree 2, requires 2 ascensions)
   bossChance: number        // total additive percentage points (champion → boss; tree 2, requires 2 ascensions)
+  proliferateChance: number // total additive percentage points; per-kill roll to spawn an additional enemy next wave
+  moreSpawned: number       // total additive 'more' %; multiplies wave count (normal + tree additional)
 }
 
 export interface MovementBonuses {
@@ -885,6 +889,7 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
 
 // ── Enemy mastery node effects ─────────────────────────────────────────────
 // Tree 0: Enemy Quantity  Tree 1: Enemy Quality  Tree 2: Champions and Bosses (short)
+// Tree 3: Enemy Proliferation (short)
 
 const ENEMY_EFFECTS: Partial<Record<number, TreeEffects>> = {
   0: {  // Enemy Quantity (full tree — line nodes 0-11, key nodes 12-15)
@@ -926,6 +931,15 @@ const ENEMY_EFFECTS: Partial<Record<number, TreeEffects>> = {
     5: { enemyChampionToBossChance: 1 },
     // 12-13: key nodes — not yet defined
   },
+  3: {  // Enemy Proliferation (short tree — line nodes 0-5, key nodes 12-13)
+    0: { enemyProliferateChance: 10 },
+    1: { enemyProliferateChance: 10 },
+    2: { enemyMoreSpawned: 15 },
+    3: { enemyProliferateChance: 10 },
+    4: { enemyProliferateChance: 10 },
+    5: { enemyMoreSpawned: 20 },
+    // 12-13: key nodes — not yet defined
+  },
 }
 
 export function getEnemyNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
@@ -943,6 +957,8 @@ export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
     minEliteCount: 0,
     championChance: 0,
     bossChance: 0,
+    proliferateChance: 0,
+    moreSpawned: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -956,6 +972,8 @@ export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
       b.minEliteCount               += eff.enemyMinEliteCount ?? 0
       b.championChance              += eff.enemyEliteToChampionChance ?? 0
       b.bossChance                  += eff.enemyChampionToBossChance ?? 0
+      b.proliferateChance           += eff.enemyProliferateChance ?? 0
+      b.moreSpawned                 += eff.enemyMoreSpawned ?? 0
     }
   }
   return b
@@ -1812,6 +1830,14 @@ const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
     3: '+5% chance for an elite enemy to become a champion',
     4: '+5% increased chance for an enemy to be strong · +5% increased chance for a strong enemy to be elite',
     5: '+1% chance for a champion enemy to become a boss',
+  },
+  3: {
+    0: '+10% chance on kill to spawn an additional enemy in the next wave',
+    1: '+10% chance on kill to spawn an additional enemy in the next wave',
+    2: '15% more enemies spawned',
+    3: '+10% chance on kill to spawn an additional enemy in the next wave',
+    4: '+10% chance on kill to spawn an additional enemy in the next wave',
+    5: '20% more enemies spawned',
   },
 }
 
