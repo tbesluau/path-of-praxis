@@ -2357,21 +2357,25 @@ export function createGameScene(
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
         const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-        let oldPct: number, gainPct: number, levelsGained: number, toLv: number
+        let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
         if (m.id === 'enemy') {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
-          toLv = xpGain; levelsGained = Math.max(0, toLv - prog.level)
+          levelsGained = Math.max(0, xpGain - prog.level)
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
+          capped = false
         } else {
           const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth)
-          oldPct = pv.oldPct; gainPct = pv.gainPct; levelsGained = pv.levelsGained; toLv = pv.toLv
+          oldPct = pv.oldPct; gainPct = pv.gainPct; levelsGained = pv.levelsGained
+          capped = levelsGained >= balance.mastery.levelsPerRebirth
         }
+        const levelMod = levelsGained > 0 ? (capped ? ' mastery-level--capped' : ' mastery-level--gain') : ''
+        const badgeMod = capped ? ' mastery-gain-badge--capped' : ''
         return `
           <div class="mastery-row">
             ${renderMasteryBar(oldPct, gainPct)}
             <span class="mastery-label">${escapeHtml(m.label)}</span>
-            <span class="mastery-level${levelsGained > 0 ? ' mastery-level--gain' : ''}">Lv.${toLv}</span>
-            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
+            <span class="mastery-level${levelMod}">Lv.${prog.level}</span>
+            ${levelsGained > 0 ? `<span class="mastery-gain-badge${badgeMod}">+${levelsGained}</span>` : ''}
           </div>`
       }).join('')
       if (!rowsHtml.trim()) return ''
