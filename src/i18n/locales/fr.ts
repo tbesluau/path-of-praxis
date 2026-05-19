@@ -52,6 +52,8 @@ export const fr: TranslationSchema = {
     showDpsMeter: 'Compteur DPS',
     fullMastery: 'Maîtrise complète',
     zoomLabel: 'Zoom',
+    fullscreenEnter: 'Plein écran',
+    fullscreenExit: 'Quitter le plein écran',
   },
   guide: {
     title: 'Guide',

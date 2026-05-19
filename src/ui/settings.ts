@@ -1,5 +1,5 @@
 import 'flag-icons/css/flag-icons.min.css'
-import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle } from 'lucide'
+import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle, Maximize, Minimize } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
@@ -10,6 +10,18 @@ import type { TargetingMode } from '../core/character'
 const LOCALE_FLAG_CLASS: Record<Locale, string> = {
   en: 'fi fi-gb',
   fr: 'fi fi-fr',
+}
+
+function isFullscreen(): boolean {
+  return document.fullscreenElement !== null
+}
+
+async function toggleFullscreen(): Promise<void> {
+  if (isFullscreen()) {
+    await document.exitFullscreen()
+  } else {
+    await document.documentElement.requestFullscreen()
+  }
 }
 
 const TARGETING_OPTS: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
@@ -94,6 +106,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${locale === 'en' ? t('settings', 'langEn') : t('settings', 'langFr')}"></span>
           </button>
         </div>
+        <div class="modal-field">
+          <button class="settings-section-btn" data-action="fullscreen">
+            <i data-lucide="${isFullscreen() ? 'minimize' : 'maximize'}" aria-hidden="true"></i>
+            <span>${t('settings', isFullscreen() ? 'fullscreenExit' : 'fullscreenEnter')}</span>
+          </button>
+        </div>
         ${opts.getTargetingMode ? `
         <div class="modal-field">
           <button class="settings-section-btn" data-action="targeting">
@@ -139,7 +157,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         </div>` : ''}
       </div>
     `
-    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair } })
+    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair, Maximize, Minimize } })
 
     const stepZoom = (delta: 1 | -1): void => {
       const next = zoomIdx + delta
@@ -156,6 +174,9 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
       .addEventListener('click', () => { closeSub(); backdrop.remove(); onClose() })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="fullscreen"]')!
+      .addEventListener('click', () => { toggleFullscreen().then(render).catch(() => render()) })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="guide"]')!
       .addEventListener('click', () => {
@@ -200,11 +221,17 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
   parent.appendChild(backdrop)
   render()
 
+  const onFullscreenChange = (): void => { render() }
+  document.addEventListener('fullscreenchange', onFullscreenChange)
+
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) { closeSub(); backdrop.remove(); onClose() }
   })
 
-  return () => { closeSub(); backdrop.remove() }
+  return () => {
+    closeSub(); backdrop.remove()
+    document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }
 }
 
 function mountLanguageModal(
