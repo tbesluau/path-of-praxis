@@ -822,12 +822,16 @@ export function createGameScene(
   function awardXp(actionId: ActionId, amount: number): void {
     amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
     const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
-    let { xp, level, maxLevel } = prev
+    // Fields default-guarded so a legacy/corrupted entry can't poison the math
+    // with NaN (which would silently zero out action/tag mastery gains).
+    let xp = Number.isFinite(prev.xp) ? prev.xp : 0
+    let level = Number.isFinite(prev.level) ? prev.level : 1
+    let maxLevel = Number.isFinite(prev.maxLevel) ? prev.maxLevel : Math.max(1, level)
     // Prestige accelerates XP gain: past peak level → faster leveling next life
     const rb = getRuneBonuses(actionId)
     const scaledXp = amount * (1 + (maxLevel - 1) * 0.1) * (1 + rb.xpIncrease / 100) * rb.xpMore
     xp += scaledXp
-    runActionXp[actionId] = (runActionXp[actionId] ?? 0) + scaledXp
+    runActionXp[actionId] = (Number.isFinite(runActionXp[actionId]) ? runActionXp[actionId] : 0) + scaledXp
     let leveled = false
     while (xp >= actionXpNeeded(level)) {
       xp -= actionXpNeeded(level)
