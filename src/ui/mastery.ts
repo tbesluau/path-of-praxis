@@ -466,6 +466,7 @@ export function mountMasteryModal(
     gainPct: number
     levelsGained: number
     displayLevel: number
+    capped: boolean
     pts: number
   }
 
@@ -478,20 +479,22 @@ export function mountMasteryModal(
         const pts = masteryPointsAvailable(p)
         const xpGain = gainById.get(m.id) ?? 0
         if (m.id !== 'enemy' && m.id !== 'action' && p.level === 1 && p.xp === 0 && xpGain === 0) continue
-        let oldPct: number, gainPct: number, levelsGained: number, displayLevel: number
+        let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
         if (m.id === 'enemy' && xpGain > 0) {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
-          displayLevel = xpGain; levelsGained = Math.max(0, xpGain - p.level)
+          levelsGained = Math.max(0, xpGain - p.level)
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
+          capped = false
         } else if (xpGain > 0) {
           const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth)
           oldPct = pv.oldPct; gainPct = pv.gainPct
-          levelsGained = pv.levelsGained; displayLevel = pv.toLv
+          levelsGained = pv.levelsGained
+          capped = levelsGained >= levelsPerRebirth
         } else {
           oldPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
-          gainPct = 0; levelsGained = 0; displayLevel = p.level
+          gainPct = 0; levelsGained = 0; capped = false
         }
-        out.push({ catLabel: cat.label, id: m.id, label: m.label, state: { oldPct, gainPct, levelsGained, displayLevel, pts } })
+        out.push({ catLabel: cat.label, id: m.id, label: m.label, state: { oldPct, gainPct, levelsGained, displayLevel: p.level, capped, pts } })
       }
     }
     return out
@@ -505,11 +508,16 @@ export function mountMasteryModal(
     const barWrap = rowEl.querySelector<HTMLElement>('.mastery-bar-wrap')!
     barWrap.innerHTML = renderMasteryBar(s.oldPct, s.gainPct)
     const levelEl = rowEl.querySelector<HTMLElement>('.mastery-level')!
-    levelEl.className = `mastery-level${s.levelsGained > 0 ? ' mastery-level--gain' : ''}`
+    const levelClasses = ['mastery-level']
+    if (s.levelsGained > 0) levelClasses.push(s.capped ? 'mastery-level--capped' : 'mastery-level--gain')
+    levelEl.className = levelClasses.join(' ')
     levelEl.innerHTML = `Lv.${s.displayLevel}${s.pts > 0 ? ` · <span class="mastery-pts">${s.pts}pt</span>` : ''}`
     const badge = rowEl.querySelector<HTMLElement>('.mastery-gain-badge')!
-    if (s.levelsGained > 0) { badge.textContent = `+${s.levelsGained}`; badge.hidden = false }
-    else { badge.hidden = true }
+    if (s.levelsGained > 0) {
+      badge.textContent = `+${s.levelsGained}`
+      badge.className = `mastery-gain-badge${s.capped ? ' mastery-gain-badge--capped' : ''}`
+      badge.hidden = false
+    } else { badge.hidden = true }
   }
 
   function wireRowButton(rowEl: HTMLElement): void {

@@ -2337,6 +2337,10 @@ body::after {
   color: #166534;
 }
 
+.mastery-level--capped {
+  color: #991b1b;
+}
+
 .mastery-gain-badge {
   font-size: 0.65rem;
   font-weight: 700;
@@ -2348,6 +2352,12 @@ body::after {
   padding: 1px 5px;
   min-width: 1.6rem;
   text-align: center;
+}
+
+.mastery-gain-badge--capped {
+  color: #991b1b;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 /* ── Mastery name button in mastery list modal ── */
