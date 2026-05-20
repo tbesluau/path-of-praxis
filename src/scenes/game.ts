@@ -1349,6 +1349,7 @@ export function createGameScene(
       playerRandomTargetId = null
       persistState()
     },
+    onForceAscend: isCheatMode() ? () => ascend() : undefined,
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
