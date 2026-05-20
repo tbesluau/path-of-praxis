@@ -1283,12 +1283,24 @@ body::after {
 .action-thumb-xp-bar {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: 3px;
   overflow: hidden;
 }
 
+.action-thumb-xp-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 0 9px;
+  border-image: url('/ui/composed_bars/barBack_horizontal.png') 0 9 fill stretch;
+  box-sizing: border-box;
+}
+
 .action-thumb-xp-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 100%;
   border-image: url('/ui/composed_bars/barYellow_horizontal.png') 0 9 fill stretch;
   border-style: solid;
