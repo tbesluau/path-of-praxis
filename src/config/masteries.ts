@@ -152,6 +152,9 @@ function masteryXpGrowth(masteryId?: MasteryId): number {
 }
 
 export function masteryXpNeeded(level: number, masteryId?: MasteryId): number {
+  if (masteryId === 'movement') {
+    return Math.round(balance.mastery.xpPerLevel * (1 + balance.mastery.movementMasteryXpAddPerLevel * (level - 1)))
+  }
   return Math.round(balance.mastery.xpPerLevel * Math.pow(masteryXpGrowth(masteryId), level - 1))
 }
 
