@@ -2382,7 +2382,7 @@ export function createGameScene(
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
           capped = false
         } else {
-          const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth)
+          const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth, m.id)
           oldPct = pv.oldPct; gainPct = pv.gainPct; levelsGained = pv.levelsGained
           capped = levelsGained >= balance.mastery.levelsPerRebirth
         }
@@ -2449,7 +2449,7 @@ export function createGameScene(
     if (runCritXp > 0) gainMap.set('criticalHit', runCritXp * balance.mastery.actionXpMultiplier * 2)
     if (runLifeXp > 0) gainMap.set('life', runLifeXp)
     if (runManaXp > 0) gainMap.set('mana', runManaXp)
-    const movementXp = Math.floor(runDistancePx / 50)
+    const movementXp = Math.floor(runDistancePx / 50) * balance.mastery.movementXpMult
     if (movementXp > 0) gainMap.set('movement', movementXp)
     // Enemy mastery is non-XP-based; use xpGain as a sentinel carrying the new absolute level
     const enemyCurrentLevel = masteryProgress['enemy']?.level ?? 1
@@ -2462,7 +2462,7 @@ export function createGameScene(
       const existing = masteryProgress[id]
       const nodes = existing?.nodes ?? defaultMasteryNodes()
       const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      const preview = previewMasteryGain(xp, level, xpGain, level + balance.mastery.levelsPerRebirth)
+      const preview = previewMasteryGain(xp, level, xpGain, level + balance.mastery.levelsPerRebirth, id)
       masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
