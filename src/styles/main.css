@@ -2444,6 +2444,7 @@ body::after {
 }
 
 .mastery-gain-badge {
+  position: relative;
   font-size: 0.65rem;
   font-weight: 700;
   font-family: var(--font-mono);
@@ -2460,6 +2461,14 @@ body::after {
   color: #991b1b;
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Capped-gain notification dot — overflows the badge's top-right corner. */
+.mastery-cap-dot {
+  width: 8px;
+  height: 8px;
+  top: -3px;
+  right: -3px;
 }
 
 /* ── Mastery name button in mastery list modal ── */
