@@ -1493,6 +1493,20 @@ body::after {
   z-index: 1;
 }
 
+/* Scrollable children of a modal panel extend to the right edge of the
+   panel's content area so their scrollbar sits flush with the blue border,
+   freeing up the right padding for content instead of wasting it as a
+   gutter between the scrollbar and the frame. */
+.modal-panel > .mastery-categories,
+.modal-panel > .mastery-trees-list,
+.modal-panel > .death-modal-scroll,
+.modal-panel > .note-body,
+.modal-panel > .guide-sections,
+.modal-panel > .action-picker-list {
+  margin-right: calc(-1 * var(--space-xl));
+  padding-right: 8px;
+}
+
 .modal-close-btn {
   position: absolute;
   top: -47px;
