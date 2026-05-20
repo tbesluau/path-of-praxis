@@ -1265,7 +1265,7 @@ export function createGameScene(
   const DPS_AFFLICTION_KEYS = Object.keys(DPS_AFFLICTION_LABELS)
   const COL_DIRECT = '#ffe0a0'
   const COL_MULTI  = '#ff9944'
-  const COL_CRIT   = '#ffee44'
+  const COL_CRIT   = '#ff9944'
   // Smoothed scale denominator so bars don't visually wobble when the top action's DPS fluctuates.
   // Jumps up instantly to new peaks; decays toward instant max with ~2s half-life at the 200 ms tick.
   let smoothedDpsMax = 0
