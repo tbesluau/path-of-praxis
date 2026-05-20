@@ -1174,8 +1174,9 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" aria-label="Ascent" hidden>
           <i data-lucide="arrow-up" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="Enemy level">
+        <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="Enemy level" style="position:relative">
           <span class="enemy-level-display">1 / 1</span>
+          <span class="notif-dot enemy-notif-dot" hidden></span>
         </button>
       </div>
       <div class="game-top-right">
@@ -1193,7 +1194,6 @@ export function createGameScene(
       <div class="buff-bar"></div>
       <div class="dps-meter" hidden></div>
       <div class="enemy-level-ctrl">
-        <span class="notif-dot enemy-notif-dot" hidden></span>
         <span class="enemy-level-title">Enemy level</span>
         <div class="enemy-level-main">
           <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
