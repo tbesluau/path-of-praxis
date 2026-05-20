@@ -5,7 +5,7 @@ const THRESHOLDS: { count: number; label: string }[] = [
   { count: 1, label: 'Critical hit and its mastery' },
   { count: 2, label: 'Champions and Bosses tree in the enemy mastery' },
   { count: 3, label: '+1 action trigger slot' },
-  { count: 4, label: '+1 free mastery point per ascent' },
+  { count: 4, label: '+1 free mastery point per ascent for each mastery' },
   { count: 5, label: '+1 action trigger slot' },
 ]
 
@@ -57,11 +57,10 @@ export function mountAscentModal(
           <div class="universe-point-ctrl">
             <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="-1" aria-label="Remove point"
               ${canRemove ? '' : 'disabled'}><img class="enemy-level-arrow" src="${arrowLeft}" alt=""></button>
-            <span class="universe-point-value">${val}</span>
+            <span class="universe-point-value">${val}/${slot.max}</span>
             <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="1" aria-label="Add point"
               ${canAdd ? '' : 'disabled'}><img class="enemy-level-arrow" src="${arrowRight}" alt=""></button>
           </div>
-          <span class="universe-point-max">/ ${slot.max}</span>
         </div>
       `
     }).join('')

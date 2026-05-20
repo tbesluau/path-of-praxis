@@ -898,15 +898,10 @@ body::after {
 }
 
 .universe-point-value {
-  min-width: 2ch;
+  min-width: 4ch;
   text-align: center;
   font-weight: 700;
   color: #1a0a02;
-}
-
-.universe-point-max {
-  font-size: 0.72rem;
-  color: rgba(26, 10, 2, 0.45);
 }
 
 .char-info-value--life {
