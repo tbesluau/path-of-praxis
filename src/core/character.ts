@@ -13,8 +13,8 @@ export interface MasteryProgress {
   nodes: number[][]  // [treeIdx 0-4][...assigned nodeIdx 0-15]
 }
 
-export function masteryPointsAvailable(prog: MasteryProgress): number {
-  const earned = Math.max(0, prog.level - 1)
+export function masteryPointsAvailable(prog: MasteryProgress, freePointsUsed = 0): number {
+  const earned = Math.max(0, prog.level - 1) + freePointsUsed
   const spent = prog.nodes.reduce((s, t) => s + t.length, 0)
   return earned - spent
 }
@@ -95,6 +95,7 @@ export interface Character {
   ascentXp: number
   universePointAllocations: UniversePointAllocations
   extraSlots: ExtraActionSlot[]
+  freeMasteryPointsUsed: Partial<Record<MasteryId, number>>
 }
 
 interface SaveData {
@@ -157,6 +158,10 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       actionId: s.actionId ?? null,
       triggerType: s.triggerType ?? 'timeBased',
     })),
+    freeMasteryPointsUsed: Object.fromEntries(
+      Object.entries(c.freeMasteryPointsUsed ?? {})
+        .map(([k, v]) => [k, typeof v === 'number' ? v : 0])
+    ) as Partial<Record<MasteryId, number>>,
   }
 }
 
@@ -220,6 +225,7 @@ export function createCharacter(name: string, actionId: string): Character {
     ascentXp: 0,
     universePointAllocations: { placeholderA: 0, placeholderB: 0 },
     extraSlots: [],
+    freeMasteryPointsUsed: {},
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -258,6 +264,7 @@ export function saveCharacterState(
   ascentXp?: number,
   universePointAllocations?: UniversePointAllocations,
   extraSlots?: ExtraActionSlot[],
+  freeMasteryPointsUsed?: Partial<Record<MasteryId, number>>,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -277,5 +284,6 @@ export function saveCharacterState(
   if (ascentXp !== undefined) char.ascentXp = ascentXp
   if (universePointAllocations !== undefined) char.universePointAllocations = universePointAllocations
   if (extraSlots !== undefined) char.extraSlots = extraSlots
+  if (freeMasteryPointsUsed !== undefined) char.freeMasteryPointsUsed = freeMasteryPointsUsed
   write(data)
 }

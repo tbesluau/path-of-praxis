@@ -1106,6 +1106,7 @@ export function createGameScene(
   let ascentXp    = char?.ascentXp ?? 0
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
+  let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
   const extraSlotTimers: number[] = []  // ms remaining per slot (time-based trigger)
 
   // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
@@ -1146,6 +1147,7 @@ export function createGameScene(
       ascentXp,
       universePointAllocations,
       extraSlots,
+      freeMasteryPointsUsed,
     )
   }
   let playerPrevX = 0
@@ -1925,6 +1927,8 @@ export function createGameScene(
         computeMasteryGains,
         balance.mastery.levelsPerRebirth,
         ascentCount,
+        freeMasteryPointsUsed,
+        remainingFreeMasteryPoints,
       )
     })
 
@@ -2306,6 +2310,7 @@ export function createGameScene(
       actionProgress[id] = { xp: 0, level: 1, maxLevel: 1 }
     }
     masteryProgress = {}
+    freeMasteryPointsUsed = {}
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
     enemyProgress = { xp: 0, level: 1, maxLevel: 1, autoLevel: false }
@@ -2478,19 +2483,40 @@ export function createGameScene(
     refreshMasteryDot()
   }
 
+  function totalFreeMasteryPointsEarned(): number {
+    return ascentCount >= balance.ascent.freeMasteryPointsUnlockAscent ? ascentCount : 0
+  }
+  function remainingFreeMasteryPoints(): number {
+    const used = (Object.values(freeMasteryPointsUsed) as number[]).reduce((s, v) => s + v, 0)
+    return totalFreeMasteryPointsEarned() - used
+  }
+
   function refreshMasteryDot(): void {
     const dot = el.querySelector<HTMLElement>('.mastery-notif-dot')
     if (!dot) return
-    const hasUnspent = allMasteries.some(m => {
+    const remaining = remainingFreeMasteryPoints()
+    const hasUnspentLevelPoints = allMasteries.some(m => {
       const p = masteryProgress[m.id]
-      return p ? masteryPointsAvailable(p) > 0 : false
+      return p ? masteryPointsAvailable(p, freeMasteryPointsUsed[m.id] ?? 0) > 0 : false
     })
-    dot.hidden = !hasUnspent
+    const hasUnspentFreePoints = remaining > 0 && allMasteries.some(m => {
+      const p = masteryProgress[m.id]
+      const isAlwaysShown = m.id === 'enemy' || m.id === 'action'
+      return isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
+    })
+    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints)
   }
 
   function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {
     const existing = masteryProgress[id]
     if (!existing) return
+    const freeUsed = freeMasteryPointsUsed[id] ?? 0
+    const levelAvail = masteryPointsAvailable(existing, freeUsed)
+    if (levelAvail <= 0) {
+      // No level-based points; try consuming a free point
+      if (remainingFreeMasteryPoints() <= 0) return
+      freeMasteryPointsUsed[id] = freeUsed + 1
+    }
     const nodes = existing.nodes.map(t => [...t])
     if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
@@ -2512,12 +2538,15 @@ export function createGameScene(
 
   // Spend one mastery level to clear all assigned nodes and refund the rest.
   // Net cost: -1 level (and the XP toward the next level resets to 0).
+  // If no level to lose but free points were used here, just reclaim them.
   function resetMasteryPoints(id: MasteryId): void {
     const existing = masteryProgress[id]
-    if (!existing || existing.level <= 1) return
+    const freeUsed = freeMasteryPointsUsed[id] ?? 0
+    if (!existing || (existing.level <= 1 && freeUsed === 0)) return
+    freeMasteryPointsUsed[id] = 0
     masteryProgress[id] = {
       xp: 0,
-      level: existing.level - 1,
+      level: existing.level > 1 ? existing.level - 1 : 1,
       nodes: defaultMasteryNodes(),
     }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {

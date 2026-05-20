@@ -185,6 +185,7 @@ export const balance = {
     moveSpeedPerAscent:     0.05, // +5% move speed per ascent count
     universePointMaxA:      10,
     universePointMaxB:      10,
+    freeMasteryPointsUnlockAscent: 4,  // ascentCount at which free mastery points are earned (1 per ascent)
     slot2UnlockAscent:       3,    // ascentCount required for 2nd action trigger slot
     slot3UnlockAscent:       5,    // ascentCount required for 3rd action trigger slot
     slot2DamagePenalty:     0.75,  // global damage multiplier for slot 2
