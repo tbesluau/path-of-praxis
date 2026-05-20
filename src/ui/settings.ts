@@ -38,6 +38,8 @@ export interface SettingsButtonOptions {
   getTargetingMode?: () => TargetingMode
   /** Called when the user selects a new targeting mode. */
   onTargetingChange?: (mode: TargetingMode) => void
+  /** Cheat mode only: skips all requirements and immediately ascends. */
+  onForceAscend?: () => void
 }
 
 export function mountSettingsButton(
@@ -154,7 +156,13 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <input type="checkbox" class="settings-toggle-input" data-pref="fullMastery" ${prefs.fullMastery ? 'checked' : ''}>
             <span class="settings-toggle-track" aria-hidden="true"></span>
           </label>
-        </div>` : ''}
+        </div>
+        ${opts.onForceAscend ? `
+        <div class="modal-field">
+          <button class="settings-section-btn settings-section-btn--cheat" data-action="force-ascend">
+            <span>Force Ascend</span>
+          </button>
+        </div>` : ''}` : ''}
       </div>
     `
     createIcons({ icons: { BookOpen, Plus, Minus, Crosshair, Maximize, Minimize } })
@@ -204,6 +212,14 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLInputElement>('[data-pref="fullMastery"]')
       ?.addEventListener('change', (e) => {
         setPref('fullMastery', (e.target as HTMLInputElement).checked)
+      })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="force-ascend"]')
+      ?.addEventListener('click', () => {
+        closeSub()
+        backdrop.remove()
+        onClose()
+        opts.onForceAscend!()
       })
 
     const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')

@@ -1410,6 +1410,15 @@ body::after {
   height: 16px;
 }
 
+.settings-section-btn--cheat {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_beige.png');
+  color: #92400e;
+  font-style: italic;
+}
+.settings-section-btn--cheat:hover {
+  filter: brightness(0.95);
+}
+
 /* ── Targeting options ── */
 
 .targeting-options {
