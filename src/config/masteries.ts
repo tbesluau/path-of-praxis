@@ -145,8 +145,14 @@ export const masteryCategories: MasteryCategoryDef[] = [
 
 export const allMasteries = masteryCategories.flatMap(c => c.masteries)
 
-export function masteryXpNeeded(level: number): number {
-  return Math.round(balance.mastery.xpPerLevel * Math.pow(balance.mastery.xpGrowth, level - 1))
+function masteryXpGrowth(masteryId?: MasteryId): number {
+  return (masteryId === 'life' || masteryId === 'mana')
+    ? balance.mastery.lifeManaMasteryXpGrowth
+    : balance.mastery.xpGrowth
+}
+
+export function masteryXpNeeded(level: number, masteryId?: MasteryId): number {
+  return Math.round(balance.mastery.xpPerLevel * Math.pow(masteryXpGrowth(masteryId), level - 1))
 }
 
 export interface MasteryGainPreview {
@@ -167,12 +173,13 @@ export function previewMasteryGain(
   currentLevel: number,
   xpGain: number,
   maxLevel: number,
+  masteryId?: MasteryId,
 ): MasteryGainPreview {
   const fromLv = currentLevel
   let xp = currentXp + xpGain
   let level = currentLevel
-  while (xp >= masteryXpNeeded(level) && level < maxLevel) {
-    xp -= masteryXpNeeded(level)
+  while (xp >= masteryXpNeeded(level, masteryId) && level < maxLevel) {
+    xp -= masteryXpNeeded(level, masteryId)
     level++
   }
   let cappedAtMaxLevels = false
@@ -181,7 +188,7 @@ export function previewMasteryGain(
     cappedAtMaxLevels = true
   }
   const levelsGained = level - fromLv
-  const neededNow = masteryXpNeeded(level)
+  const neededNow = masteryXpNeeded(level, masteryId)
   // Round percentages but never reduce a positive amount to 0 — the bar should
   // still show at min-width for any non-zero value (rendered as a min-bar in CSS).
   const pctRound = (n: number): number => n <= 0 ? 0 : Math.max(1, Math.round(n))

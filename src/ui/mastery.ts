@@ -489,12 +489,12 @@ export function mountMasteryModal(
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
           capped = false
         } else if (xpGain > 0) {
-          const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth)
+          const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth, m.id)
           oldPct = pv.oldPct; gainPct = pv.gainPct
           levelsGained = pv.levelsGained
           capped = levelsGained >= levelsPerRebirth
         } else {
-          oldPct = Math.round((p.xp / masteryXpNeeded(p.level)) * 100)
+          oldPct = Math.round((p.xp / masteryXpNeeded(p.level, m.id)) * 100)
           gainPct = 0; levelsGained = 0; capped = false
         }
         out.push({ catLabel: cat.label, id: m.id, label: m.label, state: { oldPct, gainPct, levelsGained, displayLevel: p.level, capped, pts } })
