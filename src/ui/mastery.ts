@@ -1,4 +1,4 @@
-import type { MasteryId } from '../config/masteries'
+import type { MasteryId, NodeType } from '../config/masteries'
 import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
 import { getNodeDescription } from '../config/mastery-nodes'
@@ -44,33 +44,62 @@ function isNodeAssigned(p: MasteryProgress, treeIdx: number, nodeIdx: number): b
   return (p.nodes[treeIdx] ?? []).includes(nodeIdx)
 }
 
-// Returns null if assignable, or a string reason why not.
-function assignBlockReason(
+// Information about whether/how a node can be assigned.
+//   assigned     — already taken
+//   unavailable  — structural block (sibling key already chosen, or short-tree key 14/15)
+//   assignable   — can be assigned now; `path` is the full ordered list of unassigned
+//                  nodes to assign (the requested node is always last). `extra` is
+//                  the count of additional intermediate nodes beyond the clicked one.
+//   insufficient — path is computable but cost > totalAvailable
+type AssignInfo =
+  | { kind: 'assigned' }
+  | { kind: 'unavailable'; reason: 'sibling' | 'shortKey' }
+  | { kind: 'assignable'; path: number[]; extra: number; cost: number }
+  | { kind: 'insufficient'; path: number[]; cost: number; available: number }
+
+// Returns the ordered list of unassigned nodes that would be assigned to reach
+// (and include) `nodeIdx`. Returns null with a structural-error tag when the
+// node can never be reached from this state (sibling key already chosen, etc).
+function computeAssignPath(
+  p: MasteryProgress,
+  treeDef: MasteryTreeDef,
+  treeIdx: number,
+  nodeIdx: number,
+): number[] | { error: 'sibling' | 'shortKey' } {
+  if (isNodeAssigned(p, treeIdx, nodeIdx)) return []
+  const assigned = new Set(p.nodes[treeIdx] ?? [])
+  const path: number[] = []
+  if (nodeIdx < 12) {
+    for (let i = 0; i <= nodeIdx; i++) {
+      if (!assigned.has(i)) path.push(i)
+    }
+    return path
+  }
+  const majorLineIdx = nodeIdx <= 13 ? 5 : 11
+  if (treeDef.short && majorLineIdx === 11) return { error: 'shortKey' }
+  const siblingIdx = nodeIdx % 2 === 0 ? nodeIdx + 1 : nodeIdx - 1
+  if (assigned.has(siblingIdx)) return { error: 'sibling' }
+  for (let i = 0; i <= majorLineIdx; i++) {
+    if (!assigned.has(i)) path.push(i)
+  }
+  path.push(nodeIdx)
+  return path
+}
+
+function computeAssignInfo(
   p: MasteryProgress,
   treeDef: MasteryTreeDef,
   treeIdx: number,
   nodeIdx: number,
   totalAvailable: number,
-): string | null {
-  if (isNodeAssigned(p, treeIdx, nodeIdx)) return 'already assigned'
-  if (totalAvailable <= 0) return 'no mastery points'
-  const assigned = p.nodes[treeIdx] ?? []
-  if (nodeIdx < 12) {
-    // Line node: all previous must be assigned
-    for (let i = 0; i < nodeIdx; i++) {
-      if (!assigned.includes(i)) return 'complete previous nodes first'
-    }
-  } else {
-    // Key node: determine parent major (node 5 or 11) and sibling
-    const majorLineIdx = nodeIdx <= 13 ? 5 : 11
-    // Short trees don't have a second major; key nodes 14/15 are invalid
-    if (treeDef.short && majorLineIdx === 11) return 'node not available'
-    if (!assigned.includes(majorLineIdx)) return 'complete previous nodes first'
-    // Mutual exclusion: sibling key
-    const siblingIdx = nodeIdx % 2 === 0 ? nodeIdx + 1 : nodeIdx - 1
-    if (assigned.includes(siblingIdx)) return 'another key already chosen'
-  }
-  return null
+): AssignInfo {
+  if (isNodeAssigned(p, treeIdx, nodeIdx)) return { kind: 'assigned' }
+  const result = computeAssignPath(p, treeDef, treeIdx, nodeIdx)
+  if (!Array.isArray(result)) return { kind: 'unavailable', reason: result.error }
+  const cost = result.length
+  if (cost === 0) return { kind: 'assigned' }
+  if (cost <= totalAvailable) return { kind: 'assignable', path: result, extra: cost - 1, cost }
+  return { kind: 'insufficient', path: result, cost, available: totalAvailable }
 }
 
 // ── Reset Confirmation Modal ───────────────────────────────────────────────
@@ -117,8 +146,7 @@ function mountNodeDetailModal(
     treeLabel: string
     nodeIdx: number
     desc: string
-    isAssigned: boolean
-    blockReason: string | null
+    assignInfo: AssignInfo
   },
   onAssign: () => void,
   onClose: () => void,
@@ -127,12 +155,18 @@ function mountNodeDetailModal(
   const typeLabel = typeLabelMap[nodeType(info.nodeIdx)]
 
   let actionHtml = ''
-  if (info.isAssigned) {
+  if (info.assignInfo.kind === 'assigned') {
     actionHtml = '<span class="node-detail-assigned">Assigned</span>'
-  } else if (info.blockReason === null) {
-    actionHtml = '<button class="modal-btn modal-btn--primary node-detail-assign-btn" data-action="assign">Assign</button>'
+  } else if (info.assignInfo.kind === 'assignable') {
+    const label = info.assignInfo.extra > 0 ? `Assign (+${info.assignInfo.extra})` : 'Assign'
+    actionHtml = `<button class="modal-btn modal-btn--primary node-detail-assign-btn" data-action="assign">${label}</button>`
+  } else if (info.assignInfo.kind === 'insufficient') {
+    const { cost, available } = info.assignInfo
+    actionHtml = `<span class="node-detail-blocked">Need ${cost} mastery point${cost === 1 ? '' : 's'} (have ${available})</span>`
   } else {
-    actionHtml = `<span class="node-detail-blocked">${info.blockReason === 'no mastery points' ? 'No mastery points available' : info.blockReason === 'another key already chosen' ? 'Another key node already chosen' : 'Complete previous nodes first'}</span>`
+    actionHtml = info.assignInfo.reason === 'sibling'
+      ? '<span class="node-detail-blocked">Another key node already chosen</span>'
+      : '<span class="node-detail-blocked">Node not available</span>'
   }
 
   const descHtml = linkifyNoteTerms(info.desc)
@@ -191,10 +225,15 @@ function nodeHalfSize(nodeIdx: number): number {
 const H_BAR_GAP = 20  // distance between adjacent node edges
 const V_BAR_GAP = 16  // distance between major and key edges
 
-// Returns whether the h-bar to the right of lineIdx should be filled.
-// A bar is filled when the node to its left is assigned.
-function hBarFilled(p: MasteryProgress, treeIdx: number, leftLineIdx: number): boolean {
-  return isNodeAssigned(p, treeIdx, leftLineIdx)
+function mkNode(treeIdx: number, nodeIdx: number, type: NodeType, assigned: boolean): HTMLElement {
+  const node = document.createElement('div')
+  node.className = `tree-node tree-node--${type}${assigned ? ' tree-node--assigned' : ''}`
+  node.dataset['tree'] = String(treeIdx)
+  node.dataset['node'] = String(nodeIdx)
+  node.setAttribute('role', 'button')
+  node.setAttribute('tabindex', '0')
+  node.textContent = '+'
+  return node
 }
 
 function buildTreeNodes(
@@ -227,67 +266,48 @@ function buildTreeNodes(
       const cluster = document.createElement('div')
       cluster.className = 'tree-major-cluster'
 
-      const keyA = document.createElement('div')
-      keyA.className = `tree-node tree-node--key${keyAAssigned ? ' tree-node--assigned' : ''}`
-      keyA.dataset['tree'] = String(treeIdx)
-      keyA.dataset['node'] = String(keyAIdx)
-      keyA.setAttribute('role', 'button')
-      keyA.setAttribute('tabindex', '0')
-      keyA.textContent = '+'
-
+      const keyA = mkNode(treeIdx, keyAIdx, 'key', keyAAssigned)
       const keyHalf = nodeHalfSize(keyAIdx)
       const majorHalf = nodeHalfSize(lineIdx)
 
       const vBarA = document.createElement('div')
-      vBarA.className = `tree-bar--v${majorAssigned ? ' tree-bar--filled' : ''}`
+      const vBarAFilled = majorAssigned && keyAAssigned
+      vBarA.className = `tree-bar--v${vBarAFilled ? ' tree-bar--filled' : ''}`
+      vBarA.dataset['barFrom'] = String(keyAIdx)
+      vBarA.dataset['barTo'] = String(lineIdx)
       vBarA.style.height = `${keyHalf + V_BAR_GAP + majorHalf}px`
       vBarA.style.marginTop = `-${keyHalf}px`
       vBarA.style.marginBottom = `-${majorHalf}px`
 
-      const majorNode = document.createElement('div')
-      majorNode.className = `tree-node tree-node--major${majorAssigned ? ' tree-node--assigned' : ''}`
-      majorNode.dataset['tree'] = String(treeIdx)
-      majorNode.dataset['node'] = String(lineIdx)
-      majorNode.setAttribute('role', 'button')
-      majorNode.setAttribute('tabindex', '0')
-      majorNode.textContent = '+'
+      const majorNode = mkNode(treeIdx, lineIdx, 'major', majorAssigned)
 
       const vBarB = document.createElement('div')
-      vBarB.className = `tree-bar--v${majorAssigned ? ' tree-bar--filled' : ''}`
+      const vBarBFilled = majorAssigned && keyBAssigned
+      vBarB.className = `tree-bar--v${vBarBFilled ? ' tree-bar--filled' : ''}`
+      vBarB.dataset['barFrom'] = String(lineIdx)
+      vBarB.dataset['barTo'] = String(keyBIdx)
       vBarB.style.height = `${majorHalf + V_BAR_GAP + keyHalf}px`
       vBarB.style.marginTop = `-${majorHalf}px`
       vBarB.style.marginBottom = `-${keyHalf}px`
 
-      const keyB = document.createElement('div')
-      keyB.className = `tree-node tree-node--key${keyBAssigned ? ' tree-node--assigned' : ''}`
-      keyB.dataset['tree'] = String(treeIdx)
-      keyB.dataset['node'] = String(keyBIdx)
-      keyB.setAttribute('role', 'button')
-      keyB.setAttribute('tabindex', '0')
-      keyB.textContent = '+'
+      const keyB = mkNode(treeIdx, keyBIdx, 'key', keyBAssigned)
 
       cluster.append(keyA, vBarA, majorNode, vBarB, keyB)
       container.appendChild(cluster)
     } else {
-      const node = document.createElement('div')
-      node.className = `tree-node tree-node--${type}${isNodeAssigned(p, treeIdx, lineIdx) ? ' tree-node--assigned' : ''}`
-      node.dataset['tree'] = String(treeIdx)
-      node.dataset['node'] = String(lineIdx)
-      node.setAttribute('role', 'button')
-      node.setAttribute('tabindex', '0')
-      node.textContent = '+'
-      container.appendChild(node)
+      container.appendChild(mkNode(treeIdx, lineIdx, type, isNodeAssigned(p, treeIdx, lineIdx)))
     }
 
-    // Add h-bar between this node and the next (not after the last).
-    // Bar extends center-to-center: layout width is H_BAR_GAP, but the bar
-    // visually grows past it (overlapping into adjacent nodes) via negative
-    // margins; nodes' z-index covers the overlap.
+    // Add h-bar between this node and the next (not after the last). A bar is
+    // filled (yellow) only when BOTH adjacent line nodes are assigned.
     if (lineIdx < lastLineIdx) {
       const leftHalf = nodeHalfSize(lineIdx)
       const rightHalf = nodeHalfSize(lineIdx + 1)
+      const filled = isNodeAssigned(p, treeIdx, lineIdx) && isNodeAssigned(p, treeIdx, lineIdx + 1)
       const bar = document.createElement('div')
-      bar.className = `tree-bar--h${hBarFilled(p, treeIdx, lineIdx) ? ' tree-bar--filled' : ''}`
+      bar.className = `tree-bar--h${filled ? ' tree-bar--filled' : ''}`
+      bar.dataset['barFrom'] = String(lineIdx)
+      bar.dataset['barTo'] = String(lineIdx + 1)
       bar.style.width = `${leftHalf + H_BAR_GAP + rightHalf}px`
       bar.style.marginLeft = `-${leftHalf}px`
       bar.style.marginRight = `-${rightHalf}px`
@@ -295,12 +315,35 @@ function buildTreeNodes(
     }
   }
 
-  // Wire click handlers on all tree-node elements
+  // Hover preview: when hovering an unassigned node, color the bars along the
+  // assignment path green up to whatever the user can afford right now.
+  function applyPreviewFor(nodeIdx: number): void {
+    const info = computeAssignInfo(p, treeDef, treeIdx, nodeIdx, totalAvailable)
+    if (info.kind !== 'assignable' && info.kind !== 'insufficient') return
+    const reachable = info.path.slice(0, totalAvailable)
+    if (reachable.length === 0) return
+    const reachableSet = new Set(reachable)
+    container.querySelectorAll<HTMLElement>('[data-bar-from]').forEach(bar => {
+      const from = parseInt(bar.dataset['barFrom']!, 10)
+      const to = parseInt(bar.dataset['barTo']!, 10)
+      const fromAssigned = isNodeAssigned(p, treeIdx, from)
+      const toAssigned = isNodeAssigned(p, treeIdx, to)
+      const fromInReach = fromAssigned || reachableSet.has(from)
+      const toInReach = toAssigned || reachableSet.has(to)
+      if (fromInReach && toInReach && !(fromAssigned && toAssigned)) {
+        bar.classList.add('tree-bar--preview')
+      }
+    })
+  }
+  function clearPreview(): void {
+    container.querySelectorAll<HTMLElement>('.tree-bar--preview').forEach(b => b.classList.remove('tree-bar--preview'))
+  }
+
+  // Wire click handlers and hover preview on all tree-node elements
   container.querySelectorAll<HTMLElement>('.tree-node').forEach(nodeEl => {
+    const nodeIdx = parseInt(nodeEl.dataset['node']!, 10)
     const handleActivate = (): void => {
-      const nodeIdx = parseInt(nodeEl.dataset['node']!, 10)
-      const reason = assignBlockReason(p, treeDef, treeIdx, nodeIdx, totalAvailable)
-      const isAssigned = isNodeAssigned(p, treeIdx, nodeIdx)
+      const info = computeAssignInfo(p, treeDef, treeIdx, nodeIdx, totalAvailable)
       nodeEl.dispatchEvent(new CustomEvent('node-detail', {
         bubbles: true,
         detail: {
@@ -308,8 +351,7 @@ function buildTreeNodes(
           nodeIdx,
           treeLabel: treeDef.label,
           desc: getNodeDescription(def.id, treeIdx, nodeIdx, treeDef.label),
-          isAssigned,
-          blockReason: isAssigned ? null : reason,
+          info,
         },
       }))
     }
@@ -317,6 +359,12 @@ function buildTreeNodes(
     nodeEl.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleActivate() }
     })
+    if (!isNodeAssigned(p, treeIdx, nodeIdx)) {
+      nodeEl.addEventListener('mouseenter', () => applyPreviewFor(nodeIdx))
+      nodeEl.addEventListener('mouseleave', clearPreview)
+      nodeEl.addEventListener('focus', () => applyPreviewFor(nodeIdx))
+      nodeEl.addEventListener('blur', clearPreview)
+    }
   })
 
   return container
@@ -398,14 +446,16 @@ function mountMasteryTreeModal(
   panel.addEventListener('node-detail', (e: Event) => {
     const detail = (e as CustomEvent).detail as {
       treeIdx: number; nodeIdx: number; treeLabel: string; desc: string
-      isAssigned: boolean; blockReason: string | null
+      info: AssignInfo
     }
     closeSub()
     subCleanup = mountNodeDetailModal(
       parent,
-      { treeLabel: detail.treeLabel, nodeIdx: detail.nodeIdx, desc: detail.desc, isAssigned: detail.isAssigned, blockReason: detail.blockReason },
+      { treeLabel: detail.treeLabel, nodeIdx: detail.nodeIdx, desc: detail.desc, assignInfo: detail.info },
       () => {
-        onAssign(detail.treeIdx, detail.nodeIdx)
+        if (detail.info.kind === 'assignable') {
+          for (const nIdx of detail.info.path) onAssign(detail.treeIdx, nIdx)
+        }
         subCleanup = null
         rebuildTrees()
       },

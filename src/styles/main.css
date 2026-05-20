@@ -2583,18 +2583,26 @@ body::after {
   user-select: none;
   position: relative;
   z-index: 1;
-  transition: filter var(--transition-fast);
+  transition: transform var(--transition-fast);
 }
 
 .tree-node:hover,
 .tree-node:focus-visible {
-  filter: brightness(1.2);
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: translateY(2px);
   outline: none;
 }
 
+/* Assigned nodes always render in the pressed/lighter style. */
 .tree-node--assigned {
-  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_grey.png');
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_grey_pressed.png');
   color: #1a0a02;
+  transform: translateY(2px);
+}
+
+.tree-node--assigned:hover,
+.tree-node--assigned:focus-visible {
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_grey_pressed.png');
 }
 
 .tree-node--small  { width: 24px; height: 24px; font-size: 0.65rem; }
@@ -2625,6 +2633,10 @@ body::after {
   background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_horizontalMid.png');
 }
 
+.tree-bar--h.tree-bar--preview {
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_horizontalMid.png');
+}
+
 /* ── Vertical connector bar between major and key nodes ── */
 
 .tree-bar--v {
@@ -2637,6 +2649,10 @@ body::after {
 
 .tree-bar--v.tree-bar--filled {
   background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barYellow_verticalMid.png');
+}
+
+.tree-bar--v.tree-bar--preview {
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/barGreen_verticalMid.png');
 }
 
 /* ── Node detail sub-modal ── */
