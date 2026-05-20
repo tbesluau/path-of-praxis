@@ -2464,7 +2464,7 @@ body::after {
 }
 
 /* Capped-gain notification dot — overflows the badge's top-right corner. */
-.mastery-cap-dot {
+.notif-dot.mastery-cap-dot {
   width: 8px;
   height: 8px;
   top: -5px;
