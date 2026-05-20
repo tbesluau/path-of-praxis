@@ -83,7 +83,9 @@ export function createGameScene(
   }
 
   function enemyDamageScale(): number {
-    return Math.pow(balance.enemyLevel.damageMultiplier, enemyProgress.level - 1)
+    // Low-level damage penalty: 0.5× at L1, +0.05 per level, capped at 1.0× from L11
+    const lowLevelPenalty = Math.min(1, 0.5 + 0.05 * (enemyProgress.level - 1))
+    return Math.pow(balance.enemyLevel.damageMultiplier, enemyProgress.level - 1) * lowLevelPenalty
   }
 
   function enemyLifeScale(): number {
