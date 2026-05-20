@@ -12,9 +12,10 @@ export type MasteryId =
   | 'enemy' | 'movement'
 
 export interface MasteryTreeDef {
-  index: number   // 0-based position in the trees array
-  label: string   // e.g. "Action Damage"
-  short?: boolean // if true, tree ends after first major (line nodes 0-5; key nodes 12-13 only)
+  index: number        // 0-based position in the trees array
+  label: string        // e.g. "Action Damage"
+  short?: boolean      // if true, tree ends after first major (line nodes 0-5; key nodes 12-13 only)
+  unlockAscent?: number // hide until ascentCount >= this value
 }
 
 export interface MasteryDef {
@@ -131,7 +132,7 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 0, label: 'Enemy Quantity' },
         { index: 1, label: 'Enemy Quality' },
         { index: 3, label: 'Enemy Proliferation', short: true },
-        { index: 2, label: 'Champions and Bosses', short: true },
+        { index: 2, label: 'Champions and Bosses', short: true, unlockAscent: 2 },
       ] },
       { id: 'movement', label: 'Movement', trees: [
         { index: 0, label: 'Movement Speed' },

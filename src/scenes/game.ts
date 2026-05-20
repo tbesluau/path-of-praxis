@@ -1924,6 +1924,7 @@ export function createGameScene(
         id => { resetMasteryPoints(id) },
         computeMasteryGains,
         balance.mastery.levelsPerRebirth,
+        ascentCount,
       )
     })
 

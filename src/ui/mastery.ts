@@ -323,11 +323,13 @@ function mountMasteryTreeModal(
   parent: HTMLElement,
   def: MasteryDef,
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
+  ascentCount: number,
   onAssign: (treeIdx: number, nodeIdx: number) => void,
   onReset: () => void,
   onClose: () => void,
 ): () => void {
   const p = prog(masteryProgress, def.id)
+  const visibleTrees = def.trees.filter(t => !t.unlockAscent || ascentCount >= t.unlockAscent)
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop mastery-tree-backdrop'
@@ -362,7 +364,7 @@ function mountMasteryTreeModal(
 
   updatePointsSummary()
 
-  def.trees.forEach((treeDef) => {
+  visibleTrees.forEach((treeDef) => {
     const entry = document.createElement('div')
     entry.className = 'mastery-tree-entry'
     const label = document.createElement('span')
@@ -400,7 +402,7 @@ function mountMasteryTreeModal(
   function rebuildTrees(): void {
     const freshP = prog(masteryProgress, def.id)
     list.innerHTML = ''
-    def.trees.forEach((treeDef) => {
+    visibleTrees.forEach((treeDef) => {
       const entry = document.createElement('div')
       entry.className = 'mastery-tree-entry'
       const labelEl = document.createElement('span')
@@ -444,6 +446,7 @@ export function mountMasteryModal(
   onReset: (id: MasteryId) => void,
   getPendingGains: () => Array<{ id: MasteryId; xpGain: number }>,
   levelsPerRebirth: number,
+  ascentCount: number,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -529,7 +532,7 @@ export function mountMasteryModal(
       // The tree modal stays open across assigns/resets, so we must NOT clear
       // subCleanup in those callbacks — only when the tree modal itself closes.
       subCleanup = mountMasteryTreeModal(
-        parent, def, masteryProgress,
+        parent, def, masteryProgress, ascentCount,
         (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
         () => { onReset(id); buildRows() },
         () => { subCleanup = null },
