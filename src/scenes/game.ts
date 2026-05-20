@@ -17,7 +17,7 @@ import type { SceneId } from '../core/router'
 import { mountSettingsButton } from '../ui/settings'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
 import { getPrefs, isCheatMode } from '../core/prefs'
-import { computeRuneBonuses, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
+import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 
 const HP_BAR_H = 4
@@ -850,14 +850,12 @@ export function createGameScene(
   }
 
   function refreshRuneDot(): void {
-    // Show a dot whenever any of the 6 rune slots is unassigned — locked slots
-    // can now be pre-assigned, so the dot reflects "any empty slot" not just
-    // "any unlocked empty slot". Query from container (not el) so the dot
-    // inside the trigger modal — a sibling of el — is also updated live.
     const r = getActionRunes(playerActionId)
-    const anyEmpty = r.selected.slice(0, 6).some(s => s == null)
+    const level = actionProgress[playerActionId]?.level ?? 1
+    const unlocked = unlockedSlotCount(level)
+    const anyUnlockedEmpty = r.selected.slice(0, unlocked).some(s => s == null)
     container.querySelectorAll<HTMLElement>('.rune-notif-dot').forEach(dot => {
-      dot.hidden = !anyEmpty
+      dot.hidden = !anyUnlockedEmpty
     })
   }
 
@@ -1513,7 +1511,11 @@ export function createGameScene(
           const p = actionProgress[id] ?? { xp: 0, level: 1, maxLevel: 1 }
           return { level: p.level, xp: p.xp, xpNeeded: actionXpNeeded(p.level) }
         },
-        hasUnassignedRune: (id) => getActionRunes(id).selected.slice(0, 6).some(s => s == null),
+        hasUnassignedRune: (id) => {
+          const level = actionProgress[id]?.level ?? 1
+          const unlocked = unlockedSlotCount(level)
+          return getActionRunes(id).selected.slice(0, unlocked).some(s => s == null)
+        },
         openRunesModal: () => { openRunesModal() },
       },
       (id) => {
