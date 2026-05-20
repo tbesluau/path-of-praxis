@@ -1377,6 +1377,10 @@ export function createGameScene(
     liveModalXpUpdater?.()
     refreshRuneDot()
   }
+  // Mastery cap state changes as XP accrues during a run (action, stat, and
+  // distance XP all feed into it from different paths). A throttled refresh
+  // keeps the gear-button dot honest without sprinkling calls everywhere.
+  const masteryDotInterval = setInterval(refreshMasteryDot, 500)
 
   let runesModalCleanup: (() => void) | null = null
 
@@ -2485,7 +2489,19 @@ export function createGameScene(
       const isAlwaysShown = m.id === 'enemy' || m.id === 'action'
       return isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
     })
-    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints)
+    // A mastery is "capped" when its pending rebirth gain hits the
+    // per-rebirth level cap — the user should know they're leaving XP on
+    // the table. Enemy mastery isn't XP-based and has no cap. A mastery
+    // earning XP for the very first time has no entry in masteryProgress;
+    // fall back to a fresh-progress shape so the preview can still report cap.
+    const cap = balance.mastery.levelsPerRebirth
+    const anyCapped = computeMasteryGains().some(g => {
+      if (g.id === 'enemy') return false
+      const p = masteryProgress[g.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
+      const preview = previewMasteryGain(p.xp, p.level, g.xpGain, p.level + cap, g.id)
+      return preview.levelsGained >= cap
+    })
+    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints || anyCapped)
   }
 
   function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {
@@ -4385,6 +4401,7 @@ export function createGameScene(
     stopRegen()
     clearInterval(saveInterval)
     clearInterval(dpsMeterInterval)
+    clearInterval(masteryDotInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()

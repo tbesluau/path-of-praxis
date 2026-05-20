@@ -591,9 +591,10 @@ export function mountMasteryModal(
     levelEl.innerHTML = `Lv.${s.displayLevel}${s.pts > 0 ? ` · <span class="mastery-pts">${s.pts}pt</span>` : ''}`
     const badge = rowEl.querySelector<HTMLElement>('.mastery-gain-badge')!
     if (s.levelsGained > 0) {
-      badge.textContent = `+${s.levelsGained}`
+      badge.innerHTML = `+${s.levelsGained}<span class="notif-dot mastery-cap-dot" hidden></span>`
       badge.className = `mastery-gain-badge${s.capped ? ' mastery-gain-badge--capped' : ''}`
       badge.hidden = false
+      badge.querySelector<HTMLElement>('.mastery-cap-dot')!.hidden = !s.capped
     } else { badge.hidden = true }
   }
 
