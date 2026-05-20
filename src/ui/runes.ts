@@ -87,22 +87,15 @@ export function mountRunesModal(
 
       const typeLabel = slotType.charAt(0).toUpperCase() + slotType.slice(1)
       const typeBadgeHtml = `<span class="rune-card-badge rune-card-badge--${slotType}">${typeLabel}</span>`
-
-      if (!isUnlocked) {
-        return `
-          <div class="rune-card rune-card--locked rune-card--${slotType}" aria-disabled="true">
-            ${typeBadgeHtml}
-            <div class="rune-card-content">
-              <span class="rune-card-lock">Requires Lv. ${requiredLevel}</span>
-            </div>
-          </div>
-        `
-      }
+      const lockedBadgeHtml = isUnlocked
+        ? ''
+        : `<span class="rune-card-lock-badge">Lv. ${requiredLevel}</span>`
+      const lockedClass = isUnlocked ? '' : ' rune-card--locked'
 
       if (!currentRune) {
         return `
-          <button class="rune-card rune-card--empty rune-card--${slotType}" data-slot="${i}" aria-label="Add ${slotType} rune to slot ${i + 1}">
-            ${typeBadgeHtml}
+          <button class="rune-card rune-card--empty rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="Add ${slotType} rune to slot ${i + 1}">
+            ${typeBadgeHtml}${lockedBadgeHtml}
             <div class="rune-card-content">
               <span class="rune-card-name rune-card-name--empty">+ Add rune</span>
             </div>
@@ -111,8 +104,8 @@ export function mountRunesModal(
       }
 
       return `
-        <button class="rune-card rune-card--filled rune-card--${slotType}" data-slot="${i}" aria-label="${currentRune.label} — click to change">
-          ${typeBadgeHtml}
+        <button class="rune-card rune-card--filled rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${currentRune.label} — click to change">
+          ${typeBadgeHtml}${lockedBadgeHtml}
           <div class="rune-card-content">
             <span class="rune-card-name">${currentRune.label}</span>
             <span class="rune-card-desc">${currentRune.desc}</span>

@@ -1,4 +1,4 @@
-import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star } from 'lucide'
+import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star, Sparkles } from 'lucide'
 import type { ActionDef } from '../config/actions'
 import type { DamageEssenceTag, DamageTypeTag } from '../config/masteries'
 import { balance } from '../config/balance'
@@ -45,7 +45,13 @@ function critChancePct(tags: ActionDef['tags']): number | null {
   return null
 }
 
-export function buildActionThumbnail(action: ActionDef | null, legend = false, showCritChance = false, critBaseAdd = 0): HTMLElement {
+export interface ActionThumbXp {
+  level: number
+  xp: number
+  xpNeeded: number
+}
+
+export function buildActionThumbnail(action: ActionDef | null, legend = false, showCritChance = false, critBaseAdd = 0, xpProgress?: ActionThumbXp): HTMLElement {
   const wrap = document.createElement('div')
   wrap.className = `action-thumbnail${legend ? ' action-thumbnail--legend' : ''}`
 
@@ -100,6 +106,16 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
     ? `<span class="action-thumb-stat action-thumb-stat--crit"><i data-lucide="star" aria-hidden="true"></i>${Math.round(crit)}%${critBaseAdd > 0 ? ` + ${Math.round(critBaseAdd)}%` : ''}</span>`
     : ''
 
+  const xpPct = xpProgress
+    ? Math.min(100, Math.round(xpProgress.xp / Math.max(1, xpProgress.xpNeeded) * 100))
+    : 0
+  const xpBarHtml = xpProgress
+    ? `<div class="action-thumb-xp">
+         <div class="action-thumb-xp-bar"><div class="action-thumb-xp-fill" style="width:${xpPct}%"></div></div>
+         <span class="action-thumb-xp-label">Lv.${xpProgress.level}</span>
+       </div>`
+    : ''
+
   wrap.innerHTML = `
     <div class="action-thumb-header">
       <div class="action-thumb-icon"><i data-lucide="${action.icon}" aria-hidden="true"></i></div>
@@ -114,11 +130,12 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
       ${critHtml}
     </div>
     <div class="action-thumb-tags">${tagsHtml}${specialsHtml}</div>
+    ${xpBarHtml}
   `
   return wrap
 }
 
-const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star }
+const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star, Sparkles }
 
 export function refreshActionThumbnailIcons(): void {
   createIcons({ icons: PICKER_ICONS })
