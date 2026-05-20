@@ -61,9 +61,12 @@ function defaultBonuses(): RuneBonuses {
   }
 }
 
-export function computeRuneBonuses(selected: (RuneId | null)[]): RuneBonuses {
+export function computeRuneBonuses(selected: (RuneId | null)[], actionLevel?: number): RuneBonuses {
+  const unlocked = actionLevel != null ? unlockedSlotCount(actionLevel) : selected.length
   const b = defaultBonuses()
-  for (const id of selected) {
+  for (let i = 0; i < selected.length; i++) {
+    if (i >= unlocked) continue
+    const id = selected[i]
     if (!id) continue
     switch (id) {
       case 'minorDmg':    b.damageIncrease += 15; break

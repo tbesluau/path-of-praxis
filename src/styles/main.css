@@ -543,11 +543,6 @@ body::after {
   letter-spacing: 0.02em;
 }
 
-.stat-bar-regen--action {
-  color: #1a0a02;
-  text-shadow: none;
-}
-
 /* ── Enemy level control (top-center) ── */
 
 .enemy-level-ctrl {
@@ -914,62 +909,6 @@ body::after {
   color: rgba(26, 10, 2, 0.45);
 }
 
-.action-icon-wrap,
-.action-icon-btn {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') center / contain no-repeat;
-}
-
-.action-icon-btn {
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: opacity 0.1s;
-}
-
-.action-icon-btn:hover { opacity: 0.8; }
-.action-icon-btn:active { opacity: 0.6; transform: scale(0.95); }
-
-.action-icon-wrap svg,
-.action-icon-btn svg {
-  width: 16px;
-  height: 16px;
-  stroke-width: 1.75;
-}
-
-.stat-bar--action {
-  flex: 1;
-}
-
-.stat-bar-row--action {
-  align-self: flex-start;
-  width: 33%;
-}
-
-.action-level-label {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.02rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #1a0a02;
-  pointer-events: none;
-}
-
-.stat-bar-fill--action {
-  border-image: url('/ui/composed_bars/barYellow_horizontal.png') 0 9 fill stretch;
-}
-
 .char-info-value--life {
   color: #c02020;
 }
@@ -1184,6 +1123,57 @@ body::after {
   margin: var(--space-xs);
 }
 
+/* Row that holds the main-slot action thumbnail and the runes button.
+ * The runes button is absolutely positioned at right:0 and overlaps the card
+ * on the right by ~1/3 of its width — the padding here reserves the
+ * non-overlapping 2/3rds so the thumbnail content stays clear. */
+.action-trigger-row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  padding-right: 37px;
+}
+
+.action-trigger-row .action-trigger-card {
+  flex: 1;
+}
+
+.action-trigger-rune-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') 14 fill stretch;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform var(--transition-fast);
+}
+
+.action-trigger-rune-btn:hover,
+.action-trigger-rune-btn:focus-visible {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  outline: none;
+}
+
+.action-trigger-rune-btn:active {
+  transform: translateY(calc(-50% + 2px)) scale(0.96);
+}
+
+.action-trigger-rune-btn svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+}
+
 /* ── Action thumbnail (trigger card + picker) ── */
 
 .action-thumbnail {
@@ -1287,6 +1277,46 @@ body::after {
 .tag--rot       { background: #3a1060; color: #c080ff; }
 .tag--neutral   { background: #2a2a2a; color: rgba(255, 255, 255, 0.75); }
 .tag--special   { background: #4a3a10; color: #ffe0a0; }
+
+/* Action-level XP bar at the bottom of the thumbnail */
+.action-thumb-xp {
+  position: relative;
+  height: 18px;
+  margin-top: 4px;
+}
+
+.action-thumb-xp-bar {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.action-thumb-xp-fill {
+  height: 100%;
+  border-image: url('/ui/composed_bars/barYellow_horizontal.png') 0 9 fill stretch;
+  border-style: solid;
+  border-color: transparent;
+  border-width: 0 9px;
+  box-sizing: border-box;
+  min-width: 18px;
+  transition: width 0.2s ease-out;
+}
+
+.action-thumb-xp-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1a0a02;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
 
 /* Legend modifier: labels instead of values */
 .action-thumbnail--legend .action-thumb-name {
@@ -2836,6 +2866,7 @@ body::after {
 }
 
 .rune-card {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -2859,8 +2890,21 @@ body::after {
 }
 
 .rune-card--locked {
-  opacity: 0.45;
-  cursor: default;
+  opacity: 0.65;
+}
+
+.rune-card-lock-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 2px 6px;
+  border-radius: 3px;
   pointer-events: none;
 }
 

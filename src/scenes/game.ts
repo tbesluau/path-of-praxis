@@ -1,7 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Crosshair, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, Bomb, Hammer, LoaderPinwheel, CloudLightning, ArrowUp, Star } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot } from '../core/character'
@@ -15,9 +15,9 @@ import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 import { mountSettingsButton } from '../ui/settings'
-import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons } from '../ui/action-picker'
+import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
 import { getPrefs, isCheatMode } from '../core/prefs'
-import { computeRuneBonuses, unlockedSlotCount, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
+import { computeRuneBonuses, SLOT_TYPES, runesByType, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 
 const HP_BAR_H = 4
@@ -79,7 +79,8 @@ export function createGameScene(
   }
 
   function getRuneBonuses(id: string) {
-    return computeRuneBonuses(getActionRunes(id).selected)
+    const level = actionProgress[id]?.level ?? 1
+    return computeRuneBonuses(getActionRunes(id).selected, level)
   }
 
   function enemyDamageScale(): number {
@@ -843,28 +844,30 @@ export function createGameScene(
     }
     actionProgress[actionId] = { xp, level, maxLevel }
     if (leveled) applyAutoRunes(actionId)
-    if (actionId === playerActionId) {
-      if (leveled) assignAction(playerEntity, actionId)
-      updateActionBar()
-    }
+    if (actionId === playerActionId && leveled) assignAction(playerEntity, actionId)
+    // Always refresh — the trigger modal may show any action's thumbnail (main slot or extra slot).
+    updateActionBar()
   }
 
   function refreshRuneDot(): void {
-    const dot = el.querySelector<HTMLElement>('.rune-notif-dot')
-    if (!dot) return
+    // Show a dot whenever any of the 6 rune slots is unassigned — locked slots
+    // can now be pre-assigned, so the dot reflects "any empty slot" not just
+    // "any unlocked empty slot". Query from container (not el) so the dot
+    // inside the trigger modal — a sibling of el — is also updated live.
     const r = getActionRunes(playerActionId)
-    const level = actionProgress[playerActionId]?.level ?? 1
-    const unlocked = unlockedSlotCount(level)
-    dot.hidden = r.selected.slice(0, unlocked).every(s => s !== null)
+    const anyEmpty = r.selected.slice(0, 6).some(s => s == null)
+    container.querySelectorAll<HTMLElement>('.rune-notif-dot').forEach(dot => {
+      dot.hidden = !anyEmpty
+    })
   }
 
   function applyAutoRunes(actionId: string): void {
     const r = getActionRunes(actionId)
     if (!r.autoApply) return
-    const level = actionProgress[actionId]?.level ?? 1
-    const slotCount = unlockedSlotCount(level)
+    // Pre-fill every empty slot (locked or not) from the action's rune history.
+    // Locked-slot assignments persist and activate as soon as the slot unlocks.
     let changed = false
-    for (let i = 0; i < slotCount; i++) {
+    for (let i = 0; i < SLOT_TYPES.length; i++) {
       if (r.selected[i] !== null) continue
       const slotType = SLOT_TYPES[i]
       const taken = new Set(r.selected.filter((x): x is RuneId => x !== null))
@@ -883,7 +886,9 @@ export function createGameScene(
   function assignRune(actionId: string, slotIdx: number, runeId: RuneId | null): void {
     const r = getActionRunes(actionId)
     r.selected[slotIdx] = runeId
-    r.autoApply = false
+    // Track newly chosen runes for future auto-fill; keep autoApply on so any
+    // remaining empty slot continues to be pre-filled from history.
+    if (runeId && !r.history.includes(runeId)) r.history.unshift(runeId)
     actionRunes[actionId] = r
     if (actionId === playerActionId) assignAction(playerEntity, actionId as ActionId)
     refreshRuneDot()
@@ -1166,8 +1171,9 @@ export function createGameScene(
         </button>
       </div>
       <div class="game-top-center">
-        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration" style="position:relative">
           <i data-lucide="settings-2" aria-hidden="true"></i>
+          <span class="notif-dot rune-notif-dot rune-notif-dot--top" hidden></span>
         </button>
         <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries" style="position:relative">
           <i data-lucide="award" aria-hidden="true"></i>
@@ -1236,17 +1242,6 @@ export function createGameScene(
             <span class="stat-bar-regen stat-bar-regen--mana"></span>
           </div>
           <div class="stat-level stat-level--mana"><div class="stat-level-fill"></div><span>Lv.1</span></div>
-        </div>
-        <div class="stat-bar-row stat-bar-row--action">
-          <button class="action-icon-btn" aria-label="Runes" style="position:relative">
-            <i data-lucide="sword" aria-hidden="true"></i>
-            <span class="notif-dot rune-notif-dot" hidden></span>
-          </button>
-          <div class="stat-bar stat-bar--action">
-            <div class="stat-bar-fill stat-bar-fill--action"></div>
-            <span class="action-level-label">Lv.1</span>
-            <span class="stat-bar-regen stat-bar-regen--action"></span>
-          </div>
         </div>
       </div>
     </div>
@@ -1367,11 +1362,6 @@ export function createGameScene(
   const lifeLevelEl     = el.querySelector<HTMLElement>('.stat-level--life')!
   const manaLevelEl     = el.querySelector<HTMLElement>('.stat-level--mana')!
   const enemyXpBarFill  = el.querySelector<HTMLElement>('.enemy-xp-bar-fill')!
-  const actionBarFill    = el.querySelector<HTMLElement>('.stat-bar-fill--action')!
-  const actionLevelLabel = el.querySelector<HTMLElement>('.action-level-label')!
-  const actionDpsEl      = el.querySelector<HTMLElement>('.stat-bar-regen--action')!
-  const actionIconWrap   = el.querySelector<HTMLButtonElement>('.action-icon-btn')!
-
   function updateStatLevels(): void {
     const lifePct = Math.round(lifeProgress.xp / statXpNeeded(lifeProgress.level) * 100)
     lifeLevelEl.style.setProperty('--xp-pct', `${lifePct}%`)
@@ -1381,36 +1371,10 @@ export function createGameScene(
     manaLevelEl.querySelector('span')!.textContent = `Lv.${manaProgress.level}`
   }
 
-  function computeActionDps(): { min: number; max: number } {
-    const action = getAction(playerActionId)
-    const level = getPlayerLevel(playerActionId)
-    let dmg = action.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
-    let spd = action.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
-    const b = getActionBonuses()
-    dmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-    spd *= (1 + b.actionSpeedIncrease / 100) * (1 + b.moreActionSpeed / 100)
-    if (b.doubleDamageChance > 0) {
-      return { min: dmg * spd, max: dmg * 2 * spd }
-    }
-    return { min: dmg * spd, max: dmg * spd }
-  }
-
+  // Update the action XP bar live inside the battle config modal, if open.
+  let liveModalXpUpdater: (() => void) | null = null
   function updateActionBar(): void {
-    const prog = actionProgress[playerActionId] ?? { xp: 0, level: 1, maxLevel: 1 }
-    const pct = Math.min(100, Math.round(prog.xp / actionXpNeeded(prog.level) * 100))
-    actionBarFill.style.width = `${pct}%`
-    actionLevelLabel.textContent = `Lv.${prog.level}`
-    const { min, max } = computeActionDps()
-    actionDpsEl.textContent = min === max
-      ? `${min.toFixed(1)}/s`
-      : `${min.toFixed(1)}–${max.toFixed(1)}/s`
-    refreshRuneDot()
-  }
-
-  function updateActionIcon(): void {
-    const action = getAction(playerActionId)
-    actionIconWrap.innerHTML = `<i data-lucide="${action.icon}" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>`
-    createIcons({ icons: { Sword, Crosshair, Flame, Zap, Bomb, Hammer, LoaderPinwheel, CloudLightning } })
+    liveModalXpUpdater?.()
     refreshRuneDot()
   }
 
@@ -1422,8 +1386,11 @@ export function createGameScene(
     const level = actionProgress[playerActionId]?.level ?? 1
     const maxLevel = actionProgress[playerActionId]?.maxLevel ?? 1
     const r = getActionRunes(playerActionId)
+    // Mount on `container` (not `el`): the .scene-game element has a transform
+    // that creates a stacking context, which would clip our modal beneath
+    // sibling backdrops like the trigger config. Container sits above that.
     runesModalCleanup = mountRunesModal(
-      el,
+      container,
       playerActionId,
       action.label,
       level,
@@ -1526,23 +1493,30 @@ export function createGameScene(
   const battleConfigBtn = el.querySelector<HTMLButtonElement>('[data-action="open-config"]')!
 
   battleConfigBtn.addEventListener('click', () => {
-    if (modalCleanup) { modalCleanup(); modalCleanup = null; return }
+    if (modalCleanup) { modalCleanup(); modalCleanup = null; liveModalXpUpdater = null; return }
     const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id as ActionId
     const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
       : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
-    modalCleanup = mountBattleConfigModal(
+    const { cleanup, updateXp } = mountBattleConfigModal(
       container,
       currentId,
       ascentCount >= 1,
       critBaseAddTotal(),
       activeExtraSlotCount,
       extraSlots.map(s => ({ ...s })),
+      {
+        getActionXp: (id) => {
+          const p = actionProgress[id] ?? { xp: 0, level: 1, maxLevel: 1 }
+          return { level: p.level, xp: p.xp, xpNeeded: actionXpNeeded(p.level) }
+        },
+        hasUnassignedRune: (id) => getActionRunes(id).selected.slice(0, 6).some(s => s == null),
+        openRunesModal: () => { openRunesModal() },
+      },
       (id) => {
         playerActionId = id
         assignAction(playerEntity, id)
         applyAutoRunes(id)
         updateActionBar()
-        updateActionIcon()
         persistState()
       },
       (slotIndex, actionId) => {
@@ -1550,8 +1524,10 @@ export function createGameScene(
         extraSlots[slotIndex] = { ...extraSlots[slotIndex], actionId }
         persistState()
       },
-      () => { modalCleanup = null },
+      () => { modalCleanup = null; liveModalXpUpdater = null },
     )
+    modalCleanup = cleanup
+    liveModalXpUpdater = updateXp
   })
 
   // Must be declared before computeLifeRegenPerSec / computeManaRegenPerSec, which are
@@ -1639,7 +1615,6 @@ export function createGameScene(
   updateBars()
   updateStatLevels()
   updateActionBar()
-  updateActionIcon()
 
   // ── Regen ───────────────────────────────────────────────────────────────
 
@@ -1962,8 +1937,6 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
     .addEventListener('click', () => { ascend() })
 
-  actionIconWrap.addEventListener('click', () => { openRunesModal() })
-
   function drawLifeBar(entity: Entity): void {
     const bar = lifeBarGraphics.get(entity.id)
     if (!bar) return
@@ -2220,12 +2193,15 @@ export function createGameScene(
     modalCleanup = null
     if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
 
-    // Snapshot rune selections into history; reset selections and re-enable auto-apply
+    // Rune assignments persist across rebirth: locked-slot pre-assignments stay
+    // intact and reactivate as the action levels back up. Only update history so
+    // newly chosen runes are remembered for future auto-fills.
     for (const id of Object.keys(actionRunes)) {
       const r = actionRunes[id]
       if (!r) continue
-      const newHistory = r.selected.filter((x): x is RuneId => x !== null)
-      actionRunes[id] = { selected: [null, null, null, null, null, null], history: newHistory, autoApply: true }
+      const selectedNonNull = r.selected.filter((x): x is RuneId => x !== null)
+      const mergedHistory = [...selectedNonNull, ...r.history.filter(h => !selectedNonNull.includes(h))]
+      actionRunes[id] = { ...r, history: mergedHistory }
     }
 
     // Action XP reset; maxLevel persists so prestige multiplier carries forward
@@ -2276,7 +2252,6 @@ export function createGameScene(
     updateBars()
     updateStatLevels()
     updateActionBar()
-    updateActionIcon()
 
     // Reset per-rebirth trackers
     runActionXp = {}
@@ -2314,8 +2289,14 @@ export function createGameScene(
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
     enemyProgress = { xp: 0, level: 1, maxLevel: 1, autoLevel: false }
+    // Rune assignments persist across ascends as well — preserve selections
+    // and merge them into history so auto-fill keeps working.
     for (const id of Object.keys(actionRunes)) {
-      actionRunes[id] = { selected: [null, null, null, null, null, null], history: [], autoApply: true }
+      const r = actionRunes[id]
+      if (!r) continue
+      const selectedNonNull = r.selected.filter((x): x is RuneId => x !== null)
+      const mergedHistory = [...selectedNonNull, ...r.history.filter(h => !selectedNonNull.includes(h))]
+      actionRunes[id] = { ...r, history: mergedHistory }
     }
 
     // Re-apply move speed with new ascentCount
@@ -4429,6 +4410,12 @@ export function createGameScene(
   }
 }
 
+interface BattleConfigModalHooks {
+  getActionXp: (actionId: string) => ActionThumbXp
+  hasUnassignedRune: (actionId: string) => boolean
+  openRunesModal: () => void
+}
+
 function mountBattleConfigModal(
   parent: HTMLElement,
   currentActionId: ActionId,
@@ -4436,10 +4423,11 @@ function mountBattleConfigModal(
   critBaseAdd: number,
   activeExtraSlotCount: number,
   currentExtraSlots: ExtraActionSlot[],
+  hooks: BattleConfigModalHooks,
   onSelectAction: (id: ActionId) => void,
   onSelectExtraSlot: (slotIndex: number, actionId: string) => void,
   onClose: () => void,
-): () => void {
+): { cleanup: () => void; updateXp: () => void } {
   let selectedActionId = currentActionId
 
   const backdrop = document.createElement('div')
@@ -4469,10 +4457,23 @@ function mountBattleConfigModal(
     title.textContent = t('game', 'triggerAutoAction')
     wrap.appendChild(title)
 
+    const row = document.createElement('div')
+    row.className = 'action-trigger-row'
+
     const card = document.createElement('button')
     card.className = 'action-trigger-card'
-    card.appendChild(buildActionThumbnail(getAction(selectedActionId), false, showCritChance, critBaseAdd))
-    wrap.appendChild(card)
+    card.appendChild(buildActionThumbnail(
+      getAction(selectedActionId), false, showCritChance, critBaseAdd, hooks.getActionXp(selectedActionId),
+    ))
+    row.appendChild(card)
+
+    const runeBtn = document.createElement('button')
+    runeBtn.className = 'action-trigger-rune-btn'
+    runeBtn.setAttribute('aria-label', 'Runes')
+    runeBtn.innerHTML = '<i data-lucide="sparkles" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>'
+    row.appendChild(runeBtn)
+
+    wrap.appendChild(row)
     triggerList.appendChild(wrap)
 
     card.addEventListener('click', () => {
@@ -4483,6 +4484,7 @@ function mountBattleConfigModal(
         showCritChance, critBaseAdd,
       )
     })
+    runeBtn.addEventListener('click', e => { e.stopPropagation(); hooks.openRunesModal() })
 
     // ── Extra slots (slot 2 / slot 3) ─────────────────────────────────────
     const SLOT_PENALTIES = [balance.ascent.slot2DamagePenalty, balance.ascent.slot3DamagePenalty]
@@ -4511,7 +4513,10 @@ function mountBattleConfigModal(
       const extraCard = document.createElement('button')
       extraCard.className = 'action-trigger-card'
       if (slot.actionId) {
-        extraCard.appendChild(buildActionThumbnail(getAction(slot.actionId as ActionId), false, showCritChance, critBaseAdd))
+        extraCard.appendChild(buildActionThumbnail(
+          getAction(slot.actionId as ActionId), false, showCritChance, critBaseAdd,
+          hooks.getActionXp(slot.actionId),
+        ))
       } else {
         const empty = document.createElement('div')
         empty.className = 'action-trigger-empty'
@@ -4534,7 +4539,29 @@ function mountBattleConfigModal(
       triggerList.appendChild(extraWrap)
     }
 
+    // Reflect rune-dot state for the in-modal rune button.
+    const modalDot = runeBtn.querySelector<HTMLElement>('.rune-notif-dot')
+    if (modalDot) modalDot.hidden = !hooks.hasUnassignedRune(selectedActionId)
+
     refreshActionThumbnailIcons()
+  }
+
+  function updateXp(): void {
+    // Live-update the XP fill widths and level labels without redrawing the
+    // whole modal (which would churn icon createIcons() and lose focus).
+    const cards = triggerList.querySelectorAll<HTMLElement>('.action-trigger-card')
+    const ids: (string | null)[] = [selectedActionId]
+    for (let i = 0; i < activeExtraSlotCount; i++) ids.push(currentExtraSlots[i]?.actionId ?? null)
+    cards.forEach((cardEl, idx) => {
+      const actionId = ids[idx]
+      if (!actionId) return
+      const x = hooks.getActionXp(actionId)
+      const pct = Math.min(100, Math.round(x.xp / Math.max(1, x.xpNeeded) * 100))
+      const fill = cardEl.querySelector<HTMLElement>('.action-thumb-xp-fill')
+      const lbl  = cardEl.querySelector<HTMLElement>('.action-thumb-xp-label')
+      if (fill) fill.style.width = `${pct}%`
+      if (lbl)  lbl.textContent = `Lv.${x.level}`
+    })
   }
 
   const dismiss = () => { backdrop.remove(); onClose() }
@@ -4546,7 +4573,7 @@ function mountBattleConfigModal(
 
   parent.appendChild(backdrop)
   renderTriggerCard()
-  return () => backdrop.remove()
+  return { cleanup: () => backdrop.remove(), updateXp }
 }
 
 function actionXpNeeded(level: number): number {
