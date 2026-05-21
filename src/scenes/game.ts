@@ -1339,7 +1339,10 @@ export function createGameScene(
       `<div class="dps-row dps-row--sub"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${singleBar(val)}</div>`
 
     let html = ''
-    for (const [actionId, byKind] of data) {
+    const orderedEntries = [...data.entries()].sort(
+      (a, b) => dpsActionOrder.indexOf(a[0]) - dpsActionOrder.indexOf(b[0]),
+    )
+    for (const [actionId, byKind] of orderedEntries) {
       let total = 0
       for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
       const label = allActions.find(a => a.id === actionId)?.label ?? actionId
@@ -1959,12 +1962,14 @@ export function createGameScene(
   type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire'
   interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
   const dpsLog: DpsEvent[] = []
+  const dpsActionOrder: ActionId[] = []  // stable first-fire order for display
   // Game-time clock — advances by ticker.deltaMS each frame (which is already
   // scaled by app.ticker.speed = gameSpeed). Using this instead of Date.now()
   // keeps DPS values stable across game-speed changes.
   let gameTimeMs = 0
   function recordDps(actionId: ActionId, dmg: number, kind: DpsKind): void {
     dpsLog.push({ t: gameTimeMs, actionId, dmg, kind })
+    if (!dpsActionOrder.includes(actionId)) dpsActionOrder.push(actionId)
   }
   function fmtDps(n: number): string {
     const f = (x: number) => x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)
@@ -2400,6 +2405,7 @@ export function createGameScene(
     runDistancePx = 0
     runCritXp = 0
     dpsLog.length = 0
+    dpsActionOrder.length = 0
     pendingProliferateSpawns = 0
     proliferateSourceEntities.clear()
     extraSlotTimers.length = 0
