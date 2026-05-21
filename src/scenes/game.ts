@@ -2854,9 +2854,11 @@ export function createGameScene(
 
     const halfW = app.screen.width / 2
     const halfH = (app.screen.height - HUD_HEIGHT) / 2
+    const rawShift = gaussian() * balance.wave.directionStdDev
+    const shift = Math.max(-balance.wave.maxDirectionShift, Math.min(balance.wave.maxDirectionShift, rawShift))
     const clusterAngle = lastWaveAngle === null
       ? Math.random() * Math.PI * 2
-      : lastWaveAngle + gaussian() * balance.wave.directionStdDev
+      : lastWaveAngle + shift
     lastWaveAngle = clusterAngle
 
     for (let i = 0; i < count; i++) {
