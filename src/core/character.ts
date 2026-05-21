@@ -69,9 +69,11 @@ export interface UniversePointAllocations {
   placeholderB: number
 }
 
+export type TriggerType = 'time' | 'crit' | 'affliction'
+
 export interface ExtraActionSlot {
   actionId: string | null
-  triggerType: 'timeBased'
+  triggerType: TriggerType | null  // null = newly unlocked, type not yet chosen
 }
 
 export interface Character {
@@ -96,6 +98,7 @@ export interface Character {
   universePointAllocations: UniversePointAllocations
   extraSlots: ExtraActionSlot[]
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>
+  unlockedTriggers: ('crit' | 'affliction')[]
 }
 
 interface SaveData {
@@ -154,10 +157,18 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     ascentCount: c.ascentCount ?? 0,
     ascentXp: c.ascentXp ?? 0,
     universePointAllocations: c.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 },
-    extraSlots: (c.extraSlots ?? []).map(s => ({
-      actionId: s.actionId ?? null,
-      triggerType: s.triggerType ?? 'timeBased',
-    })),
+    extraSlots: (c.extraSlots ?? []).map(s => {
+      const raw = s.triggerType as string | null | undefined
+      const triggerType: TriggerType | null =
+        raw === 'timeBased' ? 'time'
+        : raw === 'time' || raw === 'crit' || raw === 'affliction' ? raw as TriggerType
+        : null
+      return { actionId: s.actionId ?? null, triggerType }
+    }),
+    unlockedTriggers: Array.isArray((c as { unlockedTriggers?: unknown }).unlockedTriggers)
+      ? ((c as { unlockedTriggers: unknown[] }).unlockedTriggers)
+          .filter((t): t is 'crit' | 'affliction' => t === 'crit' || t === 'affliction')
+      : [],
     freeMasteryPointsUsed: Object.fromEntries(
       Object.entries(c.freeMasteryPointsUsed ?? {})
         .map(([k, v]) => [k, typeof v === 'number' ? v : 0])
@@ -226,6 +237,7 @@ export function createCharacter(name: string, actionId: string): Character {
     universePointAllocations: { placeholderA: 0, placeholderB: 0 },
     extraSlots: [],
     freeMasteryPointsUsed: {},
+    unlockedTriggers: [],
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -265,6 +277,7 @@ export function saveCharacterState(
   universePointAllocations?: UniversePointAllocations,
   extraSlots?: ExtraActionSlot[],
   freeMasteryPointsUsed?: Partial<Record<MasteryId, number>>,
+  unlockedTriggers?: ('crit' | 'affliction')[],
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -285,5 +298,6 @@ export function saveCharacterState(
   if (universePointAllocations !== undefined) char.universePointAllocations = universePointAllocations
   if (extraSlots !== undefined) char.extraSlots = extraSlots
   if (freeMasteryPointsUsed !== undefined) char.freeMasteryPointsUsed = freeMasteryPointsUsed
+  if (unlockedTriggers !== undefined) char.unlockedTriggers = unlockedTriggers
   write(data)
 }
