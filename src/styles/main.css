@@ -1073,42 +1073,44 @@ body::after {
   margin-top: 8px;
 }
 
-.action-trigger-type-row {
+/* Extra-slot title label is a clickable button — keep the same visual as
+   the auto-attack title div but add pointer cursor and hover brightness. */
+button.action-trigger-title {
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  align-self: center;
-  width: 100%;
-}
-
-.action-trigger-type-btn {
-  flex: 1;
-  text-align: center;
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #fff;
-  padding: 2px 10px;
-  border: 12px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
+  justify-content: center;
+  gap: 6px;
   background: transparent;
-  cursor: pointer;
-  transition: filter var(--transition-fast);
+  width: auto;
 }
-.action-trigger-type-btn:hover { filter: brightness(1.15); }
+button.action-trigger-title:hover { filter: brightness(1.1); }
 
 .action-trigger-penalty {
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 700;
   font-family: var(--font-mono);
   color: #991b1b;
   white-space: nowrap;
-  min-width: 3ch;
-  text-align: right;
 }
+
+/* "Select action trigger" button for newly unlocked, unselected slots */
+.action-trigger-select-btn {
+  width: 100%;
+  min-height: 52px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  cursor: pointer;
+  transition: filter var(--transition-fast);
+}
+.action-trigger-select-btn:hover { filter: brightness(1.15); }
 
 .action-trigger-empty {
   width: 56px;
@@ -1335,6 +1337,64 @@ body::after {
 .action-thumbnail--legend .action-thumb-stat {
   color: rgba(0, 0, 0, 0.65);
   font-size: 0.65rem;
+}
+
+/* ── Trigger picker modal ── */
+
+.trigger-picker-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.trigger-picker-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  cursor: pointer;
+  color: #fff;
+  transition: filter var(--transition-fast);
+}
+.trigger-picker-opt:hover:not(:disabled) { filter: brightness(1.1); }
+
+.trigger-picker-opt--locked {
+  opacity: 0.6;
+  cursor: default;
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_beige.png');
+  color: #78350f;
+}
+
+.trigger-picker-opt--active {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+}
+
+.trigger-picker-opt-name {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.trigger-picker-opt-desc {
+  font-size: 0.7rem;
+  font-family: var(--font-body);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.85;
+}
+
+.trigger-picker-opt-unlock {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  margin-top: 2px;
 }
 
 /* ── Action picker modal ── */

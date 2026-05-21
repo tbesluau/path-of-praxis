@@ -4,7 +4,7 @@ import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
@@ -508,6 +508,7 @@ export function createGameScene(
         acc.damage += actual
         burnAccum.set(entityId, acc)
         damagedIds.add(entityId)
+        if (bossEntities.has(entityId)) { bossLastHitWasAffl.set(entityId, true); bossLastHitWasCrit.set(entityId, false) }
       }
 
       // Splash: 50% (or whatever) of the raw burn dps damage to nearby non-burning enemies.
@@ -627,6 +628,7 @@ export function createGameScene(
         acc.damage += actual
         bleedAccum.set(entityId, acc)
         damagedIds.add(entityId)
+        if (bossEntities.has(entityId)) { bossLastHitWasAffl.set(entityId, true); bossLastHitWasCrit.set(entityId, false) }
       }
 
       stack.remainingMs -= deltaMs
@@ -1110,7 +1112,13 @@ export function createGameScene(
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
-  const extraSlotTimers: number[] = []  // ms remaining per slot (time-based trigger)
+  let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
+  const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
+  const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
+  let mainSlotCrittedThisTick = false
+  let afflictionAppliedThisTick = 0
+  const bossLastHitWasCrit = new Map<string, boolean>()
+  const bossLastHitWasAffl = new Map<string, boolean>()
 
   // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
   let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
@@ -1151,6 +1159,7 @@ export function createGameScene(
       universePointAllocations,
       extraSlots,
       freeMasteryPointsUsed,
+      unlockedTriggers,
     )
   }
   let playerPrevX = 0
@@ -1518,6 +1527,19 @@ export function createGameScene(
           return getActionRunes(id).selected.slice(0, unlocked).some(s => s == null)
         },
         openRunesModal: () => { openRunesModal() },
+        openRunesModalForSlot: (actionId) => {
+          if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+          const action = getAction(actionId as ActionId)
+          const level = actionProgress[actionId]?.level ?? 1
+          const maxLevel = actionProgress[actionId]?.maxLevel ?? 1
+          const r = getActionRunes(actionId)
+          runesModalCleanup = mountRunesModal(
+            container, actionId, action.label, level, maxLevel, r,
+            (slotIdx, runeId) => { assignRune(actionId, slotIdx, runeId) },
+            () => { runesModalCleanup = null },
+          )
+        },
+        getUnlockedTriggers: () => [...unlockedTriggers],
       },
       (id) => {
         playerActionId = id
@@ -1526,9 +1548,9 @@ export function createGameScene(
         updateActionBar()
         persistState()
       },
-      (slotIndex, actionId) => {
-        if (!extraSlots[slotIndex]) extraSlots[slotIndex] = { actionId: null, triggerType: 'timeBased' }
-        extraSlots[slotIndex] = { ...extraSlots[slotIndex], actionId }
+      (slotIndex, update) => {
+        if (!extraSlots[slotIndex]) extraSlots[slotIndex] = { actionId: null, triggerType: null }
+        extraSlots[slotIndex] = { ...extraSlots[slotIndex], ...update }
         persistState()
       },
       () => { modalCleanup = null; liveModalXpUpdater = null },
@@ -1836,6 +1858,7 @@ export function createGameScene(
     countdown:             number   // ms remaining until impact
     guaranteedAfflictions: boolean
     multiActionType?:      MultiActionType
+    isMainSlot?:           boolean  // true when fired from the auto-attack slot (for crit trigger detection)
   }
   const pendingHits = new Map<string, PendingHit>()  // keyed by unique hit id (entity.id:seq)
   let hitSeq = 0
@@ -2178,6 +2201,21 @@ export function createGameScene(
 
   // On-death hook: runs the shatter animation then cleans up the entity.
   function killEntity(entity: Entity): void {
+    // Trigger unlock detection: check if boss was killed by crit or affliction last-hit.
+    if (bossEntities.has(entity.id)) {
+      const wasCrit = bossLastHitWasCrit.get(entity.id) ?? false
+      const wasAffl = bossLastHitWasAffl.get(entity.id) ?? false
+      if (wasCrit && !unlockedTriggers.includes('crit')) {
+        unlockedTriggers.push('crit')
+        persistState()
+      }
+      if (wasAffl && !unlockedTriggers.includes('affliction')) {
+        unlockedTriggers.push('affliction')
+        persistState()
+      }
+      bossLastHitWasCrit.delete(entity.id)
+      bossLastHitWasAffl.delete(entity.id)
+    }
     // Proliferate roll: enemies not spawned by this tree get a chance to add one to the next wave.
     if (entity.role === 'enemy' && !proliferateSourceEntities.has(entity.id)) {
       const eb = getEnemyBonuses()
@@ -2271,6 +2309,12 @@ export function createGameScene(
     pendingProliferateSpawns = 0
     proliferateSourceEntities.clear()
     extraSlotTimers.length = 0
+    afflictionTriggerCounters[0] = 0
+    afflictionTriggerCounters[1] = 0
+    mainSlotCrittedThisTick = false
+    afflictionAppliedThisTick = 0
+    bossLastHitWasCrit.clear()
+    bossLastHitWasAffl.clear()
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
 
@@ -2308,8 +2352,14 @@ export function createGameScene(
 
     // Re-apply move speed with new ascentCount
     playerEntity.moveSpeed = balance.player.moveSpeed * (1 + ascentCount * balance.ascent.moveSpeedPerAscent)
-    // extraSlots configuration persists; only reset timers
+    // extraSlots configuration persists; only reset timers and transient trigger state
     extraSlotTimers.length = 0
+    afflictionTriggerCounters[0] = 0
+    afflictionTriggerCounters[1] = 0
+    mainSlotCrittedThisTick = false
+    afflictionAppliedThisTick = 0
+    bossLastHitWasCrit.clear()
+    bossLastHitWasAffl.clear()
 
     updateAscentButtonVisibility()
     persistState()
@@ -3630,7 +3680,7 @@ export function createGameScene(
         let currentHitMultiType: MultiActionType | undefined = undefined  // set before each applyHit call, read inside for DPS tracking
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
-        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false): void => {
+        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false): boolean => {
           const isPlayerAttacker = attacker.role === 'player'
           const sbHit = isPlayerAttacker ? getStrikeBonuses() : null
           const strikeAfflBonus = (sbHit && action.tags.includes('strike')) ? sbHit.afflictionChanceIncrease : 0
@@ -3743,6 +3793,11 @@ export function createGameScene(
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - finalDamage)
           const actualDamage = prevLife - target.currentLife
+          // Track the last direct hit type on boss entities for trigger unlock detection.
+          if (attacker.role === 'player' && target.role === 'enemy' && bossEntities.has(target.id) && actualDamage > 0) {
+            bossLastHitWasCrit.set(target.id, isCrit)
+            bossLastHitWasAffl.set(target.id, false)
+          }
           if (attacker.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(target.id) ?? 1
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
@@ -3831,6 +3886,7 @@ export function createGameScene(
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
+              afflictionAppliedThisTick++
             }
             // Burning Ground: roll on fire-tagged player hits; tile must be clear of burning ground
             if (fb.burnGroundChance > 0) {
@@ -3851,6 +3907,7 @@ export function createGameScene(
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
               const duration = balance.effects.electrocutionBaseDurationMs * (1 + lbElec.electrocuteDurationIncrease / 100)
               electrocuteStacks.set(target.id, duration)
+              afflictionAppliedThisTick++
             }
           }
           // Electrifying: lightning-tagged player hits roll a chance to apply Electrified to the player
@@ -3881,6 +3938,7 @@ export function createGameScene(
               }
               // Bloodlust: roll on each successful bleed application
               if (pb.bloodlustChance > 0 && Math.random() * 100 < pb.bloodlustChance) applyBloodlust()
+              afflictionAppliedThisTick++
             }
           }
           // Resistance Breaking: roll on physical-tagged player hits to permanently reduce enemy physRot resistance
@@ -3895,9 +3953,12 @@ export function createGameScene(
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('strike') && actualDamage > 0) {
             if (sbHit && sbHit.frenzyChance > 0 && Math.random() * 100 < sbHit.frenzyChance) applyFrenzy()
           }
+          return isCrit
         }
 
         // ── Pending-hit countdown: apply damage when the pre-hit window expires ─
+        mainSlotCrittedThisTick = false
+        afflictionAppliedThisTick = 0
         for (const [entityId, ph] of pendingHits) {
           ph.countdown -= ticker.deltaMS
           if (ph.countdown > 0) continue
@@ -3905,7 +3966,8 @@ export function createGameScene(
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
           currentHitMultiType = ph.multiActionType
-          applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
+          const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
+          if (ph.isMainSlot && wasCrit) mainSlotCrittedThisTick = true
           spawnPostHitVfx(ph.attacker, ph.target, ph.action, ph.multiActionType)
         }
 
@@ -4112,6 +4174,7 @@ export function createGameScene(
                 attacker: entity, target: v, damage: effectiveDamage,
                 action, actionId, countdown: preHitDuration,
                 guaranteedAfflictions, multiActionType: pending?.type,
+                isMainSlot: isPlayer,
               })
               areaVictims.push(v)
             }
@@ -4121,6 +4184,7 @@ export function createGameScene(
               attacker: entity, target, damage: effectiveDamage,
               action, actionId, countdown: preHitDuration,
               guaranteedAfflictions, multiActionType: pending?.type,
+              isMainSlot: isPlayer,
             })
             spawnPreHitVfx(entity, target, action, preHitDuration)
           }
@@ -4288,43 +4352,38 @@ export function createGameScene(
         }
         if (playerManaSpent) updateBars()
 
-        // ── Extra action slot tick (time-based triggers) ──────────────────────
+        // ── Extra action slot tick ────────────────────────────────────────────
         {
           const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
             : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
-          let extraManaSpent = false
-          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+
+          function fireExtraSlot(slotI: number, trigger: TriggerType): boolean {
             const slot = extraSlots[slotI]
-            if (!slot?.actionId || slot.triggerType !== 'timeBased') continue
-            const prev = extraSlotTimers[slotI] ?? balance.ascent.timeTriggerIntervalMs
-            const next = prev - ticker.deltaMS
-            extraSlotTimers[slotI] = next
-            if (next > 0) continue
-            extraSlotTimers[slotI] = balance.ascent.timeTriggerIntervalMs
+            if (!slot?.actionId) return false
             const slotActionId = slot.actionId as ActionId
             const slotDef = getAction(slotActionId)
-            if (playerEntity.currentMana < slotDef.manaCost) continue
+            if (playerEntity.currentMana < slotDef.manaCost) return false
             const slotTarget = selectPlayerTarget(entities)
-            if (!slotTarget) continue
+            if (!slotTarget) return false
             const sdx = slotTarget.x - playerEntity.x, sdy = slotTarget.y - playerEntity.y
             const slotRange = slotDef.range * balance.player.radius + slotTarget.radius
-            if (Math.sqrt(sdx * sdx + sdy * sdy) > slotRange) continue
+            if (Math.sqrt(sdx * sdx + sdy * sdy) > slotRange) return false
 
             playerEntity.currentMana = Math.max(0, playerEntity.currentMana - slotDef.manaCost)
-            extraManaSpent = true
 
-            // Base damage from level
             const slotLevel = actionProgress[slotActionId]?.level ?? 1
             let slotDmg = slotDef.damage
               * Math.pow(balance.action.damageMult, slotLevel - 1)
               * (1 + (slotLevel - 1) * balance.action.damageAddPerLevel)
-            // Time-based multiplier: DPS-neutral vs auto-attack at native speed
+            // Speed-balance: DPS-neutral vs auto-attack at native speed
             const leveledSpeed = slotDef.speed * (1 + (slotLevel - 1) * balance.action.speedBonusPerLevel)
             const effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
             slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * effectiveSlotSpeed
-            // Global slot penalty
+            // Per-trigger damage multiplier
+            if (trigger === 'crit') slotDmg *= balance.ascent.critTriggerDamageMult
+            // Global slot position penalty
             slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
-            // Mastery bonuses (same pattern as assignAction)
+            // Mastery bonuses
             const slotAb = getActionBonuses()
             slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
             if (slotDef.tags.includes('projectile')) {
@@ -4363,7 +4422,43 @@ export function createGameScene(
             })
             awardXp(slotActionId, slotDmg)
             awardAscentXp(slotDmg)
+            return true
           }
+
+          let extraManaSpent = false
+
+          // Time trigger: decrement timer, fire on expiry
+          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+            const slot = extraSlots[slotI]
+            if (!slot?.actionId || slot.triggerType !== 'time') continue
+            const prev = extraSlotTimers[slotI] ?? balance.ascent.timeTriggerIntervalMs
+            const next = prev - ticker.deltaMS
+            extraSlotTimers[slotI] = next
+            if (next > 0) continue
+            extraSlotTimers[slotI] = balance.ascent.timeTriggerIntervalMs
+            if (fireExtraSlot(slotI, 'time')) extraManaSpent = true
+          }
+
+          // Crit trigger: fire once per tick where the main slot scored a crit
+          if (mainSlotCrittedThisTick) {
+            for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+              const slot = extraSlots[slotI]
+              if (!slot?.actionId || slot.triggerType !== 'crit') continue
+              if (fireExtraSlot(slotI, 'crit')) extraManaSpent = true
+            }
+          }
+
+          // Affliction trigger: accumulate applied-affliction count, fire at threshold
+          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+            const slot = extraSlots[slotI]
+            if (!slot?.actionId || slot.triggerType !== 'affliction') continue
+            afflictionTriggerCounters[slotI] = (afflictionTriggerCounters[slotI] ?? 0) + afflictionAppliedThisTick
+            if (afflictionTriggerCounters[slotI] >= balance.ascent.afflictionTriggerCount) {
+              afflictionTriggerCounters[slotI] -= balance.ascent.afflictionTriggerCount
+              if (fireExtraSlot(slotI, 'affliction')) extraManaSpent = true
+            }
+          }
+
           if (extraManaSpent) updateBars()
         }
 
@@ -4430,10 +4525,94 @@ export function createGameScene(
   }
 }
 
+interface TriggerDef {
+  type: TriggerType
+  label: string
+  description: string
+  unlockHint: string
+}
+
+const TRIGGER_DEFS: TriggerDef[] = [
+  {
+    type: 'time',
+    label: 'Time Trigger',
+    description: 'Triggers every 2 seconds. Faster actions deal more damage, slower actions deal less.',
+    unlockHint: '',
+  },
+  {
+    type: 'crit',
+    label: 'Critical Trigger',
+    description: 'Triggers when the auto-attack lands a critical strike. 10× weaker base damage, speed-balanced.',
+    unlockHint: 'Kill a boss with a critical hit',
+  },
+  {
+    type: 'affliction',
+    label: 'Affliction Trigger',
+    description: 'Triggers every 10 applied afflictions. Damage is speed-balanced.',
+    unlockHint: 'Kill a boss with affliction damage',
+  },
+]
+
+function mountTriggerPickerModal(
+  parent: HTMLElement,
+  currentType: TriggerType | null,
+  unlockedTriggers: ('crit' | 'affliction')[],
+  onSelect: (type: TriggerType) => void,
+  onClose: () => void,
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+
+  const panel = document.createElement('div')
+  panel.className = 'modal-panel'
+  panel.setAttribute('role', 'dialog')
+  panel.setAttribute('aria-modal', 'true')
+  panel.innerHTML = `
+    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+    <h2 class="modal-title">Action Trigger</h2>
+    <div class="trigger-picker-options"></div>
+  `
+
+  const optionsEl = panel.querySelector<HTMLElement>('.trigger-picker-options')!
+  for (const def of TRIGGER_DEFS) {
+    const isUnlocked = def.type === 'time' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')
+    const isActive = def.type === currentType
+    const btn = document.createElement('button')
+    btn.className = 'trigger-picker-opt'
+    if (!isUnlocked) btn.classList.add('trigger-picker-opt--locked')
+    if (isActive) btn.classList.add('trigger-picker-opt--active')
+    btn.disabled = !isUnlocked
+    btn.innerHTML = `
+      <span class="trigger-picker-opt-name">${def.label}</span>
+      <span class="trigger-picker-opt-desc">${def.description}</span>
+      ${!isUnlocked ? `<span class="trigger-picker-opt-unlock">🔒 ${def.unlockHint}</span>` : ''}
+    `
+    if (isUnlocked) {
+      btn.addEventListener('click', () => {
+        backdrop.remove()
+        onClose()
+        onSelect(def.type)
+      })
+    }
+    optionsEl.appendChild(btn)
+  }
+
+  panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', () => { backdrop.remove(); onClose() })
+
+  backdrop.appendChild(panel)
+  parent.appendChild(backdrop)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) { backdrop.remove(); onClose() } })
+
+  return () => backdrop.remove()
+}
+
 interface BattleConfigModalHooks {
   getActionXp: (actionId: string) => ActionThumbXp
   hasUnassignedRune: (actionId: string) => boolean
   openRunesModal: () => void
+  openRunesModalForSlot: (actionId: string) => void
+  getUnlockedTriggers: () => ('crit' | 'affliction')[]
 }
 
 function mountBattleConfigModal(
@@ -4445,7 +4624,7 @@ function mountBattleConfigModal(
   currentExtraSlots: ExtraActionSlot[],
   hooks: BattleConfigModalHooks,
   onSelectAction: (id: ActionId) => void,
-  onSelectExtraSlot: (slotIndex: number, actionId: string) => void,
+  onUpdateExtraSlot: (slotIndex: number, update: Partial<ExtraActionSlot>) => void,
   onClose: () => void,
 ): { cleanup: () => void; updateXp: () => void } {
   let selectedActionId = currentActionId
@@ -4508,54 +4687,97 @@ function mountBattleConfigModal(
 
     // ── Extra slots (slot 2 / slot 3) ─────────────────────────────────────
     const SLOT_PENALTIES = [balance.ascent.slot2DamagePenalty, balance.ascent.slot3DamagePenalty]
+    const TRIGGER_LABELS: Record<TriggerType, string> = {
+      time:       'Time Trigger',
+      crit:       'Critical Trigger',
+      affliction: 'Affliction Trigger',
+    }
+
+    function openTriggerPicker(slotIdx: number): void {
+      const slot = currentExtraSlots[slotIdx] ?? { actionId: null, triggerType: null }
+      const unlocked = hooks.getUnlockedTriggers()
+      mountTriggerPickerModal(
+        parent,
+        slot.triggerType,
+        unlocked,
+        (type) => {
+          currentExtraSlots[slotIdx] = { ...currentExtraSlots[slotIdx], triggerType: type }
+          onUpdateExtraSlot(slotIdx, { triggerType: type })
+          renderTriggerCard()
+        },
+        () => {},
+      )
+    }
+
     for (let i = 0; i < activeExtraSlotCount; i++) {
-      const slot = currentExtraSlots[i] ?? { actionId: null, triggerType: 'timeBased' as const }
+      const slot = currentExtraSlots[i] ?? { actionId: null, triggerType: null }
       const penalty = SLOT_PENALTIES[i]
 
       const extraWrap = document.createElement('div')
       extraWrap.className = 'action-trigger-wrap action-trigger-wrap--extra'
 
-      const typeRow = document.createElement('div')
-      typeRow.className = 'action-trigger-type-row'
-
-      const typeBtn = document.createElement('button')
-      typeBtn.className = 'action-trigger-type-btn'
-      typeBtn.textContent = 'Time-based'
-
-      const penaltyLabel = document.createElement('span')
-      penaltyLabel.className = 'action-trigger-penalty'
-      penaltyLabel.textContent = `×${penalty}`
-
-      typeRow.appendChild(typeBtn)
-      typeRow.appendChild(penaltyLabel)
-      extraWrap.appendChild(typeRow)
-
-      const extraCard = document.createElement('button')
-      extraCard.className = 'action-trigger-card'
-      if (slot.actionId) {
-        extraCard.appendChild(buildActionThumbnail(
-          getAction(slot.actionId as ActionId), false, showCritChance, critBaseAdd,
-          hooks.getActionXp(slot.actionId),
-        ))
+      if (!slot.triggerType) {
+        // Newly unlocked — show "Select action trigger" button
+        const selectBtn = document.createElement('button')
+        selectBtn.className = 'action-trigger-select-btn'
+        selectBtn.textContent = 'Select action trigger'
+        selectBtn.addEventListener('click', () => openTriggerPicker(i))
+        extraWrap.appendChild(selectBtn)
       } else {
-        const empty = document.createElement('div')
-        empty.className = 'action-trigger-empty'
-        extraCard.appendChild(empty)
+        // Trigger type chosen — show same layout as auto-attack slot
+        const titleBtn = document.createElement('button')
+        titleBtn.className = 'action-trigger-title'
+        titleBtn.innerHTML = `${TRIGGER_LABELS[slot.triggerType]}<span class="action-trigger-penalty">×${penalty}</span>`
+        titleBtn.addEventListener('click', () => openTriggerPicker(i))
+        extraWrap.appendChild(titleBtn)
+
+        const extraRow = document.createElement('div')
+        extraRow.className = 'action-trigger-row'
+
+        const extraCard = document.createElement('button')
+        extraCard.className = 'action-trigger-card'
+        if (slot.actionId) {
+          extraCard.appendChild(buildActionThumbnail(
+            getAction(slot.actionId as ActionId), false, showCritChance, critBaseAdd,
+            hooks.getActionXp(slot.actionId),
+          ))
+        } else {
+          const empty = document.createElement('div')
+          empty.className = 'action-trigger-empty'
+          extraCard.appendChild(empty)
+        }
+        extraCard.addEventListener('click', () => {
+          const fallbackId = (slot.actionId as ActionId | null) ?? allActions[0].id as ActionId
+          mountActionPickerModal(
+            parent, allActions, fallbackId,
+            (id) => {
+              currentExtraSlots[i] = { ...currentExtraSlots[i], actionId: id as string }
+              onUpdateExtraSlot(i, { actionId: id as string })
+              renderTriggerCard()
+            },
+            () => {},
+            showCritChance, critBaseAdd,
+          )
+        })
+        extraRow.appendChild(extraCard)
+
+        if (slot.actionId) {
+          const extraRuneBtn = document.createElement('button')
+          extraRuneBtn.className = 'action-trigger-rune-btn'
+          extraRuneBtn.setAttribute('aria-label', 'Runes')
+          extraRuneBtn.innerHTML = '<i data-lucide="sparkles" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>'
+          const extraDot = extraRuneBtn.querySelector<HTMLElement>('.rune-notif-dot')!
+          extraDot.hidden = !hooks.hasUnassignedRune(slot.actionId)
+          extraRuneBtn.addEventListener('click', e => {
+            e.stopPropagation()
+            hooks.openRunesModalForSlot(slot.actionId as string)
+          })
+          extraRow.appendChild(extraRuneBtn)
+        }
+
+        extraWrap.appendChild(extraRow)
       }
-      extraCard.addEventListener('click', () => {
-        const fallbackId = slot.actionId as ActionId ?? allActions[0].id as ActionId
-        mountActionPickerModal(
-          parent, allActions, fallbackId,
-          (id) => {
-            currentExtraSlots[i] = { ...currentExtraSlots[i], actionId: id as string }
-            onSelectExtraSlot(i, id as string)
-            renderTriggerCard()
-          },
-          () => {},
-          showCritChance, critBaseAdd,
-        )
-      })
-      extraWrap.appendChild(extraCard)
+
       triggerList.appendChild(extraWrap)
     }
 

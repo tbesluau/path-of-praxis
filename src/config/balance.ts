@@ -188,9 +188,11 @@ export const balance = {
     freeMasteryPointsUnlockAscent: 4,  // ascentCount at which free mastery points are earned (1 per ascent)
     slot2UnlockAscent:       3,    // ascentCount required for 2nd action trigger slot
     slot3UnlockAscent:       5,    // ascentCount required for 3rd action trigger slot
-    slot2DamagePenalty:     0.75,  // global damage multiplier for slot 2
-    slot3DamagePenalty:     0.50,  // global damage multiplier for slot 3
-    timeTriggerIntervalMs: 2000,   // fire period (ms) for the time-based trigger type
+    slot2DamagePenalty:      0.75,  // global damage multiplier for slot 2
+    slot3DamagePenalty:      0.50,  // global damage multiplier for slot 3
+    timeTriggerIntervalMs:  2000,   // fire period (ms) for the time trigger type
+    critTriggerDamageMult:   0.1,   // extra multiplier for crit trigger (on top of speed balance)
+    afflictionTriggerCount:   10,   // affliction applications before affliction trigger fires
   },
 
   // ── Critical hits ─────────────────────────────────────────────────────────
