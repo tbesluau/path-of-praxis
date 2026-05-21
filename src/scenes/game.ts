@@ -1588,6 +1588,7 @@ export function createGameScene(
     iconName: string
     kind: 'buff' | 'debuff' | 'mixed'
     remainingMs: number
+    stacks: number   // 1 for singleton buffs; >1 for stacking buffs (trance with key 12)
   }
   const activeEffects: ActiveEffect[] = []
   let frenzyCharges = 0
@@ -1703,14 +1704,22 @@ export function createGameScene(
 
   const buffBarEl = el.querySelector<HTMLElement>('.buff-bar')!
 
-  function applyEffect(template: Omit<ActiveEffect, 'remainingMs'>, durationMs: number): void {
+  function applyEffect(template: Omit<ActiveEffect, 'remainingMs' | 'stacks'>, durationMs: number, maxStacks = 1): void {
     const existing = activeEffects.find(e => e.id === template.id)
     if (existing) {
+      if (existing.stacks < maxStacks) {
+        existing.stacks++
+        renderBuffBar()
+      }
       existing.remainingMs = durationMs
     } else {
-      activeEffects.push({ ...template, remainingMs: durationMs })
+      activeEffects.push({ ...template, remainingMs: durationMs, stacks: 1 })
       renderBuffBar()
     }
+  }
+
+  function effectStacks(id: string): number {
+    return activeEffects.find(e => e.id === id)?.stacks ?? 0
   }
 
   function applyFrenzy(): void {
@@ -1758,9 +1767,12 @@ export function createGameScene(
       ...activeEffects.filter(e => e.kind === 'debuff'),
     ]
     buffBarEl.innerHTML = ordered.map(e => {
-      const badge = e.id === 'frenzy' && frenzyCharges > 0
-        ? `<span class="buff-charge">${frenzyCharges}</span>`
-        : ''
+      let badge = ''
+      if (e.id === 'frenzy' && frenzyCharges > 0) {
+        badge = `<span class="buff-charge">${frenzyCharges}</span>`
+      } else if (e.stacks > 1) {
+        badge = `<span class="buff-charge">${e.stacks}</span>`
+      }
       return `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
     }).join('')
     if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap } })
@@ -4184,7 +4196,7 @@ export function createGameScene(
           const actionBonuses = isPlayer ? getActionBonuses() : null
           const isPlayerProjectile = entity.role === 'player' && action.tags.includes('projectile')
           const pb = isPlayerProjectile ? getProjectileBonuses() : null
-          const tranceActive = isPlayer && hasEffect('trance')
+          const tranceStacks = isPlayer ? effectStacks('trance') : 0
           const rb = entity.role === 'player' ? getRuneBonuses(actionId) : null
 
           // Action Speed node 11: when double acting, the SECOND action's initial hit is guaranteed
@@ -4215,14 +4227,23 @@ export function createGameScene(
               + (actionBonuses.manaCostRandomReductionMax > 0
                 ? (Math.random() * actionBonuses.manaCostRandomReductionMax) / 100
                 : 0)
-            gateCost = action.manaCost * Math.max(0, 1 - reduction)
+            const lessFactor = actionBonuses.lessManaCost / 100
+            // Mana-tree key 12: reductions from this tree become increases of the same magnitude
+            if (actionBonuses.invertManaCostReductions) {
+              gateCost = action.manaCost * (1 + reduction) * (1 + lessFactor)
+            } else {
+              gateCost = action.manaCost
+                * Math.max(0, 1 - reduction)
+                * Math.max(0, 1 - lessFactor)
+            }
             // Damage-tree key 13: +20% more action mana cost
             if (actionBonuses.moreManaCost > 0) {
               gateCost *= 1 + actionBonuses.moreManaCost / 100
             }
             paidCost = gateCost
             if (actionBonuses.noManaCostChance > 0 && Math.random() * 100 < actionBonuses.noManaCostChance) {
-              paidCost = 0
+              // Mana-tree key 12: no-mana chance becomes double-mana chance
+              paidCost = actionBonuses.invertManaCostReductions ? gateCost * 2 : 0
             }
           }
           if (!isFreeMultiCast && entity.role === 'player' && rb) {
@@ -4261,8 +4282,8 @@ export function createGameScene(
           }
 
           // Layered bonuses applied after base × inheritance
-          if (tranceActive && actionBonuses && actionBonuses.tranceDamageIncrease > 0) {
-            effectiveDamage *= 1 + actionBonuses.tranceDamageIncrease / 100
+          if (tranceStacks > 0 && actionBonuses && actionBonuses.tranceDamageIncrease > 0) {
+            effectiveDamage *= 1 + (tranceStacks * actionBonuses.tranceDamageIncrease) / 100
           }
           if (entity.role === 'player' && action.tags.includes('fire') && hasEffect('immolation')) {
             const fb = getFireBonuses()
@@ -4296,8 +4317,8 @@ export function createGameScene(
           }
 
           // ── Cycle duration ────────────────────────────────────────────────
-          const tranceSpeedMult = (tranceActive && actionBonuses && actionBonuses.tranceActionSpeedIncrease > 0)
-            ? 1 + actionBonuses.tranceActionSpeedIncrease / 100
+          const tranceSpeedMult = (tranceStacks > 0 && actionBonuses && actionBonuses.tranceActionSpeedIncrease > 0)
+            ? 1 + (tranceStacks * actionBonuses.tranceActionSpeedIncrease) / 100
             : 1
           let effectiveAttackSpeed = entity.actionSpeed
           if (entity.role === 'enemy' && isElectrocuted(entity)) {
@@ -4400,7 +4421,15 @@ export function createGameScene(
           // ── Status triggers — all casts (including multi-actions) can trigger ──
           if (isPlayer && actionBonuses && actionBonuses.tranceTriggerChance > 0
               && Math.random() * 100 < actionBonuses.tranceTriggerChance) {
-            applyEffect({ id: 'trance', iconName: 'book', kind: 'buff' }, balance.buffs.tranceDurationMs)
+            const canStack = actionBonuses.tranceCanStack
+            const tranceDuration = canStack
+              ? balance.buffs.tranceDurationMs / 2
+              : balance.buffs.tranceDurationMs
+            applyEffect(
+              { id: 'trance', iconName: 'book', kind: 'buff' },
+              tranceDuration,
+              canStack ? 2 : 1,
+            )
           }
           if (entity.role === 'player' && action.tags.includes('fire')) {
             const fb = getFireBonuses()
@@ -4468,7 +4497,7 @@ export function createGameScene(
           // additionalTarget: trance multi-target + strike additional-target + projectile additional-target (summed)
           if (!pending && entity.role === 'player') {
             let totalChance = 0
-            if (tranceActive && actionBonuses) totalChance += actionBonuses.tranceMultiTargetChance
+            if (tranceStacks > 0 && actionBonuses) totalChance += tranceStacks * actionBonuses.tranceMultiTargetChance
             if (action.tags.includes('strike')) {
               const sb = getStrikeBonuses()
               totalChance += sb.additionalTargetChance * (1 + sb.additionalTargetMore / 100)
