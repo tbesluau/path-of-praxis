@@ -3705,10 +3705,15 @@ export function createGameScene(
           // Knockback slow debuff
           const kbSlow = knockbackSlowState.get(entity.id)
           if (kbSlow) ms *= Math.max(0, 1 - kbSlow.amount / 100)
-          // Knockback velocity impulse
+          // Knockback velocity impulse.
+          // While knockback is active, suppress the enemy's own movement so the
+          // impulse isn't cancelled by their move-toward-player velocity (at
+          // high levels enemy speed ≈ knockback speed, and the two summed to
+          // ~zero when the enemy was in direct contact with the player).
           const kb = knockbackState.get(entity.id)
           const kbVx = kb ? kb.vx * MATTER_BASE_DT : 0
           const kbVy = kb ? kb.vy * MATTER_BASE_DT : 0
+          if (kb) ms = 0
           Matter.Body.setVelocity(body, {
             x: moveX * ms * MATTER_BASE_DT + kbVx,
             y: moveY * ms * MATTER_BASE_DT + kbVy,
