@@ -4413,8 +4413,11 @@ export function createGameScene(
 
             // Dependent triggers (crit/affliction) use the triggering entity directly and ignore range.
             // Independent triggers select a target and enforce range.
+            // Note: do NOT check currentLife > 0 here — the triggering entity may have just been killed
+            // by the hit that fired the trigger (e.g. a lethal crit). killEntity runs after the extra-slot
+            // tick, so the entity is still physically present in `entities` for this tick.
             const isDependent = trigger === 'crit' || trigger === 'affliction'
-            const liveTriggerTarget = triggerTarget && entities.includes(triggerTarget) && triggerTarget.currentLife > 0 ? triggerTarget : null
+            const liveTriggerTarget = triggerTarget && entities.includes(triggerTarget) ? triggerTarget : null
             let slotTarget: Entity
             if (isDependent && liveTriggerTarget) {
               slotTarget = liveTriggerTarget
