@@ -3692,6 +3692,44 @@ export function createGameScene(
           })
         }
 
+        // ── Player crowd-push: nudge enemies in the player's path ────────────
+        // Default Matter contact resolution can't unstick the player from a
+        // wall of enemies because all bodies share the same default mass.
+        // Add a velocity component along the player's movement direction to
+        // enemies in the front hemisphere of near-contact range. Walking gives
+        // a gentle shove (~30% transfer); dashing carries enemies along (~85%)
+        // so the player can plow through a crowd to reach a back-row target.
+        {
+          const pBody = entityBodies.get(playerEntity.id)
+          if (pBody) {
+            const pvx = pBody.velocity.x
+            const pvy = pBody.velocity.y
+            const pSpeed = Math.sqrt(pvx * pvx + pvy * pvy)
+            if (pSpeed > 0.01) {
+              const dirX = pvx / pSpeed
+              const dirY = pvy / pSpeed
+              const pushFraction = dashRemainingMs > 0 ? 0.85 : 0.3
+              for (const e of entities) {
+                if (e.role !== 'enemy') continue
+                const ex = e.x - playerEntity.x
+                const ey = e.y - playerEntity.y
+                const edist = Math.sqrt(ex * ex + ey * ey)
+                if (edist <= 0) continue
+                if (edist > playerEntity.radius + e.radius + 6) continue
+                const dot = (ex / edist) * dirX + (ey / edist) * dirY
+                if (dot <= 0) continue
+                const eBody = entityBodies.get(e.id)
+                if (!eBody) continue
+                const k = pSpeed * pushFraction * dot
+                Matter.Body.setVelocity(eBody, {
+                  x: eBody.velocity.x + dirX * k,
+                  y: eBody.velocity.y + dirY * k,
+                })
+              }
+            }
+          }
+        }
+
         // ── Physics step ────────────────────────────────────────────────────
         // Substep so each Matter step stays near its design timestep (~16.7 ms),
         // keeping integration stable at high gameSpeed (deltaMS up to ~83 ms at 5×).
