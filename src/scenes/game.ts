@@ -4526,9 +4526,10 @@ export function createGameScene(
                   areaOriginY: slotDef.selfTargeted ? areaOrigin.y : undefined,
                 })
               }
-              // doubleAction
+              // doubleAction — on dependent triggers, inherit the trigger target so the MA fires at the
+              // same enemy, not at selectPlayerTarget (which would be whatever is nearest the player).
               if (slotAb.doubleActionChance > 0 && Math.random() * 100 < slotAb.doubleActionChance) {
-                queueSlotMA('doubleAction', childInherited)
+                queueSlotMA('doubleAction', childInherited, isDependent && !slotDef.selfTargeted ? slotTarget : undefined)
               }
               // additionalTarget (strike + projectile)
               {
@@ -4551,8 +4552,8 @@ export function createGameScene(
                   queueSlotMA('additionalProjectile', childInherited, other)
                 }
               }
-              // splitAction (rune)
-              if (slotRb.splitCast) queueSlotMA('splitAction', childInherited)
+              // splitAction (rune) — same target inheritance as doubleAction for dependent triggers
+              if (slotRb.splitCast) queueSlotMA('splitAction', childInherited, isDependent && !slotDef.selfTargeted ? slotTarget : undefined)
               // jump (lightning)
               if (slotDef.tags.includes('lightning')) {
                 const lb = getLightningBonuses()
