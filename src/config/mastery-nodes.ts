@@ -27,7 +27,10 @@ export interface NodeEffect {
   actionNoManaCostChance?: number           // additive %; chance for action to cost 0 mana (gate still applies)
   actionManaCostRandomReductionMax?: number // additive % cap; per-action random reduction in [0, cap]
   actionRepeatNoMana?: boolean              // when true, repeated actions (e.g. double action) skip the mana gate
+  actionLessManaCost?: number               // additive %; reduces action mana cost × (1 - sum/100), separate multiplier from manaCostReduction
+  actionInvertManaCostReductions?: boolean  // Mana-tree key 12: reductions become increases, no-mana chance becomes double-mana chance
   actionGuaranteedAfflictions?: boolean     // when true, second-action hits always apply afflictions
+  actionTranceCanStack?: boolean            // Trance-tree key 12: trance can stack to 2; duration halved
 
   // Life mastery effects (Maximum Life tree)
   lifeMaxIncrease?: number          // additive %; stacks before the 'more' multiplier
@@ -267,8 +270,11 @@ export interface ActionBonuses {
   manaCostReduction: number
   noManaCostChance: number
   manaCostRandomReductionMax: number
+  lessManaCost: number             // total additive %; × (1 - sum/100)
+  invertManaCostReductions: boolean // Mana key 12: reductions become increases; no-mana chance becomes double-mana chance
   repeatNoMana: boolean
   guaranteedAfflictions: boolean
+  tranceCanStack: boolean          // Trance key 12: trance can stack to 2 (halved duration)
   ignoreMitigationChance: number  // total additive %; chance for any action hit to ignore enemy resistance
 }
 
@@ -496,7 +502,8 @@ const ACTION_EFFECTS: Partial<Record<number, TreeEffects>> = {
     3: { actionTranceTriggerChance: 2 },
     4: { actionTranceMultiTargetChance: 5, actionTranceDamageIncrease: 5, actionTranceSpeedIncrease: 5 },
     5: { actionTranceTriggerChance: 3, actionTranceMultiTargetChance: 8, actionTranceDamageIncrease: 8, actionTranceSpeedIncrease: 8 },
-    // 12-13: key nodes — not yet defined
+    12: { actionTranceCanStack: true },
+    13: { actionTranceTriggerChance: 5 },
   },
   3: {  // Mana Cost (short tree — line nodes 0-5, key nodes 12-13)
     0: { actionManaCostReduction: 10 },
@@ -505,7 +512,8 @@ const ACTION_EFFECTS: Partial<Record<number, TreeEffects>> = {
     3: { actionManaCostReduction: 10 },
     4: { actionNoManaCostChance: 10 },
     5: { actionManaCostReduction: 10, actionNoManaCostChance: 10, actionRepeatNoMana: true },
-    // 12-13: key nodes — not yet defined
+    12: { actionInvertManaCostReductions: true },
+    13: { actionLessManaCost: 30 },
   },
 }
 
@@ -528,8 +536,11 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
     manaCostReduction: 0,
     noManaCostChance: 0,
     manaCostRandomReductionMax: 0,
+    lessManaCost: 0,
+    invertManaCostReductions: false,
     repeatNoMana: false,
     guaranteedAfflictions: false,
+    tranceCanStack: false,
     ignoreMitigationChance: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
@@ -551,11 +562,14 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
       b.manaCostReduction           += eff.actionManaCostReduction ?? 0
       b.noManaCostChance            += eff.actionNoManaCostChance ?? 0
       b.manaCostRandomReductionMax  += eff.actionManaCostRandomReductionMax ?? 0
+      b.lessManaCost                += eff.actionLessManaCost ?? 0
       b.ignoreMitigationChance      += eff.actionIgnoreMitigationChance ?? 0
       if (eff.actionRepeatNoMana)          b.repeatNoMana = true
       if (eff.actionGuaranteedAfflictions) b.guaranteedAfflictions = true
       if (eff.actionDoubleActionReroll)    b.doubleActionReroll = true
       if (eff.actionConvertDoubleToDoubleDamage) b.convertDoubleToDoubleDamage = true
+      if (eff.actionInvertManaCostReductions) b.invertManaCostReductions = true
+      if (eff.actionTranceCanStack)         b.tranceCanStack = true
     }
   }
   // Speed-tree key 15: convert accumulated doubleActionChance into doubleDamageChance.
@@ -1596,20 +1610,24 @@ const ACTION_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     15: 'There are no double actions; double action chance is converted to double damage chance',
   },
   2: {
-    0: 'Actions have +2% chance to trigger trance',
+    0: 'Actions have +2% increased chance to trigger trance',
     1: 'Actions in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased action speed',
-    2: 'Actions have +5% chance to trigger trance',
-    3: 'Actions have +2% chance to trigger trance',
+    2: 'Actions have +5% increased chance to trigger trance',
+    3: 'Actions have +2% increased chance to trigger trance',
     4: 'Actions in trance: +5% chance to target an additional enemy · +5% increased damage · +5% increased action speed',
-    5: 'Actions have +3% chance to trigger trance · Actions in trance: +8% chance to target an additional enemy · +8% increased damage · +8% increased action speed',
+    5: 'Actions have +3% increased chance to trigger trance · Actions in trance: +8% chance to target an additional enemy · +8% increased damage · +8% increased action speed',
+    12: 'Trance can stack with itself once · Trance duration halved',
+    13: 'Actions have +5% increased chance to trigger trance',
   },
   3: {
     0: '+10% reduced action mana cost',
-    1: '+10% chance for actions to cost no mana',
+    1: '+10% increased chance for actions to cost no mana',
     2: 'Actions cost 0–33% reduced mana (random per action)',
     3: '+10% reduced action mana cost',
-    4: '+10% chance for actions to cost no mana',
-    5: '+10% reduced action mana cost · +10% chance for actions to cost no mana · Repeated actions ignore mana requirement',
+    4: '+10% increased chance for actions to cost no mana',
+    5: '+10% reduced action mana cost · +10% increased chance for actions to cost no mana · Repeated actions ignore mana requirement',
+    12: 'Mana cost reductions from this tree increase mana cost instead · Chance to cost no mana becomes chance to cost double mana',
+    13: '30% less action mana cost',
   },
 }
 
