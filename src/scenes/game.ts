@@ -1104,6 +1104,8 @@ export function createGameScene(
   let enemyIdCounter = 0
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
   let playerRandomTargetId: string | null = null
+  let playerStrongestTargetId: string | null = null
+  let playerWeakestTargetId: string | null = null
   let targetingMode: TargetingMode = char?.targetingMode ?? 'nearest'
 
   // Ascension state — persists through rebirths and across sessions
@@ -1359,6 +1361,8 @@ export function createGameScene(
     onTargetingChange: (mode) => {
       targetingMode = mode
       playerRandomTargetId = null
+      playerStrongestTargetId = null
+      playerWeakestTargetId = null
       persistState()
     },
     onForceAscend: isCheatMode() ? () => ascend() : undefined,
@@ -2212,6 +2216,8 @@ export function createGameScene(
     electrocuteStacks.delete(entity.id)
     electrocuteGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
+    if (entity.id === playerStrongestTargetId) playerStrongestTargetId = null
+    if (entity.id === playerWeakestTargetId) playerWeakestTargetId = null
     const idx = entities.indexOf(entity)
     if (idx !== -1) entities.splice(idx, 1)
   }
@@ -2644,6 +2650,9 @@ export function createGameScene(
   // ── Targeting ────────────────────────────────────────────────────────────
 
   function selectPlayerTarget(ents: Entity[]): Entity | null {
+    // Primary calls (movement, auto-attack) pass `entities` directly. MA calls
+    // pass a filtered array. Only primary calls should update the sticky cache.
+    const isPrimary = ents === entities
     const enemies = ents.filter(e => e.role === 'enemy')
     if (enemies.length === 0) return null
     switch (targetingMode) {
@@ -2657,20 +2666,34 @@ export function createGameScene(
         return best
       }
       case 'weakest': {
+        // Sticky: keep current target while it's alive — switching mid-fight on
+        // every spawn felt like constant retargeting even with maxLife sorting.
+        if (isPrimary && playerWeakestTargetId) {
+          const cached = enemies.find(e => e.id === playerWeakestTargetId)
+          if (cached) return cached
+        }
         let best: Entity | null = null, bestHp = Infinity
         for (const e of enemies) if (e.maxLife < bestHp) { bestHp = e.maxLife; best = e }
+        if (isPrimary) playerWeakestTargetId = best?.id ?? null
         return best
       }
       case 'strongest': {
+        if (isPrimary && playerStrongestTargetId) {
+          const cached = enemies.find(e => e.id === playerStrongestTargetId)
+          if (cached) return cached
+        }
         let best: Entity | null = null, bestHp = -Infinity
         for (const e of enemies) if (e.maxLife > bestHp) { bestHp = e.maxLife; best = e }
+        if (isPrimary) playerStrongestTargetId = best?.id ?? null
         return best
       }
       case 'random': {
-        const cached = playerRandomTargetId ? enemies.find(e => e.id === playerRandomTargetId) ?? null : null
-        if (cached) return cached
+        if (isPrimary && playerRandomTargetId) {
+          const cached = enemies.find(e => e.id === playerRandomTargetId)
+          if (cached) return cached
+        }
         const pick = enemies[Math.floor(Math.random() * enemies.length)]
-        playerRandomTargetId = pick?.id ?? null
+        if (isPrimary) playerRandomTargetId = pick?.id ?? null
         return pick ?? null
       }
     }

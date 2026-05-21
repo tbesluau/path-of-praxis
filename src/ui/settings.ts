@@ -1,5 +1,5 @@
 import 'flag-icons/css/flag-icons.min.css'
-import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle, Maximize, Minimize } from 'lucide'
+import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle } from 'lucide'
 import { t, setLocale, getLocale, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
@@ -109,10 +109,11 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           </button>
         </div>
         <div class="modal-field">
-          <button class="settings-section-btn" data-action="fullscreen">
-            <i data-lucide="${isFullscreen() ? 'minimize' : 'maximize'}" aria-hidden="true"></i>
-            <span>${t('settings', isFullscreen() ? 'fullscreenExit' : 'fullscreenEnter')}</span>
-          </button>
+          <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'fullscreen')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-action="fullscreen" ${isFullscreen() ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
         </div>
         ${opts.getTargetingMode ? `
         <div class="modal-field">
@@ -165,7 +166,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         </div>` : ''}` : ''}
       </div>
     `
-    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair, Maximize, Minimize } })
+    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair } })
 
     const stepZoom = (delta: 1 | -1): void => {
       const next = zoomIdx + delta
@@ -183,8 +184,8 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
       .addEventListener('click', () => { closeSub(); backdrop.remove(); onClose() })
 
-    backdrop.querySelector<HTMLButtonElement>('[data-action="fullscreen"]')!
-      .addEventListener('click', () => { toggleFullscreen().then(render).catch(() => render()) })
+    backdrop.querySelector<HTMLInputElement>('[data-action="fullscreen"]')!
+      .addEventListener('change', () => { toggleFullscreen().catch(() => render()) })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="guide"]')!
       .addEventListener('click', () => {

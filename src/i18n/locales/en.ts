@@ -50,8 +50,7 @@ export interface TranslationSchema {
     showDpsMeter: string
     fullMastery: string
     zoomLabel: string
-    fullscreenEnter: string
-    fullscreenExit: string
+    fullscreen: string
   }
   guide: {
     title: string
@@ -111,8 +110,7 @@ export const en: TranslationSchema = {
     showDpsMeter: 'DPS meter',
     fullMastery: 'Full mastery',
     zoomLabel: 'Zoom',
-    fullscreenEnter: 'Enter fullscreen',
-    fullscreenExit: 'Exit fullscreen',
+    fullscreen: 'Fullscreen',
   },
   guide: {
     title: 'Guide',
