@@ -4415,11 +4415,33 @@ export function createGameScene(
             if (slotRb.slowHeavy) slotDmg *= 2
             if (ascentCount > 0) slotDmg *= 1 + ascentCount * balance.ascent.damagePerAscent
 
-            pendingHits.set(`extra:${slotI}:${++hitSeq}`, {
-              attacker: playerEntity, target: slotTarget,
-              damage: slotDmg, action: slotDef, actionId: slotActionId,
-              countdown: 0, guaranteedAfflictions: false,
-            })
+            // Pre-hit window drives the attack animation (same ratio as main action)
+            const slotPreHitDuration = (1000 / effectiveSlotSpeed) / 3
+
+            if (slotDef.tags.includes('area')) {
+              const ab = getAreaBonuses()
+              let areaRadiusPx = (slotDef.area ?? 0) * balance.player.radius
+              areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+              const center = slotDef.selfTargeted ? playerEntity : slotTarget
+              for (const v of entities) {
+                if (v.role !== 'enemy') continue
+                const vdx = v.x - center.x, vdy = v.y - center.y
+                if (Math.sqrt(vdx * vdx + vdy * vdy) - v.radius > areaRadiusPx) continue
+                pendingHits.set(`extra:${slotI}:${++hitSeq}`, {
+                  attacker: playerEntity, target: v,
+                  damage: slotDmg, action: slotDef, actionId: slotActionId,
+                  countdown: slotPreHitDuration, guaranteedAfflictions: false,
+                })
+              }
+              spawnAreaPreHitVfx(playerEntity, center, areaRadiusPx, slotDef, slotPreHitDuration)
+            } else {
+              pendingHits.set(`extra:${slotI}:${++hitSeq}`, {
+                attacker: playerEntity, target: slotTarget,
+                damage: slotDmg, action: slotDef, actionId: slotActionId,
+                countdown: slotPreHitDuration, guaranteedAfflictions: false,
+              })
+              spawnPreHitVfx(playerEntity, slotTarget, slotDef, slotPreHitDuration)
+            }
             awardXp(slotActionId, slotDmg)
             awardAscentXp(slotDmg)
             return true
