@@ -4,11 +4,12 @@ import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
+import { mountAwayBonusModal } from '../ui/away-bonus'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -1098,6 +1099,9 @@ export function createGameScene(
 
   let paused = false
   let gameSpeed = 1
+  // ×2-speed stockpile: per-character resource earned by being away.
+  let fastForwardMs = char?.fastForwardMs ?? 0
+  let lastTickAt    = char?.lastSeenAt ?? Date.now()
   let playerDead = false
   let waveScheduled = false
   let lastWaveAngle: number | null = null
@@ -1165,6 +1169,8 @@ export function createGameScene(
       extraSlots,
       freeMasteryPointsUsed,
       unlockedTriggers,
+      Date.now(),
+      fastForwardMs,
     )
   }
   let playerPrevX = 0
@@ -1205,7 +1211,10 @@ export function createGameScene(
             <i data-lucide="pause" aria-hidden="true"></i>
           </button>
           <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
-          <button class="speed-opt" data-speed="2">×2</button>
+          <div class="speed-opt-with-meter">
+            <button class="speed-opt" data-speed="2">×2</button>
+            <span class="speed-stockpile" aria-label="×2 speed time remaining">0:00</span>
+          </div>
           ${isCheatMode() ? '<button class="speed-opt" data-speed="5">×5</button>' : ''}
         </div>
       </div>
@@ -1753,17 +1762,33 @@ export function createGameScene(
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
 
+  function formatStockpile(ms: number): string {
+    const s = Math.max(0, Math.floor(ms / 1000))
+    const m = Math.floor(s / 60)
+    const r = s % 60
+    return `${m}:${r.toString().padStart(2, '0')}`
+  }
+
   function updateSpeedUI(): void {
     const icon = paused ? 'play' : 'pause'
     speedPauseBtn.setAttribute('aria-label', paused ? 'Play' : 'Pause')
     speedPauseBtn.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`
     createIcons({ icons: { Play, Pause } })
+    const x2Locked = fastForwardMs <= 0
     speedOptBtns.forEach(btn => {
-      btn.classList.toggle('speed-opt--active', !paused && Number(btn.dataset.speed) === gameSpeed)
+      const speed = Number(btn.dataset.speed)
+      btn.classList.toggle('speed-opt--active', !paused && speed === gameSpeed)
+      if (speed === 2) btn.classList.toggle('speed-opt--disabled', x2Locked)
     })
+    const meter = el.querySelector<HTMLElement>('.speed-stockpile')
+    if (meter) {
+      meter.textContent = formatStockpile(fastForwardMs)
+      meter.classList.toggle('speed-stockpile--empty', x2Locked)
+    }
   }
 
   function setSpeed(speed: number): void {
+    if (speed === 2 && fastForwardMs <= 0) return  // ×2 locked when no stockpile
     gameSpeed = speed
     if (paused) {
       paused = false
@@ -1795,12 +1820,17 @@ export function createGameScene(
   speedOptBtns.forEach(btn => {
     btn.addEventListener('click', () => setSpeed(Number(btn.dataset.speed)))
   })
+  // Initial paint so the ×2 button reflects the loaded stockpile from the start.
+  updateSpeedUI()
 
   // ── Auto-save ───────────────────────────────────────────────────────────
 
   const saveInterval = setInterval(() => {
     if (!playerDead) persistState()
   }, SAVE_INTERVAL_MS)
+
+  // Refresh the ×2-speed stockpile indicator every second so it visibly counts down.
+  const stockpileUiInterval = setInterval(updateSpeedUI, 1000)
 
   function saveAndGoHome(): void {
     if (!playerDead) persistState()
@@ -3499,6 +3529,24 @@ export function createGameScene(
       app.renderer.on('resize', () => { drawGrid(); updateCamera() })
 
       app.ticker.add((ticker) => {
+        // ── ×2-speed stockpile: detect absences (gap since last frame), then consume ─
+        const nowReal = Date.now()
+        const gap = nowReal - lastTickAt
+        if (gap >= AWAY_DETECT_MS) {
+          const earned = computeAward(gap, fastForwardMs)
+          if (earned > 0) {
+            fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
+            mountAwayBonusModal(el, gap, earned, () => {})
+            updateSpeedUI()
+          }
+        }
+        lastTickAt = nowReal
+        if (gameSpeed === 2 && fastForwardMs > 0) {
+          // ticker.deltaMS is already scaled by app.ticker.speed = 2; divide back to real ms
+          fastForwardMs = Math.max(0, fastForwardMs - ticker.deltaMS / gameSpeed)
+          if (fastForwardMs === 0) setSpeed(1)
+        }
+
         gameTimeMs += ticker.deltaMS
         // ── Death fragment animation (always runs while ticker is active) ───
         for (let i = deathFragments.length - 1; i >= 0; i--) {
@@ -4815,7 +4863,9 @@ export function createGameScene(
   return () => {
     destroyed = true
     stopRegen()
+    if (!playerDead) persistState()
     clearInterval(saveInterval)
+    clearInterval(stockpileUiInterval)
     clearInterval(dpsMeterInterval)
     clearInterval(masteryDotInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }

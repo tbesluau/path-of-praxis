@@ -56,6 +56,11 @@ export interface TranslationSchema {
     title: string
     comingSoon: string
   }
+  awayBonus: {
+    title: string
+    body: string      // contains "{away}" and "{earned}" placeholders
+    close: string
+  }
 }
 
 export const en: TranslationSchema = {
@@ -115,5 +120,10 @@ export const en: TranslationSchema = {
   guide: {
     title: 'Guide',
     comingSoon: 'Coming soon…',
+  },
+  awayBonus: {
+    title: 'Welcome back!',
+    body: 'You were away for {away} and earned {earned} of ×2 speed time.',
+    close: 'Close',
   },
 }

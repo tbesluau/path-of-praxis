@@ -145,4 +145,47 @@ describe('character', () => {
     const restored = character.getCharacters().find(x => x.id === c.id)!
     expect(restored.enemyProgress).toEqual({ xp: 500, level: 2, maxLevel: 3, autoLevel: true })
   })
+
+  describe('computeAward', () => {
+    it('discards short absences below the 10s award threshold', () => {
+      // 99s away → 99/10 = 9.9s → floors to 9s → < 10s minimum → discarded
+      expect(character.computeAward(99_000, 0)).toBe(0)
+    })
+
+    it('awards exactly 10s for a 100s absence', () => {
+      expect(character.computeAward(100_000, 0)).toBe(10_000)
+    })
+
+    it('awards 6 minutes for a 1-hour absence', () => {
+      expect(character.computeAward(60 * 60 * 1000, 0)).toBe(6 * 60 * 1000)
+    })
+
+    it('caps total stockpile at 1 hour', () => {
+      // 10h away → /10 = 1h. Cap at 1h.
+      expect(character.computeAward(10 * 60 * 60 * 1000, 0)).toBe(60 * 60 * 1000)
+    })
+
+    it('returns 0 when already at the cap', () => {
+      expect(character.computeAward(60 * 60 * 1000, 60 * 60 * 1000)).toBe(0)
+    })
+
+    it('rounds the earned amount down to whole seconds', () => {
+      // 10500ms away → 1050ms → floor to seconds = 1000ms → <10s → discarded
+      expect(character.computeAward(10_500, 0)).toBe(0)
+      // 109_999ms away → 10999.9ms → floor to seconds = 10_000ms → exactly the threshold
+      expect(character.computeAward(109_999, 0)).toBe(10_000)
+    })
+
+    it('respects remaining room under the cap', () => {
+      // 1h away normally awards 6m. If current is cap - 1m, room = 1m, award clamped.
+      const current = 60 * 60 * 1000 - 60_000
+      expect(character.computeAward(60 * 60 * 1000, current)).toBe(60_000)
+    })
+
+    it('returns 0 for non-positive or invalid input', () => {
+      expect(character.computeAward(0, 0)).toBe(0)
+      expect(character.computeAward(-1000, 0)).toBe(0)
+      expect(character.computeAward(NaN, 0)).toBe(0)
+    })
+  })
 })
