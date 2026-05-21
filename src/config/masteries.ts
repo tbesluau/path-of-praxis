@@ -57,8 +57,8 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 3, label: 'Mana Cost', short: true },
       ] },
       { id: 'criticalHit', label: 'Critical Hit', trees: [
-        { index: 0, label: 'Critical Damage' },
         { index: 1, label: 'Critical Chance' },
+        { index: 0, label: 'Critical Damage' },
       ] },
     ],
   },

@@ -108,13 +108,6 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${locale === 'en' ? t('settings', 'langEn') : t('settings', 'langFr')}"></span>
           </button>
         </div>
-        <div class="modal-field">
-          <label class="settings-toggle-row">
-            <span class="modal-label">${t('settings', 'fullscreen')}</span>
-            <input type="checkbox" class="settings-toggle-input" data-action="fullscreen" ${isFullscreen() ? 'checked' : ''}>
-            <span class="settings-toggle-track" aria-hidden="true"></span>
-          </label>
-        </div>
         ${opts.getTargetingMode ? `
         <div class="modal-field">
           <button class="settings-section-btn" data-action="targeting">
@@ -122,6 +115,13 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span>${t('game', 'targetingTitle')}</span>
           </button>
         </div>` : ''}
+        <div class="modal-field">
+          <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'fullscreen')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-action="fullscreen" ${isFullscreen() ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
         <div class="modal-field">
           <div class="settings-zoom-row">
             <span class="modal-label">${t('settings', 'zoomLabel')}</span>
