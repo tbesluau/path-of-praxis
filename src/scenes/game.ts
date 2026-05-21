@@ -285,6 +285,10 @@ export function createGameScene(
     return electrocuteStacks.has(entity.id)
   }
 
+  function hasAnyAffliction(entity: Entity): boolean {
+    return burnStacks.has(entity.id) || bleedStacks.has(entity.id) || electrocuteStacks.has(entity.id)
+  }
+
   function tickElectrocutions(deltaMs: number): void {
     for (const [id, remaining] of [...electrocuteStacks]) {
       const updated = remaining - deltaMs
@@ -1925,6 +1929,7 @@ export function createGameScene(
     actionId:              ActionId
     countdown:             number   // ms remaining until impact
     guaranteedAfflictions: boolean
+    isDoubleDamage?:       boolean  // true when the double-damage roll already multiplied this hit's damage by ×2
     multiActionType?:      MultiActionType
     isMainSlot?:           boolean  // true when fired from the auto-attack slot (for crit trigger detection)
     impactX?:              number   // area center x for knockback direction (area attacks only)
@@ -2957,19 +2962,25 @@ export function createGameScene(
     return 0
   }
 
-  function critChanceForAction(tags: ActionTag[]): number {
+  function critChanceForAction(tags: ActionTag[], target?: Entity): number {
     // Critical hits don't exist until the first ascension is reached.
     if (ascentCount < 1 && !getPrefs().fullMastery) return 0
     const basePct = baseCritChancePct(tags)
     if (basePct <= 0) return 0
     const cb = getCriticalHitBonuses()
-    const totalPct = (basePct + critBaseAddTotal()) * (1 + cb.chanceIncrease / 100) * (1 + cb.chanceMore / 100)
+    let totalPct = (basePct + critBaseAddTotal()) * (1 + cb.chanceIncrease / 100) * (1 + cb.chanceMore / 100)
+    if (cb.moreChanceVsAfflicted > 0 && target && hasAnyAffliction(target)) {
+      totalPct *= 1 + cb.moreChanceVsAfflicted / 100
+    }
     return Math.min(1, totalPct / 100)
   }
 
-  function critDamageMultiplier(): number {
+  // excludeTree0: when damageToAfflictions is active, tree-0 bonuses go to afflictions, not direct hits
+  function critDamageMultiplier(excludeTree0 = false): number {
     const cb = getCriticalHitBonuses()
-    return (balance.criticalHit.damageMultiplier + cb.damageIncrease / 100) * (1 + cb.damageMore / 100)
+    const dmgInc = excludeTree0 ? cb.damageIncrease - cb.damageIncreaseTree0 : cb.damageIncrease
+    const dmgMore = excludeTree0 ? cb.damageMore - cb.damageMoreTree0 : cb.damageMore
+    return (balance.criticalHit.damageMultiplier + dmgInc / 100) * (1 + dmgMore / 100)
   }
 
   function spawnCritVfx(x: number, y: number, r: number): void {
@@ -3860,7 +3871,7 @@ export function createGameScene(
         let currentHitMultiType: MultiActionType | undefined = undefined  // set before each applyHit call, read inside for DPS tracking
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
-        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false, impactX?: number, impactY?: number): boolean => {
+        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false, impactX?: number, impactY?: number, isDoubleDamage = false): boolean => {
           const isPlayerAttacker = attacker.role === 'player'
           const sbHit = isPlayerAttacker ? getStrikeBonuses() : null
           const strikeAfflBonus = (sbHit && action.tags.includes('strike')) ? sbHit.afflictionChanceIncrease : 0
@@ -3916,14 +3927,20 @@ export function createGameScene(
           // Rolled BEFORE the resistance multiplier so we can skip it on ignore.
           let isCrit = false
           let ignoreMitigation = false
+          const cb = getCriticalHitBonuses()
           if (attacker.role === 'player' && target.role === 'enemy') {
-            const critChance = critChanceForAction(action.tags)
+            const critChance = critChanceForAction(action.tags, target)
             if (critChance > 0 && Math.random() < critChance) isCrit = true
             const ab = getActionBonuses()
-            const cb = getCriticalHitBonuses()
             const ignoreChance = ab.ignoreMitigationChance + (isCrit ? cb.ignoreMitigationChance : 0)
             if (ignoreChance > 0 && Math.random() * 100 < ignoreChance) ignoreMitigation = true
+            // Chance key 14: crits guarantee an affliction on top of the standard roll
+            if (isCrit && cb.guaranteedAffliction) guaranteedAfflictions = true
           }
+          // critAfflMult: Damage key 14 — tree-0 crit damage bonus redirected to affliction initial dps
+          const critAfflMult = (isCrit && cb.damageToAfflictions)
+            ? (1 + cb.damageIncreaseTree0 / 100) * (1 + cb.damageMoreTree0 / 100)
+            : 1
           // Enemy resistance: last damage-mitigation step before applying the hit.
           // Skipped when ignoreMitigation rolled true above.
           if (target.role === 'enemy' && !ignoreMitigation) {
@@ -3938,8 +3955,14 @@ export function createGameScene(
             const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
-          // Apply crit damage multiplier after resistance (commutative, but reads more naturally here).
-          if (isCrit) finalDamage *= critDamageMultiplier()
+          // Apply crit damage multiplier after resistance.
+          // Chance key 14: noDamageBonus means crits trigger effects but deal no extra direct damage.
+          // Damage key 14: damageToAfflictions excludes tree-0 bonuses from direct hits.
+          // Damage key 15: tripleDamageOnDouble upgrades the ×2 to ×3 when this hit already doubled.
+          if (isCrit) {
+            if (!cb.noDamageBonus) finalDamage *= critDamageMultiplier(cb.damageToAfflictions)
+            if (cb.tripleDamageOnDouble && isDoubleDamage) finalDamage *= 1.5
+          }
           // Knockback damage reduction: knocked-back enemies deal less damage to the player
           if (target.role === 'player' && attacker.role === 'enemy') {
             const kbDR = knockbackDamageReductionState.get(attacker.id)
@@ -3994,8 +4017,10 @@ export function createGameScene(
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
             recordDps(actionId, actualDamage, currentHitMultiType ? `multi:${currentHitMultiType}` : 'direct')
-            // Base vs crit split: the first 1× of damage is always base, the remainder is crit bonus
-            const critMult = isCrit ? critDamageMultiplier() : 1
+            // Base vs crit split: the first 1× of damage is base, the remainder is crit bonus
+            const critMult = (isCrit && !cb.noDamageBonus)
+              ? critDamageMultiplier(cb.damageToAfflictions) * (cb.tripleDamageOnDouble && isDoubleDamage ? 1.5 : 1)
+              : 1
             const baseDmg = actualDamage / critMult
             recordDps(actionId, baseDmg, 'hit:base')
             if (isCrit) recordDps(actionId, actualDamage - baseDmg, 'hit:crit')
@@ -4066,6 +4091,7 @@ export function createGameScene(
               const dps = damage * balance.effects.burnDpsFraction
                 * (1 + fb.burnDamageIncrease / 100)
                 * (1 + fb.burnMoreDamage / 100)
+                * critAfflMult
               const duration = balance.effects.burnBaseDurationMs * (1 + fb.burnDurationIncrease / 100)
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
@@ -4107,7 +4133,7 @@ export function createGameScene(
             const bloodlustBleedBonus = hasEffect('bloodlust') ? pb.bloodlustBleedChance : 0
             const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + bloodlustBleedBonus + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
-              const newBaseDps  = damage * balance.effects.bleedDpsFraction
+              const newBaseDps  = damage * balance.effects.bleedDpsFraction * critAfflMult
               const duration    = balance.effects.bleedBaseDurationMs * (1 + pb.bleedDurationIncrease / 100)
               const existing    = bleedStacks.get(target.id)
               if (!existing) {
@@ -4154,7 +4180,7 @@ export function createGameScene(
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
           currentHitMultiType = ph.multiActionType
-          const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions, ph.impactX, ph.impactY)
+          const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions, ph.impactX, ph.impactY, ph.isDoubleDamage)
           if (ph.isMainSlot && wasCrit) mainSlotCritTarget = ph.target
           spawnPostHitVfx(ph.attacker, ph.target, ph.action, ph.multiActionType)
         }
@@ -4299,8 +4325,10 @@ export function createGameScene(
             + (isPlayerStrike ? getStrikeBonuses().doubleDamageChance : 0)
             + (isPlayerProjectile ? (pb?.doubleDamageChance ?? 0) : 0)
             + (isPlayerArea ? getAreaBonuses().doubleDamageChance : 0)
+          let isDoubleDamageRolled = false
           if (totalDDC > 0 && Math.random() * 100 < totalDDC) {
             effectiveDamage *= 2
+            isDoubleDamageRolled = true
           }
           if (pb && pb.damagePerRange > 0) {
             const rangeUnits = entity.actionRange / balance.player.radius
@@ -4375,7 +4403,8 @@ export function createGameScene(
               pendingHits.set(`${entity.id}:${++hitSeq}`, {
                 attacker: entity, target: v, damage: effectiveDamage,
                 action, actionId, countdown: preHitDuration,
-                guaranteedAfflictions, multiActionType: pending?.type,
+                guaranteedAfflictions, isDoubleDamage: isDoubleDamageRolled,
+                multiActionType: pending?.type,
                 isMainSlot: isPlayer,
                 impactX: center.x, impactY: center.y,
               })
@@ -4386,7 +4415,8 @@ export function createGameScene(
             pendingHits.set(`${entity.id}:${++hitSeq}`, {
               attacker: entity, target, damage: effectiveDamage,
               action, actionId, countdown: preHitDuration,
-              guaranteedAfflictions, multiActionType: pending?.type,
+              guaranteedAfflictions, isDoubleDamage: isDoubleDamageRolled,
+              multiActionType: pending?.type,
               isMainSlot: isPlayer,
             })
             spawnPreHitVfx(entity, target, action, preHitDuration)
