@@ -157,10 +157,8 @@ function mountNodeDetailModal(
   if (info.assignInfo.kind === 'assigned') {
     actionHtml = '<span class="node-detail-assigned">Assigned</span>'
   } else if (info.assignInfo.kind === 'assignable') {
-    const ownCost = nodeCost(info.nodeIdx)
-    const label = info.assignInfo.cost > ownCost
-      ? `Assign (${info.assignInfo.cost} pts)`
-      : 'Assign'
+    const cost = info.assignInfo.cost
+    const label = `Assign (${cost} pt${cost === 1 ? '' : 's'})`
     actionHtml = `<button class="modal-btn modal-btn--primary node-detail-assign-btn" data-action="assign">${label}</button>`
   } else if (info.assignInfo.kind === 'insufficient') {
     const { cost, available } = info.assignInfo
