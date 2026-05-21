@@ -48,13 +48,12 @@ function isNodeAssigned(p: MasteryProgress, treeIdx: number, nodeIdx: number): b
 //   assigned     — already taken
 //   unavailable  — structural block (sibling key already chosen, or short-tree key 14/15)
 //   assignable   — can be assigned now; `path` is the full ordered list of unassigned
-//                  nodes to assign (the requested node is always last). `extra` is
-//                  the count of additional intermediate nodes beyond the clicked one.
+//                  nodes to assign (the requested node is always last).
 //   insufficient — path is computable but cost > totalAvailable
 type AssignInfo =
   | { kind: 'assigned' }
   | { kind: 'unavailable'; reason: 'sibling' | 'shortKey' }
-  | { kind: 'assignable'; path: number[]; extra: number; cost: number }
+  | { kind: 'assignable'; path: number[]; cost: number }
   | { kind: 'insufficient'; path: number[]; cost: number; available: number }
 
 // Returns the ordered list of unassigned nodes that would be assigned to reach
@@ -96,9 +95,9 @@ function computeAssignInfo(
   if (isNodeAssigned(p, treeIdx, nodeIdx)) return { kind: 'assigned' }
   const result = computeAssignPath(p, treeDef, treeIdx, nodeIdx)
   if (!Array.isArray(result)) return { kind: 'unavailable', reason: result.error }
-  const cost = result.length
-  if (cost === 0) return { kind: 'assigned' }
-  if (cost <= totalAvailable) return { kind: 'assignable', path: result, extra: cost - 1, cost }
+  if (result.length === 0) return { kind: 'assigned' }
+  const cost = result.reduce((sum, idx) => sum + nodeCost(idx), 0)
+  if (cost <= totalAvailable) return { kind: 'assignable', path: result, cost }
   return { kind: 'insufficient', path: result, cost, available: totalAvailable }
 }
 
@@ -158,7 +157,10 @@ function mountNodeDetailModal(
   if (info.assignInfo.kind === 'assigned') {
     actionHtml = '<span class="node-detail-assigned">Assigned</span>'
   } else if (info.assignInfo.kind === 'assignable') {
-    const label = info.assignInfo.extra > 0 ? `Assign (+${info.assignInfo.extra})` : 'Assign'
+    const ownCost = nodeCost(info.nodeIdx)
+    const label = info.assignInfo.cost > ownCost
+      ? `Assign (${info.assignInfo.cost} pts)`
+      : 'Assign'
     actionHtml = `<button class="modal-btn modal-btn--primary node-detail-assign-btn" data-action="assign">${label}</button>`
   } else if (info.assignInfo.kind === 'insufficient') {
     const { cost, available } = info.assignInfo
@@ -210,6 +212,15 @@ function mountNodeDetailModal(
 }
 
 // ── Tree Row Builder ───────────────────────────────────────────────────────
+
+// Point cost of a single node by index.
+// small / strong = 1 pt  |  major = 2 pts  |  key = 3 pts
+function nodeCost(nodeIdx: number): number {
+  const t = nodeType(nodeIdx)
+  if (t === 'major') return 2
+  if (t === 'key')   return 3
+  return 1
+}
 
 // Half-width (and half-height) of a node by index — used to extend bars
 // center-to-center so the bar's ends sit hidden under the adjacent nodes.
@@ -320,7 +331,15 @@ function buildTreeNodes(
   function applyPreviewFor(nodeIdx: number): void {
     const info = computeAssignInfo(p, treeDef, treeIdx, nodeIdx, totalAvailable)
     if (info.kind !== 'assignable' && info.kind !== 'insufficient') return
-    const reachable = info.path.slice(0, totalAvailable)
+    // Accumulate nodes from the path as long as the budget covers each one's cost.
+    let budget = totalAvailable
+    const reachable: number[] = []
+    for (const nIdx of info.path) {
+      const c = nodeCost(nIdx)
+      if (c > budget) break
+      budget -= c
+      reachable.push(nIdx)
+    }
     if (reachable.length === 0) return
     const reachableSet = new Set(reachable)
     container.querySelectorAll<HTMLElement>('[data-bar-from]').forEach(bar => {
