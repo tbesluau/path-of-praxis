@@ -1115,8 +1115,9 @@ export function createGameScene(
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
-  let mainSlotCrittedThisTick = false
+  let mainSlotCritTarget: Entity | null = null
   let afflictionAppliedThisTick = 0
+  let afflictionLastTarget: Entity | null = null
   const bossLastHitWasCrit = new Map<string, boolean>()
   const bossLastHitWasAffl = new Map<string, boolean>()
   const extraSlotMAQueues: ExtraSlotMA[][] = [[], []]
@@ -2325,8 +2326,9 @@ export function createGameScene(
     extraSlotTimers.length = 0
     afflictionTriggerCounters[0] = 0
     afflictionTriggerCounters[1] = 0
-    mainSlotCrittedThisTick = false
+    mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
+    afflictionLastTarget = null
     bossLastHitWasCrit.clear()
     bossLastHitWasAffl.clear()
     extraSlotMAQueues[0].length = 0
@@ -2374,8 +2376,9 @@ export function createGameScene(
     extraSlotTimers.length = 0
     afflictionTriggerCounters[0] = 0
     afflictionTriggerCounters[1] = 0
-    mainSlotCrittedThisTick = false
+    mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
+    afflictionLastTarget = null
     bossLastHitWasCrit.clear()
     bossLastHitWasAffl.clear()
     extraSlotMAQueues[0].length = 0
@@ -3534,11 +3537,29 @@ export function createGameScene(
           const gs = balance.world.gridSize
           const dx = target.x - entity.x, dy = target.y - entity.y
           const dist = Math.sqrt(dx * dx + dy * dy)
-          const stopDist = entity.actionRange + target.radius
+
+          // Movement range: minimum of all independent-trigger action ranges
+          // (auto-attack + time-trigger extra slots). Dependent triggers ignore range.
+          let effectiveRange = entity.actionRange
+          if (entity.role === 'player') {
+            const activeSlotCt = ascentCount >= balance.ascent.slot3UnlockAscent ? 2 : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
+            for (let si = 0; si < activeSlotCt; si++) {
+              const sl = extraSlots[si]
+              if (!sl?.actionId || sl.triggerType !== 'time') continue
+              const sd = getAction(sl.actionId as ActionId)
+              const baseRU = sd.selfTargeted ? (sd.area ?? 0) * (2 / 3) : sd.range
+              let sr = baseRU * balance.player.radius
+              if (sd.tags.includes('projectile')) sr *= (1 + getProjectileBonuses().rangeIncrease / 100)
+              if (sd.tags.includes('strike')) { const sb = getStrikeBonuses(); sr *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100) }
+              if (sd.selfTargeted && sd.tags.includes('area')) { const ab = getAreaBonuses(); sr *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) }
+              if (sr < effectiveRange) effectiveRange = sr
+            }
+          }
+          const stopDist = effectiveRange + target.radius
 
           // Kite check for player (before stop-distance check to avoid early exit)
           const playerMb = entity.role === 'player' ? getMovementBonuses() : null
-          const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= entity.actionRange / 2
+          const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= effectiveRange / 2
 
           if (!shouldKite && dist <= stopDist) {
             if (entity.role === 'player') playerIsKiting = false
@@ -3909,6 +3930,7 @@ export function createGameScene(
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
               afflictionAppliedThisTick++
+              afflictionLastTarget = target
             }
             // Burning Ground: roll on fire-tagged player hits; tile must be clear of burning ground
             if (fb.burnGroundChance > 0) {
@@ -3930,6 +3952,7 @@ export function createGameScene(
               const duration = balance.effects.electrocutionBaseDurationMs * (1 + lbElec.electrocuteDurationIncrease / 100)
               electrocuteStacks.set(target.id, duration)
               afflictionAppliedThisTick++
+              afflictionLastTarget = target
             }
           }
           // Electrifying: lightning-tagged player hits roll a chance to apply Electrified to the player
@@ -3961,6 +3984,7 @@ export function createGameScene(
               // Bloodlust: roll on each successful bleed application
               if (pb.bloodlustChance > 0 && Math.random() * 100 < pb.bloodlustChance) applyBloodlust()
               afflictionAppliedThisTick++
+              afflictionLastTarget = target
             }
           }
           // Resistance Breaking: roll on physical-tagged player hits to permanently reduce enemy physRot resistance
@@ -3979,8 +4003,9 @@ export function createGameScene(
         }
 
         // ── Pending-hit countdown: apply damage when the pre-hit window expires ─
-        mainSlotCrittedThisTick = false
+        mainSlotCritTarget = null
         afflictionAppliedThisTick = 0
+        afflictionLastTarget = null
         for (const [entityId, ph] of pendingHits) {
           ph.countdown -= ticker.deltaMS
           if (ph.countdown > 0) continue
@@ -3989,7 +4014,7 @@ export function createGameScene(
           if (!entities.includes(ph.attacker)) continue
           currentHitMultiType = ph.multiActionType
           const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
-          if (ph.isMainSlot && wasCrit) mainSlotCrittedThisTick = true
+          if (ph.isMainSlot && wasCrit) mainSlotCritTarget = ph.target
           spawnPostHitVfx(ph.attacker, ph.target, ph.action, ph.multiActionType)
         }
 
@@ -4379,17 +4404,35 @@ export function createGameScene(
           const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
             : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
 
-          function fireExtraSlot(slotI: number, trigger: TriggerType): boolean {
+          function fireExtraSlot(slotI: number, trigger: TriggerType, triggerTarget?: Entity): boolean {
             const slot = extraSlots[slotI]
             if (!slot?.actionId) return false
             const slotActionId = slot.actionId as ActionId
             const slotDef = getAction(slotActionId)
             if (playerEntity.currentMana < slotDef.manaCost) return false
-            const slotTarget = selectPlayerTarget(entities)
-            if (!slotTarget) return false
-            const sdx = slotTarget.x - playerEntity.x, sdy = slotTarget.y - playerEntity.y
-            const slotRange = slotDef.range * balance.player.radius + slotTarget.radius
-            if (Math.sqrt(sdx * sdx + sdy * sdy) > slotRange) return false
+
+            // Dependent triggers (crit/affliction) use the triggering entity directly and ignore range.
+            // Independent triggers select a target and enforce range.
+            const isDependent = trigger === 'crit' || trigger === 'affliction'
+            const liveTriggerTarget = triggerTarget && entities.includes(triggerTarget) && triggerTarget.currentLife > 0 ? triggerTarget : null
+            let slotTarget: Entity
+            if (isDependent && liveTriggerTarget) {
+              slotTarget = liveTriggerTarget
+            } else {
+              const selected = selectPlayerTarget(entities)
+              if (!selected) return false
+              if (!isDependent) {
+                // Enforce range including mastery range bonuses
+                const baseRangeUnits = slotDef.selfTargeted ? (slotDef.area ?? 0) * (2 / 3) : slotDef.range
+                let slotEffRange = baseRangeUnits * balance.player.radius
+                if (slotDef.tags.includes('projectile')) slotEffRange *= (1 + getProjectileBonuses().rangeIncrease / 100)
+                if (slotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); slotEffRange *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100) }
+                if (slotDef.selfTargeted && slotDef.tags.includes('area')) { const ab = getAreaBonuses(); slotEffRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) }
+                const sdx = selected.x - playerEntity.x, sdy = selected.y - playerEntity.y
+                if (Math.sqrt(sdx * sdx + sdy * sdy) > slotEffRange + selected.radius) return false
+              }
+              slotTarget = selected
+            }
 
             playerEntity.currentMana = Math.max(0, playerEntity.currentMana - slotDef.manaCost)
 
@@ -4397,55 +4440,52 @@ export function createGameScene(
             let slotDmg = slotDef.damage
               * Math.pow(balance.action.damageMult, slotLevel - 1)
               * (1 + (slotLevel - 1) * balance.action.damageAddPerLevel)
-            // Speed-balance: DPS-neutral vs auto-attack at native speed
+
+            // Compute native speed (for time-trigger speed-balance) and full effective speed (for dependent triggers).
+            // Mirrors the same mastery pipeline as assignAction so all speed bonuses apply correctly.
             const leveledSpeed = slotDef.speed * (1 + (slotLevel - 1) * balance.action.speedBonusPerLevel)
-            const effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
-            slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * effectiveSlotSpeed
-            // Per-trigger damage multiplier
-            if (trigger === 'crit') slotDmg *= balance.ascent.critTriggerDamageMult
-            // Global slot position penalty
-            slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
-            // Mastery bonuses
             const slotAb = getActionBonuses()
-            slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
-            if (slotDef.tags.includes('projectile')) {
-              const b = getProjectileBonuses()
-              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-            }
-            if (slotDef.tags.includes('strike')) {
-              const b = getStrikeBonuses()
-              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-            }
-            if (slotDef.tags.includes('lightning')) {
-              const b = getLightningBonuses()
-              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-            }
-            if (slotDef.tags.includes('fire')) {
-              const b = getFireBonuses()
-              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-            }
-            if (slotDef.tags.includes('physical')) {
-              const b = getPhysicalBonuses()
-              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-            }
-            if (slotDef.tags.includes('area')) {
-              const b = getAreaBonuses()
-              slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100)
-            }
             const slotRb = getRuneBonuses(slotActionId)
+            let effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
+              * (1 + slotAb.actionSpeedIncrease / 100) * (1 + slotAb.moreActionSpeed / 100)
+            if (slotDef.tags.includes('projectile')) effectiveSlotSpeed *= (1 + getProjectileBonuses().actionSpeedIncrease / 100)
+            if (slotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); effectiveSlotSpeed *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
+            if (slotDef.tags.includes('lightning')) { const lb = getLightningBonuses(); effectiveSlotSpeed *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100) }
+            if (slotDef.tags.includes('fire')) effectiveSlotSpeed *= (1 + getFireBonuses().actionSpeedIncrease / 100)
+            if (slotDef.tags.includes('physical')) effectiveSlotSpeed *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
+            if (slotDef.tags.includes('area')) effectiveSlotSpeed *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
+            effectiveSlotSpeed *= (1 + slotRb.speedIncrease / 100) * slotRb.speedMore
+            if (slotRb.slowHeavy) effectiveSlotSpeed *= 0.5
+            { const mb = getManaBonuses(); if (mb.actionSpeedIncrease > 0) effectiveSlotSpeed *= (1 + mb.actionSpeedIncrease / 100) }
+
+            // Speed-balance:
+            //   Independent (time): use native speed only — action speed bonus shortens the interval instead.
+            //   Dependent (crit/affliction): use full effective speed — speed bonus increases damage since frequency is fixed.
+            const speedForBalance = trigger === 'time' ? leveledSpeed : effectiveSlotSpeed
+            slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * speedForBalance
+            if (trigger === 'crit') slotDmg *= balance.ascent.critTriggerDamageMult
+            slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
+            slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
+            if (slotDef.tags.includes('projectile')) { const b = getProjectileBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
+            if (slotDef.tags.includes('strike')) { const b = getStrikeBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
+            if (slotDef.tags.includes('lightning')) { const b = getLightningBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
+            if (slotDef.tags.includes('fire')) { const b = getFireBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
+            if (slotDef.tags.includes('physical')) { const b = getPhysicalBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
+            if (slotDef.tags.includes('area')) { const b = getAreaBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
             if (slotRb.slowHeavy) slotDmg *= 2
             if (ascentCount > 0) slotDmg *= 1 + ascentCount * balance.ascent.damagePerAscent
 
-            // Pre-hit window drives the attack animation (same ratio as main action)
             const slotPreHitDuration = (1000 / effectiveSlotSpeed) / 3
 
+            // For dependent self-targeted area actions, the cast originates at the triggering entity.
+            const areaOrigin = isDependent && liveTriggerTarget && slotDef.selfTargeted ? liveTriggerTarget : playerEntity
             const slotAreaVictims: Entity[] = []
             if (slotDef.tags.includes('area')) {
               const ab = getAreaBonuses()
               let areaRadiusPx = (slotDef.area ?? 0) * balance.player.radius
               areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
-              const center = slotDef.selfTargeted ? playerEntity : slotTarget
+              const center = slotDef.selfTargeted ? areaOrigin : slotTarget
               for (const v of entities) {
                 if (v.role !== 'enemy') continue
                 const vdx = v.x - center.x, vdy = v.y - center.y
@@ -4534,35 +4574,53 @@ export function createGameScene(
 
           let extraManaSpent = false
 
-          // Time trigger: decrement timer, fire on expiry
+          // Time trigger: decrement timer (interval scaled by action speed bonus), fire on expiry
           for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
             const slot = extraSlots[slotI]
             if (!slot?.actionId || slot.triggerType !== 'time') continue
-            const prev = extraSlotTimers[slotI] ?? balance.ascent.timeTriggerIntervalMs
+            // Compute the effective trigger interval, shortened by action speed bonuses (mirrors
+            // the auto-attack: faster speed = more fires per second, same damage per fire).
+            const tSlotDef = getAction(slot.actionId as ActionId)
+            const tAb = getActionBonuses()
+            const tRb = getRuneBonuses(slot.actionId as ActionId)
+            let tSpeedMult = (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
+              * (1 + tAb.actionSpeedIncrease / 100) * (1 + tAb.moreActionSpeed / 100)
+            if (tSlotDef.tags.includes('projectile')) tSpeedMult *= (1 + getProjectileBonuses().actionSpeedIncrease / 100)
+            if (tSlotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); tSpeedMult *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
+            if (tSlotDef.tags.includes('lightning')) { const lb = getLightningBonuses(); tSpeedMult *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100) }
+            if (tSlotDef.tags.includes('fire')) tSpeedMult *= (1 + getFireBonuses().actionSpeedIncrease / 100)
+            if (tSlotDef.tags.includes('physical')) tSpeedMult *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
+            if (tSlotDef.tags.includes('area')) tSpeedMult *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
+            tSpeedMult *= (1 + tRb.speedIncrease / 100) * tRb.speedMore
+            if (tRb.slowHeavy) tSpeedMult *= 0.5
+            { const mb = getManaBonuses(); if (mb.actionSpeedIncrease > 0) tSpeedMult *= (1 + mb.actionSpeedIncrease / 100) }
+            // Action speed bonus multiplier shortens the trigger interval
+            const effectiveInterval = balance.ascent.timeTriggerIntervalMs / tSpeedMult
+            const prev = extraSlotTimers[slotI] ?? effectiveInterval
             const next = prev - ticker.deltaMS
             extraSlotTimers[slotI] = next
             if (next > 0) continue
-            extraSlotTimers[slotI] = balance.ascent.timeTriggerIntervalMs
+            extraSlotTimers[slotI] = effectiveInterval
             if (fireExtraSlot(slotI, 'time')) extraManaSpent = true
           }
 
-          // Crit trigger: fire once per tick where the main slot scored a crit
-          if (mainSlotCrittedThisTick) {
+          // Crit trigger: fire for the enemy that received the crit
+          if (mainSlotCritTarget !== null) {
             for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
               const slot = extraSlots[slotI]
               if (!slot?.actionId || slot.triggerType !== 'crit') continue
-              if (fireExtraSlot(slotI, 'crit')) extraManaSpent = true
+              if (fireExtraSlot(slotI, 'crit', mainSlotCritTarget)) extraManaSpent = true
             }
           }
 
-          // Affliction trigger: accumulate applied-affliction count, fire at threshold
+          // Affliction trigger: fire targeting the enemy that received the threshold-crossing affliction
           for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
             const slot = extraSlots[slotI]
             if (!slot?.actionId || slot.triggerType !== 'affliction') continue
             afflictionTriggerCounters[slotI] = (afflictionTriggerCounters[slotI] ?? 0) + afflictionAppliedThisTick
             if (afflictionTriggerCounters[slotI] >= balance.ascent.afflictionTriggerCount) {
               afflictionTriggerCounters[slotI] -= balance.ascent.afflictionTriggerCount
-              if (fireExtraSlot(slotI, 'affliction')) extraManaSpent = true
+              if (fireExtraSlot(slotI, 'affliction', afflictionLastTarget ?? undefined)) extraManaSpent = true
             }
           }
 
