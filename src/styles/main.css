@@ -2751,6 +2751,18 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 .tree-node--major  { width: 72px; height: 72px; font-size: 1.4rem; }
 .tree-node--key    { width: 44px; height: 44px; font-size: 1rem; }
 
+.tree-node--unavailable {
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  opacity: 0.40;
+  color: #ef4444;
+  cursor: not-allowed;
+}
+.tree-node--unavailable:hover,
+.tree-node--unavailable:focus-visible {
+  background-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  transform: none;
+}
+
 /* ── Major cluster (column: key-A / vbar / major / vbar / key-B) ── */
 
 .tree-major-cluster {

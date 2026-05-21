@@ -1,7 +1,7 @@
 import type { MasteryId, NodeType } from '../config/masteries'
 import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
-import { getNodeDescription } from '../config/mastery-nodes'
+import { getNodeDescription, nodeHasAnyEffect } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
 import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
 import { linkifyNoteTerms, mountNoteModal } from './notes'
@@ -52,7 +52,7 @@ function isNodeAssigned(p: MasteryProgress, treeIdx: number, nodeIdx: number): b
 //   insufficient — path is computable but cost > totalAvailable
 type AssignInfo =
   | { kind: 'assigned' }
-  | { kind: 'unavailable'; reason: 'sibling' | 'shortKey' }
+  | { kind: 'unavailable'; reason: 'sibling' | 'shortKey' | 'undefined' }
   | { kind: 'assignable'; path: number[]; cost: number }
   | { kind: 'insufficient'; path: number[]; cost: number; available: number }
 
@@ -166,6 +166,8 @@ function mountNodeDetailModal(
   } else {
     actionHtml = info.assignInfo.reason === 'sibling'
       ? '<span class="node-detail-blocked">Another key node already chosen</span>'
+      : info.assignInfo.reason === 'undefined'
+      ? '<span class="node-detail-blocked">Not yet implemented</span>'
       : '<span class="node-detail-blocked">Node not available</span>'
   }
 
@@ -234,14 +236,17 @@ function nodeHalfSize(nodeIdx: number): number {
 const H_BAR_GAP = 20  // distance between adjacent node edges
 const V_BAR_GAP = 16  // distance between major and key edges
 
-function mkNode(treeIdx: number, nodeIdx: number, type: NodeType, assigned: boolean): HTMLElement {
+function mkNode(treeIdx: number, nodeIdx: number, type: NodeType, assigned: boolean, unavailable = false): HTMLElement {
   const node = document.createElement('div')
-  node.className = `tree-node tree-node--${type}${assigned ? ' tree-node--assigned' : ''}`
+  let cls = `tree-node tree-node--${type}`
+  if (assigned) cls += ' tree-node--assigned'
+  else if (unavailable) cls += ' tree-node--unavailable'
+  node.className = cls
   node.dataset['tree'] = String(treeIdx)
   node.dataset['node'] = String(nodeIdx)
   node.setAttribute('role', 'button')
   node.setAttribute('tabindex', '0')
-  node.textContent = '+'
+  node.textContent = unavailable && !assigned ? '×' : '+'
   return node
 }
 
@@ -272,10 +277,15 @@ function buildTreeNodes(
       const keyAAssigned = isNodeAssigned(p, treeIdx, keyAIdx)
       const keyBAssigned = isNodeAssigned(p, treeIdx, keyBIdx)
 
+      const infoA = computeAssignInfo(p, treeDef, treeIdx, keyAIdx, totalAvailable)
+      const infoB = computeAssignInfo(p, treeDef, treeIdx, keyBIdx, totalAvailable)
+      const keyAUnavailable = !keyAAssigned && (infoA.kind === 'unavailable' || !nodeHasAnyEffect(def.id, treeIdx, keyAIdx))
+      const keyBUnavailable = !keyBAssigned && (infoB.kind === 'unavailable' || !nodeHasAnyEffect(def.id, treeIdx, keyBIdx))
+
       const cluster = document.createElement('div')
       cluster.className = 'tree-major-cluster'
 
-      const keyA = mkNode(treeIdx, keyAIdx, 'key', keyAAssigned)
+      const keyA = mkNode(treeIdx, keyAIdx, 'key', keyAAssigned, keyAUnavailable)
       const keyHalf = nodeHalfSize(keyAIdx)
       const majorHalf = nodeHalfSize(lineIdx)
 
@@ -299,7 +309,7 @@ function buildTreeNodes(
       vBarB.style.marginTop = `-${majorHalf}px`
       vBarB.style.marginBottom = `-${keyHalf}px`
 
-      const keyB = mkNode(treeIdx, keyBIdx, 'key', keyBAssigned)
+      const keyB = mkNode(treeIdx, keyBIdx, 'key', keyBAssigned, keyBUnavailable)
 
       cluster.append(keyA, vBarA, majorNode, vBarB, keyB)
       container.appendChild(cluster)
@@ -361,6 +371,12 @@ function buildTreeNodes(
     const nodeIdx = parseInt(nodeEl.dataset['node']!, 10)
     const handleActivate = (): void => {
       const info = computeAssignInfo(p, treeDef, treeIdx, nodeIdx, totalAvailable)
+      const isUndefinedKey = nodeType(nodeIdx) === 'key'
+        && !isNodeAssigned(p, treeIdx, nodeIdx)
+        && !nodeHasAnyEffect(def.id, treeIdx, nodeIdx)
+      const effectiveInfo: AssignInfo = isUndefinedKey
+        ? { kind: 'unavailable', reason: 'undefined' }
+        : info
       nodeEl.dispatchEvent(new CustomEvent('node-detail', {
         bubbles: true,
         detail: {
@@ -368,7 +384,7 @@ function buildTreeNodes(
           nodeIdx,
           treeLabel: treeDef.label,
           desc: getNodeDescription(def.id, treeIdx, nodeIdx, treeDef.label),
-          info,
+          info: effectiveInfo,
         },
       }))
     }

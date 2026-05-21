@@ -249,6 +249,16 @@ export interface NodeEffect {
   kiteResistance?: number                 // flat all-resistance bonus while kiting
   kiteAllowDash?: true                    // when true, dash can be used to kite (move away from enemies)
 
+  // Movement mastery key node effects
+  moveFirstActionMoreDamage?: number      // % more damage on the first action after moving
+  moveStationaryMoreDamagePerAction?: number // % more damage per consecutive action without moving (up to 10 stacks)
+  moveImmuneToSlowing?: boolean           // immune to movement speed reduction effects
+  dashExtraCharge?: boolean               // +1 maximum Dash charge
+  dashLessDistance?: number              // additive %; less dash distance (penalty for extra charge)
+  dashCloseGapToTarget?: boolean          // Dash closes gap to target regardless of action range
+  kiteMoreSpeed?: number                  // 'more' %; multiplies effective kite speed
+  kiteMoreActionSpeed?: number            // additive %; action speed bonus while kiting
+
   // Action mastery — ignore enemy damage mitigation (tree 0 final major)
   actionIgnoreMitigationChance?: number   // additive %; chance for any action hit to ignore enemy resistance
 
@@ -452,6 +462,14 @@ export interface MovementBonuses {
   kiteSpeedFraction: number              // total fraction (0–1, clamped)
   kiteResistance: number                 // total flat bonus resistance while kiting
   kiteAllowDash: boolean
+  firstActionMoreDamage: number          // % more damage on first action after moving
+  stationaryMoreDamagePerAction: number  // % more damage per consecutive stationary action (stacks up to 10)
+  immuneToSlowing: boolean               // immune to movement speed reduction effects
+  dashExtraCharge: boolean               // +1 maximum Dash charge
+  dashLessDistance: number               // additive %; less dash distance
+  dashCloseGapToTarget: boolean          // Dash closes gap to target regardless of action range
+  kiteMoreSpeed: number                  // 'more' %; multiplies effective kite speed
+  kiteMoreActionSpeed: number            // additive %; action speed bonus while kiting
 }
 
 export interface FireBonuses {
@@ -1595,7 +1613,7 @@ export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
 // Tree 0: Movement Speed (large)  Tree 1: Dash (short)  Tree 2: Kite (short)
 
 const MOVEMENT_EFFECTS: Partial<Record<number, TreeEffects>> = {
-  0: {  // Movement Speed (full tree — line nodes 0-11)
+  0: {  // Movement Speed (full tree — line nodes 0-11, key nodes 12-15)
     0:  { moveSpeedIncrease: 5 },
     1:  { moveSpeedIncrease: 5 },
     2:  { moveSpeedIncrease: 12 },
@@ -1608,22 +1626,30 @@ const MOVEMENT_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { moveSpeedIncrease: 5 },
     10: { moveSpeedIncrease: 5 },
     11: { moveDebuffEfficiencyReduce: 50 },
+    12: { moveFirstActionMoreDamage: 10 },
+    13: { moveStationaryMoreDamagePerAction: 1 },
+    14: { moveImmuneToSlowing: true },
+    15: { moveMoreSpeed: 15 },
   },
-  1: {  // Dash (short tree — line nodes 0-5)
+  1: {  // Dash (short tree — line nodes 0-5, key nodes 12-13)
     0: { dashChargeChance: 20 },
     1: { dashDistanceIncrease: 10 },
     2: { dashChargeChance: 30, dashDistanceIncrease: 10 },
     3: { dashChargeChance: 20 },
     4: { dashDistanceIncrease: 10 },
     5: { dashChargeChance: 50 },
+    12: { dashExtraCharge: true, dashLessDistance: 20 },
+    13: { dashCloseGapToTarget: true },
   },
-  2: {  // Kite (short tree — line nodes 0-5)
+  2: {  // Kite (short tree — line nodes 0-5, key nodes 12-13)
     0: { kiteSpeedFraction: 0.25 },
     1: { kiteSpeedFraction: 0.25 },
     2: { kiteResistance: 5 },
     3: { kiteSpeedFraction: 0.25 },
     4: { kiteSpeedFraction: 0.25 },
     5: { kiteAllowDash: true },
+    12: { kiteMoreSpeed: 10 },
+    13: { kiteMoreActionSpeed: 5 },
   },
 }
 
@@ -1641,18 +1667,34 @@ export function computeMovementBonuses(nodes: number[][]): MovementBonuses {
     kiteSpeedFraction: 0,
     kiteResistance: 0,
     kiteAllowDash: false,
+    firstActionMoreDamage: 0,
+    stationaryMoreDamagePerAction: 0,
+    immuneToSlowing: false,
+    dashExtraCharge: false,
+    dashLessDistance: 0,
+    dashCloseGapToTarget: false,
+    kiteMoreSpeed: 0,
+    kiteMoreActionSpeed: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getMovementNodeEffect(treeIdx, nodeIdx)
-      b.moveSpeedIncrease         += eff.moveSpeedIncrease ?? 0
-      b.moveMoreSpeed             += eff.moveMoreSpeed ?? 0
-      b.moveDebuffEfficiencyReduce += eff.moveDebuffEfficiencyReduce ?? 0
-      b.dashChargeChance          += eff.dashChargeChance ?? 0
-      b.dashDistanceIncrease      += eff.dashDistanceIncrease ?? 0
-      b.kiteSpeedFraction         += eff.kiteSpeedFraction ?? 0
-      b.kiteResistance            += eff.kiteResistance ?? 0
-      if (eff.kiteAllowDash) b.kiteAllowDash = true
+      b.moveSpeedIncrease              += eff.moveSpeedIncrease ?? 0
+      b.moveMoreSpeed                  += eff.moveMoreSpeed ?? 0
+      b.moveDebuffEfficiencyReduce     += eff.moveDebuffEfficiencyReduce ?? 0
+      b.dashChargeChance               += eff.dashChargeChance ?? 0
+      b.dashDistanceIncrease           += eff.dashDistanceIncrease ?? 0
+      b.kiteSpeedFraction              += eff.kiteSpeedFraction ?? 0
+      b.kiteResistance                 += eff.kiteResistance ?? 0
+      b.firstActionMoreDamage          += eff.moveFirstActionMoreDamage ?? 0
+      b.stationaryMoreDamagePerAction  += eff.moveStationaryMoreDamagePerAction ?? 0
+      b.dashLessDistance               += eff.dashLessDistance ?? 0
+      b.kiteMoreSpeed                  += eff.kiteMoreSpeed ?? 0
+      b.kiteMoreActionSpeed            += eff.kiteMoreActionSpeed ?? 0
+      if (eff.kiteAllowDash)         b.kiteAllowDash = true
+      if (eff.moveImmuneToSlowing)   b.immuneToSlowing = true
+      if (eff.dashExtraCharge)       b.dashExtraCharge = true
+      if (eff.dashCloseGapToTarget)  b.dashCloseGapToTarget = true
     }
   }
   b.kiteSpeedFraction = Math.min(1, b.kiteSpeedFraction)
@@ -2269,6 +2311,10 @@ const MOVEMENT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     9:  '+5% increased movement speed',
     10: '+5% increased movement speed',
     11: 'Movement debuffs on you have 50% reduced efficiency',
+    12: 'Your first action after moving deals 10% more damage',
+    13: '1% more action damage per consecutive action without moving, up to 10%',
+    14: 'You are immune to movement slowing effects',
+    15: '+15% more movement speed',
   },
   1: {  // Dash
     0: '+20% increased chance to gain a Dash charge each second',
@@ -2277,6 +2323,8 @@ const MOVEMENT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     3: '+20% increased chance to gain a Dash charge each second',
     4: '+10% increased Dash distance',
     5: '+50% increased chance to gain a Dash charge each second',
+    12: 'Dash can have one additional charge · 20% less Dash distance',
+    13: 'Dash always attempts to close the gap to the nearest enemy, regardless of action range',
   },
   2: {  // Kite
     0: '+25% of your movement speed used to Kite when enemies are within half your action range',
@@ -2285,5 +2333,27 @@ const MOVEMENT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     3: '+25% of your movement speed used to Kite when enemies are within half your action range',
     4: '+25% of your movement speed used to Kite when enemies are within half your action range',
     5: 'Dash can be used to Kite away from enemies',
+    12: '+10% more Kite speed',
+    13: '+5% increased action speed while Kiting',
   },
+}
+
+export function nodeHasAnyEffect(masteryId: MasteryId, treeIdx: number, nodeIdx: number): boolean {
+  let effect: NodeEffect
+  switch (masteryId) {
+    case 'action':      effect = getActionNodeEffect(treeIdx, nodeIdx); break
+    case 'criticalHit': effect = getCriticalHitNodeEffect(treeIdx, nodeIdx); break
+    case 'life':        effect = getLifeNodeEffect(treeIdx, nodeIdx); break
+    case 'mana':        effect = getManaNodeEffect(treeIdx, nodeIdx); break
+    case 'fire':        effect = getFireNodeEffect(treeIdx, nodeIdx); break
+    case 'enemy':       effect = getEnemyNodeEffect(treeIdx, nodeIdx); break
+    case 'projectile':  effect = getProjectileNodeEffect(treeIdx, nodeIdx); break
+    case 'lightning':   effect = getLightningNodeEffect(treeIdx, nodeIdx); break
+    case 'strike':      effect = getStrikeNodeEffect(treeIdx, nodeIdx); break
+    case 'physical':    effect = getPhysicalNodeEffect(treeIdx, nodeIdx); break
+    case 'area':        effect = getAreaNodeEffect(treeIdx, nodeIdx); break
+    case 'movement':    effect = getMovementNodeEffect(treeIdx, nodeIdx); break
+    default: return false
+  }
+  return Object.keys(effect).length > 0
 }
