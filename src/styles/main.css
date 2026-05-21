@@ -2234,6 +2234,12 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   z-index: 50;
 }
 
+/* ── Away-bonus: always on top of all other modals ── */
+
+.away-bonus-backdrop {
+  z-index: 60;
+}
+
 .guide-empty {
   font-style: italic;
   color: #5a3010;

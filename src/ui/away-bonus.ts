@@ -10,12 +10,17 @@ function formatDuration(ms: number): string {
   return s > 0 ? `${m}m ${s}s` : `${m}m`
 }
 
+let currentTeardown: (() => void) | null = null
+
 export function mountAwayBonusModal(
   parent: HTMLElement,
   awayMs: number,
   earnedMs: number,
   onClose: () => void,
 ): () => void {
+  currentTeardown?.()
+  currentTeardown = null
+
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop away-bonus-backdrop'
 
@@ -32,12 +37,14 @@ export function mountAwayBonusModal(
     </div>
   `
 
-  const dismiss = (): void => { backdrop.remove(); onClose() }
+  const teardown = (): void => { backdrop.remove(); currentTeardown = null }
+  const dismiss = (): void => { teardown(); onClose() }
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action="close"]').forEach(btn => {
     btn.addEventListener('click', dismiss)
   })
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
   parent.appendChild(backdrop)
-  return () => backdrop.remove()
+  currentTeardown = teardown
+  return teardown
 }
