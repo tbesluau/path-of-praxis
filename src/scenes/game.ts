@@ -1607,13 +1607,14 @@ export function createGameScene(
   let playerAnimLockMs = 0       // ms remaining where player is locked in animation phase
   let dashCharges = 0
   let dashChargeTimerMs = 0
-  const DASH_MAX_CHARGES = 1     // soft cap; future key nodes can increase
   const DASH_DURATION_MS = 100   // 0.1s
   const DASH_SPEED_MULT = 10     // covers 1s of distance in 0.1s
   let dashRemainingMs = 0
   let dashMoveX = 0
   let dashMoveY = 0
   let playerIsKiting = false
+  let playerMovedSinceLastAction = false  // key 12: first-action-after-moving
+  let playerStationaryActionCount = 0    // key 13: consecutive actions without moving (0-10)
 
   function computeLifeRegenPerSec(): number {
     const lb = getLifeBonuses()
@@ -3636,7 +3637,8 @@ export function createGameScene(
         if (dashChargeTimerMs >= 1000) {
           dashChargeTimerMs -= 1000
           const movBonuses = getMovementBonuses()
-          if (movBonuses.dashChargeChance > 0 && dashCharges < DASH_MAX_CHARGES
+          const dashMaxCharges = movBonuses.dashExtraCharge ? 2 : 1
+          if (movBonuses.dashChargeChance > 0 && dashCharges < dashMaxCharges
               && Math.random() * 100 < movBonuses.dashChargeChance) {
             dashCharges++
           }
@@ -3676,14 +3678,20 @@ export function createGameScene(
               if (sr < effectiveRange) effectiveRange = sr
             }
           }
-          const stopDist = effectiveRange + target.radius
-
           // Kite check for player (before stop-distance check to avoid early exit)
           const playerMb = entity.role === 'player' ? getMovementBonuses() : null
           const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= effectiveRange / 2
 
+          // Close-gap: when key node active + dash available, stop only when touching
+          const closeGapActive = entity.role === 'player' && (playerMb?.dashCloseGapToTarget ?? false) && dashCharges > 0
+          const stopDist = closeGapActive
+            ? entity.radius + target.radius
+            : effectiveRange + target.radius
+
           if (!shouldKite && dist <= stopDist) {
-            if (entity.role === 'player') playerIsKiting = false
+            if (entity.role === 'player') {
+              playerIsKiting = false
+            }
             Matter.Body.setVelocity(body, { x: 0, y: 0 })
             continue
           }
@@ -3728,14 +3736,19 @@ export function createGameScene(
               * (1 + mb.moveSpeedIncrease / 100)
               * (1 + mb.moveMoreSpeed / 100)
 
+            // dashLessDistance penalty from extra-charge key node, stacked with dashDistanceIncrease
+            const dashDistMult = (1 + mb.dashDistanceIncrease / 100)
+              * Math.max(0, 1 - mb.dashLessDistance / 100)
+
             // Active dash — run to completion
             if (dashRemainingMs > 0) {
               dashRemainingMs = Math.max(0, dashRemainingMs - ticker.deltaMS)
-              const dashSpeed = effectiveMs * DASH_SPEED_MULT * (1 + mb.dashDistanceIncrease / 100)
+              const dashSpeed = effectiveMs * DASH_SPEED_MULT * dashDistMult
               Matter.Body.setVelocity(body, {
                 x: dashMoveX * dashSpeed * MATTER_BASE_DT,
                 y: dashMoveY * dashSpeed * MATTER_BASE_DT,
               })
+              playerMovedSinceLastAction = true
               continue
             }
 
@@ -3747,18 +3760,21 @@ export function createGameScene(
                 dashCharges--
                 dashRemainingMs = DASH_DURATION_MS
                 dashMoveX = kiteMoveX; dashMoveY = kiteMoveY
-                const dashSpeed = effectiveMs * DASH_SPEED_MULT * (1 + mb.dashDistanceIncrease / 100)
+                const dashSpeed = effectiveMs * DASH_SPEED_MULT * dashDistMult
                 Matter.Body.setVelocity(body, {
                   x: dashMoveX * dashSpeed * MATTER_BASE_DT,
                   y: dashMoveY * dashSpeed * MATTER_BASE_DT,
                 })
               } else {
-                const kiteMs = effectiveMs * mb.kiteSpeedFraction
+                const kiteSpeedMore = mb.kiteMoreSpeed > 0 ? (1 + mb.kiteMoreSpeed / 100) : 1
+                const kiteMs = effectiveMs * mb.kiteSpeedFraction * kiteSpeedMore
                 Matter.Body.setVelocity(body, {
                   x: kiteMoveX * kiteMs * MATTER_BASE_DT,
                   y: kiteMoveY * kiteMs * MATTER_BASE_DT,
                 })
               }
+              playerMovedSinceLastAction = true
+              playerStationaryActionCount = 0
               continue
             }
 
@@ -3767,7 +3783,7 @@ export function createGameScene(
               dashCharges--
               dashRemainingMs = DASH_DURATION_MS
               dashMoveX = moveX; dashMoveY = moveY
-              const dashSpeed = effectiveMs * DASH_SPEED_MULT * (1 + mb.dashDistanceIncrease / 100)
+              const dashSpeed = effectiveMs * DASH_SPEED_MULT * dashDistMult
               Matter.Body.setVelocity(body, {
                 x: dashMoveX * dashSpeed * MATTER_BASE_DT,
                 y: dashMoveY * dashSpeed * MATTER_BASE_DT,
@@ -3778,6 +3794,8 @@ export function createGameScene(
                 y: moveY * effectiveMs * MATTER_BASE_DT,
               })
             }
+            playerMovedSinceLastAction = true
+            playerStationaryActionCount = 0
             continue
           }
 
@@ -4357,6 +4375,18 @@ export function createGameScene(
             const dmgBonus = sb.frenzyFlatDamage + frenzyCharges * sb.frenzyDamagePerCharge
             if (dmgBonus > 0) effectiveDamage *= 1 + dmgBonus / 100
           }
+          // Movement mastery key bonuses: first-action-after-moving / stationary stacking
+          if (entity.role === 'player' && !pending) {
+            const movB = getMovementBonuses()
+            if (movB.firstActionMoreDamage > 0 && playerMovedSinceLastAction) {
+              effectiveDamage *= 1 + movB.firstActionMoreDamage / 100
+            }
+            if (movB.stationaryMoreDamagePerAction > 0 && !playerMovedSinceLastAction) {
+              playerStationaryActionCount = Math.min(playerStationaryActionCount + 1, 10)
+              effectiveDamage *= 1 + (movB.stationaryMoreDamagePerAction * playerStationaryActionCount) / 100
+            }
+            playerMovedSinceLastAction = false
+          }
           // Ascent: independent damage multiplier per ascension
           if (entity.role === 'player' && ascentCount > 0) {
             effectiveDamage *= 1 + ascentCount * balance.ascent.damagePerAscent
@@ -4394,6 +4424,11 @@ export function createGameScene(
           if (entity.role === 'player' && hasEffect('electrified')) {
             const lbSpeed = getLightningBonuses()
             if (lbSpeed.electrifyActionSpeed > 0) effectiveAttackSpeed *= 1 + lbSpeed.electrifyActionSpeed / 100
+          }
+          // Kite mastery key 13: action speed bonus while kiting
+          if (entity.role === 'player' && playerIsKiting) {
+            const movBSpd = getMovementBonuses()
+            if (movBSpd.kiteMoreActionSpeed > 0) effectiveAttackSpeed *= 1 + movBSpd.kiteMoreActionSpeed / 100
           }
           // Ascent: independent action speed multiplier per ascension
           if (entity.role === 'player' && ascentCount > 0) {
