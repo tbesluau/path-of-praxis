@@ -10,6 +10,11 @@ export interface NodeEffect {
   actionMoreDamage?: number          // 'more' %; applied as × (1 + sum/100) after increased
   actionMoreSpeed?: number           // 'more' %; applied as × (1 + sum/100) after increased
   actionDoubleActionChance?: number  // additive %; chance for a second action at 1/5 interval
+  actionLessSpeed?: number           // additive %; reduces action speed × (1 - sum/100)
+  actionLessDamage?: number          // additive %; reduces action damage × (1 - sum/100)
+  actionMoreManaCost?: number        // additive %; increases action mana cost × (1 + sum/100)
+  actionDoubleActionReroll?: boolean // when true, primary cast rolls once more for double action
+  actionConvertDoubleToDoubleDamage?: boolean // when true, doubleActionChance is converted to doubleDamageChance and never rolls
 
   // Trance effects (tree 2)
   actionTranceTriggerChance?: number      // additive %; chance per action to trigger trance buff
@@ -246,8 +251,13 @@ export interface ActionBonuses {
   moreDamage: number          // total 'more' %
   actionSpeedIncrease: number // total additive %
   moreActionSpeed: number     // total 'more' %
+  lessActionSpeed: number     // total additive %; × (1 - sum/100)
+  lessActionDamage: number    // total additive %; × (1 - sum/100)
+  moreManaCost: number        // total additive %; × (1 + sum/100)
   doubleDamageChance: number  // total additive %
   doubleActionChance: number  // total additive %
+  doubleActionReroll: boolean // primary cast rerolls double action once
+  convertDoubleToDoubleDamage: boolean // doubleActionChance → doubleDamageChance, no double actions fire
 
   tranceTriggerChance: number
   tranceMultiTargetChance: number
@@ -452,7 +462,12 @@ const ACTION_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { actionDamageIncrease: 5 },
     10: { actionDoubleDamageChance: 5 },
     11: { actionIgnoreMitigationChance: 20 },
-    // 12-15: key nodes — not yet defined
+    // 12-13: keys flanking the first major (node 5)
+    12: { actionMoreDamage: 10, actionLessSpeed: 6 },
+    13: { actionMoreDamage: 10, actionMoreManaCost: 20 },
+    // 14-15: keys flanking the second major (node 11)
+    14: { actionDoubleDamageChance: 15 },
+    15: { actionMoreDamage: 10 },
   },
   1: {  // Action Speed
     0:  { actionSpeedIncrease: 4 },
@@ -467,7 +482,12 @@ const ACTION_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { actionSpeedIncrease: 4 },
     10: { actionDoubleActionChance: 3 },
     11: { actionGuaranteedAfflictions: true },
-    // 12-15: key nodes — not yet defined
+    // 12-13: keys flanking the first major (node 5)
+    12: { actionMoreSpeed: 10, actionLessDamage: 10 },
+    13: { actionDoubleActionChance: 5 },
+    // 14-15: keys flanking the second major (node 11)
+    14: { actionDoubleActionReroll: true },
+    15: { actionConvertDoubleToDoubleDamage: true },
   },
   2: {  // Trance (short tree — line nodes 0-5, key nodes 12-13)
     0: { actionTranceTriggerChance: 2 },
@@ -497,7 +517,10 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
   const b: ActionBonuses = {
     damageIncrease: 0, moreDamage: 0,
     actionSpeedIncrease: 0, moreActionSpeed: 0,
+    lessActionSpeed: 0, lessActionDamage: 0, moreManaCost: 0,
     doubleDamageChance: 0, doubleActionChance: 0,
+    doubleActionReroll: false,
+    convertDoubleToDoubleDamage: false,
     tranceTriggerChance: 0,
     tranceMultiTargetChance: 0,
     tranceDamageIncrease: 0,
@@ -516,6 +539,9 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
       b.moreDamage                  += eff.actionMoreDamage ?? 0
       b.actionSpeedIncrease         += eff.actionSpeedIncrease ?? 0
       b.moreActionSpeed             += eff.actionMoreSpeed ?? 0
+      b.lessActionSpeed             += eff.actionLessSpeed ?? 0
+      b.lessActionDamage            += eff.actionLessDamage ?? 0
+      b.moreManaCost                += eff.actionMoreManaCost ?? 0
       b.doubleDamageChance          += eff.actionDoubleDamageChance ?? 0
       b.doubleActionChance          += eff.actionDoubleActionChance ?? 0
       b.tranceTriggerChance         += eff.actionTranceTriggerChance ?? 0
@@ -528,7 +554,15 @@ export function computeActionBonuses(nodes: number[][]): ActionBonuses {
       b.ignoreMitigationChance      += eff.actionIgnoreMitigationChance ?? 0
       if (eff.actionRepeatNoMana)          b.repeatNoMana = true
       if (eff.actionGuaranteedAfflictions) b.guaranteedAfflictions = true
+      if (eff.actionDoubleActionReroll)    b.doubleActionReroll = true
+      if (eff.actionConvertDoubleToDoubleDamage) b.convertDoubleToDoubleDamage = true
     }
+  }
+  // Speed-tree key 15: convert accumulated doubleActionChance into doubleDamageChance.
+  if (b.convertDoubleToDoubleDamage) {
+    b.doubleDamageChance += b.doubleActionChance
+    b.doubleActionChance = 0
+    b.doubleActionReroll = false
   }
   return b
 }
@@ -1538,20 +1572,28 @@ const ACTION_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     9:  '+5% increased action damage',
     10: '+5% chance for action to deal double damage',
     11: 'Action hits have 20% increased chance to ignore all enemy damage mitigation',
+    12: '+10% more action damage · 6% less action speed',
+    13: '+10% more action damage · +20% more action mana cost',
+    14: '+15% increased chance for an action to deal double damage',
+    15: '+10% more action damage',
   },
   1: {
     0:  '+4% increased action speed',
-    1:  '+3% chance for action to double action',
+    1:  '+3% increased chance for action to double action',
     2:  '+10% increased action speed',
     3:  '+4% increased action speed',
-    4:  '+3% chance for action to double action',
+    4:  '+3% increased chance for action to double action',
     5:  '+20% more action speed',
     6:  '+4% increased action speed',
-    7:  '+3% chance for action to double action',
-    8:  '+4% increased action speed · +3% chance for action to double action · +5% increased action damage',
+    7:  '+3% increased chance for action to double action',
+    8:  '+4% increased action speed · +3% increased chance for action to double action · +5% increased action damage',
     9:  '+4% increased action speed',
-    10: '+3% chance for action to double action',
-    11: 'When double acting, the second action is guaranteed to trigger afflictions',
+    10: '+3% increased chance for action to double action',
+    11: 'When double acting, the second action initial hit is guaranteed to trigger afflictions',
+    12: '+10% more action speed · 10% less action damage',
+    13: '+5% increased chance for action to double action',
+    14: 'Double actions reroll for double action once',
+    15: 'There are no double actions; double action chance is converted to double damage chance',
   },
   2: {
     0: 'Actions have +2% chance to trigger trance',
