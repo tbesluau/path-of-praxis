@@ -2354,32 +2354,23 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   pointer-events: none;
 }
 
-/* Stockpile countdown shown under the ×2 button */
-.speed-opt-with-meter {
-  display: inline-flex;
+/* ×2 button with built-in stockpile countdown below the label */
+.speed-opt--timed {
   flex-direction: column;
-  align-items: stretch;
-  position: relative;
-}
-.speed-opt-with-meter .speed-opt {
-  width: 100%;
-}
-.speed-opt-with-meter + .speed-opt,
-.speed-opt + .speed-opt-with-meter .speed-opt {
-  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 0;
+  justify-content: center;
+  padding-top: 6px;
+  padding-bottom: 4px;
 }
 .speed-stockpile {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translate(-50%, 2px);
+  display: block;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  color: #cbd5e1;
+  font-size: 0.6rem;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.55);
   pointer-events: none;
-  white-space: nowrap;
 }
-.speed-stockpile--empty { color: #64748b; }
+.speed-stockpile--empty { color: rgba(255, 255, 255, 0.25); }
 
 /* ── Away-bonus modal ── */
 .away-bonus-panel {

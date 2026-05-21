@@ -1211,10 +1211,10 @@ export function createGameScene(
             <i data-lucide="pause" aria-hidden="true"></i>
           </button>
           <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
-          <div class="speed-opt-with-meter">
-            <button class="speed-opt" data-speed="2">×2</button>
+          <button class="speed-opt speed-opt--timed" data-speed="2">
+            <span>×2</span>
             <span class="speed-stockpile" aria-label="×2 speed time remaining">0:00</span>
-          </div>
+          </button>
           ${isCheatMode() ? '<button class="speed-opt" data-speed="5">×5</button>' : ''}
         </div>
       </div>
