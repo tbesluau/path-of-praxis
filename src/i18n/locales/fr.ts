@@ -58,4 +58,9 @@ export const fr: TranslationSchema = {
     title: 'Guide',
     comingSoon: 'Bientôt disponible…',
   },
+  awayBonus: {
+    title: 'Bon retour !',
+    body: 'Vous étiez absent pendant {away} et avez gagné {earned} de temps en vitesse ×2.',
+    close: 'Fermer',
+  },
 }

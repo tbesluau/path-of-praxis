@@ -5,6 +5,22 @@ import type { RuneId } from '../config/runes'
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
 
+// ×2-speed stockpile balance
+export const STOCKPILE_MAX_MS    = 60 * 60 * 1000   // 1h cap
+export const STOCKPILE_RATIO     = 10               // award = floor(away / RATIO), in seconds
+export const STOCKPILE_MIN_AWARD = 10 * 1000        // single awards < 10s are discarded
+export const AWAY_DETECT_MS      = 2_000            // game-loop gaps above this count as absence
+
+// Compute the ×2-speed stockpile award (ms) for an absence of `awayMs`,
+// given the current `currentStockpileMs` (cap-aware). Pure.
+export function computeAward(awayMs: number, currentStockpileMs: number): number {
+  if (!Number.isFinite(awayMs) || awayMs <= 0) return 0
+  const raw = Math.floor(awayMs / STOCKPILE_RATIO / 1000) * 1000
+  if (raw < STOCKPILE_MIN_AWARD) return 0
+  const room = STOCKPILE_MAX_MS - currentStockpileMs
+  return Math.max(0, Math.min(raw, room))
+}
+
 export type TargetingMode = 'nearest' | 'weakest' | 'strongest' | 'random'
 
 export interface MasteryProgress {
@@ -99,6 +115,8 @@ export interface Character {
   extraSlots: ExtraActionSlot[]
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>
   unlockedTriggers: ('crit' | 'affliction')[]
+  lastSeenAt: number       // Date.now() at last save/frame; basis for the ×2-speed away bonus
+  fastForwardMs: number    // remaining ×2-speed stockpile in ms (≤ 3_600_000)
 }
 
 interface SaveData {
@@ -173,6 +191,10 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       Object.entries(c.freeMasteryPointsUsed ?? {})
         .map(([k, v]) => [k, typeof v === 'number' ? v : 0])
     ) as Partial<Record<MasteryId, number>>,
+    lastSeenAt: typeof c.lastSeenAt === 'number' ? c.lastSeenAt : Date.now(),
+    fastForwardMs: typeof c.fastForwardMs === 'number'
+      ? Math.max(0, Math.min(3_600_000, Math.floor(c.fastForwardMs)))
+      : 0,
   }
 }
 
@@ -238,6 +260,8 @@ export function createCharacter(name: string, actionId: string): Character {
     extraSlots: [],
     freeMasteryPointsUsed: {},
     unlockedTriggers: [],
+    lastSeenAt: Date.now(),
+    fastForwardMs: 0,
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -278,6 +302,8 @@ export function saveCharacterState(
   extraSlots?: ExtraActionSlot[],
   freeMasteryPointsUsed?: Partial<Record<MasteryId, number>>,
   unlockedTriggers?: ('crit' | 'affliction')[],
+  lastSeenAt?: number,
+  fastForwardMs?: number,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -299,5 +325,7 @@ export function saveCharacterState(
   if (extraSlots !== undefined) char.extraSlots = extraSlots
   if (freeMasteryPointsUsed !== undefined) char.freeMasteryPointsUsed = freeMasteryPointsUsed
   if (unlockedTriggers !== undefined) char.unlockedTriggers = unlockedTriggers
+  if (lastSeenAt !== undefined) char.lastSeenAt = lastSeenAt
+  if (fastForwardMs !== undefined) char.fastForwardMs = fastForwardMs
   write(data)
 }

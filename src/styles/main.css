@@ -2347,6 +2347,71 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   font-weight: 800;
 }
 
+/* ×2 button locked when no stockpile remains */
+.speed-opt--disabled {
+  opacity: 0.42;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Stockpile countdown shown under the ×2 button */
+.speed-opt-with-meter {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  position: relative;
+}
+.speed-opt-with-meter .speed-opt {
+  width: 100%;
+}
+.speed-opt-with-meter + .speed-opt,
+.speed-opt + .speed-opt-with-meter .speed-opt {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+.speed-stockpile {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translate(-50%, 2px);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #cbd5e1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.speed-stockpile--empty { color: #64748b; }
+
+/* ── Away-bonus modal ── */
+.away-bonus-panel {
+  width: min(360px, 90vw);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.away-bonus-body {
+  font-size: 0.92rem;
+  line-height: 1.4;
+  margin: 0;
+  padding: 0 var(--space-sm);
+}
+.away-bonus-close-btn {
+  align-self: center;
+  min-width: 120px;
+  min-height: 44px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: transparent;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  cursor: pointer;
+}
+.away-bonus-close-btn:hover { filter: brightness(1.15); }
+
 /* ── Mastery modal ── */
 
 .mastery-panel {
