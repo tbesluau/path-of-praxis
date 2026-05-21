@@ -1862,6 +1862,8 @@ export function createGameScene(
     trigger:             TriggerType
     target?:             Entity        // pre-selected for additionalTarget / jump / tremor
     slotPreHitDuration:  number
+    areaOriginX?:        number        // for self-targeted area: position snapshot of the area centre
+    areaOriginY?:        number
   }
 
   interface PendingHit {
@@ -4515,7 +4517,14 @@ export function createGameScene(
               const childInherited = 0.9
               const queueSlotMA = (type: MultiActionType, inherited: number, maTarget?: Entity): void => {
                 if (q.length >= MAX_MULTI_QUEUE) return
-                q.push({ type, inheritedDamageMult: inherited, slotDmg, slotDef, slotActionId, slotI, trigger, target: maTarget, slotPreHitDuration })
+                q.push({
+                  type, inheritedDamageMult: inherited, slotDmg, slotDef, slotActionId, slotI, trigger,
+                  target: maTarget, slotPreHitDuration,
+                  // Snapshot the area centre so self-targeted MAs (doubleAction, splitAction, tremor)
+                  // on dependent triggers fire at the triggering enemy's position, not the player.
+                  areaOriginX: slotDef.selfTargeted ? areaOrigin.x : undefined,
+                  areaOriginY: slotDef.selfTargeted ? areaOrigin.y : undefined,
+                })
               }
               // doubleAction
               if (slotAb.doubleActionChance > 0 && Math.random() * 100 < slotAb.doubleActionChance) {
@@ -4661,10 +4670,14 @@ export function createGameScene(
               const ab = getAreaBonuses()
               let areaRadiusPx = (ma.slotDef.area ?? 0) * balance.player.radius
               areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
-              const center = ma.slotDef.selfTargeted ? playerEntity : maTarget
+              // For self-targeted area MAs on dependent triggers, use the snapshotted origin position
+              // (recorded at queue time from the triggering entity's location). Falls back to playerEntity
+              // for independent triggers or if no snapshot exists.
+              const maCx = ma.slotDef.selfTargeted ? (ma.areaOriginX ?? playerEntity.x) : maTarget.x
+              const maCy = ma.slotDef.selfTargeted ? (ma.areaOriginY ?? playerEntity.y) : maTarget.y
               for (const v of entities) {
                 if (v.role !== 'enemy') continue
-                const vdx = v.x - center.x, vdy = v.y - center.y
+                const vdx = v.x - maCx, vdy = v.y - maCy
                 if (Math.sqrt(vdx * vdx + vdy * vdy) - v.radius > areaRadiusPx) continue
                 pendingHits.set(`${maHitKey}:${v.id}`, {
                   attacker: playerEntity, target: v,
@@ -4673,7 +4686,7 @@ export function createGameScene(
                   multiActionType: ma.type,
                 })
               }
-              spawnAreaPreHitVfx(playerEntity, center, areaRadiusPx, ma.slotDef, ma.slotPreHitDuration)
+              spawnAreaPreHitVfx(playerEntity, { x: maCx, y: maCy } as unknown as Entity, areaRadiusPx, ma.slotDef, ma.slotPreHitDuration)
             } else {
               pendingHits.set(maHitKey, {
                 attacker: playerEntity, target: maTarget,
