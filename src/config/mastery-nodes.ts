@@ -50,6 +50,18 @@ export interface NodeEffect {
   lifeStealCapIncrease?: number      // additive %; increases the per-hit hard cap (base 1% of max life)
   lifeFeedingFrenzyChance?: number   // additive %; chance per life-steal instance to trigger Feeding Frenzy
 
+  // Life mastery key node effects
+  lifeRegenAlsoAppliesToMax?: boolean  // Max Life key 12: increased/more regen bonuses also boost max life
+  lifeCannotSteal?: boolean            // Max Life key 12, Resistances key 15: disables life steal
+  lifeMaxPerLifeLevel?: boolean        // Max Life key 14: +1% increased max life per life stat level
+  lifeLessMax?: number                 // additive %; × (1 - sum/100) on max life
+  lifeRegenDouble?: boolean            // Regen keys 12, 13: regen output doubled
+  lifeLessStealCap?: number            // additive %; × (1 - sum/100) on per-hit life steal cap
+  lifeStealCapMore?: number            // additive %; × (1 + sum/100) on per-hit life steal cap
+  lifeCannotRegen?: boolean            // Steal key 12: disables life regen
+  lifeStealMore?: number               // additive %; × (1 + sum/100) on life stolen amount
+  lifeLessActionDamage?: number        // additive %; × (1 - sum/100) on player action damage from Life trees
+
   // Mana mastery effects
   manaMaxIncrease?: number      // additive %; increases maximum mana before 'more' multiplier
   manaMoreMax?: number          // 'more' %; applied as × (1 + sum/100) after increased
@@ -286,16 +298,26 @@ export interface ActionBonuses {
 export interface LifeBonuses {
   maxLifeIncrease: number        // total additive %
   moreMaxLife: number            // total 'more' %
+  lessMaxLife: number            // total additive %; × (1 - sum/100) on max life
   physRotResistance: number      // total additive %; physical and rot resistance (combined)
   elementalResistance: number    // total additive %
   resistAbsorbLifePercent: number      // % of damage absorbed by resistances recovered as life
   resistReductionEffectiveness: number // resistance reduction effects on player lose this % effectiveness
   regenIncrease: number          // mastery-layer additive % regen multiplier
   regenFractionBonus: number     // additional fraction of max life regenerated per second
+  regenDouble: boolean           // Regen tree key: regen output doubled
+  regenAlsoAppliesToMax: boolean // Max Life key 12: regen increase/double also adds to max life increase
+  maxPerLifeLevel: boolean       // Max Life key 14: +1% increased max life per life stat level
+  cannotRegen: boolean           // Steal key 12: disables life regen
   lifeStealPercent: number       // total additive %; fraction of action hit damage stolen as life
   lifeStealIncrease: number      // total additive %; increases life stolen
   lifeStealCapIncrease: number   // total additive %; increases per-hit hard cap (base 1% of max life)
+  stealMore: number              // total additive %; × (1 + sum/100) on life stolen amount
+  stealCapMore: number           // total additive %; × (1 + sum/100) on per-hit life steal cap
+  lessStealCap: number           // total additive %; × (1 - sum/100) on per-hit life steal cap
+  cannotSteal: boolean           // Max Life key 12, Resistances key 15: disables life steal
   feedingFrenzyChance: number    // total additive %; chance to trigger Feeding Frenzy on life steal
+  lessActionDamage: number       // total additive %; × (1 - sum/100) on action damage from Life trees
 }
 
 export interface ManaBonuses {
@@ -700,6 +722,11 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { lifeMaxIncrease: 5 },
     10: { lifeElementalResistance: 5 },
     11: { lifeMoreMax: 30 },
+    // 12-15: keys flanking the first major (node 5) and second major (node 11)
+    12: { lifeRegenAlsoAppliesToMax: true, lifeCannotSteal: true },
+    13: { lifeMoreMax: 20, lifeLessActionDamage: 10 },
+    14: { lifeMaxPerLifeLevel: true },
+    15: { lifeMoreMax: 10 },
   },
   1: {  // Resistances (full tree — line nodes 0-11, key nodes 12-15)
     0:  { lifePhysRotResistance: 5 },
@@ -714,6 +741,11 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { lifePhysRotResistance: 5 },
     10: { lifeElementalResistance: 5 },
     11: { lifeResistReductionEffectiveness: 50 },
+    // 12-15: keys flanking the first major (node 5) and second major (node 11)
+    12: { lifePhysRotResistance: 7, lifeElementalResistance: -7 },
+    13: { lifeElementalResistance: 7, lifePhysRotResistance: -7 },
+    14: { lifePhysRotResistance: 7, lifeElementalResistance: 7, lifeLessMax: 10 },
+    15: { lifePhysRotResistance: 15, lifeElementalResistance: 15, lifeCannotSteal: true },
   },
   2: {  // Life Regeneration (short tree — line nodes 0-5, key nodes 12-13)
     0: { lifeRegenIncrease: 5 },
@@ -722,7 +754,8 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     3: { lifeRegenIncrease: 5 },
     4: { lifeRegenIncrease: 5 },
     5: { lifeRegenFractionBonus: 0.003 },
-    // 12-13: key nodes — not yet defined
+    12: { lifeRegenDouble: true, lifeLessStealCap: 30 },
+    13: { lifeRegenDouble: true, lifePhysRotResistance: -5, lifeElementalResistance: -5 },
   },
   3: {  // Life Steal (short tree — line nodes 0-5, key nodes 12-13)
     0: { lifeStealPercent: 0.5 },
@@ -731,7 +764,8 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     3: { lifeStealPercent: 0.5 },
     4: { lifeStealIncrease: 5 },
     5: { lifeFeedingFrenzyChance: 1 },
-    // 12-13: key nodes — not yet defined
+    12: { lifeStealCapMore: 30, lifeCannotRegen: true },
+    13: { lifeStealMore: 10 },
   },
 }
 
@@ -743,22 +777,33 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
   const b: LifeBonuses = {
     maxLifeIncrease: 0,
     moreMaxLife: 0,
+    lessMaxLife: 0,
     physRotResistance: 0,
     elementalResistance: 0,
     resistAbsorbLifePercent: 0,
     resistReductionEffectiveness: 0,
     regenIncrease: 0,
     regenFractionBonus: 0,
+    regenDouble: false,
+    regenAlsoAppliesToMax: false,
+    maxPerLifeLevel: false,
+    cannotRegen: false,
     lifeStealPercent: 0,
     lifeStealIncrease: 0,
     lifeStealCapIncrease: 0,
+    stealMore: 0,
+    stealCapMore: 0,
+    lessStealCap: 0,
+    cannotSteal: false,
     feedingFrenzyChance: 0,
+    lessActionDamage: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
       const eff = getLifeNodeEffect(treeIdx, nodeIdx)
       b.maxLifeIncrease += eff.lifeMaxIncrease ?? 0
       b.moreMaxLife += eff.lifeMoreMax ?? 0
+      b.lessMaxLife += eff.lifeLessMax ?? 0
       b.physRotResistance += eff.lifePhysRotResistance ?? 0
       b.elementalResistance += eff.lifeElementalResistance ?? 0
       b.resistAbsorbLifePercent += eff.lifeResistAbsorbLifePercent ?? 0
@@ -768,7 +813,16 @@ export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
       b.lifeStealPercent += eff.lifeStealPercent ?? 0
       b.lifeStealIncrease += eff.lifeStealIncrease ?? 0
       b.lifeStealCapIncrease += eff.lifeStealCapIncrease ?? 0
+      b.stealMore += eff.lifeStealMore ?? 0
+      b.stealCapMore += eff.lifeStealCapMore ?? 0
+      b.lessStealCap += eff.lifeLessStealCap ?? 0
       b.feedingFrenzyChance += eff.lifeFeedingFrenzyChance ?? 0
+      b.lessActionDamage += eff.lifeLessActionDamage ?? 0
+      if (eff.lifeRegenDouble)           b.regenDouble = true
+      if (eff.lifeRegenAlsoAppliesToMax) b.regenAlsoAppliesToMax = true
+      if (eff.lifeMaxPerLifeLevel)       b.maxPerLifeLevel = true
+      if (eff.lifeCannotRegen)           b.cannotRegen = true
+      if (eff.lifeCannotSteal)           b.cannotSteal = true
     }
   }
   return b
@@ -1719,6 +1773,10 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  '+5% increased maximum life',
     10: '+5% elemental resistance',
     11: '+30% more maximum life',
+    12: 'Increased and more life regeneration also apply to maximum life · You cannot steal life',
+    13: '+20% more maximum life · 10% less action damage',
+    14: '+1% increased maximum life per life level',
+    15: '+10% more maximum life',
   },
   1: {  // Resistances
     0:  '+5% physical and rot resistance',
@@ -1733,6 +1791,10 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  '+5% physical and rot resistance',
     10: '+5% elemental resistance',
     11: 'Resistance reduction effects applied to you lose 50% effectiveness',
+    12: '+7% physical and rot resistance · -7% elemental resistance',
+    13: '+7% elemental resistance · -7% physical and rot resistance',
+    14: '+7% to all resistances · 10% less maximum life',
+    15: '+15% to all resistances · You cannot steal life',
   },
   2: {  // Life Regeneration
     0: '+5% increased life regeneration',
@@ -1741,6 +1803,8 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: '+5% increased life regeneration',
     4: '+5% increased life regeneration',
     5: '+0.3% of maximum life regenerated per second',
+    12: 'Double life regeneration · 30% less maximum life stolen per hit',
+    13: 'Double life regeneration · -5% to all resistances',
   },
   3: {  // Life Steal
     0: 'Steal +0.5% of action hit damage as life',
@@ -1749,6 +1813,8 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     3: 'Steal +0.5% of action hit damage as life',
     4: '+5% increased life stolen',
     5: 'Stealing life has a 1% chance to trigger Feeding Frenzy (+20% life/mana steal additively, +20% life/mana regeneration additively)',
+    12: '+30% more maximum life stolen per hit · You cannot regenerate life',
+    13: '+10% more life stolen',
   },
 }
 

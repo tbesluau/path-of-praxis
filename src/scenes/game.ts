@@ -755,9 +755,13 @@ export function createGameScene(
   function computePlayerMaxLife(): number {
     const lb = getLifeBonuses()
     const mb = getManaBonuses()
+    let increasedExtra = 0
+    if (lb.regenAlsoAppliesToMax) increasedExtra += lb.regenIncrease + (lb.regenDouble ? 100 : 0)
+    if (lb.maxPerLifeLevel) increasedExtra += lifeProgress.level
     return balance.player.maxLife * statBonus(lifeProgress.level)
-      * (1 + lb.maxLifeIncrease / 100)
+      * (1 + (lb.maxLifeIncrease + increasedExtra) / 100)
       * (1 + lb.moreMaxLife / 100)
+      * Math.max(0, 1 - lb.lessMaxLife / 100)
       * (1 + mb.moreMaxLife / 100)
   }
 
@@ -778,8 +782,10 @@ export function createGameScene(
     entity.actionRange  = baseRangeUnits * balance.player.radius
     if (entity.role === 'player') {
       const ab = getActionBonuses()
+      const lbAct = getLifeBonuses()
       entity.actionDamage *= (1 + ab.damageIncrease / 100) * (1 + ab.moreDamage / 100)
         * Math.max(0, 1 - ab.lessActionDamage / 100)
+        * Math.max(0, 1 - lbAct.lessActionDamage / 100)
       entity.actionSpeed  *= (1 + ab.actionSpeedIncrease / 100) * (1 + ab.moreActionSpeed / 100)
         * Math.max(0, 1 - ab.lessActionSpeed / 100)
     }
@@ -1611,9 +1617,11 @@ export function createGameScene(
 
   function computeLifeRegenPerSec(): number {
     const lb = getLifeBonuses()
+    if (lb.cannotRegen) return 0
     const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
-    return playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
-      * (1 + (lb.regenIncrease + frenzyBonus) / 100)
+    let regenMult = 1 + (lb.regenIncrease + frenzyBonus) / 100
+    if (lb.regenDouble) regenMult *= 2
+    return playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus) * regenMult
   }
 
   function computeManaRegenPerSec(): number {
@@ -1625,11 +1633,16 @@ export function createGameScene(
   function applyLifeSteal(hitDamage: number): void {
     if (playerDead) return
     const lb = getLifeBonuses()
+    if (lb.cannotSteal) return
     if (lb.lifeStealPercent <= 0) return
     const frenzyStealBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyStealBonus : 0
     const stealRaw = hitDamage * (lb.lifeStealPercent / 100)
       * (1 + (lb.lifeStealIncrease + frenzyStealBonus) / 100)
-    const cap = playerEntity.maxLife * 0.01 * (1 + lb.lifeStealCapIncrease / 100)
+      * (1 + lb.stealMore / 100)
+    const cap = playerEntity.maxLife * 0.01
+      * (1 + lb.lifeStealCapIncrease / 100)
+      * (1 + lb.stealCapMore / 100)
+      * Math.max(0, 1 - lb.lessStealCap / 100)
     const stolen = Math.min(stealRaw, cap)
     if (stolen <= 0) return
     const before = playerEntity.currentLife
@@ -1685,9 +1698,12 @@ export function createGameScene(
       if (playerDead) return
       const lb = getLifeBonuses()
       const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
-      const lifeRegenBase = playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
-      const lifeRegenMult = 1 + (lb.regenIncrease + frenzyBonus) / 100
-      playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * REGEN_TICK)
+      if (!lb.cannotRegen) {
+        const lifeRegenBase = playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
+        let lifeRegenMult = 1 + (lb.regenIncrease + frenzyBonus) / 100
+        if (lb.regenDouble) lifeRegenMult *= 2
+        playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * REGEN_TICK)
+      }
       const manaRegenMult = 1 + (getManaBonuses().regenIncrease + frenzyBonus) / 100
       playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + playerEntity.maxMana * balance.player.regenRate * manaRegenMult * gameSpeed * REGEN_TICK)
       updateBars()
