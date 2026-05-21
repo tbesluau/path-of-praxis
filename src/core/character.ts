@@ -29,10 +29,10 @@ export interface MasteryProgress {
   nodes: number[][]  // [treeIdx 0-4][...assigned nodeIdx 0-15]
 }
 
-export function masteryPointsAvailable(prog: MasteryProgress, freePointsUsed = 0): number {
+export function masteryPointsAvailable(prog: MasteryProgress, freePointsUsed = 0, dumped = 0): number {
   const earned = Math.max(0, prog.level - 1) + freePointsUsed
   const spent = prog.nodes.reduce((s, t) => s + t.length, 0)
-  return earned - spent
+  return earned - spent - dumped
 }
 
 export function defaultMasteryNodes(): number[][] {
@@ -114,6 +114,7 @@ export interface Character {
   universePointAllocations: UniversePointAllocations
   extraSlots: ExtraActionSlot[]
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>
+  masteryDumpPoints: Partial<Record<MasteryId, number>>
   unlockedTriggers: ('crit' | 'affliction')[]
   lastSeenAt: number       // Date.now() at last save/frame; basis for the ×2-speed away bonus
   fastForwardMs: number    // remaining ×2-speed stockpile in ms (≤ 3_600_000)
@@ -191,6 +192,10 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       Object.entries(c.freeMasteryPointsUsed ?? {})
         .map(([k, v]) => [k, typeof v === 'number' ? v : 0])
     ) as Partial<Record<MasteryId, number>>,
+    masteryDumpPoints: Object.fromEntries(
+      Object.entries(c.masteryDumpPoints ?? {})
+        .map(([k, v]) => [k, typeof v === 'number' && v >= 0 ? Math.floor(v) : 0])
+    ) as Partial<Record<MasteryId, number>>,
     lastSeenAt: typeof c.lastSeenAt === 'number' ? c.lastSeenAt : Date.now(),
     fastForwardMs: typeof c.fastForwardMs === 'number'
       ? Math.max(0, Math.min(3_600_000, Math.floor(c.fastForwardMs)))
@@ -259,6 +264,7 @@ export function createCharacter(name: string, actionId: string): Character {
     universePointAllocations: { placeholderA: 0, placeholderB: 0 },
     extraSlots: [],
     freeMasteryPointsUsed: {},
+    masteryDumpPoints: {},
     unlockedTriggers: [],
     lastSeenAt: Date.now(),
     fastForwardMs: 0,
@@ -304,6 +310,7 @@ export function saveCharacterState(
   unlockedTriggers?: ('crit' | 'affliction')[],
   lastSeenAt?: number,
   fastForwardMs?: number,
+  masteryDumpPoints?: Partial<Record<MasteryId, number>>,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -327,5 +334,6 @@ export function saveCharacterState(
   if (unlockedTriggers !== undefined) char.unlockedTriggers = unlockedTriggers
   if (lastSeenAt !== undefined) char.lastSeenAt = lastSeenAt
   if (fastForwardMs !== undefined) char.fastForwardMs = fastForwardMs
+  if (masteryDumpPoints !== undefined) char.masteryDumpPoints = masteryDumpPoints
   write(data)
 }
