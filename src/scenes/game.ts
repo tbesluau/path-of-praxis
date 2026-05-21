@@ -1375,6 +1375,10 @@ export function createGameScene(
       persistState()
     },
     onForceAscend: isCheatMode() ? () => ascend() : undefined,
+    onAddFastForwardTime: isCheatMode() ? () => {
+      fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + 60_000)
+      updateSpeedUI()
+    } : undefined,
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!

@@ -40,6 +40,8 @@ export interface SettingsButtonOptions {
   onTargetingChange?: (mode: TargetingMode) => void
   /** Cheat mode only: skips all requirements and immediately ascends. */
   onForceAscend?: () => void
+  /** Cheat mode only: adds 60 seconds of ×2 speed stockpile for easy testing. */
+  onAddFastForwardTime?: () => void
 }
 
 export function mountSettingsButton(
@@ -163,6 +165,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           <button class="settings-section-btn settings-section-btn--cheat" data-action="force-ascend">
             <span>Force Ascend</span>
           </button>
+        </div>` : ''}
+        ${opts.onAddFastForwardTime ? `
+        <div class="modal-field">
+          <button class="settings-section-btn settings-section-btn--cheat" data-action="add-ff-time">
+            <span>+1 min ×2 speed</span>
+          </button>
         </div>` : ''}` : ''}
       </div>
     `
@@ -221,6 +229,11 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         backdrop.remove()
         onClose()
         opts.onForceAscend!()
+      })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="add-ff-time"]')
+      ?.addEventListener('click', () => {
+        opts.onAddFastForwardTime!()
       })
 
     const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')
