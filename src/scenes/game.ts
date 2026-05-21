@@ -2658,12 +2658,12 @@ export function createGameScene(
       }
       case 'weakest': {
         let best: Entity | null = null, bestHp = Infinity
-        for (const e of enemies) if (e.currentLife < bestHp) { bestHp = e.currentLife; best = e }
+        for (const e of enemies) if (e.maxLife < bestHp) { bestHp = e.maxLife; best = e }
         return best
       }
       case 'strongest': {
         let best: Entity | null = null, bestHp = -Infinity
-        for (const e of enemies) if (e.currentLife > bestHp) { bestHp = e.currentLife; best = e }
+        for (const e of enemies) if (e.maxLife > bestHp) { bestHp = e.maxLife; best = e }
         return best
       }
       case 'random': {
