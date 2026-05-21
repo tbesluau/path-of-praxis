@@ -388,9 +388,40 @@ function buildTreeNodes(
         },
       }))
     }
-    nodeEl.addEventListener('click', handleActivate)
+    // Ctrl/Cmd + click: bulk-assign the affordable prefix of the path
+    const handleBulkAssign = (): boolean => {
+      const info = computeAssignInfo(p, treeDef, treeIdx, nodeIdx, totalAvailable)
+      if (info.kind !== 'assignable' && info.kind !== 'insufficient') return false
+      const isUndefinedKey = nodeType(nodeIdx) === 'key' && !nodeHasAnyEffect(def.id, treeIdx, nodeIdx)
+      if (isUndefinedKey) return false
+      let budget = totalAvailable
+      const toAssign: number[] = []
+      for (const nIdx of info.path) {
+        const c = nodeCost(nIdx)
+        if (c > budget) break
+        budget -= c
+        toAssign.push(nIdx)
+      }
+      if (toAssign.length === 0) return false
+      nodeEl.dispatchEvent(new CustomEvent('node-bulk-assign', {
+        bubbles: true,
+        detail: { treeIdx, nodeIndices: toAssign },
+      }))
+      return true
+    }
+    nodeEl.addEventListener('click', e => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        if (handleBulkAssign()) return
+      }
+      handleActivate()
+    })
     nodeEl.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleActivate() }
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        if ((e.ctrlKey || e.metaKey) && handleBulkAssign()) return
+        handleActivate()
+      }
     })
     if (!isNodeAssigned(p, treeIdx, nodeIdx)) {
       nodeEl.addEventListener('mouseenter', () => applyPreviewFor(nodeIdx))
@@ -494,6 +525,13 @@ function mountMasteryTreeModal(
       },
       () => { subCleanup = null },
     )
+  })
+
+  // Ctrl/Cmd + click: assign affordable nodes immediately, no modal
+  panel.addEventListener('node-bulk-assign', (e: Event) => {
+    const detail = (e as CustomEvent).detail as { treeIdx: number; nodeIndices: number[] }
+    for (const nIdx of detail.nodeIndices) onAssign(detail.treeIdx, nIdx)
+    rebuildTrees()
   })
 
   function rebuildTrees(): void {
