@@ -247,6 +247,11 @@ export interface NodeEffect {
   critDamageIncrease?: number             // additive %; adds on top of the +100% baseline (e.g. 100 → ×3)
   critDamageMore?: number                 // 'more' %; multiplicative after increased
   critIgnoreMitigationChance?: number     // additive %; chance for crits specifically to ignore enemy resistance
+  critGuaranteedAffliction?: boolean      // Chance key 14: crits guarantee an affliction on the standard roll
+  critNoDamageBonus?: boolean             // Chance key 14: crits deal no extra damage (multiplier stays at 1×)
+  critMoreChanceVsAfflicted?: number      // Chance key 15: 'more' % crit chance vs targets with any affliction
+  critDamageToAfflictions?: boolean       // Damage key 14: tree-0 crit damage bonus applies to affliction damage instead
+  critTripleDamageOnDouble?: boolean      // Damage key 15: when crit + double damage both roll, ×2 becomes ×3
 }
 
 export interface ActionBonuses {
@@ -598,6 +603,11 @@ const CRIT_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { critDamageIncrease: 10 },
     10: { critDamageIncrease: 10 },
     11: { critDamageMore: 20 },
+    // 12-15: keys flanking the first major (node 5) and second major (node 11)
+    12: { critDamageMore: 10 },
+    13: { critIgnoreMitigationChance: 10 },
+    14: { critDamageToAfflictions: true },
+    15: { critTripleDamageOnDouble: true },
   },
   1: {  // Critical Chance
     0:  { critChanceIncrease: 10 },
@@ -612,6 +622,11 @@ const CRIT_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { critChanceIncrease: 10 },
     10: { critChanceIncrease: 10 },
     11: { critChanceMore: 20 },
+    // 12-15: keys flanking the first major (node 5) and second major (node 11)
+    12: { critChanceBaseAdd: 2 },
+    13: { critChanceMore: 10 },
+    14: { critGuaranteedAffliction: true, critNoDamageBonus: true },
+    15: { critMoreChanceVsAfflicted: 20 },
   },
 }
 
@@ -626,6 +641,13 @@ export interface CriticalHitBonuses {
   damageIncrease: number    // total additive %; adds to the +100% baseline
   damageMore: number        // total 'more' %
   ignoreMitigationChance: number  // total additive %; crits-only chance to ignore enemy resistance
+  guaranteedAffliction: boolean   // Chance key 14: crits guarantee an affliction on the standard roll
+  noDamageBonus: boolean          // Chance key 14: crits deal no extra damage
+  moreChanceVsAfflicted: number   // Chance key 15: 'more' % crit chance vs targets with any affliction
+  damageToAfflictions: boolean    // Damage key 14: tree-0 damage bonus applies to affliction damage instead
+  tripleDamageOnDouble: boolean   // Damage key 15: crit + double damage → ×3 instead of ×2
+  damageIncreaseTree0: number     // tree-0 portion of damageIncrease (used when damageToAfflictions)
+  damageMoreTree0: number         // tree-0 portion of damageMore (used when damageToAfflictions)
 }
 
 export function computeCriticalHitBonuses(nodes: number[][]): CriticalHitBonuses {
@@ -633,6 +655,10 @@ export function computeCriticalHitBonuses(nodes: number[][]): CriticalHitBonuses
     chanceBaseAdd: 0, chanceIncrease: 0, chanceMore: 0,
     damageIncrease: 0, damageMore: 0,
     ignoreMitigationChance: 0,
+    guaranteedAffliction: false, noDamageBonus: false,
+    moreChanceVsAfflicted: 0,
+    damageToAfflictions: false, tripleDamageOnDouble: false,
+    damageIncreaseTree0: 0, damageMoreTree0: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -643,6 +669,15 @@ export function computeCriticalHitBonuses(nodes: number[][]): CriticalHitBonuses
       b.damageIncrease         += eff.critDamageIncrease ?? 0
       b.damageMore             += eff.critDamageMore ?? 0
       b.ignoreMitigationChance += eff.critIgnoreMitigationChance ?? 0
+      b.moreChanceVsAfflicted  += eff.critMoreChanceVsAfflicted ?? 0
+      if (treeIdx === 0) {
+        b.damageIncreaseTree0  += eff.critDamageIncrease ?? 0
+        b.damageMoreTree0      += eff.critDamageMore ?? 0
+      }
+      if (eff.critGuaranteedAffliction) b.guaranteedAffliction = true
+      if (eff.critNoDamageBonus)        b.noDamageBonus = true
+      if (eff.critDamageToAfflictions)  b.damageToAfflictions = true
+      if (eff.critTripleDamageOnDouble) b.tripleDamageOnDouble = true
     }
   }
   return b
@@ -1645,6 +1680,10 @@ const CRIT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  '+10% increased critical hit damage',
     10: '+10% increased critical hit damage',
     11: '+20% more critical hit damage',
+    12: '+10% more critical hit damage',
+    13: '+10% increased chance for critical hits to ignore all enemy damage mitigation',
+    14: 'Critical hit damage bonus from this tree applies to affliction damage instead of direct hits',
+    15: 'Double damage becomes triple damage when a critical hit also rolls double damage',
   },
   1: {  // Critical Chance
     0:  '+10% increased chance to perform a critical hit',
@@ -1659,6 +1698,10 @@ const CRIT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  '+10% increased chance to perform a critical hit',
     10: '+10% increased chance to perform a critical hit',
     11: '+20% more chance to perform a critical hit',
+    12: '+2% base action critical hit chance',
+    13: '+10% more chance to perform a critical hit',
+    14: 'Critical hits apply a guaranteed affliction · Critical hits deal no extra damage',
+    15: '+20% more chance to perform a critical hit against enemies with any affliction',
   },
 }
 
