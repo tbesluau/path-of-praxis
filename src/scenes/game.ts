@@ -1119,6 +1119,8 @@ export function createGameScene(
   let afflictionAppliedThisTick = 0
   const bossLastHitWasCrit = new Map<string, boolean>()
   const bossLastHitWasAffl = new Map<string, boolean>()
+  const extraSlotMAQueues: ExtraSlotMA[][] = [[], []]
+  const extraSlotMACooldowns: number[] = [0, 0]
 
   // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
   let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
@@ -1849,6 +1851,18 @@ export function createGameScene(
   const MAX_MULTI_QUEUE = Math.max(...Object.values(MULTI_ACTION_COOLDOWN_DIV))
   const pendingMultiActions = new Map<string, PendingMultiAction[]>()
 
+  interface ExtraSlotMA {
+    type:                MultiActionType
+    inheritedDamageMult: number
+    slotDmg:             number        // primary-hit damage (all bonuses baked in)
+    slotDef:             ActionDef
+    slotActionId:        ActionId
+    slotI:               number
+    trigger:             TriggerType
+    target?:             Entity        // pre-selected for additionalTarget / jump / tremor
+    slotPreHitDuration:  number
+  }
+
   interface PendingHit {
     attacker:              Entity
     target:                Entity
@@ -2315,6 +2329,10 @@ export function createGameScene(
     afflictionAppliedThisTick = 0
     bossLastHitWasCrit.clear()
     bossLastHitWasAffl.clear()
+    extraSlotMAQueues[0].length = 0
+    extraSlotMAQueues[1].length = 0
+    extraSlotMACooldowns[0] = 0
+    extraSlotMACooldowns[1] = 0
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
 
@@ -2360,6 +2378,10 @@ export function createGameScene(
     afflictionAppliedThisTick = 0
     bossLastHitWasCrit.clear()
     bossLastHitWasAffl.clear()
+    extraSlotMAQueues[0].length = 0
+    extraSlotMAQueues[1].length = 0
+    extraSlotMACooldowns[0] = 0
+    extraSlotMACooldowns[1] = 0
 
     updateAscentButtonVisibility()
     persistState()
@@ -4418,6 +4440,7 @@ export function createGameScene(
             // Pre-hit window drives the attack animation (same ratio as main action)
             const slotPreHitDuration = (1000 / effectiveSlotSpeed) / 3
 
+            const slotAreaVictims: Entity[] = []
             if (slotDef.tags.includes('area')) {
               const ab = getAreaBonuses()
               let areaRadiusPx = (slotDef.area ?? 0) * balance.player.radius
@@ -4427,6 +4450,7 @@ export function createGameScene(
                 if (v.role !== 'enemy') continue
                 const vdx = v.x - center.x, vdy = v.y - center.y
                 if (Math.sqrt(vdx * vdx + vdy * vdy) - v.radius > areaRadiusPx) continue
+                slotAreaVictims.push(v)
                 pendingHits.set(`extra:${slotI}:${++hitSeq}`, {
                   attacker: playerEntity, target: v,
                   damage: slotDmg, action: slotDef, actionId: slotActionId,
@@ -4442,6 +4466,67 @@ export function createGameScene(
               })
               spawnPreHitVfx(playerEntity, slotTarget, slotDef, slotPreHitDuration)
             }
+
+            // ── Multi-action rolling ──────────────────────────────────────────
+            {
+              const q = extraSlotMAQueues[slotI]
+              const childInherited = 0.9
+              const queueSlotMA = (type: MultiActionType, inherited: number, maTarget?: Entity): void => {
+                if (q.length >= MAX_MULTI_QUEUE) return
+                q.push({ type, inheritedDamageMult: inherited, slotDmg, slotDef, slotActionId, slotI, trigger, target: maTarget, slotPreHitDuration })
+              }
+              // doubleAction
+              if (slotAb.doubleActionChance > 0 && Math.random() * 100 < slotAb.doubleActionChance) {
+                queueSlotMA('doubleAction', childInherited)
+              }
+              // additionalTarget (strike + projectile)
+              {
+                let totalAtChance = 0
+                if (slotDef.tags.includes('strike')) {
+                  const sb = getStrikeBonuses()
+                  totalAtChance += sb.additionalTargetChance * (1 + sb.additionalTargetMore / 100)
+                }
+                if (slotDef.tags.includes('projectile')) totalAtChance += getProjectileBonuses().additionalTargetChance
+                if (totalAtChance > 0 && Math.random() * 100 < totalAtChance) {
+                  const extra = selectPlayerTarget(entities.filter(e => e !== slotTarget))
+                  if (extra) queueSlotMA('additionalTarget', childInherited, extra)
+                }
+              }
+              // additionalProjectile
+              if (slotDef.tags.includes('projectile')) {
+                const pb = getProjectileBonuses()
+                if (pb.extraChance > 0 && Math.random() * 100 < pb.extraChance) {
+                  const other = selectPlayerTarget(entities.filter(e => e !== slotTarget)) ?? slotTarget
+                  queueSlotMA('additionalProjectile', childInherited, other)
+                }
+              }
+              // splitAction (rune)
+              if (slotRb.splitCast) queueSlotMA('splitAction', childInherited)
+              // jump (lightning)
+              if (slotDef.tags.includes('lightning')) {
+                const lb = getLightningBonuses()
+                if (lb.jumpChance > 0 && Math.random() * 100 < lb.jumpChance) {
+                  const jumped = new Set<string>([slotTarget.id])
+                  const jumpRange = (slotDef.range * balance.player.radius + slotTarget.radius) * (1 + lb.jumpRangeIncrease / 100)
+                  const jumpTarget = selectJumpTarget(slotTarget, jumped, jumpRange)
+                  if (jumpTarget) queueSlotMA('jump', childInherited, jumpTarget)
+                }
+              }
+              // tremor (area — roll for non-primary victims)
+              if (slotDef.tags.includes('area') && slotAreaVictims.length > 1) {
+                const tremorChance = getAreaBonuses().tremorChance
+                if (tremorChance > 0) {
+                  for (const v of slotAreaVictims) {
+                    if (v === slotAreaVictims[0]) continue
+                    if (Math.random() * 100 < tremorChance) queueSlotMA('tremor', childInherited, v)
+                  }
+                }
+              }
+              if (q.length > 0 && extraSlotMACooldowns[slotI] <= 0) {
+                extraSlotMACooldowns[slotI] = slotPreHitDuration / MULTI_ACTION_COOLDOWN_DIV[q[0].type]
+              }
+            }
+
             awardXp(slotActionId, slotDmg)
             awardAscentXp(slotDmg)
             return true
@@ -4482,6 +4567,67 @@ export function createGameScene(
           }
 
           if (extraManaSpent) updateBars()
+
+          // ── Extra slot multi-action queue processing ──────────────────────
+          for (let slotI = 0; slotI < 2; slotI++) {
+            const maQueue = extraSlotMAQueues[slotI]
+            if (maQueue.length === 0) continue
+            extraSlotMACooldowns[slotI] -= ticker.deltaMS
+            if (extraSlotMACooldowns[slotI] > 0) continue
+            const ma = maQueue.shift()!
+            // Validate target
+            const maTarget = ma.target
+              ? (entities.includes(ma.target) && ma.target.currentLife > 0 ? ma.target : selectPlayerTarget(entities))
+              : selectPlayerTarget(entities)
+            if (!maTarget) {
+              if (maQueue.length > 0) extraSlotMACooldowns[slotI] = ma.slotPreHitDuration / MULTI_ACTION_COOLDOWN_DIV[maQueue[0].type]
+              continue
+            }
+            // Compute type-specific damage multiplier
+            let ownMult = 1.0
+            if (ma.type === 'splitAction') ownMult = 0.5
+            else if (ma.type === 'additionalProjectile') {
+              const pb = getProjectileBonuses()
+              ownMult = 0.5 * (1 + pb.extraDamage / 100)
+            } else if (ma.type === 'jump') {
+              const lb = getLightningBonuses()
+              ownMult = Math.max(0, 1 - (balance.effects.jumpBaseDamagePenalty - lb.jumpDamagePenaltyReduce) / 100)
+            } else if (ma.type === 'tremor') {
+              ownMult = 0.5 * (1 + getAreaBonuses().tremorDamage / 100)
+            }
+            const maDmg = ma.slotDmg * ma.inheritedDamageMult * ownMult
+            const maHitKey = `extra:${slotI}:ma:${++hitSeq}`
+            if (ma.slotDef.tags.includes('area')) {
+              const ab = getAreaBonuses()
+              let areaRadiusPx = (ma.slotDef.area ?? 0) * balance.player.radius
+              areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+              const center = ma.slotDef.selfTargeted ? playerEntity : maTarget
+              for (const v of entities) {
+                if (v.role !== 'enemy') continue
+                const vdx = v.x - center.x, vdy = v.y - center.y
+                if (Math.sqrt(vdx * vdx + vdy * vdy) - v.radius > areaRadiusPx) continue
+                pendingHits.set(`${maHitKey}:${v.id}`, {
+                  attacker: playerEntity, target: v,
+                  damage: maDmg, action: ma.slotDef, actionId: ma.slotActionId,
+                  countdown: ma.slotPreHitDuration, guaranteedAfflictions: false,
+                  multiActionType: ma.type,
+                })
+              }
+              spawnAreaPreHitVfx(playerEntity, center, areaRadiusPx, ma.slotDef, ma.slotPreHitDuration)
+            } else {
+              pendingHits.set(maHitKey, {
+                attacker: playerEntity, target: maTarget,
+                damage: maDmg, action: ma.slotDef, actionId: ma.slotActionId,
+                countdown: ma.slotPreHitDuration, guaranteedAfflictions: false,
+                multiActionType: ma.type,
+              })
+              spawnPreHitVfx(playerEntity, maTarget, ma.slotDef, ma.slotPreHitDuration)
+            }
+            // Advance to next MA cooldown if more are queued
+            if (maQueue.length > 0) {
+              extraSlotMACooldowns[slotI] = ma.slotPreHitDuration / MULTI_ACTION_COOLDOWN_DIV[maQueue[0].type]
+            }
+          }
         }
 
         // ── Burning effect tick (registers burned entities for death pass) ─
