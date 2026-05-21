@@ -1880,6 +1880,8 @@ export function createGameScene(
     guaranteedAfflictions: boolean
     multiActionType?:      MultiActionType
     isMainSlot?:           boolean  // true when fired from the auto-attack slot (for crit trigger detection)
+    impactX?:              number   // area center x for knockback direction (area attacks only)
+    impactY?:              number   // area center y for knockback direction (area attacks only)
   }
   const pendingHits = new Map<string, PendingHit>()  // keyed by unique hit id (entity.id:seq)
   let hitSeq = 0
@@ -3739,6 +3741,8 @@ export function createGameScene(
               const pushFraction = dashRemainingMs > 0 ? 0.85 : 0.3
               for (const e of entities) {
                 if (e.role !== 'enemy') continue
+                // Don't interfere with active knockback velocity
+                if (knockbackState.has(e.id)) continue
                 const ex = e.x - playerEntity.x
                 const ey = e.y - playerEntity.y
                 const edist = Math.sqrt(ex * ex + ey * ey)
@@ -3791,7 +3795,7 @@ export function createGameScene(
         let currentHitMultiType: MultiActionType | undefined = undefined  // set before each applyHit call, read inside for DPS tracking
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
-        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false): boolean => {
+        const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false, impactX?: number, impactY?: number): boolean => {
           const isPlayerAttacker = attacker.role === 'player'
           const sbHit = isPlayerAttacker ? getStrikeBonuses() : null
           const strikeAfflBonus = (sbHit && action.tags.includes('strike')) ? sbHit.afflictionChanceIncrease : 0
@@ -3964,8 +3968,12 @@ export function createGameScene(
             }
             if (kbChance > 0 && Math.random() * 100 < kbChance) {
               const kbRange = kbBaseRange * (1 + kbMoreRange / 100)
-              const dx = target.x - attacker.x
-              const dy = target.y - attacker.y
+              // Use impactX/Y (area center) as knockback origin when provided, so area
+              // hits push enemies away from the explosion center, not from the player.
+              const originX = impactX ?? attacker.x
+              const originY = impactY ?? attacker.y
+              const dx = target.x - originX
+              const dy = target.y - originY
               const dist = Math.sqrt(dx * dx + dy * dy)
               const dirX = dist > 0 ? dx / dist : 1
               const dirY = dist > 0 ? dy / dist : 0
@@ -4081,7 +4089,7 @@ export function createGameScene(
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
           currentHitMultiType = ph.multiActionType
-          const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions)
+          const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions, ph.impactX, ph.impactY)
           if (ph.isMainSlot && wasCrit) mainSlotCritTarget = ph.target
           spawnPostHitVfx(ph.attacker, ph.target, ph.action, ph.multiActionType)
         }
@@ -4290,6 +4298,7 @@ export function createGameScene(
                 action, actionId, countdown: preHitDuration,
                 guaranteedAfflictions, multiActionType: pending?.type,
                 isMainSlot: isPlayer,
+                impactX: center.x, impactY: center.y,
               })
               areaVictims.push(v)
             }
@@ -4751,6 +4760,7 @@ export function createGameScene(
                   damage: maDmg, action: ma.slotDef, actionId: ma.slotActionId,
                   countdown: ma.slotPreHitDuration, guaranteedAfflictions: false,
                   multiActionType: ma.type,
+                  impactX: maCx, impactY: maCy,
                 })
               }
               spawnAreaPreHitVfx(playerEntity, { x: maCx, y: maCy } as unknown as Entity, areaRadiusPx, ma.slotDef, ma.slotPreHitDuration)
