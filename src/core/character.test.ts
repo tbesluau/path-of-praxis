@@ -146,6 +146,32 @@ describe('character', () => {
     expect(restored.enemyProgress).toEqual({ xp: 500, level: 2, maxLevel: 3, autoLevel: true })
   })
 
+  describe('masteryPointsAvailable', () => {
+    it('returns earned minus spent (no free, no dump)', () => {
+      const p = { xp: 0, level: 11, nodes: [[0, 1], [2], [], [], []] }
+      // earned 10, spent 3 → 7 available
+      expect(character.masteryPointsAvailable(p)).toBe(7)
+    })
+
+    it('includes free points used into the earned total', () => {
+      const p = { xp: 0, level: 5, nodes: [[0], [], [], [], []] }
+      // earned (4 levels - 1 spent) + 3 free = 6
+      expect(character.masteryPointsAvailable(p, 3)).toBe(6)
+    })
+
+    it('subtracts dumped points from available', () => {
+      const p = { xp: 0, level: 6, nodes: [[0, 1], [], [], [], []] }
+      // earned 5, spent 2, dumped 2 → 1 available
+      expect(character.masteryPointsAvailable(p, 0, 2)).toBe(1)
+    })
+
+    it('combines free and dump correctly', () => {
+      const p = { xp: 0, level: 5, nodes: [[0], [], [], [], []] }
+      // earned 4 + free 2 = 6 earned, spent 1, dumped 3 → 2 available
+      expect(character.masteryPointsAvailable(p, 2, 3)).toBe(2)
+    })
+  })
+
   describe('computeAward', () => {
     it('discards short absences below the 10s award threshold', () => {
       // 99s away → 99/10 = 9.9s → floors to 9s → < 10s minimum → discarded

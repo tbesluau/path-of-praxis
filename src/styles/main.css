@@ -2692,8 +2692,32 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 
 .mastery-tree-footer {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
   margin-top: var(--space-sm);
+}
+
+.mastery-dump {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mastery-dump-label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+.mastery-dump-label strong {
+  color: #fbbf24;
+}
+
+.mastery-dump-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .mastery-reset-btn:disabled {

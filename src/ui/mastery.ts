@@ -1,7 +1,7 @@
 import type { MasteryId, NodeType } from '../config/masteries'
 import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
-import { getNodeDescription, nodeHasAnyEffect } from '../config/mastery-nodes'
+import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
 import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
 import { linkifyNoteTerms, mountNoteModal } from './notes'
@@ -257,10 +257,11 @@ function buildTreeNodes(
   treeIdx: number,
   freePointsUsedHere: number,
   remainingFreePoints: number,
+  dumpedHere: number,
 ): HTMLElement {
   const container = document.createElement('div')
   container.className = 'mastery-tree-nodes'
-  const totalAvailable = masteryPointsAvailable(p, freePointsUsedHere) + remainingFreePoints
+  const totalAvailable = masteryPointsAvailable(p, freePointsUsedHere, dumpedHere) + remainingFreePoints
 
   // Short trees end after the first major (line nodes 0-5; key nodes 12-13 only).
   const lastLineIdx = treeDef.short ? 5 : 11
@@ -441,9 +442,11 @@ function mountMasteryTreeModal(
   def: MasteryDef,
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>,
+  masteryDumpPoints: Partial<Record<MasteryId, number>>,
   getRemainingFreePoints: () => number,
   ascentCount: number,
   onAssign: (treeIdx: number, nodeIdx: number) => void,
+  onDump: (count: number) => void,
   onReset: () => void,
   onClose: () => void,
 ): () => void {
@@ -458,12 +461,19 @@ function mountMasteryTreeModal(
   panel.setAttribute('role', 'dialog')
   panel.setAttribute('aria-modal', 'true')
   panel.setAttribute('aria-labelledby', 'tree-modal-title')
+  const dumpInfo = MASTERY_DUMP[def.id]
+  const fmtRate = (n: number): string => Number.isInteger(n) ? String(n) : n.toFixed(1)
+
   panel.innerHTML = `
     <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
     <h2 class="modal-title" id="tree-modal-title">${def.label}</h2>
     <p class="mastery-tree-points"></p>
     <div class="mastery-trees-list"></div>
     <div class="mastery-tree-footer">
+      <div class="mastery-dump">
+        <span class="mastery-dump-label"></span>
+        <button class="modal-btn modal-btn--ghost mastery-dump-btn" data-action="dump" title="Click: dump 1 point · Ctrl/Cmd-click: dump all"></button>
+      </div>
       <button class="modal-btn modal-btn--danger mastery-reset-btn" data-action="reset">Reset (−1 level)</button>
     </div>
   `
@@ -472,20 +482,30 @@ function mountMasteryTreeModal(
   const pointsEl = panel.querySelector<HTMLElement>('.mastery-tree-points')!
   const list = panel.querySelector<HTMLElement>('.mastery-trees-list')!
   const resetBtn = panel.querySelector<HTMLButtonElement>('.mastery-reset-btn')!
+  const dumpLabelEl = panel.querySelector<HTMLElement>('.mastery-dump-label')!
+  const dumpBtn = panel.querySelector<HTMLButtonElement>('.mastery-dump-btn')!
 
   const getFreeUsedHere = (): number => freeMasteryPointsUsed[def.id] ?? 0
+  const getDumpedHere = (): number => masteryDumpPoints[def.id] ?? 0
 
   function updatePointsSummary(): void {
     const freshP = prog(masteryProgress, def.id)
     const freeUsed = getFreeUsedHere()
+    const dumped = getDumpedHere()
     const remaining = getRemainingFreePoints()
-    const levelAvail = masteryPointsAvailable(freshP, freeUsed)
+    const levelAvail = masteryPointsAvailable(freshP, freeUsed, dumped)
     const total = levelAvail + remaining
     const earned = Math.max(0, freshP.level - 1) + freeUsed + remaining
     const freePart = (freeUsed + remaining) > 0 ? ` (${freeUsed + remaining} free)` : ''
     pointsEl.textContent = `You have ${total} / ${earned} mastery point${earned !== 1 ? 's' : ''} to assign${freePart}`
-    const freeUsedCurrent = getFreeUsedHere()
-    resetBtn.disabled = freshP.level <= 1 && freeUsedCurrent === 0
+    const dumpBonus = dumped * dumpInfo.rate
+    const bonusStr = fmtRate(dumpBonus)
+    dumpLabelEl.innerHTML = dumped > 0
+      ? `Dump: <strong>${dumped}</strong> pt${dumped === 1 ? '' : 's'} → +${bonusStr}% more ${dumpInfo.label}`
+      : `Dump points for +${fmtRate(dumpInfo.rate)}% more ${dumpInfo.label} per point`
+    dumpBtn.textContent = total > 0 ? `Dump 1 pt (${total} avail)` : 'Dump (no points)'
+    dumpBtn.disabled = total <= 0
+    resetBtn.disabled = freshP.level <= 1 && freeUsed === 0 && dumped === 0
   }
 
   updatePointsSummary()
@@ -497,7 +517,7 @@ function mountMasteryTreeModal(
     label.className = 'mastery-tree-label'
     label.textContent = treeDef.label
     entry.appendChild(label)
-    entry.appendChild(buildTreeNodes(def, treeDef, p, treeDef.index, getFreeUsedHere(), getRemainingFreePoints()))
+    entry.appendChild(buildTreeNodes(def, treeDef, p, treeDef.index, getFreeUsedHere(), getRemainingFreePoints(), getDumpedHere()))
     list.appendChild(entry)
   })
 
@@ -544,7 +564,7 @@ function mountMasteryTreeModal(
       labelEl.className = 'mastery-tree-label'
       labelEl.textContent = treeDef.label
       entry.appendChild(labelEl)
-      entry.appendChild(buildTreeNodes(def, treeDef, freshP, treeDef.index, getFreeUsedHere(), getRemainingFreePoints()))
+      entry.appendChild(buildTreeNodes(def, treeDef, freshP, treeDef.index, getFreeUsedHere(), getRemainingFreePoints(), getDumpedHere()))
       list.appendChild(entry)
     })
     updatePointsSummary()
@@ -555,8 +575,8 @@ function mountMasteryTreeModal(
     const freshP = prog(masteryProgress, def.id)
     const willLoseLevel = freshP.level > 1
     const resetDesc = willLoseLevel
-      ? 'All assigned nodes will be cleared and you will lose 1 level in this mastery.'
-      : 'All assigned nodes will be cleared and your free mastery points will be returned.'
+      ? 'All assigned nodes will be cleared and you will lose 1 level in this mastery. Dumped points are refunded.'
+      : 'All assigned nodes will be cleared. Free and dumped mastery points will be returned.'
     subCleanup = mountResetConfirmModal(
       parent,
       def.label,
@@ -568,6 +588,15 @@ function mountMasteryTreeModal(
       () => { subCleanup = null },
       resetDesc,
     )
+  })
+
+  dumpBtn.addEventListener('click', (e) => {
+    const freshP = prog(masteryProgress, def.id)
+    const available = masteryPointsAvailable(freshP, getFreeUsedHere(), getDumpedHere()) + getRemainingFreePoints()
+    if (available <= 0) return
+    const count = (e.ctrlKey || e.metaKey) ? available : 1
+    onDump(count)
+    rebuildTrees()
   })
 
   const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
@@ -584,11 +613,13 @@ export function mountMasteryModal(
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
   onClose: () => void,
   onAssign: (id: MasteryId, treeIdx: number, nodeIdx: number) => void,
+  onDump: (id: MasteryId, count: number) => void,
   onReset: (id: MasteryId) => void,
   getPendingGains: () => Array<{ id: MasteryId; xpGain: number }>,
   levelsPerRebirth: number,
   ascentCount: number,
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>,
+  masteryDumpPoints: Partial<Record<MasteryId, number>>,
   getRemainingFreePoints: () => number,
 ): () => void {
   const backdrop = document.createElement('div')
@@ -626,7 +657,7 @@ export function mountMasteryModal(
         if (m.id !== 'enemy' && m.id !== 'action' && p.level === 1 && p.xp === 0 && xpGain === 0) continue
         // Mastery is visible — include free points in available count
         const freeUsedHere = freeMasteryPointsUsed[m.id] ?? 0
-        const pts = masteryPointsAvailable(p, freeUsedHere) + getRemainingFreePoints()
+        const pts = masteryPointsAvailable(p, freeUsedHere, masteryDumpPoints[m.id] ?? 0) + getRemainingFreePoints()
         let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
         if (m.id === 'enemy' && xpGain > 0) {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
@@ -678,8 +709,9 @@ export function mountMasteryModal(
       // The tree modal stays open across assigns/resets, so we must NOT clear
       // subCleanup in those callbacks — only when the tree modal itself closes.
       subCleanup = mountMasteryTreeModal(
-        parent, def, masteryProgress, freeMasteryPointsUsed, getRemainingFreePoints, ascentCount,
+        parent, def, masteryProgress, freeMasteryPointsUsed, masteryDumpPoints, getRemainingFreePoints, ascentCount,
         (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
+        (count) => { onDump(id, count); buildRows() },
         () => { onReset(id); buildRows() },
         () => { subCleanup = null },
       )

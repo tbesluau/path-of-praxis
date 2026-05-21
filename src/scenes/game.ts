@@ -148,12 +148,16 @@ export function createGameScene(
     return masteryProgress[id]?.nodes ?? (width === 5 ? [[], [], [], [], []] : [[], [], [], []])
   }
 
+  function dumpedFor(id: MasteryId): number {
+    return masteryDumpPoints[id] ?? 0
+  }
+
   function getActionBonuses(): ActionBonuses {
-    return computeActionBonuses(masteryNodes('action', 5))
+    return computeActionBonuses(masteryNodes('action', 5), dumpedFor('action'))
   }
 
   function getCriticalHitBonuses(): CriticalHitBonuses {
-    return computeCriticalHitBonuses(masteryNodes('criticalHit', 5))
+    return computeCriticalHitBonuses(masteryNodes('criticalHit', 5), dumpedFor('criticalHit'))
   }
 
   // Universe point A: +10% multi-action speed per point (queue cap and cooldown div scale together).
@@ -168,45 +172,45 @@ export function createGameScene(
   }
 
   function getLifeBonuses(): LifeBonuses {
-    return computeLifeBonuses(masteryNodes('life', 5))
+    return computeLifeBonuses(masteryNodes('life', 5), dumpedFor('life'))
   }
 
   function getManaBonuses(): ManaBonuses {
-    return computeManaBonuses(masteryNodes('mana', 5))
+    return computeManaBonuses(masteryNodes('mana', 5), dumpedFor('mana'))
   }
 
   function getFireBonuses(): FireBonuses {
-    return computeFireBonuses(masteryNodes('fire', 5))
+    return computeFireBonuses(masteryNodes('fire', 5), dumpedFor('fire'))
   }
 
   function getEnemyBonuses(): EnemyBonuses {
     const nodes = masteryNodes('enemy', 5)
     if (ascentCount < 2 && !getPrefs().fullMastery) nodes[2] = []
-    return computeEnemyBonuses(nodes)
+    return computeEnemyBonuses(nodes, dumpedFor('enemy'))
   }
 
   function getProjectileBonuses(): ProjectileBonuses {
-    return computeProjectileBonuses(masteryNodes('projectile', 5))
+    return computeProjectileBonuses(masteryNodes('projectile', 5), dumpedFor('projectile'))
   }
 
   function getLightningBonuses(): LightningBonuses {
-    return computeLightningBonuses(masteryNodes('lightning', 5))
+    return computeLightningBonuses(masteryNodes('lightning', 5), dumpedFor('lightning'))
   }
 
   function getStrikeBonuses(): StrikeBonuses {
-    return computeStrikeBonuses(masteryNodes('strike', 5))
+    return computeStrikeBonuses(masteryNodes('strike', 5), dumpedFor('strike'))
   }
 
   function getPhysicalBonuses(): PhysicalBonuses {
-    return computePhysicalBonuses(masteryNodes('physical', 5))
+    return computePhysicalBonuses(masteryNodes('physical', 5), dumpedFor('physical'))
   }
 
   function getAreaBonuses(): AreaBonuses {
-    return computeAreaBonuses(masteryNodes('area', 5))
+    return computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
   }
 
   function getMovementBonuses(): MovementBonuses {
-    return computeMovementBonuses(masteryNodes('movement', 4))
+    return computeMovementBonuses(masteryNodes('movement', 4), dumpedFor('movement'))
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -793,7 +797,7 @@ export function createGameScene(
       const pb = getProjectileBonuses()
       entity.actionDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
       entity.actionSpeed  *= (1 + pb.actionSpeedIncrease / 100)
-      entity.actionRange  *= (1 + pb.rangeIncrease / 100)
+      entity.actionRange  *= (1 + pb.rangeIncrease / 100) * (1 + pb.rangeMore / 100)
     }
     if (entity.role === 'player' && def.tags.includes('strike')) {
       const sb = getStrikeBonuses()
@@ -1130,6 +1134,7 @@ export function createGameScene(
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
+  let masteryDumpPoints: Partial<Record<MasteryId, number>> = { ...(char?.masteryDumpPoints ?? {}) }
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
@@ -1183,6 +1188,7 @@ export function createGameScene(
       unlockedTriggers,
       Date.now(),
       fastForwardMs,
+      masteryDumpPoints,
     )
   }
   let playerPrevX = 0
@@ -2025,11 +2031,13 @@ export function createGameScene(
         masteryProgress,
         () => { modalCleanup = null },
         (id, treeIdx, nodeIdx) => { assignMasteryNode(id, treeIdx, nodeIdx) },
+        (id, count) => { dumpMasteryPoints(id, count) },
         id => { resetMasteryPoints(id) },
         computeMasteryGains,
         balance.mastery.levelsPerRebirth,
         ascentCount,
         freeMasteryPointsUsed,
+        masteryDumpPoints,
         remainingFreeMasteryPoints,
       )
     })
@@ -2442,6 +2450,7 @@ export function createGameScene(
     }
     masteryProgress = {}
     freeMasteryPointsUsed = {}
+    masteryDumpPoints = {}
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
     enemyProgress = { xp: 0, level: 1, maxLevel: 1, autoLevel: false }
@@ -2645,7 +2654,7 @@ export function createGameScene(
     const remaining = remainingFreeMasteryPoints()
     const hasUnspentLevelPoints = allMasteries.some(m => {
       const p = masteryProgress[m.id]
-      return p ? masteryPointsAvailable(p, freeMasteryPointsUsed[m.id] ?? 0) > 0 : false
+      return p ? masteryPointsAvailable(p, freeMasteryPointsUsed[m.id] ?? 0, masteryDumpPoints[m.id] ?? 0) > 0 : false
     })
     const hasUnspentFreePoints = remaining > 0 && allMasteries.some(m => {
       const p = masteryProgress[m.id]
@@ -2671,7 +2680,8 @@ export function createGameScene(
     const existing = masteryProgress[id]
     if (!existing) return
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
-    const levelAvail = masteryPointsAvailable(existing, freeUsed)
+    const dumped = masteryDumpPoints[id] ?? 0
+    const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
     if (levelAvail <= 0) {
       // No level-based points; try consuming a free point
       if (remainingFreeMasteryPoints() <= 0) return
@@ -2696,14 +2706,45 @@ export function createGameScene(
     refreshMasteryDot()
   }
 
+  // Sink up to `count` available mastery points into the per-mastery dump (a
+  // persistent "more <X>" bonus per spec). Consumes level points first; then
+  // free points; clamped to whatever's actually available.
+  function dumpMasteryPoints(id: MasteryId, count: number): void {
+    const existing = masteryProgress[id]
+    if (!existing || count <= 0) return
+    const freeUsed = freeMasteryPointsUsed[id] ?? 0
+    const dumped = masteryDumpPoints[id] ?? 0
+    const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
+    const freeRemaining = remainingFreeMasteryPoints()
+    const totalAvail = levelAvail + freeRemaining
+    const take = Math.min(count, totalAvail)
+    if (take <= 0) return
+    const fromFree = Math.max(0, take - levelAvail)
+    if (fromFree > 0) freeMasteryPointsUsed[id] = freeUsed + fromFree
+    masteryDumpPoints[id] = dumped + take
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
+      assignAction(playerEntity, playerActionId)
+    }
+    if (id === 'life') playerEntity.maxLife = computePlayerMaxLife()
+    if (id === 'mana') {
+      playerEntity.maxMana = computePlayerMaxMana()
+      playerEntity.maxLife = computePlayerMaxLife()
+      assignAction(playerEntity, playerActionId)
+    }
+    persistState()
+    refreshMasteryDot()
+  }
+
   // Spend one mastery level to clear all assigned nodes and refund the rest.
   // Net cost: -1 level (and the XP toward the next level resets to 0).
   // If no level to lose but free points were used here, just reclaim them.
   function resetMasteryPoints(id: MasteryId): void {
     const existing = masteryProgress[id]
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
-    if (!existing || (existing.level <= 1 && freeUsed === 0)) return
+    const dumped = masteryDumpPoints[id] ?? 0
+    if (!existing || (existing.level <= 1 && freeUsed === 0 && dumped === 0)) return
     freeMasteryPointsUsed[id] = 0
+    masteryDumpPoints[id] = 0
     masteryProgress[id] = {
       xp: 0,
       level: existing.level > 1 ? existing.level - 1 : 1,
@@ -3678,7 +3719,7 @@ export function createGameScene(
               const sd = getAction(sl.actionId as ActionId)
               const baseRU = sd.selfTargeted ? (sd.area ?? 0) * (2 / 3) : sd.range
               let sr = baseRU * balance.player.radius
-              if (sd.tags.includes('projectile')) sr *= (1 + getProjectileBonuses().rangeIncrease / 100)
+              if (sd.tags.includes('projectile')) { const pb = getProjectileBonuses(); sr *= (1 + pb.rangeIncrease / 100) * (1 + pb.rangeMore / 100) }
               if (sd.tags.includes('strike')) { const sb = getStrikeBonuses(); sr *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100) }
               if (sd.selfTargeted && sd.tags.includes('area')) { const ab = getAreaBonuses(); sr *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) }
               if (sr < effectiveRange) effectiveRange = sr
@@ -4684,7 +4725,7 @@ export function createGameScene(
                 // Enforce range including mastery range bonuses
                 const baseRangeUnits = slotDef.selfTargeted ? (slotDef.area ?? 0) * (2 / 3) : slotDef.range
                 let slotEffRange = baseRangeUnits * balance.player.radius
-                if (slotDef.tags.includes('projectile')) slotEffRange *= (1 + getProjectileBonuses().rangeIncrease / 100)
+                if (slotDef.tags.includes('projectile')) { const pb = getProjectileBonuses(); slotEffRange *= (1 + pb.rangeIncrease / 100) * (1 + pb.rangeMore / 100) }
                 if (slotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); slotEffRange *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100) }
                 if (slotDef.selfTargeted && slotDef.tags.includes('area')) { const ab = getAreaBonuses(); slotEffRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) }
                 const sdx = selected.x - playerEntity.x, sdy = selected.y - playerEntity.y

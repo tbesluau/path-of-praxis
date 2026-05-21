@@ -1,6 +1,29 @@
 import type { MasteryId } from './masteries'
 import { nodeType } from './masteries'
 
+// ── Point-dump table ───────────────────────────────────────────────────────
+// "1% more <X> per dumped point" / "0.5% more <X> per dumped point". Applied
+// by the compute*Bonuses fns by adding (rate × dumpedPoints) to the relevant
+// existing 'more' field. The label is shown in the dump UI.
+export interface MasteryDumpInfo {
+  rate: number       // percentage points per dumped point
+  label: string      // suffix after "+N% more ", used as `+{rate*pts}% more {label}`
+}
+export const MASTERY_DUMP: Record<MasteryId, MasteryDumpInfo> = {
+  action:      { rate: 1,   label: 'action damage' },
+  criticalHit: { rate: 1,   label: 'critical hit damage' },
+  physical:    { rate: 1,   label: 'physical damage' },
+  fire:        { rate: 1,   label: 'fire damage' },
+  lightning:   { rate: 1,   label: 'lightning damage' },
+  area:        { rate: 1,   label: 'area action radius' },
+  projectile:  { rate: 1,   label: 'projectile range' },
+  strike:      { rate: 0.5, label: 'strike action speed' },
+  life:        { rate: 0.5, label: 'maximum life' },
+  mana:        { rate: 0.5, label: 'maximum mana' },
+  enemy:       { rate: 1,   label: 'enemies spawned' },
+  movement:    { rate: 0.5, label: 'movement speed' },
+}
+
 // ── Node effect types ──────────────────────────────────────────────────────
 
 export interface NodeEffect {
@@ -349,6 +372,7 @@ export interface ManaBonuses {
 
 export interface ProjectileBonuses {
   rangeIncrease: number             // total additive %
+  rangeMore: number                 // total 'more' %
   damageIncrease: number            // total additive %
   moreDamage: number                // total 'more' %
   actionSpeedIncrease: number       // total additive %
@@ -566,9 +590,9 @@ export function getActionNodeEffect(treeIdx: number, nodeIdx: number): NodeEffec
   return ACTION_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeActionBonuses(nodes: number[][]): ActionBonuses {
+export function computeActionBonuses(nodes: number[][], dumpedPoints = 0): ActionBonuses {
   const b: ActionBonuses = {
-    damageIncrease: 0, moreDamage: 0,
+    damageIncrease: 0, moreDamage: dumpedPoints * MASTERY_DUMP.action.rate,
     actionSpeedIncrease: 0, moreActionSpeed: 0,
     lessActionSpeed: 0, lessActionDamage: 0, moreManaCost: 0,
     doubleDamageChance: 0, doubleActionChance: 0,
@@ -690,10 +714,10 @@ export interface CriticalHitBonuses {
   damageMoreTree0: number         // tree-0 portion of damageMore (used when damageToAfflictions)
 }
 
-export function computeCriticalHitBonuses(nodes: number[][]): CriticalHitBonuses {
+export function computeCriticalHitBonuses(nodes: number[][], dumpedPoints = 0): CriticalHitBonuses {
   const b: CriticalHitBonuses = {
     chanceBaseAdd: 0, chanceIncrease: 0, chanceMore: 0,
-    damageIncrease: 0, damageMore: 0,
+    damageIncrease: 0, damageMore: dumpedPoints * MASTERY_DUMP.criticalHit.rate,
     ignoreMitigationChance: 0,
     guaranteedAffliction: false, noDamageBonus: false,
     moreChanceVsAfflicted: 0,
@@ -791,10 +815,10 @@ export function getLifeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect 
   return LIFE_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeLifeBonuses(nodes: number[][]): LifeBonuses {
+export function computeLifeBonuses(nodes: number[][], dumpedPoints = 0): LifeBonuses {
   const b: LifeBonuses = {
     maxLifeIncrease: 0,
-    moreMaxLife: 0,
+    moreMaxLife: dumpedPoints * MASTERY_DUMP.life.rate,
     lessMaxLife: 0,
     physRotResistance: 0,
     elementalResistance: 0,
@@ -904,9 +928,9 @@ export function getManaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect 
   return MANA_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeManaBonuses(nodes: number[][]): ManaBonuses {
+export function computeManaBonuses(nodes: number[][], dumpedPoints = 0): ManaBonuses {
   const b: ManaBonuses = {
-    maxManaIncrease: 0, moreMaxMana: 0, regenIncrease: 0, replenishChance: 0,
+    maxManaIncrease: 0, moreMaxMana: dumpedPoints * MASTERY_DUMP.mana.rate, regenIncrease: 0, replenishChance: 0,
     manaStealPercent: 0, manaStealIncrease: 0, manaStealCapIncrease: 0, feedingFrenzyChance: 0,
     actionSpeedIncrease: 0, moreMaxLife: 0,
     manaShieldAbsorb: 0, manaShieldDamageTaken: 200,
@@ -993,7 +1017,7 @@ export function getFireNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect 
   return FIRE_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeFireBonuses(nodes: number[][]): FireBonuses {
+export function computeFireBonuses(nodes: number[][], dumpedPoints = 0): FireBonuses {
   const b: FireBonuses = {
     burnApplyChance: 0,
     burnDamageIncrease: 0,
@@ -1007,7 +1031,7 @@ export function computeFireBonuses(nodes: number[][]): FireBonuses {
     immolateBurnChance: 0,
     immolateDamageMult: 1,
     damageIncrease: 0,
-    moreDamage: 0,
+    moreDamage: dumpedPoints * MASTERY_DUMP.fire.rate,
     actionSpeedIncrease: 0,
     burnGroundChance: 0,
     burnGroundDamageIncrease: 0,
@@ -1101,7 +1125,7 @@ export function getEnemyNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect
   return ENEMY_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
+export function computeEnemyBonuses(nodes: number[][], dumpedPoints = 0): EnemyBonuses {
   const b: EnemyBonuses = {
     extraOneChance: 0,
     extraTwoChance: 0,
@@ -1113,7 +1137,7 @@ export function computeEnemyBonuses(nodes: number[][]): EnemyBonuses {
     championChance: 0,
     bossChance: 0,
     proliferateChance: 0,
-    moreSpawned: 0,
+    moreSpawned: dumpedPoints * MASTERY_DUMP.enemy.rate,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -1192,9 +1216,10 @@ export function getProjectileNodeEffect(treeIdx: number, nodeIdx: number): NodeE
   return PROJ_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeProjectileBonuses(nodes: number[][]): ProjectileBonuses {
+export function computeProjectileBonuses(nodes: number[][], dumpedPoints = 0): ProjectileBonuses {
   const b: ProjectileBonuses = {
     rangeIncrease: 0,
+    rangeMore: dumpedPoints * MASTERY_DUMP.projectile.rate,
     damageIncrease: 0,
     moreDamage: 0,
     actionSpeedIncrease: 0,
@@ -1288,7 +1313,7 @@ export function getLightningNodeEffect(treeIdx: number, nodeIdx: number): NodeEf
   return LIGHTNING_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
+export function computeLightningBonuses(nodes: number[][], dumpedPoints = 0): LightningBonuses {
   const b: LightningBonuses = {
     electrocuteApplyChance: 0,
     electrocuteDamageTakenIncrease: 0,
@@ -1299,7 +1324,7 @@ export function computeLightningBonuses(nodes: number[][]): LightningBonuses {
     jumpRangeIncrease: 0,
     jumpReroll: false,
     damageIncrease: 0,
-    moreDamage: 0,
+    moreDamage: dumpedPoints * MASTERY_DUMP.lightning.rate,
     actionSpeedIncrease: 0,
     moreActionSpeed: 0,
     electrifyChance: 0,
@@ -1387,14 +1412,14 @@ export function getStrikeNodeEffect(treeIdx: number, nodeIdx: number): NodeEffec
   return STRIKE_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeStrikeBonuses(nodes: number[][]): StrikeBonuses {
+export function computeStrikeBonuses(nodes: number[][], dumpedPoints = 0): StrikeBonuses {
   const b: StrikeBonuses = {
     damageIncrease: 0, moreDamage: 0, doubleDamageChance: 0,
     actionSpeedIncrease: 0, afflictionChanceIncrease: 0,
     frenzyChance: 0, frenzyDamagePerCharge: 0, frenzySpeedPerCharge: 0,
     frenzyFlatDamage: 0, frenzyFlatSpeed: 0,
     frenzyAfflictionChancePerCharge: 0, frenzyDurationIncrease: 0, frenzyMaxChargesBonus: 0,
-    rangeIncrease: 0, moreRange: 0, moreActionSpeed: 0,
+    rangeIncrease: 0, moreRange: 0, moreActionSpeed: dumpedPoints * MASTERY_DUMP.strike.rate,
     additionalTargetChance: 0, additionalTargetMore: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
@@ -1481,13 +1506,13 @@ export function getAreaNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect 
   return AREA_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeAreaBonuses(nodes: number[][]): AreaBonuses {
+export function computeAreaBonuses(nodes: number[][], dumpedPoints = 0): AreaBonuses {
   const b: AreaBonuses = {
     damageIncrease: 0,
     moreDamage: 0,
     doubleDamageChance: 0,
     sizeIncrease: 0,
-    moreSize: 0,
+    moreSize: dumpedPoints * MASTERY_DUMP.area.rate,
     lessActionSpeed: 0,
     tremorChance: 0,
     tremorDamage: 0,
@@ -1576,9 +1601,9 @@ export function getPhysicalNodeEffect(treeIdx: number, nodeIdx: number): NodeEff
   return PHYSICAL_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computePhysicalBonuses(nodes: number[][]): PhysicalBonuses {
+export function computePhysicalBonuses(nodes: number[][], dumpedPoints = 0): PhysicalBonuses {
   const b: PhysicalBonuses = {
-    damageIncrease: 0, moreDamage: 0,
+    damageIncrease: 0, moreDamage: dumpedPoints * MASTERY_DUMP.physical.rate,
     actionSpeedIncrease: 0, bleedApplyChance: 0,
     bleedDamageIncrease: 0, bleedDurationIncrease: 0, bleedMoreDamage: 0, bleedIgnoreResistance: false,
     bleedingTakeMore: 0, resistBreakChance: 0, resistBreakSlowAtZero: 0,
@@ -1657,10 +1682,10 @@ export function getMovementNodeEffect(treeIdx: number, nodeIdx: number): NodeEff
   return MOVEMENT_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
-export function computeMovementBonuses(nodes: number[][]): MovementBonuses {
+export function computeMovementBonuses(nodes: number[][], dumpedPoints = 0): MovementBonuses {
   const b: MovementBonuses = {
     moveSpeedIncrease: 0,
-    moveMoreSpeed: 0,
+    moveMoreSpeed: dumpedPoints * MASTERY_DUMP.movement.rate,
     moveDebuffEfficiencyReduce: 0,
     dashChargeChance: 0,
     dashDistanceIncrease: 0,
