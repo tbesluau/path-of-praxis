@@ -1682,7 +1682,7 @@ const CRIT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     11: '+20% more critical hit damage',
     12: '+10% more critical hit damage',
     13: '+10% increased chance for critical hits to ignore all enemy damage mitigation',
-    14: 'Critical hit damage bonus from this tree applies to affliction damage instead of direct hits',
+    14: 'Critical hit damage bonus from this tree applies to affliction damage from critical hits instead of direct hits',
     15: 'Double damage becomes triple damage when a critical hit also rolls double damage',
   },
   1: {  // Critical Chance
