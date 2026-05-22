@@ -4,6 +4,9 @@ export interface TutorialStep {
   message:              string
   targetSelector?:      string
   requiresInteraction?: boolean
+  // When true: no dark backdrop; the panel sits at the bottom-center of the
+  // viewport so it can describe an open modal underneath without hiding it.
+  transparent?:         boolean
 }
 
 export interface TutorialOptions {
@@ -13,6 +16,9 @@ export interface TutorialOptions {
   parent:        HTMLElement
   openGuide:     (section: string) => void
   onDone:        () => void
+  // Called when "More info" is clicked. Defaults to onDone. Use this to keep
+  // the game paused while the guide is shown.
+  onGuide?:      () => void
 }
 
 export function isTutorialSeen(id: string): boolean {
@@ -50,10 +56,17 @@ export function showTutorial(opts: TutorialOptions): void {
     overlay.remove()
   }
 
-  function positionPanel(target?: Element): void {
+  function positionPanel(target: Element | undefined, transparent: boolean): void {
     const pw = opts.parent.getBoundingClientRect()
+
+    if (transparent) {
+      panel.style.cssText = 'bottom:24px;left:50%;transform:translateX(-50%);width:min(420px,92vw)'
+      arrow.hidden = true
+      return
+    }
+
     if (!target) {
-      panel.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%)'
+      panel.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);width:min(340px,90vw)'
       arrow.hidden = true
       return
     }
@@ -87,19 +100,24 @@ export function showTutorial(opts: TutorialOptions): void {
 
     const step = opts.steps[stepIdx]
     const isLast = stepIdx === opts.steps.length - 1
+    const transparent = !!step.transparent
+
+    overlay.classList.toggle('tutorial-overlay--transparent', transparent)
 
     let target: HTMLElement | undefined
     if (step.targetSelector) {
       target = opts.parent.querySelector<HTMLElement>(step.targetSelector) ?? undefined
-      if (target) {
+      // Only pulse-highlight when the overlay is opaque — when transparent the
+      // user is looking at an open modal and a pulsing ring elsewhere is noise.
+      if (target && !transparent) {
         target.classList.add('tutorial-target')
         currentTarget = target
       }
     }
 
-    positionPanel(target)
+    positionPanel(target, transparent)
 
-    const disableId = `tut-disable-${opts.id}`
+    const disableId = `tut-disable-${opts.id}-${stepIdx}`
 
     let actionHtml = ''
     if (step.requiresInteraction && target) {
@@ -153,8 +171,9 @@ export function showTutorial(opts: TutorialOptions): void {
     panel.querySelector<HTMLButtonElement>('[data-tut="more-info"]')
       ?.addEventListener('click', () => {
         const section = opts.guideSection!
+        const guideCb = opts.onGuide ?? opts.onDone
         cleanup()
-        opts.onDone()
+        guideCb()
         opts.openGuide(section)
       })
 
@@ -162,15 +181,8 @@ export function showTutorial(opts: TutorialOptions): void {
       const advance = (): void => {
         removeTargetListener = null
         if (isLast) {
-          if (opts.guideSection) {
-            const section = opts.guideSection
-            cleanup()
-            opts.onDone()
-            opts.openGuide(section)
-          } else {
-            cleanup()
-            opts.onDone()
-          }
+          cleanup()
+          opts.onDone()
         } else {
           renderStep(stepIdx + 1)
         }
