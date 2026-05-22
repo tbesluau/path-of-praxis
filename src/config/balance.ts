@@ -106,13 +106,15 @@ export const balance = {
   // ── Damage-type effects (burning, bleeding, electrocuted, ...) ───────────
   effects: {
     baseApplyChance:        5,    // % baseline chance to inflict an effect on hit
-    burnDpsFraction:        0.20, // burn dps = hit damage * this
+    enemyAfflictionChanceMult:   0.5, // enemies inflict afflictions on the player at half base chance
+    enemyAfflictionDurationMult: 0.5, // and the resulting stacks/timers last half as long
+    burnDpsFraction:        0.40, // burn dps = hit damage * this
     burnBaseDurationMs:     5000, // base burn duration
     burnSplashRadius:       100,  // px radius for major-node splash to non-burning neighbors
     burnDisplayIntervalMs:  500,  // ms between accumulated burn-damage number emissions
     burnGroundBaseDurationMs: 4000, // base burning ground duration (extended only by Burning Ground tree strong node)
     immolationSelfBurnCapFraction: 0.04, // max immolation self-burn DPS as fraction of max life/s (reduced by immolateDamageMult nodes)
-    bleedDpsFraction:       0.25, // bleed dps = hit damage * this
+    bleedDpsFraction:       0.50, // bleed dps = hit damage * this
     bleedBaseDurationMs:    2000, // base bleed duration
     bleedStackIncreasePerProc: 20, // % additive increase to baseDps when a weaker proc hits a bleeding enemy
     bleedDisplayIntervalMs: 500,  // ms between accumulated bleed-damage number emissions
