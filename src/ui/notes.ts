@@ -67,7 +67,7 @@ const NOTE_TERMS: { id: string; pattern: RegExp }[] = [
   { id: 'trance',                pattern: /\bTrance\b/gi },
   { id: 'strong',                pattern: /\bStrong\b/gi },
   { id: 'elite',                 pattern: /\bElite\b/gi },
-  { id: 'burn',                  pattern: /\bBurning?\b/gi },
+  { id: 'burn',                  pattern: /\bBurn(?:ing)?\b/gi },
   { id: 'jump',                  pattern: /\bJumps?\b/gi },
   { id: 'more',                  pattern: /\bMore\b/gi },
   { id: 'resistance',            pattern: /\bResistances?\b/gi },

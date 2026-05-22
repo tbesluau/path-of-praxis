@@ -50,7 +50,7 @@ An **Affliction** (damage-over-time Effect) applied by fire-tagged actions to en
 - When an enemy applies burn to you with a fire-tagged attack, both the apply chance and the resulting duration are halved (no enemy-side mastery bonuses)
 
 **Per stack:**
-- Burn DPS = hit damage × **20%** (modified by fire mastery burn increased and more multipliers; the triggering hit's damage is used)
+- Burn DPS = hit damage × **40%** (modified by fire mastery burn increased and more multipliers; the triggering hit's damage is used)
 - Duration: **5 seconds** base (extended by fire mastery burn duration nodes)
 - Each stack tracks its own remaining duration and DPS independently
 
@@ -99,8 +99,8 @@ An **Affliction** (damage-over-time Effect) applied by physical-tagged actions t
 - When an enemy applies bleed to you with a physical-tagged attack, both the apply chance and the resulting duration are halved (no enemy-side mastery bonuses)
 
 **Per stack:**
-- Bleed DPS = hit damage × **20%** (the triggering hit's damage is used)
-- Duration: **5 seconds** base
+- Bleed DPS = hit damage × **50%** (modified by physical mastery bleed increased and more multipliers; the triggering hit's damage is used)
+- Duration: **2 seconds** base (extended by physical mastery bleed duration nodes)
 - Each stack tracks its own remaining duration and DPS independently; only the highest-DPS stack ticks at any moment
 
 ---
