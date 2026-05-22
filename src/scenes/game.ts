@@ -66,6 +66,7 @@ export function createGameScene(
   let masteryProgress: Partial<Record<MasteryId, MasteryProgress>> = JSON.parse(
     JSON.stringify(char?.masteryProgress ?? {}),
   ) as Partial<Record<MasteryId, MasteryProgress>>
+  let masteryDumpPoints: Partial<Record<MasteryId, number>> = { ...(char?.masteryDumpPoints ?? {}) }
 
   const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
     JSON.stringify(char?.actionRunes ?? {}),
@@ -1134,7 +1135,6 @@ export function createGameScene(
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
-  let masteryDumpPoints: Partial<Record<MasteryId, number>> = { ...(char?.masteryDumpPoints ?? {}) }
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
