@@ -2083,6 +2083,10 @@ export function createGameScene(
       )
     })
 
+  // Tutorial deferred until the next modal closes (used for tutorials that
+  // need to point at top-bar buttons hidden behind the just-opened modal).
+  let pendingPostModalTutorial: (() => void) | null = null
+
   function openAscentModal(): void {
     modalCleanup = mountAscentModal(
       container,
@@ -2100,7 +2104,12 @@ export function createGameScene(
         universePointAllocations = { ...universePointAllocations, [slot]: alloc }
         persistState()
       },
-      () => { modalCleanup = null },
+      () => {
+        modalCleanup = null
+        const queued = pendingPostModalTutorial
+        pendingPostModalTutorial = null
+        queued?.()
+      },
     )
   }
 
@@ -2530,29 +2539,52 @@ export function createGameScene(
     if (!isTutorialSeen('first-ascent') && !getPrefs().tutorialDisabled) {
       showTutorial({
         id: 'first-ascent',
-        steps: [{ message: 'You completed your first Ascent! Each ascent permanently strengthens all future runs — stronger than any mastery bonus.' }],
+        steps: [{
+          message: 'You completed your first Ascent! Every action, mastery and stat resets, but you earn a Universe Point and a permanent bonus to all future runs — far stronger than any mastery node.',
+        }],
         guideSection: 'Ascent',
-        parent: el, openGuide,
+        parent: container,
+        openGuide,
         onDone: () => {},
       })
     }
 
     if (ascentCount === balance.ascent.slot2UnlockAscent
         && !isTutorialSeen('second-trigger') && !getPrefs().tutorialDisabled) {
-      showTutorial({
-        id: 'second-trigger',
-        steps: [{ message: 'You\'ve unlocked a second action trigger slot! Open the battle configuration to set it up.', targetSelector: '[data-action="open-config"]', requiresInteraction: true }],
-        guideSection: 'Action Triggers',
-        parent: el, openGuide,
-        onDone: () => {},
-      })
+      // Defer until the ascent modal closes — the action button is behind it.
+      pendingPostModalTutorial = () => {
+        const wasPaused = paused
+        if (!wasPaused) togglePause()
+        showTutorial({
+          id: 'second-trigger',
+          steps: [
+            {
+              message: 'You unlocked a second action trigger slot! Open the battle configuration to set it up.',
+              targetSelector: '[data-action="open-config"]',
+              requiresInteraction: true,
+            },
+            {
+              message: 'The new slot can fire on Time, Critical hit or Affliction. It applies a global damage penalty (×0.75), but a well-matched second action can hugely boost total damage.',
+              transparent: true,
+            },
+          ],
+          guideSection: 'Action Triggers',
+          parent: container,
+          openGuide,
+          onDone:  () => { if (!wasPaused && paused) togglePause() },
+          onGuide: () => { /* leave paused */ },
+        })
+      }
     }
 
     if (ascentCount === 5 && !isTutorialSeen('ascent-5') && !getPrefs().tutorialDisabled) {
       showTutorial({
         id: 'ascent-5',
-        steps: [{ message: 'You\'ve reached the current endgame. Feel free to keep enjoying this character or experiment with different builds — thank you for playing!' }],
-        parent: el, openGuide,
+        steps: [{
+          message: 'You\'ve reached the current endgame. Feel free to keep enjoying this character or experiment with different builds — thank you for playing!',
+        }],
+        parent: container,
+        openGuide,
         onDone: () => {},
       })
     }
@@ -2562,12 +2594,12 @@ export function createGameScene(
     if (!isTutorialSeen('first-death') && !getPrefs().tutorialDisabled) {
       showTutorial({
         id: 'first-death',
-        steps: [
-          { message: 'You died. This summary shows the mastery experience you earned this run — it carries over permanently.' },
-          { message: 'After rebirth, open the Masteries panel to spend your mastery points and permanently power up your next run.' },
-        ],
+        steps: [{
+          message: 'You died. The mastery experience earned this run carries over permanently — after rebirth you\'ll be able to spend any mastery points it unlocked.',
+        }],
         guideSection: 'Death & Rebirth',
-        parent: el, openGuide,
+        parent: container,
+        openGuide,
         onDone: () => {},
       })
     }
@@ -2631,7 +2663,34 @@ export function createGameScene(
       </div>
     `
     backdrop.querySelector<HTMLButtonElement>('[data-action="rebirth"]')!
-      .addEventListener('click', () => { applyMasteryGains(pendingGains); backdrop.remove(); rebirth() })
+      .addEventListener('click', () => {
+        applyMasteryGains(pendingGains)
+        backdrop.remove()
+        rebirth()
+        if (!isTutorialSeen('first-rebirth') && !getPrefs().tutorialDisabled) {
+          const wasPaused = paused
+          if (!wasPaused) togglePause()
+          showTutorial({
+            id: 'first-rebirth',
+            steps: [
+              {
+                message: 'Open the Masteries panel to spend any mastery points you earned this run.',
+                targetSelector: '[data-action="open-mastery"]',
+                requiresInteraction: true,
+              },
+              {
+                message: 'Masteries are permanent passive trees that persist across every Rebirth. Click a mastery to open its skill tree and spend points on lasting bonuses.',
+                transparent: true,
+              },
+            ],
+            guideSection: 'Masteries',
+            parent: container,
+            openGuide,
+            onDone:  () => { if (!wasPaused && paused) togglePause() },
+            onGuide: () => { /* leave paused while the user reads the guide */ },
+          })
+        }
+      })
     container.appendChild(backdrop)
     return () => backdrop.remove()
   }
@@ -3045,8 +3104,11 @@ export function createGameScene(
           if (!wasPaused) togglePause()
           showTutorial({
             id: 'first-boss',
-            steps: [{ message: 'You spawned your first boss… good luck!' }],
-            parent: el, openGuide,
+            steps: [{
+              message: 'A boss has spawned. Bosses are far tougher than regular enemies — be ready for a long fight. Kill it to push the enemy level even higher.',
+            }],
+            parent: container,
+            openGuide,
             onDone: () => { if (!wasPaused && paused) togglePause() },
           })
         }
@@ -3617,10 +3679,22 @@ export function createGameScene(
       if (!wasPaused) togglePause()
       showTutorial({
         id: 'first-game',
-        steps: [{ message: 'This is your battle configuration button. Click it to select your action and configure action triggers.', targetSelector: '[data-action="open-config"]', requiresInteraction: true }],
+        steps: [
+          {
+            message: 'Welcome! Tap your battle configuration button to choose an action and set up triggers.',
+            targetSelector: '[data-action="open-config"]',
+            requiresInteraction: true,
+          },
+          {
+            message: 'This is the battle configuration. The first slot is your auto-attack — pick an action that suits you. As you Ascend you\'ll unlock more trigger slots (Time, Critical hit, Affliction) that fire alongside it.',
+            transparent: true,
+          },
+        ],
         guideSection: 'Actions & Action Levels',
-        parent: el, openGuide,
-        onDone: () => { if (!wasPaused && paused) togglePause() },
+        parent: container,
+        openGuide,
+        onDone:  () => { if (!wasPaused && paused) togglePause() },
+        onGuide: () => { /* leave game paused — user will resume after reading the guide */ },
       })
     }
   }, 0)
