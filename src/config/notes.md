@@ -136,7 +136,7 @@ Healing mechanic: a fraction of damage dealt to enemies is restored as player li
 
 **Feeding Frenzy** grants an additional +20% increased life stolen additively; the cap still applies.
 
-Life steal is applied once per direct hit. Burn ticks, Immolation self-burn, and other damage-over-time sources do not trigger life steal.
+Life steal is applied once per direct hit. Burn ticks, Immolation self-burn, and other damage-over-time sources do not trigger life steal — unless the Life Steal tree's "You can steal from affliction damage" key node is allocated, which extends life and mana steal to **Burn** and **Bleed** tick damage from player-applied stacks.
 
 ---
 

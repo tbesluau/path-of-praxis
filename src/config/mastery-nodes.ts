@@ -83,6 +83,7 @@ export interface NodeEffect {
   lifeStealCapMore?: number            // additive %; × (1 + sum/100) on per-hit life steal cap
   lifeCannotRegen?: boolean            // Steal key 12: disables life regen
   lifeStealMore?: number               // additive %; × (1 + sum/100) on life stolen amount
+  lifeStealFromAfflictions?: boolean   // Steal key 13: affliction tick damage from player actions also feeds life steal
   lifeLessActionDamage?: number        // additive %; × (1 - sum/100) on player action damage from Life trees
 
   // Mana mastery effects
@@ -105,6 +106,12 @@ export interface NodeEffect {
   fireBurningTakeIncreased?: number     // additive %; burning enemies take more damage from all sources
   fireBurnSplashFraction?: number       // additive %; non-burning neighbors take this share of burn dps
   fireBurnEnemyResistReduction?: number // flat %; burning enemies have their fire resistance reduced (capped at 0)
+
+  // Burning tree key node effects (12–15)
+  fireBurnDurationMult?: number         // multiplicative duration; product of all such mult fields
+  fireBurnLessDamage?: number           // additive %; × (1 - sum/100) on burn dps
+  fireBurnDamageMult?: number           // multiplicative; product of all such mult fields (e.g. 2 for "double burn damage")
+  fireSuppressHitDamage?: boolean       // fire-tagged player hits deal no direct damage; afflictions still apply
 
   // Fire mastery effects (Burning Ground tree)
   fireBurnGroundChance?: number             // additive %; chance for fire actions to cause burning ground on hit tile
@@ -206,6 +213,12 @@ export interface NodeEffect {
   physicalBleedDurationIncrease?: number // additive %; extends bleed duration
   physicalBleedMoreDamage?: number      // 'more' %; multiplies bleed dps after increased
   physicalBleedIgnoreResistance?: boolean // when true, bleeding ignores enemy physical resistance (no-op for now)
+
+  // Bleed tree key node effects (12–15)
+  physicalBleedDurationMult?: number    // multiplicative duration; product of all such mult fields
+  physicalBleedLessDamage?: number      // additive %; × (1 - sum/100) on bleed dps
+  physicalBleedDamageMult?: number      // multiplicative; product of all such mult fields (e.g. 2 for "double bleed damage")
+  physicalSuppressHitDamage?: boolean   // physical-tagged player hits deal no direct damage; afflictions still apply
   physicalBleedingTakeMore?: number     // 'more' %; multiplier on physical damage to bleeding enemies
 
   // Physical mastery effects (Resistance Breaking tree)
@@ -348,6 +361,7 @@ export interface LifeBonuses {
   lifeStealIncrease: number      // total additive %; increases life stolen
   lifeStealCapIncrease: number   // total additive %; increases per-hit hard cap (base 1% of max life)
   stealMore: number              // total additive %; × (1 + sum/100) on life stolen amount
+  stealFromAfflictions: boolean  // when true, affliction tick damage from player actions also feeds life steal
   stealCapMore: number           // total additive %; × (1 + sum/100) on per-hit life steal cap
   lessStealCap: number           // total additive %; × (1 - sum/100) on per-hit life steal cap
   cannotSteal: boolean           // Max Life key 12, Resistances key 15: disables life steal
@@ -457,6 +471,10 @@ export interface PhysicalBonuses {
   bleedDurationIncrease: number // total additive %
   bleedMoreDamage: number       // total 'more' %
   bleedIgnoreResistance: boolean // when true, bleeding ignores enemy physical resistance (no-op for now)
+  bleedDurationMult: number     // total multiplicative duration factor (1.0 = no change)
+  bleedLessDamage: number       // total additive %; × (1 - sum/100) on bleed dps
+  bleedDamageMult: number       // total multiplicative dps factor (1.0 = no change)
+  suppressPhysicalHitDamage: boolean // when true, physical-tagged player hits deal no direct damage
   bleedingTakeMore: number      // total 'more' %; physical damage multiplier vs bleeding enemies
   resistBreakChance: number     // total additive %; chance per physical hit to permanently reduce enemy phys-rot resistance
   resistBreakSlowAtZero: number // total additive %; slow applied to enemies at 0% phys-rot resistance
@@ -508,6 +526,10 @@ export interface FireBonuses {
   burningTakeIncreased: number  // total additive %; damage taken by burning enemies from any source
   burnSplashFraction: number    // total additive %; share of burn dps that splashes to non-burning neighbors
   burnEnemyResistReduction: number // total flat %; reduced fire resistance on burning enemies (capped at 0)
+  burnDurationMult: number      // total multiplicative duration factor (1.0 = no change)
+  burnLessDamage: number        // total additive %; × (1 - sum/100) on burn dps
+  burnDamageMult: number        // total multiplicative dps factor (1.0 = no change)
+  suppressFireHitDamage: boolean // when true, fire-tagged player hits deal no direct damage
   immolateChance: number        // total additive %; chance to trigger immolation on fire hit
   immolateDamageBonus: number   // total additive %; fire damage bonus while immolation is active
   immolateBurnChance: number    // total additive %; burn apply chance bonus while immolation is active
@@ -811,7 +833,7 @@ const LIFE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     4: { lifeStealIncrease: 5 },
     5: { lifeFeedingFrenzyChance: 1 },
     12: { lifeStealCapMore: 30, lifeCannotRegen: true },
-    13: { lifeStealMore: 10 },
+    13: { lifeStealFromAfflictions: true },
   },
 }
 
@@ -841,6 +863,7 @@ export function computeLifeBonuses(nodes: number[][], dumpedPoints = 0): LifeBon
     stealCapMore: 0,
     lessStealCap: 0,
     cannotSteal: false,
+    stealFromAfflictions: false,
     feedingFrenzyChance: 0,
     lessActionDamage: 0,
   }
@@ -869,6 +892,7 @@ export function computeLifeBonuses(nodes: number[][], dumpedPoints = 0): LifeBon
       if (eff.lifeMaxPerLifeLevel)       b.maxPerLifeLevel = true
       if (eff.lifeCannotRegen)           b.cannotRegen = true
       if (eff.lifeCannotSteal)           b.cannotSteal = true
+      if (eff.lifeStealFromAfflictions)  b.stealFromAfflictions = true
     }
   }
   return b
@@ -995,7 +1019,10 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { fireBurnApplyChance: 5 },
     10: { fireBurnDamageIncrease: 15 },
     11: { fireBurnSplashFraction: 50 },
-    // 12-15: key nodes — not yet defined
+    12: { fireBurnMoreDamage: 30, fireBurnDurationMult: 0.5 },
+    13: { fireBurnDurationMult: 2, fireBurnLessDamage: 30 },
+    14: { fireBurnDamageMult: 2, fireSuppressHitDamage: true },
+    15: { fireBurnMoreDamage: 10 },
   },
   2: {  // Burning Ground (short tree — line nodes 0-5, key nodes 12-13)
     0: { fireBurnGroundChance: 5 },
@@ -1042,6 +1069,10 @@ export function computeFireBonuses(nodes: number[][], dumpedPoints = 0): FireBon
     burnGroundDurationIncrease: 0,
     burnGroundMoreDamage: 0,
     burnGroundSlowAmount: 0,
+    burnDurationMult: 1,
+    burnLessDamage: 0,
+    burnDamageMult: 1,
+    suppressFireHitDamage: false,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -1065,6 +1096,10 @@ export function computeFireBonuses(nodes: number[][], dumpedPoints = 0): FireBon
       b.burnGroundDurationIncrease += eff.fireBurnGroundDurationIncrease ?? 0
       b.burnGroundMoreDamage += eff.fireBurnGroundMoreDamage ?? 0
       b.burnGroundSlowAmount += eff.fireBurnGroundSlowAmount ?? 0
+      if (eff.fireBurnDurationMult !== undefined) b.burnDurationMult *= eff.fireBurnDurationMult
+      b.burnLessDamage += eff.fireBurnLessDamage ?? 0
+      if (eff.fireBurnDamageMult !== undefined) b.burnDamageMult *= eff.fireBurnDamageMult
+      if (eff.fireSuppressHitDamage) b.suppressFireHitDamage = true
     }
   }
   return b
@@ -1587,7 +1622,10 @@ const PHYSICAL_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { physicalBleedApplyChance: 5 },
     10: { physicalBleedDamageIncrease: 15 },
     11: { physicalBleedIgnoreResistance: true },
-    // 12-15: key nodes — not yet defined
+    12: { physicalBleedMoreDamage: 30, physicalBleedDurationMult: 0.5 },
+    13: { physicalBleedDurationMult: 2, physicalBleedLessDamage: 30 },
+    14: { physicalBleedDamageMult: 2, physicalSuppressHitDamage: true },
+    15: { physicalBleedMoreDamage: 10 },
   },
   2: {  // Resistance Breaking (short tree — line nodes 0-5, key nodes 12-13)
     0: { physicalResistBreakChance: 5 },
@@ -1621,6 +1659,8 @@ export function computePhysicalBonuses(nodes: number[][], dumpedPoints = 0): Phy
     bleedingTakeMore: 0, resistBreakChance: 0, resistBreakSlowAtZero: 0,
     bloodlustChance: 0, bloodlustActionSpeed: 0, bloodlustDamage: 0,
     bloodlustBleedChance: 0, bloodlustDurationIncrease: 0,
+    bleedDurationMult: 1, bleedLessDamage: 0, bleedDamageMult: 1,
+    suppressPhysicalHitDamage: false,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -1641,6 +1681,10 @@ export function computePhysicalBonuses(nodes: number[][], dumpedPoints = 0): Phy
       b.bloodlustDamage         += eff.physicalBloodlustDamage ?? 0
       b.bloodlustBleedChance    += eff.physicalBloodlustBleedChance ?? 0
       b.bloodlustDurationIncrease += eff.physicalBloodlustDurationIncrease ?? 0
+      if (eff.physicalBleedDurationMult !== undefined) b.bleedDurationMult *= eff.physicalBleedDurationMult
+      b.bleedLessDamage += eff.physicalBleedLessDamage ?? 0
+      if (eff.physicalBleedDamageMult !== undefined) b.bleedDamageMult *= eff.physicalBleedDamageMult
+      if (eff.physicalSuppressHitDamage) b.suppressPhysicalHitDamage = true
     }
   }
   return b
@@ -1893,7 +1937,7 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     4: '+5% increased life stolen',
     5: 'Stealing life has a 1% chance to trigger Feeding Frenzy',
     12: '+30% more maximum life stolen per hit · You cannot regenerate life',
-    13: '+10% more life stolen',
+    13: 'You can steal from affliction damage',
   },
 }
 
@@ -1976,6 +2020,10 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     9:  'Fire actions have +5% chance to apply burn',
     10: '+15% increased burn damage',
     11: 'Burning enemies splash 50% of their burn damage to nearby non-burning enemies',
+    12: '+30% more burn damage · Half burn duration',
+    13: 'Double burn duration · 30% less burn damage',
+    14: 'Double burn damage · You deal no damage with hits',
+    15: '+10% more burn damage',
   },
   2: {  // Burning Ground
     0: 'Fire actions have +5% chance to cause burning ground',
@@ -2023,6 +2071,10 @@ const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     9:  'Physical actions have +5% chance to apply bleed',
     10: '+15% increased bleed damage',
     11: 'Bleeding ignores enemy physical resistance',
+    12: '+30% more bleed damage · Half bleed duration',
+    13: 'Double bleed duration · 30% less bleed damage',
+    14: 'Double bleed damage · You deal no damage with hits',
+    15: '+10% more bleed damage',
   },
   2: {  // Resistance Breaking
     0: 'Physical actions have +5% chance to permanently reduce enemy physical and rot resistance by 1%',

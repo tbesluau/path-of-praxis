@@ -531,6 +531,7 @@ export function createGameScene(
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
         awardAscentXp(actual)
         recordDps(maxStack.sourceActionId, actual, 'affliction:burn')
+        if (getLifeBonuses().stealFromAfflictions) { applyLifeSteal(actual); applyManaSteal(actual) }
         const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
         burnAccum.set(entityId, acc)
@@ -642,6 +643,8 @@ export function createGameScene(
             * (1 + stack.stackedIncrease / 100)
             * (1 + pb.bleedDamageIncrease / 100)
             * (1 + pb.bleedMoreDamage / 100)
+            * Math.max(0, 1 - pb.bleedLessDamage / 100)
+            * pb.bleedDamageMult
       let tickDmg = effectiveDps * dts
       if (tickDmg <= 0) {
         stack.remainingMs -= deltaMs
@@ -678,6 +681,7 @@ export function createGameScene(
         if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
         awardAscentXp(actual)
         recordDps(stack.sourceActionId, actual, 'affliction:bleed')
+        if (getLifeBonuses().stealFromAfflictions) { applyLifeSteal(actual); applyManaSteal(actual) }
         const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
         acc.damage += actual
         bleedAccum.set(entityId, acc)
@@ -4125,6 +4129,14 @@ export function createGameScene(
               }
             }
           }
+          // Bleed/Burn key 14: player physical/fire hits deal no direct damage (afflictions still
+          // calculated from the original `damage` value). Capture whether the hit would have
+          // landed pre-suppression so affliction gates that read `actualDamage > 0` still fire.
+          const wouldHaveLanded = finalDamage > 0
+          if (attacker.role === 'player' && target.role === 'enemy') {
+            if (action.tags.includes('physical') && getPhysicalBonuses().suppressPhysicalHitDamage) finalDamage = 0
+            if (action.tags.includes('fire')     && getFireBonuses().suppressFireHitDamage)         finalDamage = 0
+          }
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - finalDamage)
           const actualDamage = prevLife - target.currentLife
@@ -4214,8 +4226,10 @@ export function createGameScene(
             }
           }
 
-          // Burning: roll on fire-tagged player hits to enemy targets
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && actualDamage > 0) {
+          // Burning: roll on fire-tagged player hits to enemy targets.
+          // The hit-suppression key can zero actualDamage; gate on whether the hit would have
+          // landed in absence of suppression so afflictions still trigger.
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && (actualDamage > 0 || wouldHaveLanded)) {
             const fb = getFireBonuses()
             const immolBurnBonus = hasEffect('immolation') ? fb.immolateBurnChance : 0
             const chance = balance.effects.baseApplyChance + fb.burnApplyChance + immolBurnBonus + extraAfflChance
@@ -4223,8 +4237,12 @@ export function createGameScene(
               const dps = damage * balance.effects.burnDpsFraction
                 * (1 + fb.burnDamageIncrease / 100)
                 * (1 + fb.burnMoreDamage / 100)
+                * Math.max(0, 1 - fb.burnLessDamage / 100)
+                * fb.burnDamageMult
                 * critAfflMult
-              const duration = balance.effects.burnBaseDurationMs * (1 + fb.burnDurationIncrease / 100)
+              const duration = balance.effects.burnBaseDurationMs
+                * (1 + fb.burnDurationIncrease / 100)
+                * fb.burnDurationMult
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
@@ -4261,14 +4279,17 @@ export function createGameScene(
             const lbElec = getLightningBonuses()
             if (lbElec.electrifyChance > 0 && Math.random() * 100 < lbElec.electrifyChance) applyElectrified()
           }
-          // Bleeding: roll on physical-tagged player hits to enemy targets
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('physical') && actualDamage > 0) {
+          // Bleeding: roll on physical-tagged player hits to enemy targets. The hit-suppression
+          // key can zero actualDamage; gate on whether the hit would have landed pre-suppression.
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('physical') && (actualDamage > 0 || wouldHaveLanded)) {
             const pb = getPhysicalBonuses()
             const bloodlustBleedBonus = hasEffect('bloodlust') ? pb.bloodlustBleedChance : 0
             const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + bloodlustBleedBonus + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
               const newBaseDps  = damage * balance.effects.bleedDpsFraction * critAfflMult
-              const duration    = balance.effects.bleedBaseDurationMs * (1 + pb.bleedDurationIncrease / 100)
+              const duration    = balance.effects.bleedBaseDurationMs
+                * (1 + pb.bleedDurationIncrease / 100)
+                * pb.bleedDurationMult
               const existing    = bleedStacks.get(target.id)
               if (!existing) {
                 bleedStacks.set(target.id, { baseDps: newBaseDps, stackedIncrease: 0, remainingMs: duration, sourceActionId: actionId })
