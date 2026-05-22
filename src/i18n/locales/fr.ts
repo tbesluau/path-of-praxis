@@ -20,8 +20,21 @@ export const fr: TranslationSchema = {
   menu: {
     continue: 'Continuer',
     characters: 'Personnages',
-    ladder: 'Classement',
+    about: 'À propos',
     nav: 'Menu principal',
+  },
+  about: {
+    title: 'À propos de Path of Praxis',
+    body: 'Un auto-battler incrémental par Aractis, inspiré des action RPG, des jeux incrémentaux à prestige multi-couches et des systèmes de récompense basés sur l\'usage. Ce jeu en phase précoce (bêta) vise à offrir une expérience riche de theorycrafting avec les mécaniques d\'un jeu semi-idle. Merci de partager tout rapport, retour ou demande sur le Discord lié dans les options. Pensez à consulter la TODO ci-dessous !',
+    creditsTitle: 'Crédits',
+    creditsAlpha: 'Merci à N4pkin pour la motivation et le test alpha.',
+    creditsKenneyUi: 'Panneaux et boutons UI : **Kenney RPG UI Pack Extension** (CC0).',
+    creditsKenneyDungeon: 'Tuiles et obstacles : **Kenney Tiny Dungeon** (CC0).',
+    creditsClaude: 'Vibe codé avec **Claude** (Anthropic).',
+    releaseNotes: 'Notes de version',
+    releaseNotesTitle: 'Notes de version',
+    todo: 'TODO',
+    todoTitle: 'TODO',
   },
   character: {
     newTitle: 'Nouveau personnage',

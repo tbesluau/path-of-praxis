@@ -1608,6 +1608,7 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 .modal-panel > .death-modal-scroll,
 .modal-panel > .note-body,
 .modal-panel > .guide-sections,
+.modal-panel > .about-body,
 .modal-panel > .action-picker-list {
   margin-right: calc(-1 * var(--space-xl));
   padding-right: 8px;
@@ -3040,6 +3041,62 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 .guide-section-body strong {
   font-weight: 700;
   color: #2a1005;
+}
+
+/* ── About modal ── */
+
+.about-panel {
+  width: min(480px, 94vw);
+  max-height: 85dvh;
+}
+
+.about-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: #1a0a02;
+}
+
+.about-body p {
+  margin: 0;
+}
+
+.about-body ul {
+  list-style: disc;
+  padding-left: var(--space-lg);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.about-body strong {
+  font-weight: 700;
+  color: #2a1005;
+}
+
+.about-section-heading {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #2a1005;
+  margin: var(--space-xs) 0 0;
+}
+
+.about-actions {
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.about-actions .modal-btn {
+  flex: 1;
 }
 
 /* ── Runes modal ── */

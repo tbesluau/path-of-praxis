@@ -9,13 +9,13 @@ describe('i18n', () => {
     expect(t('game', 'subtitle')).toBe('Theorycraft your Incremental auto-battler')
     expect(t('menu', 'continue')).toBe('Continue')
     expect(t('menu', 'characters')).toBe('Characters')
-    expect(t('menu', 'ladder')).toBe('Ladder')
+    expect(t('menu', 'about')).toBe('About')
   })
 
   it('switches locale to French', () => {
     setLocale('fr')
     expect(t('menu', 'continue')).toBe('Continuer')
-    expect(t('menu', 'ladder')).toBe('Classement')
+    expect(t('menu', 'about')).toBe('À propos')
     expect(t('game', 'subtitle')).toBe('Theorycrafte ton auto-battler incrémental')
   })
 

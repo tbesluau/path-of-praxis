@@ -1,7 +1,8 @@
-import { createIcons, Play, FolderOpen, Trophy, Trash2 } from 'lucide'
+import { createIcons, Play, FolderOpen, Info, Trash2 } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import { mountSettingsButton } from '../ui/settings'
+import { mountAboutModal } from '../ui/about'
 import { buildActionThumbnail, refreshActionThumbnailIcons, mountActionPickerModal } from '../ui/action-picker'
 import type { SceneId } from '../core/router'
 import {
@@ -53,16 +54,16 @@ export function createMenuScene(
           <span>${t('menu', 'characters')}</span>
         </button>
         <div class="menu-divider" role="separator"></div>
-        <button class="menu-btn" data-action="ladder">
-          <i data-lucide="trophy" aria-hidden="true"></i>
-          <span>${t('menu', 'ladder')}</span>
+        <button class="menu-btn" data-action="about">
+          <i data-lucide="info" aria-hidden="true"></i>
+          <span>${t('menu', 'about')}</span>
         </button>
       </nav>
     </div>
   `
 
   container.appendChild(el)
-  createIcons({ icons: { Play, FolderOpen, Trophy, Trash2 } })
+  createIcons({ icons: { Play, FolderOpen, Info, Trash2 } })
 
   const unmountSettings = mountSettingsButton(el)
 
@@ -105,8 +106,11 @@ export function createMenuScene(
     })
   })
 
-  el.querySelector<HTMLButtonElement>('[data-action="ladder"]')!
-    .addEventListener('click', () => console.info('[menu] action: ladder'))
+  el.querySelector<HTMLButtonElement>('[data-action="about"]')!
+    .addEventListener('click', () => {
+      closeModal()
+      modalCleanup = mountAboutModal(el, closeModal)
+    })
 
   function onEscape(e: KeyboardEvent): void {
     if (e.key === 'Escape') closeModal()

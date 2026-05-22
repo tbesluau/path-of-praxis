@@ -18,8 +18,21 @@ export interface TranslationSchema {
   menu: {
     continue: string
     characters: string
-    ladder: string
+    about: string
     nav: string
+  }
+  about: {
+    title: string
+    body: string
+    creditsTitle: string
+    creditsAlpha: string
+    creditsKenneyUi: string
+    creditsKenneyDungeon: string
+    creditsClaude: string
+    releaseNotes: string
+    releaseNotesTitle: string
+    todo: string
+    todoTitle: string
   }
   character: {
     newTitle: string
@@ -83,8 +96,21 @@ export const en: TranslationSchema = {
   menu: {
     continue: 'Continue',
     characters: 'Characters',
-    ladder: 'Ladder',
+    about: 'About',
     nav: 'Main menu',
+  },
+  about: {
+    title: 'About Path of Praxis',
+    body: 'An incremental auto-battler by Aractis, inspired by action RPGs, multi-layered prestige incremental games, and usage-based reward systems. This early-stage (beta) game aims to deliver a rich theorycrafting experience with the mechanics of a semi-idle game. Please provide any report, feedback, or request in the Discord linked in the options. Make sure to check out the TODO below!',
+    creditsTitle: 'Credits',
+    creditsAlpha: 'Thank you N4pkin for the motivation and alpha testing.',
+    creditsKenneyUi: 'UI panels and buttons: **Kenney RPG UI Pack Extension** (CC0).',
+    creditsKenneyDungeon: 'Map tiles and obstacles: **Kenney Tiny Dungeon** (CC0).',
+    creditsClaude: 'Vibe coded with **Claude** (Anthropic).',
+    releaseNotes: 'Release notes',
+    releaseNotesTitle: 'Release notes',
+    todo: 'TODO',
+    todoTitle: 'TODO',
   },
   character: {
     newTitle: 'New Character',
