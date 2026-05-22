@@ -460,3 +460,89 @@ Kiting moves the player away from the nearest enemy when that enemy is within ha
 The player never moves during the action animation phase (first one-third of the action cycle). During the waiting phase (remaining two-thirds), kiting takes priority over closing distance toward the next enemy whenever the kite condition is met.
 
 Allocating the Kite strong node grants a flat all-resistance bonus that applies while the kiting condition is active.
+
+---
+
+## Mana Shield
+
+A defensive mechanic from the **Mana mastery** that intercepts a portion of incoming damage and pays for it with mana instead of life.
+
+When a hit lands, the Mana Shield absorbs a percentage of the damage (the absorb fraction, raised by Mana Shield tree nodes). The absorbed portion is converted to a mana cost at **200%** — absorbing 100 damage costs 200 mana. If you have insufficient mana the shield absorbs as much as your mana allows and the rest hits life normally.
+
+**Mana Shield tree modifiers:**
+- Absorb nodes raise the absorbed fraction (base 0%; only active with at least one node)
+- Cost reduction nodes lower the 200% conversion rate
+- Node 5: shield intercepts all damage sources, not just direct hits
+- Node 11: your resistances apply to the mana cost (same reduction they provide to life damage)
+
+---
+
+## Mana Steal
+
+A resource-recovery mechanic mirroring **Life Steal**: a fraction of hit damage is recovered as mana rather than life.
+
+**Formula:**
+- Stolen = hit damage × steal% × (1 + increased stolen%)
+- Capped at: max mana × **1%** per instance (raised by the cap increase node)
+
+**Mana Steal tree (short, 6 nodes):**
+- Nodes 0 and 3 (small): +0.5% steal each
+- Nodes 1 and 4 (small): +5% increased mana stolen each
+- Node 2 (strong): +10% increased mana steal cap
+- Node 5 (major): 1% chance per steal instance to trigger **Feeding Frenzy**
+
+Mana steal is applied once per direct hit. Damage-over-time sources (burn ticks, immolation) do not trigger mana steal.
+
+---
+
+## Champion
+
+A variant enemy tier above **Elite**. Champions have **2.0–4.0× life**, **2.0–4.0× damage**, **+30% attack speed**, and **+20% move speed** compared to a normal enemy of the same level. They award **×5 action XP** on kill. Identified by a **gold diamond** above the health bar.
+
+Champions cannot spawn without Enemy mastery nodes that grant champion chance. Each Elite enemy has a separate roll to be upgraded to Champion based on this chance.
+
+---
+
+## Boss
+
+The rarest and strongest enemy tier, above **Champion**. Bosses have **4.0–8.0× life**, **4.0–8.0× damage**, **+40% attack speed**, and **+30% move speed** compared to a normal enemy of the same level. They award **×10 action XP** on kill. Identified by a **red diamond** above the health bar.
+
+Bosses cannot spawn without Enemy mastery nodes that grant boss chance. Each Champion enemy has a separate roll to be upgraded to Boss.
+
+---
+
+## Proliferate
+
+An Enemy mastery mechanic: each enemy kill rolls the Proliferate chance; on success, one additional enemy is added to the next wave's spawn count.
+
+Proliferate stacks — multiple kills in a single wave each get their own roll, so a good run can meaningfully grow the next wave. The extra enemies follow the same **Strong**, **Elite**, **Champion**, and **Boss** upgrade rolls as normal spawns.
+
+---
+
+## Critical Hit
+
+A per-action roll that multiplies hit damage. By default no action has base crit chance — the **Critical Hit mastery** is the sole source.
+
+**Damage formula:**
+- Crit multiplier = **2×** base (+100% bonus) plus all "increased critical hit damage" nodes (additive on the bonus portion)
+- "More critical hit damage" nodes multiply the bonus portion after increased
+
+**Example:** +20% increased crit damage → bonus = 100% × 1.20 = 120%, so crit deals ×2.20 total.
+
+**Crit chance:**
+- Each action has a base crit chance (0% by default, raised by base crit chance nodes)
+- "Increased crit chance" and "more crit chance" scale the chance multiplicatively after the base is set
+- Crits trigger on a per-action roll before the hit resolves; all per-hit mechanics (**Afflictions**, **Life Steal**, etc.) apply normally to a crit hit
+
+---
+
+## Ignore Mitigation
+
+A per-action roll that causes a hit to bypass all of the target's damage **Mitigation** (resistances and any other reduction). When the roll succeeds, the hit deals its full calculated damage regardless of the enemy's resistance values.
+
+Sources of ignore-mitigation chance:
+- Action mastery — Damage tree final major node: +20% chance on any action hit
+- **Critical Hit** mastery — Damage tree node 5: +20% chance on critical hits
+- **Critical Hit** mastery — Chance tree node 13: +10% chance for crits to ignore mitigation
+
+Chances from multiple sources are summed into a single roll per hit. An ignored-mitigation hit does not strip the enemy's resistance — it skips the reduction for that one hit only.

@@ -62,3 +62,53 @@ Each rune can only fill one slot at a time. After a Rebirth, runes auto-fill in 
 Masteries are long-term passive upgrades that persist across Rebirths. Each mastery has its own experience track that fills through related actions and activities.
 
 When a mastery levels up you earn a mastery point. Open a mastery's skill tree to spend points on permanent passive bonuses.
+
+## Mastery Points & Dump
+
+Each mastery earns points independently as you use related mechanics. Points persist across Rebirths and are never lost.
+
+Once a mastery's trees are fully purchased, excess points can be **dumped** for a permanent bonus (1% more per point for most masteries, 0.5% for some). Use the Dump button in the mastery tree panel; Ctrl+click (or Cmd+click) dumps all available points at once.
+
+## Increased vs More
+
+**Increased** bonuses are additive with each other. All "+X% increased" values in the same category are summed, then applied as one multiplier: `base × (1 + total / 100)`.
+
+**More** bonuses are each their own independent multiplier: `× (1 + X / 100)`. They stack on top of everything else.
+
+When you already have many Increased bonuses, each additional point of Increased is worth less. A More bonus is always a full multiplier and is therefore strictly stronger at the margin.
+
+## Action Tags
+
+Every action carries a **damage-type tag**: Area, Projectile, or Strike. Some also carry an **element tag**: Fire, Lightning, or Physical.
+
+The type tag controls which mastery bonuses apply and how the action behaves — area hits a radius, projectiles track a single target, strikes close to melee range. The element tag controls which afflictions the action can apply and which elemental mastery bonuses it benefits from.
+
+## Afflictions
+
+Afflictions are damage-over-time Effects applied to enemies by hits with a small base chance, modified by mastery nodes. Each affliction ticks independently and can stack multiple instances on the same enemy.
+
+Current afflictions: **Burn** (fire), **Bleed** (physical), **Electrocution** (lightning debuff). Affliction ticks are not hits — they do not trigger life steal, double damage, or status procs.
+
+## Multi-Action
+
+Multi-actions are follow-up casts triggered by a primary action or by another multi-action. Each fires at a fraction of the normal cycle delay and may carry a damage penalty.
+
+Every multi-action is a proper new cast: it can trigger afflictions, proc statuses, and roll for other multi-actions — but never re-trigger the same multi-action that produced it. A ×0.9 depth multiplier compounds with each generation.
+
+## Speed Stockpile
+
+**×2 speed** runs on a stockpile earned while you are away. For every 10 real seconds the game is not running (tab inactive, window closed, or paused), you earn 1 second of ×2 time, up to a maximum of 1 hour. Awards under 10 seconds are discarded.
+
+When you return, a notification shows what you earned. While running at ×2 the stockpile drains in real time; at zero the game returns to ×1 and ×2 is locked until more is earned.
+
+## DPS Meter
+
+The DPS meter (bottom panel) tracks your average damage output over the last 10 seconds. Each action is shown independently, sorted by the order actions first fired this run.
+
+The meter updates once per second and reflects actual damage dealt — including critical hits, affliction ticks, and multi-action hits.
+
+## Ascent
+
+Ascent is a one-time escalating challenge unlocked after several Rebirths. It presents a series of increasingly difficult enemy encounters. Completing an Ascent stage rewards a permanent bonus that persists through all future Rebirths — stronger than anything available through normal mastery progression.
+
+Ascent progress is separate from your run. You can attempt it at any time from the menu; failing an Ascent stage costs nothing.
