@@ -512,7 +512,7 @@ function mountMasteryTreeModal(
     dumpLabelEl.innerHTML = dumped > 0
       ? `Dump: <strong>${dumped}</strong> pt${dumped === 1 ? '' : 's'} → +${bonusStr}% more ${dumpInfo.label}`
       : `Dump points for +${fmtRate(dumpInfo.rate)}% more ${dumpInfo.label} per point`
-    dumpBtn.textContent = total > 0 ? `Dump 1 pt (${total} avail)` : 'Dump (no points)'
+    dumpBtn.textContent = 'Dump a point'
     dumpBtn.disabled = total <= 0
     resetBtn.disabled = freshP.level <= 1 && freeUsed === 0 && dumped === 0
   }

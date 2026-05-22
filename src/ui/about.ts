@@ -66,6 +66,8 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
         <ul>
           <li>${inline(t('about', 'creditsKenneyUi'))}</li>
           <li>${inline(t('about', 'creditsKenneyDungeon'))}</li>
+          <li>${inline(t('about', 'creditsLucide'))}</li>
+          <li>${inline(t('about', 'creditsFonts'))}</li>
           <li>${inline(t('about', 'creditsClaude'))}</li>
         </ul>
       </div>

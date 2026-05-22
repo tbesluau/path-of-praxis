@@ -121,18 +121,6 @@ export function createGameScene(
     JSON.stringify(char?.actionProgress ?? {}),
   ) as Record<string, ActionProgress>
 
-  function captureRunSnapshot() {
-    return {
-      actionMaxLevels: Object.fromEntries(
-        Object.entries(actionProgress).map(([id, p]) => [id, p.maxLevel]),
-      ) as Record<string, number>,
-      lifeLevel:     lifeProgress.level,
-      manaLevel:     manaProgress.level,
-      enemyMaxLevel: enemyProgress.maxLevel,
-    }
-  }
-  let runSnapshot = captureRunSnapshot()
-
   function getPlayerLevel(id: ActionId): number {
     return actionProgress[id]?.level ?? 1
   }
@@ -2479,7 +2467,6 @@ export function createGameScene(
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
 
-    runSnapshot = captureRunSnapshot()
     persistState()
     scheduleWave(balance.wave.spawnDelay)
   }
@@ -2537,45 +2524,6 @@ export function createGameScene(
   }
 
   function mountDeathModal(): () => void {
-    type SummaryRow = { label: string; fromLv: number; toLv: number; fromMult?: string; toMult?: string }
-    const rows: SummaryRow[] = []
-
-    const fmt = (n: number) => `${n.toFixed(1)}xp`
-
-    for (const a of allActions) {
-      const fromMax = runSnapshot.actionMaxLevels[a.id] ?? 1
-      const toMax   = actionProgress[a.id]?.maxLevel ?? 1
-      if (toMax > fromMax) {
-        rows.push({ label: a.label, fromLv: fromMax, toLv: toMax,
-          fromMult: fmt(Math.sqrt(fromMax)), toMult: fmt(Math.sqrt(toMax)) })
-      }
-    }
-    if (lifeProgress.level > runSnapshot.lifeLevel) {
-      const b = balance.stat.bonusPerLevel
-      rows.push({ label: 'Life', fromLv: runSnapshot.lifeLevel, toLv: lifeProgress.level,
-        fromMult: fmt(1 + (runSnapshot.lifeLevel - 1) * b),
-        toMult:   fmt(1 + (lifeProgress.level - 1) * b) })
-    }
-    if (manaProgress.level > runSnapshot.manaLevel) {
-      const b = balance.stat.bonusPerLevel
-      rows.push({ label: 'Mana', fromLv: runSnapshot.manaLevel, toLv: manaProgress.level,
-        fromMult: fmt(1 + (runSnapshot.manaLevel - 1) * b),
-        toMult:   fmt(1 + (manaProgress.level - 1) * b) })
-    }
-    if (enemyProgress.maxLevel > runSnapshot.enemyMaxLevel) {
-      rows.push({ label: 'Enemies', fromLv: runSnapshot.enemyMaxLevel, toLv: enemyProgress.maxLevel })
-    }
-
-    const summaryHtml = rows.length === 0 ? '' : `
-      <div class="death-summary">
-        ${rows.map(r => `
-          <div class="death-summary-row">
-            <span class="death-summary-label">${escapeHtml(r.label)}</span>
-            <span class="death-summary-levels">Lv.${r.fromLv}&thinsp;→&thinsp;Lv.${r.toLv}</span>
-            ${r.fromMult !== undefined ? `<span class="death-summary-mult">${r.fromMult}&thinsp;→&thinsp;${r.toMult}</span>` : ''}
-          </div>`).join('')}
-      </div>`
-
     // Compute mastery gains for this run (applied on rebirth)
     const pendingGains = computeMasteryGains()
     const gainById = new Map(pendingGains.map(g => [g.id, g.xpGain]))
@@ -2625,8 +2573,8 @@ export function createGameScene(
     backdrop.innerHTML = `
       <div class="modal-panel death-modal-panel" role="dialog" aria-modal="true" aria-labelledby="death-title">
         <h2 class="modal-title" id="death-title">${t('game', 'deathTitle')}</h2>
+        <p class="death-subtitle">${t('game', 'deathSubtitle')}</p>
         <div class="death-modal-scroll">
-          ${summaryHtml}
           ${masterySummaryHtml}
         </div>
         <div class="modal-actions">

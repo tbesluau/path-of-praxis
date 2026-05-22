@@ -1026,11 +1026,11 @@ const FIRE_EFFECTS: Partial<Record<number, TreeEffects>> = {
   },
   2: {  // Burning Ground (short tree — line nodes 0-5, key nodes 12-13)
     0: { fireBurnGroundChance: 5 },
-    1: { fireBurnGroundDamageIncrease: 15 },
-    2: { fireBurnGroundDamageIncrease: 30, fireBurnGroundDurationIncrease: 30 },
+    1: { fireBurnGroundDamageIncrease: 45 },
+    2: { fireBurnGroundDamageIncrease: 90, fireBurnGroundDurationIncrease: 30 },
     3: { fireBurnGroundChance: 5 },
-    4: { fireBurnGroundDamageIncrease: 15 },
-    5: { fireBurnGroundSlowAmount: 20, fireBurnGroundMoreDamage: 10 },
+    4: { fireBurnGroundDamageIncrease: 45 },
+    5: { fireBurnGroundSlowAmount: 20, fireBurnGroundMoreDamage: 30 },
     // 12-13: key nodes — not yet defined
   },
   3: {  // Immolation (short tree — line nodes 0-5, key nodes 12-13)
@@ -2027,11 +2027,11 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
   },
   2: {  // Burning Ground
     0: 'Fire actions have +5% chance to cause burning ground',
-    1: '+15% increased burning ground damage',
-    2: '+30% increased burning ground damage · +30% increased burning ground duration',
+    1: '+45% increased burning ground damage',
+    2: '+90% increased burning ground damage · +30% increased burning ground duration',
     3: 'Fire actions have +5% chance to cause burning ground',
-    4: '+15% increased burning ground damage',
-    5: 'Burning ground slows enemy movement and action speed by 20% · +10% more burning ground damage',
+    4: '+45% increased burning ground damage',
+    5: 'Burning ground slows enemy movement and action speed by 20% · +30% more burning ground damage',
   },
   3: {  // Immolation
     0: 'Fire actions have +2% chance to trigger immolation',
