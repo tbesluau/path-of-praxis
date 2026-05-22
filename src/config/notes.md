@@ -47,6 +47,7 @@ An **Affliction** (damage-over-time Effect) applied by fire-tagged actions to en
 - Base chance to apply per hit: **5%**
 - Fire mastery burn apply chance nodes add to this directly (additive)
 - While **Immolation** is active on the player, the apply chance gains an additional bonus from Immolation mastery nodes
+- When an enemy applies burn to you with a fire-tagged attack, both the apply chance and the resulting duration are halved (no enemy-side mastery bonuses)
 
 **Per stack:**
 - Burn DPS = hit damage × **20%** (modified by fire mastery burn increased and more multipliers; the triggering hit's damage is used)
@@ -95,6 +96,7 @@ An **Affliction** (damage-over-time Effect) applied by physical-tagged actions t
 **Application:**
 - Base chance to apply per hit: **5%**
 - Physical mastery bleed apply chance nodes add to this directly (additive)
+- When an enemy applies bleed to you with a physical-tagged attack, both the apply chance and the resulting duration are halved (no enemy-side mastery bonuses)
 
 **Per stack:**
 - Bleed DPS = hit damage × **20%** (the triggering hit's damage is used)
@@ -344,6 +346,8 @@ Action speed bonuses are additive within their category. The resulting multiplie
 ## Electrocution
 
 An **Affliction** applied by lightning-tagged hits. While active (base duration 3 s, refreshed on re-application), the target takes additional damage from **all sources** — this is an independent multiplier, separate from other damage-taken or damage-dealt modifiers.
+
+When an enemy electrocutes you with a lightning-tagged attack, the apply chance and duration are both halved, and only the base 10% damage-taken multiplier applies (no enemy-side mastery bonuses).
 
 **Damage taken formula:** base 10% + all "increased damage taken from electrocution" nodes (additive). Example: with +3 +5 +3 +8 +3 = +22%, total is 32%; all incoming damage to that enemy is ×1.32.
 

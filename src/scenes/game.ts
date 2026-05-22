@@ -497,12 +497,29 @@ export function createGameScene(
     // Damage pass — all stacks tick; highest-dps stack used for attribution & splash.
     for (const [entityId, stacks] of burnStacks) {
       const entity = entities.find(e => e.id === entityId)
-      if (!entity || entity.role !== 'enemy') continue
+      if (!entity) continue
       let maxStack = stacks[0]
       for (const s of stacks) if (s.dps > maxStack.dps) maxStack = s
       const totalDps = stacks.reduce((sum, s) => sum + s.dps, 0)
-      const tickDmg = totalDps * dts
+      let tickDmg = totalDps * dts
       if (tickDmg <= 0) continue
+
+      if (entity.role === 'player') {
+        // Player-targeted burn: apply elemental resistance, no XP, no DPS attribution.
+        const elemRes = Math.max(0, Math.min(100, getLifeBonuses().elementalResistance))
+        tickDmg *= 1 - elemRes / 100
+        if (tickDmg <= 0) continue
+        const prev = entity.currentLife
+        entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
+        const actual = prev - entity.currentLife
+        if (actual > 0) {
+          const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
+          acc.damage += actual
+          burnAccum.set(entityId, acc)
+          damagedIds.add(entityId)
+        }
+        continue
+      }
 
       const prev = entity.currentLife
       entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
@@ -616,13 +633,40 @@ export function createGameScene(
 
     for (const [entityId, stack] of bleedStacks) {
       const entity = entities.find(e => e.id === entityId)
-      if (!entity || entity.role !== 'enemy') continue
-      const effectiveDps = stack.baseDps
-        * (1 + stack.stackedIncrease / 100)
-        * (1 + pb.bleedDamageIncrease / 100)
-        * (1 + pb.bleedMoreDamage / 100)
-      const tickDmg = effectiveDps * dts
-      if (tickDmg <= 0) continue
+      if (!entity) continue
+      const isPlayerTarget = entity.role === 'player'
+      // Player-targeted bleed ignores player-side mastery bonuses (those buff outgoing bleed).
+      const effectiveDps = isPlayerTarget
+        ? stack.baseDps * (1 + stack.stackedIncrease / 100)
+        : stack.baseDps
+            * (1 + stack.stackedIncrease / 100)
+            * (1 + pb.bleedDamageIncrease / 100)
+            * (1 + pb.bleedMoreDamage / 100)
+      let tickDmg = effectiveDps * dts
+      if (tickDmg <= 0) {
+        stack.remainingMs -= deltaMs
+        if (stack.remainingMs <= 0) bleedStacks.delete(entityId)
+        continue
+      }
+
+      if (isPlayerTarget) {
+        const physRes = Math.max(0, Math.min(100, getLifeBonuses().physRotResistance))
+        tickDmg *= 1 - physRes / 100
+        if (tickDmg > 0) {
+          const prev = entity.currentLife
+          entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
+          const actual = prev - entity.currentLife
+          if (actual > 0) {
+            const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
+            acc.damage += actual
+            bleedAccum.set(entityId, acc)
+            damagedIds.add(entityId)
+          }
+        }
+        stack.remainingMs -= deltaMs
+        if (stack.remainingMs <= 0) bleedStacks.delete(entityId)
+        continue
+      }
 
       const prev = entity.currentLife
       entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
@@ -4001,10 +4045,15 @@ export function createGameScene(
             }
           }
           // Electrocution: additional damage taken — own multiplier, applies from all sources
-          if (target.role === 'enemy' && isElectrocuted(target)) {
-            const lbElec = getLightningBonuses()
-            const totalDmgTaken = balance.effects.electrocutionBaseDamageTakenPct + lbElec.electrocuteDamageTakenIncrease
-            finalDamage *= 1 + totalDmgTaken / 100
+          if (isElectrocuted(target)) {
+            if (target.role === 'enemy') {
+              const lbElec = getLightningBonuses()
+              const totalDmgTaken = balance.effects.electrocutionBaseDamageTakenPct + lbElec.electrocuteDamageTakenIncrease
+              finalDamage *= 1 + totalDmgTaken / 100
+            } else {
+              // Player target: no player-side mastery bonuses (those buff outgoing electrocution).
+              finalDamage *= 1 + balance.effects.electrocutionBaseDamageTakenPct / 100
+            }
           }
           // Critical hit + ignore-mitigation rolls (player vs enemy only).
           // Rolled BEFORE the resistance multiplier so we can skip it on ignore.
@@ -4248,6 +4297,38 @@ export function createGameScene(
           // Frenzy: roll on strike-tagged player hits to enemy targets
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('strike') && actualDamage > 0) {
             if (sbHit && sbHit.frenzyChance > 0 && Math.random() * 100 < sbHit.frenzyChance) applyFrenzy()
+          }
+
+          // Enemy → player affliction rolls: baseline 5% chance × 0.5, duration × 0.5.
+          // No mastery bonuses on the enemy side (those are player-attacker buffs).
+          if (attacker.role === 'enemy' && target.role === 'player' && actualDamage > 0) {
+            const enemyChance = balance.effects.baseApplyChance * balance.effects.enemyAfflictionChanceMult
+            const durMult = balance.effects.enemyAfflictionDurationMult
+            if (action.tags.includes('fire') && Math.random() * 100 < enemyChance) {
+              const dps = damage * balance.effects.burnDpsFraction
+              const duration = balance.effects.burnBaseDurationMs * durMult
+              const list = burnStacks.get(target.id) ?? []
+              list.push({ dps, remainingMs: duration, sourceActionId: actionId })
+              burnStacks.set(target.id, list)
+            }
+            if (action.tags.includes('lightning') && Math.random() * 100 < enemyChance) {
+              const duration = balance.effects.electrocutionBaseDurationMs * durMult
+              electrocuteStacks.set(target.id, duration)
+            }
+            if (action.tags.includes('physical') && Math.random() * 100 < enemyChance) {
+              const newBaseDps = damage * balance.effects.bleedDpsFraction
+              const duration   = balance.effects.bleedBaseDurationMs * durMult
+              const existing   = bleedStacks.get(target.id)
+              if (!existing) {
+                bleedStacks.set(target.id, { baseDps: newBaseDps, stackedIncrease: 0, remainingMs: duration, sourceActionId: actionId })
+              } else {
+                const currentEffective = existing.baseDps * (1 + existing.stackedIncrease / 100)
+                if (newBaseDps > currentEffective) existing.baseDps = newBaseDps
+                else existing.stackedIncrease += balance.effects.bleedStackIncreasePerProc
+                existing.remainingMs    = duration
+                existing.sourceActionId = actionId
+              }
+            }
           }
           return isCrit
         }
