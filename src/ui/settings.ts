@@ -154,6 +154,11 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span class="settings-toggle-track" aria-hidden="true"></span>
           </label>
         </div>
+        <div class="modal-field">
+          <button class="settings-section-btn" data-action="reset-tutorials">
+            <span>${t('settings', 'resetTutorials')}</span>
+          </button>
+        </div>
         ${isCheatMode() ? `
         <div class="modal-field">
           <label class="settings-toggle-row">
@@ -247,6 +252,21 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLButtonElement>('[data-action="spawn-boss"]')
       ?.addEventListener('click', () => {
         opts.onSpawnBoss!()
+      })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="reset-tutorials"]')
+      ?.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLButtonElement
+        const label = btn.querySelector('span')!
+        const original = label.textContent
+        setPref('seenTutorials', [])
+        setPref('tutorialDisabled', false)
+        label.textContent = '✓'
+        btn.disabled = true
+        setTimeout(() => {
+          label.textContent = original
+          btn.disabled = false
+        }, 1200)
       })
 
     const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')
