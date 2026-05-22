@@ -42,6 +42,8 @@ export interface SettingsButtonOptions {
   onForceAscend?: () => void
   /** Cheat mode only: adds 60 seconds of ×2 speed stockpile for easy testing. */
   onAddFastForwardTime?: () => void
+  /** Cheat mode only: despawns the current wave and forces a boss wave. */
+  onSpawnBoss?: () => void
 }
 
 export function mountSettingsButton(
@@ -171,6 +173,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           <button class="settings-section-btn settings-section-btn--cheat" data-action="add-ff-time">
             <span>+1 min ×2 speed</span>
           </button>
+        </div>` : ''}
+        ${opts.onSpawnBoss ? `
+        <div class="modal-field">
+          <button class="settings-section-btn settings-section-btn--cheat" data-action="spawn-boss">
+            <span>Spawn boss wave</span>
+          </button>
         </div>` : ''}` : ''}
       </div>
     `
@@ -234,6 +242,11 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLButtonElement>('[data-action="add-ff-time"]')
       ?.addEventListener('click', () => {
         opts.onAddFastForwardTime!()
+      })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="spawn-boss"]')
+      ?.addEventListener('click', () => {
+        opts.onSpawnBoss!()
       })
 
     const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')
