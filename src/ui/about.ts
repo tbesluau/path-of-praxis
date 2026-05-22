@@ -53,7 +53,8 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
   let subCleanup: (() => void) | null = null
   const closeSub = (): void => { if (subCleanup) { subCleanup(); subCleanup = null } }
 
-  const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
+  const teardown = (): void => { closeSub(); backdrop.remove() }
+  const dismiss = (): void => { teardown(); onClose() }
 
   backdrop.innerHTML = `
     <div class="modal-panel about-panel" role="dialog" aria-modal="true" aria-labelledby="about-title">
@@ -99,7 +100,7 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
     if (e.target === backdrop) dismiss()
   })
 
-  return dismiss
+  return teardown
 }
 
 function mountAboutSubModal(
@@ -123,7 +124,8 @@ function mountAboutSubModal(
 
   parent.appendChild(backdrop)
 
-  const dismiss = (): void => { backdrop.remove(); onClose() }
+  const teardown = (): void => { backdrop.remove() }
+  const dismiss = (): void => { teardown(); onClose() }
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
@@ -132,5 +134,5 @@ function mountAboutSubModal(
     if (e.target === backdrop) dismiss()
   })
 
-  return dismiss
+  return teardown
 }
