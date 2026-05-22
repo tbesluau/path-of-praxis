@@ -255,6 +255,39 @@ body::after {
   height: 28px;
 }
 
+/* ── Top bar: wrap center group below on narrow screens ── */
+@media (max-width: 620px) {
+  .game-top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    height: auto;
+    padding: 6px var(--space-sm);
+    gap: 6px;
+  }
+
+  .game-top-left {
+    flex: 0 0 auto;
+    grid-column: unset;
+    justify-self: unset;
+  }
+
+  .game-top-right {
+    flex: 0 0 auto;
+    margin-left: auto;
+    grid-column: unset;
+    justify-self: unset;
+  }
+
+  .game-top-center {
+    flex: 0 0 100%;
+    grid-column: unset;
+    justify-self: unset;
+    justify-content: center;
+    padding-bottom: 2px;
+  }
+}
+
 /* Map viewport occupies all remaining vertical space between chrome bars. */
 .game-viewport {
   flex: 1;
@@ -2549,6 +2582,13 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   max-height: 85dvh;
 }
 
+.death-subtitle {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #5a3010;
+  margin: 0;
+}
+
 .death-modal-scroll {
   flex: 1;
   min-height: 0;
@@ -2708,7 +2748,7 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 
 .mastery-dump-label {
   font-size: 0.85rem;
-  color: #cbd5e1;
+  color: #1a0a02;
   text-align: center;
 }
 

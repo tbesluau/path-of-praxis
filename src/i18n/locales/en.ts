@@ -3,6 +3,7 @@ export interface TranslationSchema {
     title: string
     subtitle: string
     deathTitle: string
+    deathSubtitle: string
     deathRebirth: string
     actionSelectTitle: string
     triggersTitle: string
@@ -28,6 +29,8 @@ export interface TranslationSchema {
     creditsAlpha: string
     creditsKenneyUi: string
     creditsKenneyDungeon: string
+    creditsLucide: string
+    creditsFonts: string
     creditsClaude: string
     releaseNotes: string
     releaseNotesTitle: string
@@ -81,6 +84,7 @@ export const en: TranslationSchema = {
     title: 'Path of Praxis',
     subtitle: 'Theorycraft your Incremental auto-battler',
     deathTitle: 'You have died',
+    deathSubtitle: 'You earned the following experience and mastery to make your next rebirth stronger:',
     deathRebirth: 'Rebirth',
     actionSelectTitle: 'Actions',
     triggersTitle: 'Action Triggers',
@@ -91,7 +95,7 @@ export const en: TranslationSchema = {
     legendRange: 'Range',
     legendArea: 'Area',
     legendMana: 'Mana',
-    targetingTitle: 'Targeting',
+    targetingTitle: 'Targeting priority',
   },
   menu: {
     continue: 'Continue',
@@ -106,6 +110,8 @@ export const en: TranslationSchema = {
     creditsAlpha: 'Thank you N4pkin for the motivation and alpha testing.',
     creditsKenneyUi: 'UI panels and buttons: **Kenney RPG UI Pack Extension** (CC0).',
     creditsKenneyDungeon: 'Map tiles and obstacles: **Kenney Tiny Dungeon** (CC0).',
+    creditsLucide: 'Icons: **Lucide** (ISC license).',
+    creditsFonts: 'Typefaces: **Cinzel** and **Crimson Pro** via Google Fonts (SIL OFL).',
     creditsClaude: 'Vibe coded with **Claude** (Anthropic).',
     releaseNotes: 'Release notes',
     releaseNotesTitle: 'Release notes',
