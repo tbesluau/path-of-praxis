@@ -4248,7 +4248,9 @@ export function createGameScene(
             const lbElec = getLightningBonuses()
             const chance = balance.effects.baseApplyChance + lbElec.electrocuteApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
-              const duration = balance.effects.electrocutionBaseDurationMs * (1 + lbElec.electrocuteDurationIncrease / 100)
+              const duration = balance.effects.electrocutionBaseDurationMs
+                * (1 + lbElec.electrocuteDurationIncrease / 100)
+                * lbElec.electrocuteDurationMult
               electrocuteStacks.set(target.id, duration)
               afflictionAppliedThisTick++
               afflictionLastTarget = target
@@ -4746,7 +4748,9 @@ export function createGameScene(
           // jump: on any lightning-tagged player primary hit
           if (!pending && entity.role === 'player' && action.tags.includes('lightning')) {
             const lbJump = getLightningBonuses()
-            if (lbJump.jumpChance > 0 && Math.random() * 100 < lbJump.jumpChance) {
+            const jumpChance = lbJump.jumpChance
+              + (isElectrocuted(target as Entity) ? lbJump.jumpFromElectrocutedChance : 0)
+            if (jumpChance > 0 && Math.random() * 100 < jumpChance) {
               const jumpedSoFar = new Set<string>()
               jumpedSoFar.add((target as Entity).id)
               const jumpRange = entity.actionRange * (1 + lbJump.jumpRangeIncrease / 100)
@@ -4934,7 +4938,9 @@ export function createGameScene(
               // jump (lightning)
               if (slotDef.tags.includes('lightning')) {
                 const lb = getLightningBonuses()
-                if (lb.jumpChance > 0 && Math.random() * 100 < lb.jumpChance) {
+                const jumpChance = lb.jumpChance
+                  + (isElectrocuted(slotTarget) ? lb.jumpFromElectrocutedChance : 0)
+                if (jumpChance > 0 && Math.random() * 100 < jumpChance) {
                   const jumped = new Set<string>([slotTarget.id])
                   const jumpRange = (slotDef.range * balance.player.radius + slotTarget.radius) * (1 + lb.jumpRangeIncrease / 100)
                   const jumpTarget = selectJumpTarget(slotTarget, jumped, jumpRange)

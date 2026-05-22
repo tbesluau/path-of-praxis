@@ -137,11 +137,13 @@ export interface NodeEffect {
   lightningElectrocuteDamageTakenIncrease?: number  // additive %; increases damage taken by electrocuted enemies
   lightningElectrocuteDurationIncrease?: number     // additive %; extends electrocution duration
   lightningElectrocuteSlowOnDamageTaken?: boolean   // when true, speed reduced by damageTaken value
+  lightningElectrocuteDurationMult?: number         // multiplicative; product of all such mult fields (e.g. 0.9 for "10% less duration")
 
   // Lightning mastery effects (Jump tree)
   lightningJumpChance?: number              // additive %; chance to jump to another enemy
   lightningJumpDamagePenaltyReduce?: number // additive %; reduces jump damage penalty
   lightningJumpRangeIncrease?: number       // additive %; increases jump range (from hit target)
+  lightningJumpFromElectrocutedChance?: number // additive %; bonus jump chance when the hit target is electrocuted
   lightningJumpReroll?: boolean             // when true, successful jumps re-roll for another jump
 
   // Projectile mastery effects
@@ -393,10 +395,12 @@ export interface LightningBonuses {
   electrocuteDamageTakenIncrease: number  // total additive %
   electrocuteDurationIncrease: number     // total additive %
   electrocuteSlowOnDamageTaken: boolean
+  electrocuteDurationMult: number          // total multiplicative duration factor (1.0 = no change)
   jumpChance: number              // total additive %
   jumpDamagePenaltyReduce: number // total additive %
   jumpRangeIncrease: number       // total additive %
   jumpReroll: boolean
+  jumpFromElectrocutedChance: number // total additive %; added to jump chance when source target is electrocuted
   damageIncrease: number          // total additive %; lightning-tagged actions
   moreDamage: number              // total 'more' %; lightning-tagged actions
   actionSpeedIncrease: number     // total additive %; lightning-tagged actions
@@ -1288,6 +1292,10 @@ const LIGHTNING_EFFECTS: Partial<Record<number, TreeEffects>> = {
     9:  { lightningElectrocuteApplyChance: 5 },
     10: { lightningElectrocuteDamageTakenIncrease: 3 },
     11: { lightningElectrocuteSlowOnDamageTaken: true },
+    12: { lightningElectrocuteDamageTakenIncrease: 5, lightningElectrocuteDurationMult: 0.9 },
+    13: { lightningElectrocuteDurationMult: 1.2 },
+    14: { lightningJumpFromElectrocutedChance: 5 },
+    15: { lightningElectrocuteDamageTakenIncrease: 5 },
   },
   2: {  // Jump (short tree — line nodes 0-5, key nodes 12-13)
     0: { lightningJumpChance: 20 },
@@ -1319,10 +1327,12 @@ export function computeLightningBonuses(nodes: number[][], dumpedPoints = 0): Li
     electrocuteDamageTakenIncrease: 0,
     electrocuteDurationIncrease: 0,
     electrocuteSlowOnDamageTaken: false,
+    electrocuteDurationMult: 1,
     jumpChance: 0,
     jumpDamagePenaltyReduce: 0,
     jumpRangeIncrease: 0,
     jumpReroll: false,
+    jumpFromElectrocutedChance: 0,
     damageIncrease: 0,
     moreDamage: dumpedPoints * MASTERY_DUMP.lightning.rate,
     actionSpeedIncrease: 0,
@@ -1339,10 +1349,12 @@ export function computeLightningBonuses(nodes: number[][], dumpedPoints = 0): Li
       b.electrocuteDamageTakenIncrease += eff.lightningElectrocuteDamageTakenIncrease ?? 0
       b.electrocuteDurationIncrease += eff.lightningElectrocuteDurationIncrease ?? 0
       if (eff.lightningElectrocuteSlowOnDamageTaken) b.electrocuteSlowOnDamageTaken = true
+      if (eff.lightningElectrocuteDurationMult !== undefined) b.electrocuteDurationMult *= eff.lightningElectrocuteDurationMult
       b.jumpChance += eff.lightningJumpChance ?? 0
       b.jumpDamagePenaltyReduce += eff.lightningJumpDamagePenaltyReduce ?? 0
       b.jumpRangeIncrease += eff.lightningJumpRangeIncrease ?? 0
       if (eff.lightningJumpReroll) b.jumpReroll = true
+      b.jumpFromElectrocutedChance += eff.lightningJumpFromElectrocutedChance ?? 0
       b.damageIncrease   += eff.lightningDamageIncrease ?? 0
       b.moreDamage       += eff.lightningMoreDamage ?? 0
       b.moreActionSpeed  += eff.lightningMoreActionSpeed ?? 0
@@ -2256,6 +2268,10 @@ const LIGHTNING_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, stri
     9:  'Lightning actions have +5% chance to electrocute',
     10: '+3% increased damage taken from electrocution',
     11: 'Electrocuted enemies have their movement and action speed reduced by the electrocution damage taken value',
+    12: '+5% increased damage taken from electrocution · 10% less electrocution duration',
+    13: '20% more electrocution duration',
+    14: 'Lightning actions have +5% increased chance to jump from an electrocuted enemy',
+    15: '+5% increased damage taken from electrocution',
   },
   2: {  // Jump
     0: 'Lightning actions have +20% increased chance to jump to an additional enemy',
