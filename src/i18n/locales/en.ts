@@ -67,6 +67,7 @@ export interface TranslationSchema {
     fullMastery: string
     zoomLabel: string
     fullscreen: string
+    resetTutorials: string
   }
   guide: {
     title: string
@@ -148,6 +149,7 @@ export const en: TranslationSchema = {
     fullMastery: 'Full mastery',
     zoomLabel: 'Zoom',
     fullscreen: 'Fullscreen',
+    resetTutorials: 'Reset tutorials',
   },
   guide: {
     title: 'Guide',

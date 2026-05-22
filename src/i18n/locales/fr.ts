@@ -69,6 +69,7 @@ export const fr: TranslationSchema = {
     fullMastery: 'Maîtrise complète',
     zoomLabel: 'Zoom',
     fullscreen: 'Plein écran',
+    resetTutorials: 'Réinitialiser les tutoriels',
   },
   guide: {
     title: 'Guide',
