@@ -278,41 +278,50 @@ function buildTreeNodes(
       const keyAAssigned = isNodeAssigned(p, treeIdx, keyAIdx)
       const keyBAssigned = isNodeAssigned(p, treeIdx, keyBIdx)
 
+      // Skip rendering a key (and its connecting bar) when it has no effect defined.
+      // Falls back gracefully if a key was somehow assigned despite having no effect.
+      const showKeyA = nodeHasAnyEffect(def.id, treeIdx, keyAIdx) || keyAAssigned
+      const showKeyB = nodeHasAnyEffect(def.id, treeIdx, keyBIdx) || keyBAssigned
+
       const infoA = computeAssignInfo(p, treeDef, treeIdx, keyAIdx, totalAvailable)
       const infoB = computeAssignInfo(p, treeDef, treeIdx, keyBIdx, totalAvailable)
-      const keyAUnavailable = !keyAAssigned && (infoA.kind === 'unavailable' || !nodeHasAnyEffect(def.id, treeIdx, keyAIdx))
-      const keyBUnavailable = !keyBAssigned && (infoB.kind === 'unavailable' || !nodeHasAnyEffect(def.id, treeIdx, keyBIdx))
+      const keyAUnavailable = !keyAAssigned && infoA.kind === 'unavailable'
+      const keyBUnavailable = !keyBAssigned && infoB.kind === 'unavailable'
 
       const cluster = document.createElement('div')
       cluster.className = 'tree-major-cluster'
 
-      const keyA = mkNode(treeIdx, keyAIdx, 'key', keyAAssigned, keyAUnavailable)
       const keyHalf = nodeHalfSize(keyAIdx)
       const majorHalf = nodeHalfSize(lineIdx)
 
-      const vBarA = document.createElement('div')
-      const vBarAFilled = majorAssigned && keyAAssigned
-      vBarA.className = `tree-bar--v${vBarAFilled ? ' tree-bar--filled' : ''}`
-      vBarA.dataset['barFrom'] = String(keyAIdx)
-      vBarA.dataset['barTo'] = String(lineIdx)
-      vBarA.style.height = `${keyHalf + V_BAR_GAP + majorHalf}px`
-      vBarA.style.marginTop = `-${keyHalf}px`
-      vBarA.style.marginBottom = `-${majorHalf}px`
+      if (showKeyA) {
+        const keyA = mkNode(treeIdx, keyAIdx, 'key', keyAAssigned, keyAUnavailable)
+        const vBarA = document.createElement('div')
+        const vBarAFilled = majorAssigned && keyAAssigned
+        vBarA.className = `tree-bar--v${vBarAFilled ? ' tree-bar--filled' : ''}`
+        vBarA.dataset['barFrom'] = String(keyAIdx)
+        vBarA.dataset['barTo'] = String(lineIdx)
+        vBarA.style.height = `${keyHalf + V_BAR_GAP + majorHalf}px`
+        vBarA.style.marginTop = `-${keyHalf}px`
+        vBarA.style.marginBottom = `-${majorHalf}px`
+        cluster.append(keyA, vBarA)
+      }
 
-      const majorNode = mkNode(treeIdx, lineIdx, 'major', majorAssigned)
+      cluster.append(mkNode(treeIdx, lineIdx, 'major', majorAssigned))
 
-      const vBarB = document.createElement('div')
-      const vBarBFilled = majorAssigned && keyBAssigned
-      vBarB.className = `tree-bar--v${vBarBFilled ? ' tree-bar--filled' : ''}`
-      vBarB.dataset['barFrom'] = String(lineIdx)
-      vBarB.dataset['barTo'] = String(keyBIdx)
-      vBarB.style.height = `${majorHalf + V_BAR_GAP + keyHalf}px`
-      vBarB.style.marginTop = `-${majorHalf}px`
-      vBarB.style.marginBottom = `-${keyHalf}px`
+      if (showKeyB) {
+        const vBarB = document.createElement('div')
+        const vBarBFilled = majorAssigned && keyBAssigned
+        vBarB.className = `tree-bar--v${vBarBFilled ? ' tree-bar--filled' : ''}`
+        vBarB.dataset['barFrom'] = String(lineIdx)
+        vBarB.dataset['barTo'] = String(keyBIdx)
+        vBarB.style.height = `${majorHalf + V_BAR_GAP + keyHalf}px`
+        vBarB.style.marginTop = `-${majorHalf}px`
+        vBarB.style.marginBottom = `-${keyHalf}px`
+        const keyB = mkNode(treeIdx, keyBIdx, 'key', keyBAssigned, keyBUnavailable)
+        cluster.append(vBarB, keyB)
+      }
 
-      const keyB = mkNode(treeIdx, keyBIdx, 'key', keyBAssigned, keyBUnavailable)
-
-      cluster.append(keyA, vBarA, majorNode, vBarB, keyB)
       container.appendChild(cluster)
     } else {
       container.appendChild(mkNode(treeIdx, lineIdx, type, isNodeAssigned(p, treeIdx, lineIdx)))
