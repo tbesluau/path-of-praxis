@@ -1161,6 +1161,7 @@ export function createGameScene(
   let lastWaveAngle: number | null = null
   let enemyIdCounter = 0
   let enemySpawnTimeout: ReturnType<typeof setTimeout> | null = null
+  let cheatForceBoss = false
   let playerRandomTargetId: string | null = null
   let playerStrongestTargetId: string | null = null
   let playerWeakestTargetId: string | null = null
@@ -1441,6 +1442,7 @@ export function createGameScene(
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + 60_000)
       updateSpeedUI()
     } : undefined,
+    onSpawnBoss: isCheatMode() ? () => spawnBossWave() : undefined,
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
@@ -2980,7 +2982,9 @@ export function createGameScene(
     type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss'
     const ev = balance.enemyVariance
     // Champions and bosses are gated until the second ascension is reached.
-    const championBossAllowed = ascentCount >= 2 || getPrefs().fullMastery
+    const forceBoss = cheatForceBoss
+    cheatForceBoss = false
+    const championBossAllowed = ascentCount >= 2 || getPrefs().fullMastery || forceBoss
     const strongRoll = Math.min(1, ev.strongChance + eb.strongChance / 100)
     const eliteRoll = Math.min(1, ev.eliteChance + eb.eliteChance / 100)
     const championRoll = championBossAllowed ? Math.min(1, ev.championChance + eb.championChance / 100) : 0
@@ -3017,6 +3021,17 @@ export function createGameScene(
       if (idx < 0) break
       tiers[idx] = 'strong'
       curStrongs++
+    }
+
+    if (forceBoss && !tiers.includes('boss')) {
+      // Upgrade the highest existing tier to boss (champion → elite → strong → normal)
+      const upgrade: Tier[] = ['champion', 'elite', 'strong', 'normal']
+      const idx = upgrade.reduce((best, t) => {
+        const i = tiers.indexOf(t)
+        return i >= 0 && best < 0 ? i : best
+      }, -1)
+      if (idx >= 0) tiers[idx] = 'boss'
+      else tiers.push('boss')
     }
 
     const halfW = app.screen.width / 2
@@ -3132,6 +3147,20 @@ export function createGameScene(
       createEntityBody(enemy)
       initEntityDisplay(enemy)
     }
+  }
+
+  function spawnBossWave(): void {
+    // Despawn the current wave immediately (no XP, no death animation)
+    for (const entity of [...entities]) {
+      if (entity.role !== 'player') removeEntity(entity)
+    }
+    if (enemySpawnTimeout !== null) {
+      clearTimeout(enemySpawnTimeout)
+      enemySpawnTimeout = null
+    }
+    waveScheduled = false
+    cheatForceBoss = true
+    spawnEnemies()
   }
 
   // ── VFX ──────────────────────────────────────────────────────────────────
