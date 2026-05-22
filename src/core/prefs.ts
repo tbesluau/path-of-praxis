@@ -1,10 +1,12 @@
 const STORAGE_KEY = 'pop:prefs'
 
 export interface Prefs {
-  showDamageNumbers: boolean
-  showDpsMeter:      boolean
-  fullMastery:       boolean
-  zoomLevel:         number
+  showDamageNumbers:  boolean
+  showDpsMeter:       boolean
+  fullMastery:        boolean
+  zoomLevel:          number
+  tutorialDisabled?:  boolean
+  seenTutorials?:     string[]
 }
 
 const defaults: Prefs = {

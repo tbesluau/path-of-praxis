@@ -8,6 +8,17 @@ Every character performs actions during battle — either weapon attacks or spel
 
 Higher action levels increase the effectiveness of that action and unlock runes that you can select to improve the action's efficiency or customize its behavior.
 
+## Action Triggers
+
+Action triggers fire an action automatically when a condition is met. The first slot is always the **Auto attack** — it fires on a continuous timer. Additional trigger slots unlock by Ascending.
+
+- **Slot 2** unlocks on Ascent 3. Trigger types: **Time** (periodic timer), **Critical hit** (fires after landing a crit — unlock: kill a boss with a crit), **Affliction** (fires after accumulating affliction stacks — unlock: kill a boss with an affliction hit).
+- **Slot 3** unlocks on Ascent 5 with the same trigger options.
+
+Each extra slot applies a global damage penalty: ×0.75 for slot 2, ×0.50 for slot 3. Despite this, a well-matched second action can significantly increase total damage output.
+
+Open the battle configuration panel (⚙ in the top bar) to change your action or configure trigger slots.
+
 ## Life & Mana
 
 **Life** is your health. Reaching zero ends the run. Life recovers between battles.

@@ -410,7 +410,7 @@ function inline(text: string): string {
 
 // ── Guide modal ────────────────────────────────────────────────────────────
 
-function mountGuideModal(parent: HTMLElement, onClose: () => void): () => void {
+export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSection?: string): () => void {
   const baseUrl = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL
   const arrowSrc = `${baseUrl}ui/kenney_ui-pack-rpg-expansion/PNG/arrowBlue_right.png`
   const sections = parseGuideSections(guideContent)
@@ -456,6 +456,17 @@ function mountGuideModal(parent: HTMLElement, onClose: () => void): () => void {
     section.append(btn, bodyEl)
     sectionsEl.appendChild(section)
   })
+
+  if (openSection) {
+    const match = [...sectionsEl.querySelectorAll<HTMLElement>('.guide-section-btn')]
+      .find(b => b.querySelector('.guide-section-title')?.textContent === openSection)
+    if (match) {
+      match.setAttribute('aria-expanded', 'true')
+      const body = match.nextElementSibling as HTMLElement | null
+      if (body) body.hidden = false
+      match.scrollIntoView({ block: 'nearest' })
+    }
+  }
 
   backdrop.appendChild(panel)
   parent.appendChild(backdrop)

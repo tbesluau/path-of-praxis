@@ -15,7 +15,8 @@ import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
-import { mountSettingsButton } from '../ui/settings'
+import { mountSettingsButton, mountGuideModal } from '../ui/settings'
+import { showTutorial, isTutorialSeen } from '../ui/tutorial'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
 import { getPrefs, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
@@ -1326,6 +1327,10 @@ export function createGameScene(
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
   createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull, ArrowUp, Star } })
 
+  function openGuide(section: string): void {
+    mountGuideModal(el, () => {}, section)
+  }
+
   const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
     doubleAction: 'Double action', additionalTarget: 'Bonus target', additionalProjectile: 'Extra projectile',
     splitAction: 'Split cast', jump: 'Chain jump', tremor: 'Tremor',
@@ -2521,9 +2526,52 @@ export function createGameScene(
     // After the reset, surface the ascent modal so players can immediately
     // see/redistribute their newly-earned universe point.
     openAscentModal()
+
+    if (!isTutorialSeen('first-ascent') && !getPrefs().tutorialDisabled) {
+      showTutorial({
+        id: 'first-ascent',
+        steps: [{ message: 'You completed your first Ascent! Each ascent permanently strengthens all future runs — stronger than any mastery bonus.' }],
+        guideSection: 'Ascent',
+        parent: el, openGuide,
+        onDone: () => {},
+      })
+    }
+
+    if (ascentCount === balance.ascent.slot2UnlockAscent
+        && !isTutorialSeen('second-trigger') && !getPrefs().tutorialDisabled) {
+      showTutorial({
+        id: 'second-trigger',
+        steps: [{ message: 'You\'ve unlocked a second action trigger slot! Open the battle configuration to set it up.', targetSelector: '[data-action="open-config"]', requiresInteraction: true }],
+        guideSection: 'Action Triggers',
+        parent: el, openGuide,
+        onDone: () => {},
+      })
+    }
+
+    if (ascentCount === 5 && !isTutorialSeen('ascent-5') && !getPrefs().tutorialDisabled) {
+      showTutorial({
+        id: 'ascent-5',
+        steps: [{ message: 'You\'ve reached the current endgame. Feel free to keep enjoying this character or experiment with different builds — thank you for playing!' }],
+        parent: el, openGuide,
+        onDone: () => {},
+      })
+    }
   }
 
   function mountDeathModal(): () => void {
+    if (!isTutorialSeen('first-death') && !getPrefs().tutorialDisabled) {
+      showTutorial({
+        id: 'first-death',
+        steps: [
+          { message: 'You died. This summary shows the mastery experience you earned this run — it carries over permanently.' },
+          { message: 'After rebirth, open the Masteries panel to spend your mastery points and permanently power up your next run.' },
+        ],
+        guideSection: 'Death & Rebirth',
+        parent: el, openGuide,
+        onDone: () => {},
+      })
+    }
+
     // Compute mastery gains for this run (applied on rebirth)
     const pendingGains = computeMasteryGains()
     const gainById = new Map(pendingGains.map(g => [g.id, g.xpGain]))
@@ -2992,6 +3040,16 @@ export function createGameScene(
         championEntities.add(enemy.id)
         eliteEntities.add(enemy.id)
         strongEntities.add(enemy.id)
+        if (!isTutorialSeen('first-boss') && !getPrefs().tutorialDisabled) {
+          const wasPaused = paused
+          if (!wasPaused) togglePause()
+          showTutorial({
+            id: 'first-boss',
+            steps: [{ message: 'You spawned your first boss… good luck!' }],
+            parent: el, openGuide,
+            onDone: () => { if (!wasPaused && paused) togglePause() },
+          })
+        }
       } else if (tier === 'champion') {
         enemy.actionSpeed *= ev.championActionSpeedMult
         championEntities.add(enemy.id)
@@ -3552,6 +3610,20 @@ export function createGameScene(
   // Start immediately — paused=false so regen and wave timer kick off now
   startRegen()
   scheduleWave(balance.wave.spawnDelay)
+
+  setTimeout(() => {
+    if (!isTutorialSeen('first-game') && !getPrefs().tutorialDisabled) {
+      const wasPaused = paused
+      if (!wasPaused) togglePause()
+      showTutorial({
+        id: 'first-game',
+        steps: [{ message: 'This is your battle configuration button. Click it to select your action and configure action triggers.', targetSelector: '[data-action="open-config"]', requiresInteraction: true }],
+        guideSection: 'Actions & Action Levels',
+        parent: el, openGuide,
+        onDone: () => { if (!wasPaused && paused) togglePause() },
+      })
+    }
+  }, 0)
 
   ;(async () => {
     try {
