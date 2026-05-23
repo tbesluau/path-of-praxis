@@ -33,6 +33,19 @@ export function showTutorial(opts: TutorialOptions): void {
   const overlay = document.createElement('div')
   overlay.className = 'tutorial-overlay'
 
+  // Four backdrop strips form a "frame" around the highlighted target so the
+  // target itself stays uncovered, fully visible, and clickable. When there is
+  // no target, the top strip stretches to full-screen and the other three are
+  // hidden. Using strips (instead of a single full-screen backdrop) avoids the
+  // stacking-context trap: `.scene-game` has a CSS transform, so a z-index on
+  // the target button can never lift it above an overlay rendered into #app.
+  const stripTop    = document.createElement('div')
+  const stripBottom = document.createElement('div')
+  const stripLeft   = document.createElement('div')
+  const stripRight  = document.createElement('div')
+  const strips = [stripTop, stripBottom, stripLeft, stripRight] as const
+  for (const s of strips) s.className = 'tutorial-backdrop-strip'
+
   const panel = document.createElement('div')
   panel.className = 'tutorial-panel modal-panel'
   panel.setAttribute('role', 'dialog')
@@ -42,6 +55,7 @@ export function showTutorial(opts: TutorialOptions): void {
   arrow.className = 'tutorial-arrow'
   arrow.hidden = true
 
+  for (const s of strips) overlay.appendChild(s)
   overlay.appendChild(arrow)
   overlay.appendChild(panel)
   opts.parent.appendChild(overlay)
@@ -54,6 +68,32 @@ export function showTutorial(opts: TutorialOptions): void {
     currentTarget?.classList.remove('tutorial-target')
     currentTarget = null
     overlay.remove()
+  }
+
+  function positionBackdrop(target: Element | undefined, transparent: boolean): void {
+    if (transparent) {
+      for (const s of strips) s.style.cssText = 'display:none'
+      return
+    }
+    if (!target) {
+      stripTop.style.cssText = 'position:absolute;inset:0'
+      stripBottom.style.cssText = 'display:none'
+      stripLeft.style.cssText   = 'display:none'
+      stripRight.style.cssText  = 'display:none'
+      return
+    }
+    const pw = opts.parent.getBoundingClientRect()
+    const tr = target.getBoundingClientRect()
+    // Pad the cutout so the gold pulse ring (3px + 12px glow) is fully visible.
+    const margin = 10
+    const cutL = Math.max(0, tr.left  - pw.left - margin)
+    const cutT = Math.max(0, tr.top   - pw.top  - margin)
+    const cutR = Math.min(pw.width,  tr.left - pw.left + tr.width  + margin)
+    const cutB = Math.min(pw.height, tr.top  - pw.top  + tr.height + margin)
+    stripTop.style.cssText    = `position:absolute;left:0;top:0;right:0;height:${cutT}px`
+    stripBottom.style.cssText = `position:absolute;left:0;top:${cutB}px;right:0;bottom:0`
+    stripLeft.style.cssText   = `position:absolute;left:0;top:${cutT}px;width:${cutL}px;height:${cutB - cutT}px`
+    stripRight.style.cssText  = `position:absolute;left:${cutR}px;top:${cutT}px;right:0;height:${cutB - cutT}px`
   }
 
   function positionPanel(target: Element | undefined, transparent: boolean): void {
@@ -115,6 +155,7 @@ export function showTutorial(opts: TutorialOptions): void {
       }
     }
 
+    positionBackdrop(target, transparent)
     positionPanel(target, transparent)
 
     const disableId = `tut-disable-${opts.id}-${stepIdx}`
