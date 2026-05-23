@@ -1880,8 +1880,16 @@ export function createGameScene(
     }
   }
 
+  function offerRefillAd(): void {
+    mountRefillAdModal(el, 30 * 60 * 1000, (addedMs) => {
+      fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
+      updateSpeedUI()
+      persistState()
+    }, () => {})
+  }
+
   function setSpeed(speed: number): void {
-    if (speed === 2 && fastForwardMs <= 0) return  // ×2 locked when no stockpile
+    if (speed === 2 && fastForwardMs <= 0) { offerRefillAd(); return }
     gameSpeed = speed
     if (paused) {
       paused = false
@@ -3820,12 +3828,7 @@ export function createGameScene(
           fastForwardMs = Math.max(0, fastForwardMs - ticker.deltaMS / gameSpeed)
           if (fastForwardMs === 0) {
             setSpeed(1)
-            // Offer a rewarded ad to bank 30 minutes of ×2 speed.
-            mountRefillAdModal(el, 30 * 60 * 1000, (addedMs) => {
-              fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
-              updateSpeedUI()
-              persistState()
-            }, () => {})
+            offerRefillAd()
           }
         }
 

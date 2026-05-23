@@ -2396,11 +2396,9 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   font-weight: 800;
 }
 
-/* ×2 button locked when no stockpile remains */
+/* ×2 button empty — still clickable to trigger refill-ad offer */
 .speed-opt--disabled {
   opacity: 0.42;
-  cursor: default;
-  pointer-events: none;
 }
 
 /* ×2 button with built-in stockpile countdown below the label */
@@ -2459,6 +2457,11 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   outline: none;
   -webkit-appearance: none;
   appearance: none;
+}
+.away-bonus-watch-ad-btn::before {
+  content: '▶';
+  margin-right: 0.4em;
+  font-size: 0.8em;
 }
 .away-bonus-close-btn:hover,
 .away-bonus-watch-ad-btn:hover:not(:disabled) { filter: brightness(1.15); }
