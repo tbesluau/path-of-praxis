@@ -74,9 +74,16 @@ export interface TranslationSchema {
     comingSoon: string
   }
   awayBonus: {
-    title: string
-    body: string      // contains "{away}" and "{earned}" placeholders
-    close: string
+    title:   string
+    body:    string      // contains "{away}" and "{earned}" placeholders
+    close:   string
+    watchAd: string      // doubles the earned ×2 time
+  }
+  refillAd: {
+    title:   string
+    body:    string
+    watchAd: string
+    skip:    string
   }
 }
 
@@ -156,8 +163,15 @@ export const en: TranslationSchema = {
     comingSoon: 'Coming soon…',
   },
   awayBonus: {
-    title: 'Welcome back!',
-    body: 'You were away for {away} and earned {earned} of ×2 speed time.',
-    close: 'Close',
+    title:   'Welcome back!',
+    body:    'You were away for {away} and earned {earned} of ×2 speed time.',
+    close:   'Close',
+    watchAd: 'Watch ad — double reward',
+  },
+  refillAd: {
+    title:   'Stockpile empty',
+    body:    'Your ×2 speed stockpile just ran out. Watch a short ad to bank 30 minutes.',
+    watchAd: 'Watch ad — earn 30 min',
+    skip:    'No thanks',
   },
 }

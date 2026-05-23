@@ -38,11 +38,25 @@ src/
 ## Commands
 
 ```bash
-npm run dev        # Vite dev server (HMR)
-npm run build      # tsc + Vite production build → dist/
-npm run typecheck  # Type-check only, no emit
-npm run preview    # Serve dist/ locally
+npm run dev          # Vite dev server (HMR)
+npm run build        # tsc + Vite production build → dist/
+npm run typecheck    # Type-check only, no emit
+npm run preview      # Serve dist/ locally
+npm run cap:sync     # Sync web build into ios/ and android/ Capacitor projects
+npm run cap:ios      # Open the iOS project in Xcode (macOS only)
+npm run cap:android  # Open the Android project in Android Studio
+npm run build:cap    # Web build + cap sync
 ```
+
+## Release paths
+
+The same TypeScript bundle ships to three targets:
+
+1. **Web** — `npm run build` outputs to `dist/`, deployed to `https://pathofpraxis.com` via GitHub Pages.
+2. **iOS (Capacitor)** — thin native wrapper; `capacitor.config.ts` sets `server.url = https://pathofpraxis.com`, so the app loads the live web bundle at runtime. Generate the project once on macOS with `npx cap add ios`, then build/release via Xcode.
+3. **Android (Capacitor)** — same model as iOS. Generate with `npx cap add android`, build/release via Android Studio.
+
+The single bundle detects its context via `Capacitor.isNativePlatform()` (see `src/ads/index.ts`) and routes ads to **AdMob** on native, **Google AdSense for Games (IMA SDK)** on web. Replace the placeholder ad IDs in `src/ads/admob.ts` and `src/ads/ima.ts` before store release.
 
 ## Git workflow
 

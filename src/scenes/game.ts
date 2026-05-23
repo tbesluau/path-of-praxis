@@ -10,6 +10,7 @@ import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFi
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountAwayBonusModal } from '../ui/away-bonus'
+import { mountRefillAdModal } from '../ui/refill-ad'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -3805,7 +3806,11 @@ export function createGameScene(
           const earned = computeAward(gap, fastForwardMs)
           if (earned > 0) {
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
-            mountAwayBonusModal(el, gap, earned, () => {})
+            mountAwayBonusModal(el, gap, earned, () => {}, (bonusMs) => {
+              fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
+              updateSpeedUI()
+              persistState()
+            })
             updateSpeedUI()
           }
         }
@@ -3813,7 +3818,15 @@ export function createGameScene(
         if (gameSpeed === 2 && fastForwardMs > 0) {
           // ticker.deltaMS is already scaled by app.ticker.speed = 2; divide back to real ms
           fastForwardMs = Math.max(0, fastForwardMs - ticker.deltaMS / gameSpeed)
-          if (fastForwardMs === 0) setSpeed(1)
+          if (fastForwardMs === 0) {
+            setSpeed(1)
+            // Offer a rewarded ad to bank 30 minutes of ×2 speed.
+            mountRefillAdModal(el, 30 * 60 * 1000, (addedMs) => {
+              fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
+              updateSpeedUI()
+              persistState()
+            }, () => {})
+          }
         }
 
         gameTimeMs += ticker.deltaMS
