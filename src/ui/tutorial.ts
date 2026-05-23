@@ -1,4 +1,29 @@
 import { getPrefs, setPref } from '../core/prefs'
+import tutorialsRaw from '../config/tutorials.md?raw'
+
+// ── Tutorial content ────────────────────────────────────────────────────────
+
+function parseTutorials(raw: string): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const section of raw.split(/\n---\n/)) {
+    const trimmed = section.trim()
+    if (!trimmed) continue
+    const firstLine = trimmed.split('\n')[0]
+    if (!firstLine.startsWith('## ')) continue
+    const key  = firstLine.slice(3).trim()
+    const body = trimmed.slice(firstLine.length).trim()
+    map.set(key, body)
+  }
+  return map
+}
+
+const TUTORIALS = parseTutorials(tutorialsRaw)
+
+export function getTutorialMessage(id: string, stepIdx: number): string {
+  return TUTORIALS.get(`${id}.${stepIdx}`) ?? `[missing tutorial: ${id}.${stepIdx}]`
+}
+
+// ── Tutorial engine ─────────────────────────────────────────────────────────
 
 export interface TutorialStep {
   message:              string
@@ -10,15 +35,17 @@ export interface TutorialStep {
 }
 
 export interface TutorialOptions {
-  id:            string
-  steps:         TutorialStep[]
-  guideSection?: string
-  parent:        HTMLElement
-  openGuide:     (section: string) => void
-  onDone:        () => void
+  id:               string
+  steps:            TutorialStep[]
+  guideSection?:    string
+  parent:           HTMLElement
+  openGuide:        (section: string) => void
+  onDone:           () => void
   // Called when "More info" is clicked. Defaults to onDone. Use this to keep
   // the game paused while the guide is shown.
-  onGuide?:      () => void
+  onGuide?:         () => void
+  // When true, the last step without a guideSection shows only "Done" (no "Close").
+  noDismissOnLast?: boolean
 }
 
 export function isTutorialSeen(id: string): boolean {
@@ -162,22 +189,26 @@ export function showTutorial(opts: TutorialOptions): void {
 
     let actionHtml = ''
     if (step.requiresInteraction && target) {
-      actionHtml = `<button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>`
+      actionHtml = `<button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>`
     } else if (isLast) {
       if (opts.guideSection) {
         actionHtml = `
-          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>
+          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>
           <button class="modal-btn modal-btn--primary" data-tut="more-info">More info →</button>
+        `
+      } else if (opts.noDismissOnLast) {
+        actionHtml = `
+          <button class="modal-btn modal-btn--primary" data-tut="done">Done</button>
         `
       } else {
         actionHtml = `
-          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>
+          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>
           <button class="modal-btn modal-btn--primary" data-tut="done">Done</button>
         `
       }
     } else {
       actionHtml = `
-        <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>
+        <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>
         <button class="modal-btn modal-btn--primary" data-tut="next">Next</button>
       `
     }
