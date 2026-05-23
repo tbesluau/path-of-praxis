@@ -2435,9 +2435,16 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   margin: 0;
   padding: 0 var(--space-sm);
 }
-.away-bonus-close-btn {
+.away-bonus-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: center;
+}
+.away-bonus-close-btn,
+.away-bonus-watch-ad-btn {
   align-self: center;
-  min-width: 120px;
+  min-width: 200px;
   min-height: 44px;
   font-family: var(--font-body);
   font-size: 0.78rem;
@@ -2449,8 +2456,19 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   border: 14px solid transparent;
   border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
   cursor: pointer;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
-.away-bonus-close-btn:hover { filter: brightness(1.15); }
+.away-bonus-close-btn:hover,
+.away-bonus-watch-ad-btn:hover:not(:disabled) { filter: brightness(1.15); }
+.away-bonus-watch-ad-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.away-bonus-watch-ad-btn--loading::after {
+  content: ' …';
+}
 
 /* ── Mastery modal ── */
 

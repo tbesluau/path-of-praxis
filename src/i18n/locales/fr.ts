@@ -76,8 +76,15 @@ export const fr: TranslationSchema = {
     comingSoon: 'Bientôt disponible…',
   },
   awayBonus: {
-    title: 'Bon retour !',
-    body: 'Vous étiez absent pendant {away} et avez gagné {earned} de temps en vitesse ×2.',
-    close: 'Fermer',
+    title:   'Bon retour !',
+    body:    'Vous étiez absent pendant {away} et avez gagné {earned} de temps en vitesse ×2.',
+    close:   'Fermer',
+    watchAd: 'Regarder une pub — doubler le gain',
+  },
+  refillAd: {
+    title:   'Stock épuisé',
+    body:    'Votre stock de vitesse ×2 vient de s\'épuiser. Regardez une courte pub pour gagner 30 minutes.',
+    watchAd: 'Regarder une pub — gagner 30 min',
+    skip:    'Non merci',
   },
 }

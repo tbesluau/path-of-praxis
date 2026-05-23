@@ -9,9 +9,18 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:web": "tsc && vite build",
+    "cap:sync": "cap sync",
+    "cap:ios": "cap open ios",
+    "cap:android": "cap open android",
+    "build:cap": "npm run build:web && cap sync"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/ios": "^8.3.4",
     "@iconify/utils": "^3.1.1",
     "@types/pathfinding": "^0.1.0",
     "flag-icons": "^7.5.0",
@@ -21,6 +30,7 @@
     "pixi.js": "^8.0.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.4",
     "@iconify-json/game-icons": "^1.2.4",
     "@types/matter-js": "^0.20.2",
     "jsdom": "^26.0.0",

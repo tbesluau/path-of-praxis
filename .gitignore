@@ -11,3 +11,14 @@ npm-debug.log*
 .idea/
 *.swp
 *.swo
+
+# Capacitor native build outputs (keep ios/ and android/ sources, exclude generated artifacts)
+ios/App/Pods/
+ios/App/build/
+ios/App/Public/
+android/build/
+android/.gradle/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
