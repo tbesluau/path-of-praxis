@@ -1871,11 +1871,10 @@ export function createGameScene(
     speedOptBtns.forEach(btn => {
       const speed = Number(btn.dataset.speed)
       btn.classList.toggle('speed-opt--active', !paused && speed === gameSpeed)
-      if (speed === 2) btn.classList.toggle('speed-opt--disabled', x2Locked)
     })
     const meter = el.querySelector<HTMLElement>('.speed-stockpile')
     if (meter) {
-      meter.textContent = formatStockpile(fastForwardMs)
+      meter.textContent = x2Locked ? t('refillAd', 'refill') : formatStockpile(fastForwardMs)
       meter.classList.toggle('speed-stockpile--empty', x2Locked)
     }
   }
