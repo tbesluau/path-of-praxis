@@ -270,21 +270,26 @@ body::after {
     flex: 0 0 auto;
     grid-column: unset;
     justify-self: unset;
+    order: 1;
   }
 
+  /* Speed widget shares row 1 with the back/rebirth buttons, pushed to the right. */
   .game-top-right {
     flex: 0 0 auto;
     margin-left: auto;
     grid-column: unset;
     justify-self: unset;
+    order: 2;
   }
 
+  /* Center buttons wrap to row 2 (full width, centred). */
   .game-top-center {
     flex: 0 0 100%;
     grid-column: unset;
     justify-self: unset;
     justify-content: center;
     padding-bottom: 2px;
+    order: 3;
   }
 }
 
