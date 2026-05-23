@@ -1,10 +1,34 @@
 ## first-game.0
 
-Welcome! Tap your battle configuration button to choose an action and set up triggers.
+This is the battle arena. Your character is the glowing shape moving around the map — it automatically seeks out enemies and attacks them.
 
 ---
 
 ## first-game.1
+
+This is your life bar. When it empties you die, but your mastery experience carries over permanently into your next life.
+
+---
+
+## first-game.2
+
+This is your mana bar. Some actions cost mana; it regenerates steadily on its own.
+
+---
+
+## first-game.3
+
+Each stat has its own experience bar and level. Dealing and taking damage fills these bars — higher levels mean stronger life and mana pools.
+
+---
+
+## first-game.4
+
+Tap your battle configuration button to choose an action and set up triggers.
+
+---
+
+## first-game.5
 
 This is the battle configuration. The first slot is your auto-attack — pick an action that suits you. As you Ascend you'll unlock more trigger slots (Time, Critical hit, Affliction) that fire alongside it.
 
@@ -36,7 +60,7 @@ A boss has spawned. Bosses are far tougher than regular enemies — be ready for
 
 ## first-ascent.0
 
-You completed your first Ascent! Every action, mastery and stat resets, but you earn a Universe Point and a permanent bonus to all future runs — far stronger than any mastery node.
+Your first Ascent is complete! Every action, mastery and stat resets. Tap the Ascent button to review your Universe Point — a permanent bonus that carries forward through every future run.
 
 ---
 

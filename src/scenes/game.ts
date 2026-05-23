@@ -2553,15 +2553,20 @@ export function createGameScene(
     updateAscentButtonVisibility()
     persistState()
     rebirth()  // handles entity/physics reset, player stats, UI refresh, wave scheduling
-    // After the reset, surface the ascent modal so players can immediately
-    // see/redistribute their newly-earned universe point.
-    openAscentModal()
 
-    if (!isTutorialSeen('first-ascent') && !getPrefs().tutorialDisabled) {
+    const showFirstAscentTutorial = !isTutorialSeen('first-ascent') && !getPrefs().tutorialDisabled
+    if (!showFirstAscentTutorial) {
+      // Returning player: auto-surface the ascent modal immediately.
+      openAscentModal()
+    } else {
+      // First-time player: let them discover the ascent button themselves.
       showTutorial({
         id: 'first-ascent',
-        steps: [{ message: getTutorialMessage('first-ascent', 0) }],
-        guideSection: 'Ascent',
+        steps: [{
+          message: getTutorialMessage('first-ascent', 0),
+          targetSelector: '[data-action="open-ascent"]',
+          requiresInteraction: true,
+        }],
         parent: container,
         openGuide,
         onDone: () => {},
@@ -3723,11 +3728,27 @@ export function createGameScene(
         steps: [
           {
             message: getTutorialMessage('first-game', 0),
+            targetSelector: '.game-viewport',
+          },
+          {
+            message: getTutorialMessage('first-game', 1),
+            targetSelector: '.stat-bar--life',
+          },
+          {
+            message: getTutorialMessage('first-game', 2),
+            targetSelector: '.stat-bar--mana',
+          },
+          {
+            message: getTutorialMessage('first-game', 3),
+            targetSelector: '.stat-bars',
+          },
+          {
+            message: getTutorialMessage('first-game', 4),
             targetSelector: '[data-action="open-config"]',
             requiresInteraction: true,
           },
           {
-            message: getTutorialMessage('first-game', 1),
+            message: getTutorialMessage('first-game', 5),
             transparent: true,
           },
         ],
