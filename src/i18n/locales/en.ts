@@ -84,6 +84,7 @@ export interface TranslationSchema {
     body:    string
     watchAd: string
     skip:    string
+    refill:  string      // short CTA shown on the ×2 button when empty
   }
 }
 
@@ -173,5 +174,6 @@ export const en: TranslationSchema = {
     body:    'Your ×2 speed stockpile just ran out. Watch a short ad to bank 30 minutes.',
     watchAd: 'Watch ad — earn 30 min',
     skip:    'No thanks',
+    refill:  'refill',
   },
 }

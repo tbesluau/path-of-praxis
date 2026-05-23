@@ -86,5 +86,6 @@ export const fr: TranslationSchema = {
     body:    'Votre stock de vitesse ×2 vient de s\'épuiser. Regardez une courte pub pour gagner 30 minutes.',
     watchAd: 'Regarder une pub — gagner 30 min',
     skip:    'Non merci',
+    refill:  'remplir',
   },
 }
