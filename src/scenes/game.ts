@@ -2290,6 +2290,15 @@ export function createGameScene(
     )
   }
 
+  // Forces a single canvas render when the ticker is stopped (e.g. paused during
+  // rebirth/ascent) so the map snaps to the new player position immediately.
+  function renderSingleFrame(): void {
+    if (!app) return
+    updateCamera()
+    drawGrid()
+    app.renderer.render(app.stage)
+  }
+
   // ── Death system ─────────────────────────────────────────────────────────
 
   function spawnDeathFragments(entity: Entity): void {
@@ -2484,6 +2493,7 @@ export function createGameScene(
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
 
+    renderSingleFrame()
     persistState()
     scheduleWave(balance.wave.spawnDelay)
   }
