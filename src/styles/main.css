@@ -1654,8 +1654,8 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 
 .modal-close-btn {
   position: absolute;
-  top: -47px;
-  right: -47px;
+  top: 8px;
+  right: 8px;
   width: 44px;
   height: 44px;
   background: transparent;
@@ -1693,6 +1693,7 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #1a0a02;
+  padding-right: 52px; /* clear the absolutely-positioned close button (44px + 8px offset) */
 }
 
 .modal-field {
