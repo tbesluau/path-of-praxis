@@ -515,17 +515,9 @@ Bosses cannot spawn without Enemy mastery nodes that grant boss chance. Each Cha
 
 ---
 
-## Proliferate
-
-An Enemy mastery mechanic: each enemy kill rolls the Proliferate chance; on success, one additional enemy is added to the next wave's spawn count.
-
-Proliferate stacks — multiple kills in a single wave each get their own roll, so a good run can meaningfully grow the next wave. The extra enemies follow the same **Strong**, **Elite**, **Champion**, and **Boss** upgrade rolls as normal spawns.
-
----
-
 ## Critical Hit
 
-A per-action roll that multiplies hit damage. By default no action has base crit chance — the **Critical Hit mastery** is the sole source.
+A per-action roll that multiplies hit damage. Actions all have their own base crit chance after the first ascent.
 
 **Damage formula:**
 - Crit multiplier = **2×** base (+100% bonus) plus all "increased critical hit damage" nodes (additive on the bonus portion)
@@ -534,9 +526,11 @@ A per-action roll that multiplies hit damage. By default no action has base crit
 **Example:** +20% increased crit damage → bonus = 100% × 1.20 = 120%, so crit deals ×2.20 total.
 
 **Crit chance:**
-- Each action has a base crit chance (0% by default, raised by base crit chance nodes)
-- "Increased crit chance" and "more crit chance" scale the chance multiplicatively after the base is set
-- Crits trigger on a per-action roll before the hit resolves; all per-hit mechanics (**Afflictions**, **Life Steal**, etc.) apply normally to a crit hit
+- Each action has a base crit chance, some masteries can increase that.
+- "Increased crit chance" and "more crit chance" scale the base chance multiplicatively
+- Crits trigger on a per-action roll before the hit resolves; all per-hit mechanics (**Afflictions**, **Life Steal**, etc.) apply normally to a crit hit unless explicitely stated
+
+**Example:** 3% base chance with +2% base and 50% increased chance is 7.5% total.
 
 ---
 
