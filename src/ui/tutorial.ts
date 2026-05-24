@@ -1,5 +1,7 @@
 import { getPrefs, setPref } from '../core/prefs'
 import tutorialsRaw from '../config/tutorials.md?raw'
+import { getLocale, t } from '../i18n'
+import { getTutorialTranslation } from '../i18n/content'
 
 // ── Tutorial content ────────────────────────────────────────────────────────
 
@@ -20,7 +22,10 @@ function parseTutorials(raw: string): Map<string, string> {
 const TUTORIALS = parseTutorials(tutorialsRaw)
 
 export function getTutorialMessage(id: string, stepIdx: number): string {
-  return TUTORIALS.get(`${id}.${stepIdx}`) ?? `[missing tutorial: ${id}.${stepIdx}]`
+  const key = `${id}.${stepIdx}`
+  const translated = getTutorialTranslation(getLocale(), key)
+  if (translated) return translated
+  return TUTORIALS.get(key) ?? `[missing tutorial: ${key}]`
 }
 
 // ── Tutorial engine ─────────────────────────────────────────────────────────
@@ -225,20 +230,20 @@ export function showTutorial(opts: TutorialOptions): void {
     if (step.requiresInteraction && target) {
       // The intended completion is clicking the highlighted target, so the
       // escape-hatch is always "Dismiss" — never "Done".
-      actionHtml = `<button class="modal-btn modal-btn--danger" data-tut="dismiss">Dismiss</button>`
+      actionHtml = `<button class="modal-btn modal-btn--danger" data-tut="dismiss">${t('tutorial', 'dismiss')}</button>`
     } else if (isLast) {
       if (opts.guideSection) {
         actionHtml = `
-          <button class="modal-btn modal-btn--ghost" data-tut="done">Done</button>
-          <button class="modal-btn modal-btn--primary" data-tut="more-info">More info →</button>
+          <button class="modal-btn modal-btn--ghost" data-tut="done">${t('tutorial', 'done')}</button>
+          <button class="modal-btn modal-btn--primary" data-tut="more-info">${t('tutorial', 'moreInfo')}</button>
         `
       } else {
-        actionHtml = `<button class="modal-btn modal-btn--primary" data-tut="done">Done</button>`
+        actionHtml = `<button class="modal-btn modal-btn--primary" data-tut="done">${t('tutorial', 'done')}</button>`
       }
     } else {
       actionHtml = `
-        <button class="modal-btn modal-btn--danger" data-tut="dismiss">Dismiss</button>
-        <button class="modal-btn modal-btn--primary" data-tut="next">Next</button>
+        <button class="modal-btn modal-btn--danger" data-tut="dismiss">${t('tutorial', 'dismiss')}</button>
+        <button class="modal-btn modal-btn--primary" data-tut="next">${t('tutorial', 'next')}</button>
       `
     }
 
@@ -247,7 +252,7 @@ export function showTutorial(opts: TutorialOptions): void {
       <div class="tutorial-controls">
         <label class="tutorial-disable-label" for="${disableId}">
           <input type="checkbox" id="${disableId}" data-tut="disable">
-          Don't show tutorials
+          ${t('tutorial', 'dontShow')}
         </label>
         ${actionHtml}
       </div>

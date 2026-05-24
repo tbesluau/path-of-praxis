@@ -1,16 +1,24 @@
 import 'flag-icons/css/flag-icons.min.css'
 import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle } from 'lucide'
-import { t, setLocale, getLocale, type Locale } from '../i18n'
+import { t, setLocale, getLocale, SUPPORTED_LOCALES, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
 import { linkifyHtml, mountNoteModal } from './notes'
+import { getGuideTranslation } from '../i18n/content'
 import type { TargetingMode } from '../core/character'
 
 const LOCALE_FLAG_CLASS: Record<Locale, string> = {
   en: 'fi fi-gb',
   fr: 'fi fi-fr',
+  es: 'fi fi-es',
+}
+
+const LOCALE_NAME_KEY: Record<Locale, 'langEn' | 'langFr' | 'langEs'> = {
+  en: 'langEn',
+  fr: 'langFr',
+  es: 'langEs',
 }
 
 function isFullscreen(): boolean {
@@ -25,11 +33,18 @@ async function toggleFullscreen(): Promise<void> {
   }
 }
 
-const TARGETING_OPTS: Array<{ mode: TargetingMode; icon: string; label: string; desc: string }> = [
-  { mode: 'nearest',   icon: 'crosshair',    label: 'Nearest',   desc: 'Attack closest enemy' },
-  { mode: 'weakest',   icon: 'trending-down', label: 'Weakest',   desc: 'Focus low HP' },
-  { mode: 'strongest', icon: 'trending-up',   label: 'Strongest', desc: 'Focus high HP' },
-  { mode: 'random',    icon: 'shuffle',       label: 'Random',    desc: 'Pick random target' },
+interface TargetingOpt {
+  mode: TargetingMode
+  icon: string
+  labelKey: 'targetNearest' | 'targetWeakest' | 'targetStrongest' | 'targetRandom'
+  descKey:  'targetNearestDesc' | 'targetWeakestDesc' | 'targetStrongestDesc' | 'targetRandomDesc'
+}
+
+const TARGETING_OPTS: TargetingOpt[] = [
+  { mode: 'nearest',   icon: 'crosshair',     labelKey: 'targetNearest',   descKey: 'targetNearestDesc' },
+  { mode: 'weakest',   icon: 'trending-down', labelKey: 'targetWeakest',   descKey: 'targetWeakestDesc' },
+  { mode: 'strongest', icon: 'trending-up',   labelKey: 'targetStrongest', descKey: 'targetStrongestDesc' },
+  { mode: 'random',    icon: 'shuffle',       labelKey: 'targetRandom',    descKey: 'targetRandomDesc' },
 ]
 
 export interface SettingsButtonOptions {
@@ -110,7 +125,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <img src="${baseUrl}ui/discord-mark.svg" alt="" aria-hidden="true" class="discord-icon">
           </button>
           <button class="settings-top-btn" data-action="language" aria-label="${t('settings', 'languageTitle')}">
-            <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${locale === 'en' ? t('settings', 'langEn') : t('settings', 'langFr')}"></span>
+            <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${t('settings', LOCALE_NAME_KEY[locale])}"></span>
           </button>
         </div>
         ${opts.getTargetingMode ? `
@@ -306,17 +321,16 @@ function mountLanguageModal(
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop settings-submodal-backdrop'
   const locale = getLocale()
-  const langs: Locale[] = ['en', 'fr']
 
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="lang-title">
       <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
       <h2 class="modal-title" id="lang-title">${t('settings', 'languageTitle')}</h2>
       <div class="lang-options">
-        ${langs.map(l => `
+        ${SUPPORTED_LOCALES.map(l => `
           <button class="lang-option${l === locale ? ' lang-option--active' : ''}" data-locale="${l}">
-            <span class="${LOCALE_FLAG_CLASS[l]} lang-option-flag" role="img" aria-label="${l === 'en' ? 'English' : 'Français'}"></span>
-            <span class="lang-option-name">${t('settings', l === 'en' ? 'langEn' : 'langFr')}</span>
+            <span class="${LOCALE_FLAG_CLASS[l]} lang-option-flag" role="img" aria-label="${t('settings', LOCALE_NAME_KEY[l])}"></span>
+            <span class="lang-option-name">${t('settings', LOCALE_NAME_KEY[l])}</span>
           </button>
         `).join('')}
       </div>
@@ -370,8 +384,8 @@ function mountTargetingModal(
         ${TARGETING_OPTS.map(o => `
           <button class="targeting-opt${currentMode === o.mode ? ' targeting-opt--active' : ''}" data-targeting="${o.mode}">
             <i data-lucide="${o.icon}" aria-hidden="true"></i>
-            <span class="targeting-opt-name">${o.label}</span>
-            <small class="targeting-opt-desc">${o.desc}</small>
+            <span class="targeting-opt-name">${t('game', o.labelKey)}</span>
+            <small class="targeting-opt-desc">${t('game', o.descKey)}</small>
           </button>`).join('')}
       </div>
     </div>
@@ -403,21 +417,38 @@ function mountTargetingModal(
 
 // ── Guide helpers ─────────────────────────────────────────────────────────
 
-function parseGuideSections(md: string): { title: string; body: string }[] {
-  const sections: { title: string; body: string }[] = []
+interface GuideSection {
+  // English title — stable lookup key (used by tutorials' guideSection option
+  // and by openGuide()); never changes across locales.
+  id:    string
+  title: string
+  body:  string
+}
+
+function parseGuideSections(md: string): GuideSection[] {
+  const sections: GuideSection[] = []
   let currentTitle = ''
   let bodyLines: string[] = []
   for (const line of md.split('\n')) {
     if (line.startsWith('## ')) {
-      if (currentTitle) sections.push({ title: currentTitle, body: bodyLines.join('\n').trim() })
+      if (currentTitle) sections.push({ id: currentTitle, title: currentTitle, body: bodyLines.join('\n').trim() })
       currentTitle = line.slice(3).trim()
       bodyLines = []
     } else if (currentTitle) {
       bodyLines.push(line)
     }
   }
-  if (currentTitle) sections.push({ title: currentTitle, body: bodyLines.join('\n').trim() })
+  if (currentTitle) sections.push({ id: currentTitle, title: currentTitle, body: bodyLines.join('\n').trim() })
   return sections
+}
+
+function localizedGuideSections(): GuideSection[] {
+  const locale = getLocale()
+  return parseGuideSections(guideContent).map(s => {
+    const tr = getGuideTranslation(locale, s.id)
+    if (!tr) return s
+    return { id: s.id, title: tr.title ?? s.title, body: tr.body ?? s.body }
+  })
 }
 
 function renderGuideBody(md: string): string {
@@ -447,7 +478,7 @@ function inline(text: string): string {
 export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSection?: string): () => void {
   const baseUrl = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL
   const arrowSrc = `${baseUrl}ui/kenney_ui-pack-rpg-expansion/PNG/arrowBlue_right.png`
-  const sections = parseGuideSections(guideContent)
+  const sections = localizedGuideSections()
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop settings-submodal-backdrop'
@@ -464,13 +495,14 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
   `
 
   const sectionsEl = panel.querySelector<HTMLElement>('.guide-sections')!
-  sections.forEach(({ title, body }) => {
+  sections.forEach(({ id, title, body }) => {
     const section = document.createElement('div')
     section.className = 'guide-section'
 
     const btn = document.createElement('button')
     btn.className = 'guide-section-btn'
     btn.setAttribute('aria-expanded', 'false')
+    btn.dataset['sectionId'] = id
     btn.innerHTML = `
       <span class="guide-section-title">${title}</span>
       <img class="guide-section-arrow" src="${arrowSrc}" alt="" aria-hidden="true">
@@ -492,8 +524,9 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
   })
 
   if (openSection) {
-    const match = [...sectionsEl.querySelectorAll<HTMLElement>('.guide-section-btn')]
-      .find(b => b.querySelector('.guide-section-title')?.textContent === openSection)
+    const match = sectionsEl.querySelector<HTMLElement>(
+      `.guide-section-btn[data-section-id="${CSS.escape(openSection)}"]`,
+    )
     if (match) {
       match.setAttribute('aria-expanded', 'true')
       const body = match.nextElementSibling as HTMLElement | null

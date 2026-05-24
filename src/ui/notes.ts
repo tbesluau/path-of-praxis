@@ -1,4 +1,6 @@
 import notesRaw from '../config/notes.md?raw'
+import { getLocale, type Locale } from '../i18n'
+import { getNoteTranslation } from '../i18n/content'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -25,14 +27,33 @@ function parseNotes(raw: string): Map<string, NoteEntry> {
   return map
 }
 
-const NOTES = parseNotes(notesRaw)
+// English source-of-truth registry. The structure (IDs and ordering) always
+// comes from notes.md; translations only override the title/body strings.
+const NOTES_EN = parseNotes(notesRaw)
+
+function getNote(id: string): NoteEntry | undefined {
+  const base = NOTES_EN.get(id)
+  if (!base) return undefined
+  const tr = getNoteTranslation(getLocale(), id)
+  if (!tr) return base
+  return {
+    id,
+    title: tr.title ?? base.title,
+    body:  tr.body  ?? base.body,
+  }
+}
 
 // ── Linkification ─────────────────────────────────────────────────────────
+
+interface NoteTerm {
+  id:      string
+  pattern: RegExp
+}
 
 // Ordered longest-first so multi-word phrases match before single words.
 // Multi-word patterns must precede any of their constituent single words
 // (e.g. 'burning-ground' before 'burn', 'resistance-breaking' before 'resistance').
-const NOTE_TERMS: { id: string; pattern: RegExp }[] = [
+const NOTE_TERMS_EN: NoteTerm[] = [
   { id: 'additional-projectile', pattern: /\bAdditional Projectiles?\b/gi },
   { id: 'additional-target',     pattern: /\bAdditional Targets?\b/gi },
   { id: 'resistance-breaking',   pattern: /\bResistance Breaking\b/gi },
@@ -76,8 +97,105 @@ const NOTE_TERMS: { id: string; pattern: RegExp }[] = [
   { id: 'kite',                  pattern: /\bKites?(?:ing)?\b/gi },
 ]
 
+// French note terms — same IDs as English so click-through still works,
+// but patterns match the translated phrasing used in notes.fr/guide.fr.
+const NOTE_TERMS_FR: NoteTerm[] = [
+  { id: 'additional-projectile', pattern: /\bProjectiles? supplémentaires?\b/gi },
+  { id: 'additional-target',     pattern: /\bCibles? supplémentaires?\b/gi },
+  { id: 'resistance-breaking',   pattern: /\b(?:Brise|Bris de)[ -]résistance\b/gi },
+  { id: 'burning-ground',        pattern: /\bSol enflammé\b/gi },
+  { id: 'ignore-mitigation',     pattern: /\b(?:Ignore|Ignorer|Ignorant)(?: toute)?(?: la)? (?:mitigation|atténuation)\b/gi },
+  { id: 'feeding-frenzy',        pattern: /\bFrénésie alimentaire\b/gi },
+  { id: 'critical-hit',          pattern: /\b(?:Coups? critiques?|Critiques?)\b/gi },
+  { id: 'mana-shield',           pattern: /\bBouclier de mana\b/gi },
+  { id: 'mana-steal',            pattern: /\bVol de mana\b/gi },
+  { id: 'second-action',         pattern: /\b(?:Seconde|Deuxième) actions?\b/gi },
+  { id: 'double-damage',         pattern: /\bDégâts doubles\b/gi },
+  { id: 'double-action',         pattern: /\bDouble actions?\b/gi },
+  { id: 'multi-action',          pattern: /\bMulti-actions?\b/gi },
+  { id: 'life-steal',            pattern: /\bVol de vie\b/gi },
+  { id: 'action-speed',          pattern: /\bVitesse d'action\b/gi },
+  { id: 'affliction',            pattern: /\bAfflictions?\b/gi },
+  { id: 'immolation',            pattern: /\bImmolation\b/gi },
+  { id: 'bloodlust',             pattern: /\bSoif de sang\b/gi },
+  { id: 'electrified',           pattern: /\bÉlectrifié(?:e|s|es)?\b/gi },
+  { id: 'electrocution',         pattern: /\bÉlectrocuté(?:e|s|es)?\b/gi },
+  { id: 'champion',              pattern: /\bChampions?\b/gi },
+  { id: 'boss',                  pattern: /\bBoss\b/gi },
+  { id: 'frenzy',                pattern: /\bFrénésie\b/gi },
+  { id: 'bleed',                 pattern: /\bSaignements?\b/gi },
+  { id: 'area',                  pattern: /\bZones?\b/gi },
+  { id: 'knockback',             pattern: /\bRepoussements?\b/gi },
+  { id: 'tremor',                pattern: /\bSecousses?\b/gi },
+  { id: 'increased',             pattern: /\bAugmenté(?:e|s|es)?\b/gi },
+  { id: 'effect',                pattern: /\bEffets?\b/gi },
+  { id: 'status',                pattern: /\b(?:Status|Statuts?)\b/gi },
+  { id: 'trance',                pattern: /\bTranse\b/gi },
+  { id: 'strong',                pattern: /\bRobustes?\b/gi },
+  { id: 'elite',                 pattern: /\bÉlites?\b/gi },
+  { id: 'burn',                  pattern: /\bBrûlures?\b/gi },
+  { id: 'jump',                  pattern: /\bSauts?\b/gi },
+  { id: 'more',                  pattern: /\bSupplémentaire\b/gi },
+  { id: 'resistance',            pattern: /\bRésistances?\b/gi },
+  { id: 'mitigation',            pattern: /\b(?:Mitigation|Atténuation)\b/gi },
+  { id: 'hit',                   pattern: /\b(?:par coup|coup direct|dégâts? au coup|aux coups)\b/gi },
+  { id: 'dash',                  pattern: /\b(?:Charges?|Dash)\b/gi },
+  { id: 'kite',                  pattern: /\bKite(?:s|r|ing)?\b/gi },
+]
+
+// Spanish note terms — same IDs as English.
+const NOTE_TERMS_ES: NoteTerm[] = [
+  { id: 'additional-projectile', pattern: /\bProyectiles? adicionales?\b/gi },
+  { id: 'additional-target',     pattern: /\bObjetivos? adicionales?\b/gi },
+  { id: 'resistance-breaking',   pattern: /\b(?:Quiebra|Rotura) de resistencia\b/gi },
+  { id: 'burning-ground',        pattern: /\bSuelo ardiente\b/gi },
+  { id: 'ignore-mitigation',     pattern: /\b(?:Ignora|Ignorar|Ignorando)(?: toda)?(?: la)? mitigación\b/gi },
+  { id: 'feeding-frenzy',        pattern: /\bFrenesí alimentario\b/gi },
+  { id: 'critical-hit',          pattern: /\b(?:Golpes? críticos?|Críticos?)\b/gi },
+  { id: 'mana-shield',           pattern: /\bEscudo de maná\b/gi },
+  { id: 'mana-steal',            pattern: /\bRobo de maná\b/gi },
+  { id: 'second-action',         pattern: /\bSegunda acción\b/gi },
+  { id: 'double-damage',         pattern: /\bDaño doble\b/gi },
+  { id: 'double-action',         pattern: /\bAcción doble\b/gi },
+  { id: 'multi-action',          pattern: /\bMulti-?acciones?\b/gi },
+  { id: 'life-steal',            pattern: /\bRobo de vida\b/gi },
+  { id: 'action-speed',          pattern: /\bVelocidad de acción\b/gi },
+  { id: 'affliction',            pattern: /\bAflicciones?\b/gi },
+  { id: 'immolation',            pattern: /\bInmolación\b/gi },
+  { id: 'bloodlust',             pattern: /\bSed de sangre\b/gi },
+  { id: 'electrified',           pattern: /\bElectrificad(?:o|a|os|as)\b/gi },
+  { id: 'electrocution',         pattern: /\bElectrocutad(?:o|a|os|as)\b/gi },
+  { id: 'champion',              pattern: /\bCampe(?:ón|ones)\b/gi },
+  { id: 'boss',                  pattern: /\bJefes?\b/gi },
+  { id: 'frenzy',                pattern: /\bFrenesí\b/gi },
+  { id: 'bleed',                 pattern: /\bSangrad(?:o|os)\b/gi },
+  { id: 'area',                  pattern: /\bÁreas?\b/gi },
+  { id: 'knockback',             pattern: /\bRetrocesos?\b/gi },
+  { id: 'tremor',                pattern: /\bTemblores?\b/gi },
+  { id: 'increased',             pattern: /\bAumentad(?:o|a|os|as)\b/gi },
+  { id: 'effect',                pattern: /\bEfectos?\b/gi },
+  { id: 'status',                pattern: /\bEstados?\b/gi },
+  { id: 'trance',                pattern: /\bTrance\b/gi },
+  { id: 'strong',                pattern: /\bFuertes?\b/gi },
+  { id: 'elite',                 pattern: /\bÉlites?\b/gi },
+  { id: 'burn',                  pattern: /\b(?:Quemadura|Quemaduras|Quemando)\b/gi },
+  { id: 'jump',                  pattern: /\bSaltos?\b/gi },
+  { id: 'more',                  pattern: /\bMás\b/gi },
+  { id: 'resistance',            pattern: /\bResistencias?\b/gi },
+  { id: 'mitigation',            pattern: /\bMitigación\b/gi },
+  { id: 'hit',                   pattern: /\b(?:por golpe|golpe directo|daño por golpe|al golpear)\b/gi },
+  { id: 'dash',                  pattern: /\b(?:Embestidas?|Dash)\b/gi },
+  { id: 'kite',                  pattern: /\bKite(?:s|ar|ando)?\b/gi },
+]
+
+const NOTE_TERMS_BY_LOCALE: Record<Locale, NoteTerm[]> = {
+  en: NOTE_TERMS_EN,
+  fr: NOTE_TERMS_FR,
+  es: NOTE_TERMS_ES,
+}
+
 // Apply a single pattern to an HTML string, protecting already-linked spans.
-function applyTermPattern(html: string, term: { id: string; pattern: RegExp }): string {
+function applyTermPattern(html: string, term: NoteTerm): string {
   const parts = html.split(/(<[^>]*>)/g)
   const out: string[] = []
   let inNoteLink = 0
@@ -102,6 +220,10 @@ function applyTermPattern(html: string, term: { id: string; pattern: RegExp }): 
   return out.join('')
 }
 
+function activeTerms(): NoteTerm[] {
+  return NOTE_TERMS_BY_LOCALE[getLocale()] ?? NOTE_TERMS_EN
+}
+
 // Escape plain text for safe HTML insertion, then apply note-term linkification.
 // Pass excludeId to suppress self-links inside a note modal.
 export function linkifyNoteTerms(plainText: string, excludeId?: string): string {
@@ -109,7 +231,7 @@ export function linkifyNoteTerms(plainText: string, excludeId?: string): string 
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-  for (const term of NOTE_TERMS) {
+  for (const term of activeTerms()) {
     if (term.id === excludeId) continue
     html = applyTermPattern(html, term)
   }
@@ -117,10 +239,13 @@ export function linkifyNoteTerms(plainText: string, excludeId?: string): string 
 }
 
 // Apply linkification to an already-safe HTML string (e.g. rendered markdown body).
-export function linkifyHtml(html: string, excludeId?: string): string {
+export function linkifyHtml(html: string, excludeIds?: string | readonly string[]): string {
+  const excluded = new Set(
+    Array.isArray(excludeIds) ? excludeIds : excludeIds ? [excludeIds as string] : []
+  )
   let result = html
-  for (const term of NOTE_TERMS) {
-    if (term.id === excludeId) continue
+  for (const term of activeTerms()) {
+    if (excluded.has(term.id)) continue
     result = applyTermPattern(result, term)
   }
   return result
@@ -173,7 +298,7 @@ export function mountNoteModal(
   noteId:  string,
   onClose: () => void,
 ): () => void {
-  const entry = NOTES.get(noteId)
+  const entry = getNote(noteId)
   if (!entry) return () => undefined
 
   const bodyHtml = linkifyHtml(renderMarkdown(entry.body), noteId)
