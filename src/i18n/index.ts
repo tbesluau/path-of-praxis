@@ -7,19 +7,33 @@ export type Locale = 'en' | 'fr' | 'es'
 export const SUPPORTED_LOCALES: readonly Locale[] = ['en', 'fr', 'es']
 
 const locales: Record<Locale, TranslationSchema> = { en, fr, es }
+const LOCALE_STORAGE_KEY = 'pop:locale'
 
 let active: TranslationSchema = en
 let activeLocale: Locale = 'en'
 
+function loadStoredLocale(): Locale | null {
+  try {
+    const raw = localStorage.getItem(LOCALE_STORAGE_KEY)
+    return raw && raw in locales ? (raw as Locale) : null
+  } catch { return null }
+}
+
 export function initI18n(): void {
-  const lang = navigator.language.slice(0, 2)
-  activeLocale = lang in locales ? (lang as Locale) : 'en'
+  const stored = loadStoredLocale()
+  if (stored) {
+    activeLocale = stored
+  } else {
+    const lang = navigator.language.slice(0, 2)
+    activeLocale = lang in locales ? (lang as Locale) : 'en'
+  }
   active = locales[activeLocale]
 }
 
 export function setLocale(locale: Locale): void {
   activeLocale = locale
   active = locales[locale]
+  try { localStorage.setItem(LOCALE_STORAGE_KEY, locale) } catch { /* storage disabled */ }
 }
 
 export function getLocale(): Locale {

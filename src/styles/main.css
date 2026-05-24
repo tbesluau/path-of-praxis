@@ -336,6 +336,7 @@ body::after {
   pointer-events: none;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 2px;
   padding: 6px 8px;
   background: rgba(0, 0, 0, 0.55);
@@ -343,6 +344,7 @@ body::after {
 
 .dps-row {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 6px;
   white-space: nowrap;
@@ -366,11 +368,13 @@ body::after {
 .dps-split-bar {
   height: 5px;
   display: flex;
+  flex-direction: row-reverse;
+  margin-left: auto;
   overflow: hidden;
 }
 
 .dps-name {
-  flex: 1;
+  flex: 0 1 auto;
   text-align: right;
 }
 
@@ -388,6 +392,7 @@ body::after {
 }
 
 .dps-bar {
+  margin-left: auto;
   min-width: 1px;
 }
 
