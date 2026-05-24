@@ -5,6 +5,7 @@ import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
+import { linkifyHtml, mountNoteModal } from './notes'
 import type { TargetingMode } from '../core/character'
 
 const LOCALE_FLAG_CLASS: Record<Locale, string> = {
@@ -478,7 +479,7 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
     const bodyEl = document.createElement('div')
     bodyEl.className = 'guide-section-body'
     bodyEl.hidden = true
-    bodyEl.innerHTML = renderGuideBody(body)
+    bodyEl.innerHTML = linkifyHtml(renderGuideBody(body))
 
     btn.addEventListener('click', () => {
       const open = btn.getAttribute('aria-expanded') === 'true'
@@ -504,12 +505,23 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
   backdrop.appendChild(panel)
   parent.appendChild(backdrop)
 
-  panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { backdrop.remove(); onClose() })
+  let noteSubCleanup: (() => void) | null = null
+  const closeNoteSub = (): void => { if (noteSubCleanup) { noteSubCleanup(); noteSubCleanup = null } }
 
-  backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) { backdrop.remove(); onClose() }
+  sectionsEl.addEventListener('click', (e) => {
+    const link = (e.target as HTMLElement).closest<HTMLElement>('[data-note-id]')
+    if (!link) return
+    e.stopPropagation()
+    closeNoteSub()
+    noteSubCleanup = mountNoteModal(parent, link.dataset['noteId']!, () => { noteSubCleanup = null })
   })
 
-  return () => backdrop.remove()
+  panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', () => { closeNoteSub(); backdrop.remove(); onClose() })
+
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) { closeNoteSub(); backdrop.remove(); onClose() }
+  })
+
+  return () => { closeNoteSub(); backdrop.remove() }
 }
