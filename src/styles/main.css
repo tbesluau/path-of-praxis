@@ -128,7 +128,9 @@ body::after {
 .back-btn,
 .char-slot--selectable,
 .mastery-name-btn,
-.modal-close-btn {
+.modal-close-btn,
+.modal-btn--primary,
+.modal-btn--ghost {
   will-change: transform;
 }
 
@@ -3191,11 +3193,6 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   flex-direction: column;
   gap: var(--space-sm);
   pointer-events: all;
-}
-
-.tutorial-panel .modal-btn--primary,
-.tutorial-panel .modal-btn--ghost {
-  will-change: transform;
 }
 
 .tutorial-message {
