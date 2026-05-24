@@ -479,7 +479,7 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
     const bodyEl = document.createElement('div')
     bodyEl.className = 'guide-section-body'
     bodyEl.hidden = true
-    bodyEl.innerHTML = linkifyHtml(renderGuideBody(body))
+    bodyEl.innerHTML = linkifyHtml(renderGuideBody(body), ['more'])
 
     btn.addEventListener('click', () => {
       const open = btn.getAttribute('aria-expanded') === 'true'

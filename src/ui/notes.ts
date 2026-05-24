@@ -117,10 +117,12 @@ export function linkifyNoteTerms(plainText: string, excludeId?: string): string 
 }
 
 // Apply linkification to an already-safe HTML string (e.g. rendered markdown body).
-export function linkifyHtml(html: string, excludeId?: string): string {
+// excludeIds may be a single id string or an array of ids to suppress.
+export function linkifyHtml(html: string, excludeIds?: string | readonly string[]): string {
+  const excluded = new Set(Array.isArray(excludeIds) ? excludeIds : excludeIds ? [excludeIds] : [])
   let result = html
   for (const term of NOTE_TERMS) {
-    if (term.id === excludeId) continue
+    if (excluded.has(term.id)) continue
     result = applyTermPattern(result, term)
   }
   return result

@@ -2968,7 +2968,7 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 
 /* ── Note modal ── */
 
-.note-backdrop { z-index: 35; }
+.note-backdrop { z-index: 55; }
 
 .note-panel {
   width: min(420px, 92vw);
