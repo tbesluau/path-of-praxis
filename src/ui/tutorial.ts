@@ -210,19 +210,26 @@ export function showTutorial(opts: TutorialOptions): void {
 
     const disableId = `tut-disable-${opts.id}-${stepIdx}`
 
-    // Button rules:
-    // - Whenever there's more to do (more steps, a guideSection link, or a
-    //   required click on the target), the escape-hatch button is "Dismiss".
-    // - "Done" only appears when this is the absolute final action of the
-    //   section. A single-step section with no extras shows just "Done"
-    //   (no separate Dismiss) — Done IS the only action.
+    // Button rules: the closing-button label tells the user whether they'd
+    // miss more tutorial info by clicking it.
+    // - "Dismiss" → there are more tutorial steps remaining in this section
+    // - "Done"    → this is the last step (nothing more to miss)
+    // "More info →" (guideSection link) is independent of this — the guide
+    // is separate from the tutorial proper, so reaching the last step still
+    // shows "Done" + "More info →".
     let actionHtml = ''
     if (step.requiresInteraction && target) {
-      actionHtml = `<button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>`
+      // Click target advances; escape-hatch label depends on whether more
+      // tutorial steps follow.
+      if (isLast) {
+        actionHtml = `<button class="modal-btn modal-btn--primary" data-tut="done">Done</button>`
+      } else {
+        actionHtml = `<button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>`
+      }
     } else if (isLast) {
       if (opts.guideSection) {
         actionHtml = `
-          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>
+          <button class="modal-btn modal-btn--ghost" data-tut="done">Done</button>
           <button class="modal-btn modal-btn--primary" data-tut="more-info">More info →</button>
         `
       } else {
