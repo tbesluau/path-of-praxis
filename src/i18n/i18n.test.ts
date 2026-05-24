@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { t, setLocale, initI18n } from './index'
 
 describe('i18n', () => {
-  beforeEach(() => setLocale('en'))
+  beforeEach(() => {
+    localStorage.clear()
+    setLocale('en')
+  })
 
   it('returns correct English translations', () => {
     expect(t('game', 'title')).toBe('Path of Praxis')
@@ -20,16 +23,17 @@ describe('i18n', () => {
   })
 
   it('falls back to English for unknown browser locale', () => {
+    localStorage.clear()
     Object.defineProperty(navigator, 'language', { value: 'ja', configurable: true })
     initI18n()
     expect(t('menu', 'continue')).toBe('Continue')
   })
 
   it('detects French from browser locale', () => {
+    localStorage.clear()
     Object.defineProperty(navigator, 'language', { value: 'fr-FR', configurable: true })
     initI18n()
     expect(t('menu', 'continue')).toBe('Continuer')
-    setLocale('en')
   })
 
   it('switches locale to Spanish', () => {
@@ -40,9 +44,16 @@ describe('i18n', () => {
   })
 
   it('detects Spanish from browser locale', () => {
+    localStorage.clear()
     Object.defineProperty(navigator, 'language', { value: 'es-ES', configurable: true })
     initI18n()
     expect(t('menu', 'continue')).toBe('Continuar')
-    setLocale('en')
+  })
+
+  it('persists locale across initI18n calls', () => {
+    Object.defineProperty(navigator, 'language', { value: 'en-US', configurable: true })
+    setLocale('fr')
+    initI18n()
+    expect(t('menu', 'continue')).toBe('Continuer')
   })
 })
