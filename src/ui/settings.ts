@@ -231,7 +231,9 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
       })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="discord"]')!
-      .addEventListener('click', () => { /* not wired — placeholder for future link */ })
+      .addEventListener('click', () => {
+        window.open('https://discord.gg/VWMXddNAFn', '_blank', 'noopener,noreferrer')
+      })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="language"]')!
       .addEventListener('click', () => {
