@@ -3193,6 +3193,11 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   pointer-events: all;
 }
 
+.tutorial-panel .modal-btn--primary,
+.tutorial-panel .modal-btn--ghost {
+  will-change: transform;
+}
+
 .tutorial-message {
   font-size: 0.9rem;
   line-height: 1.55;

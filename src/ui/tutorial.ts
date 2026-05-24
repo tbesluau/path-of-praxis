@@ -223,13 +223,9 @@ export function showTutorial(opts: TutorialOptions): void {
     // shows "Done" + "More info →".
     let actionHtml = ''
     if (step.requiresInteraction && target) {
-      // Click target advances; escape-hatch label depends on whether more
-      // tutorial steps follow.
-      if (isLast) {
-        actionHtml = `<button class="modal-btn modal-btn--primary" data-tut="done">Done</button>`
-      } else {
-        actionHtml = `<button class="modal-btn modal-btn--danger" data-tut="dismiss">Dismiss</button>`
-      }
+      // The intended completion is clicking the highlighted target, so the
+      // escape-hatch is always "Dismiss" — never "Done".
+      actionHtml = `<button class="modal-btn modal-btn--danger" data-tut="dismiss">Dismiss</button>`
     } else if (isLast) {
       if (opts.guideSection) {
         actionHtml = `
