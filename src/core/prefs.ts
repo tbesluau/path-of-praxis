@@ -7,6 +7,9 @@ export interface Prefs {
   zoomLevel:          number
   tutorialDisabled?:  boolean
   seenTutorials?:     string[]
+  // Bump the suffix (V1 → V2 → …) to re-prompt all users when the
+  // Privacy Policy or EULA materially changes.
+  acceptedTermsV1?:   boolean
 }
 
 const defaults: Prefs = {

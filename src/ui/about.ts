@@ -1,8 +1,10 @@
 import { t } from '../i18n'
 import releaseNotesRaw from '../config/release-notes.md?raw'
 import todoRaw from '../config/todo.md?raw'
+import privacyRaw from '../config/privacy.md?raw'
+import eulaRaw from '../config/eula.md?raw'
 
-function inline(text: string): string {
+export function inline(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -10,7 +12,7 @@ function inline(text: string): string {
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 }
 
-function renderMarkdown(md: string): string {
+export function renderMarkdown(md: string): string {
   const lines = md.split('\n')
   const chunks: string[] = []
   const listItems: string[] = []
@@ -75,6 +77,8 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
       <div class="modal-actions about-actions">
         <button class="modal-btn modal-btn--ghost" data-action="release-notes">${t('about', 'releaseNotes')}</button>
         <button class="modal-btn modal-btn--ghost" data-action="todo">${t('about', 'todo')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="privacy">${t('about', 'privacy')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="eula">${t('about', 'eula')}</button>
       </div>
     </div>
   `
@@ -94,6 +98,18 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
     .addEventListener('click', () => {
       closeSub()
       subCleanup = mountAboutSubModal(parent, t('about', 'todoTitle'), todoRaw, () => { subCleanup = null })
+    })
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="privacy"]')!
+    .addEventListener('click', () => {
+      closeSub()
+      subCleanup = mountAboutSubModal(parent, t('about', 'privacyTitle'), privacyRaw, () => { subCleanup = null })
+    })
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="eula"]')!
+    .addEventListener('click', () => {
+      closeSub()
+      subCleanup = mountAboutSubModal(parent, t('about', 'eulaTitle'), eulaRaw, () => { subCleanup = null })
     })
 
   backdrop.addEventListener('click', (e) => {
