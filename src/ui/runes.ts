@@ -1,5 +1,10 @@
 import { runesByType, getRune, SLOT_TYPES, SLOT_UNLOCK_LEVELS, unlockedSlotCount, type RuneId, type RuneType } from '../config/runes'
 import type { ActionRunes } from '../core/character'
+import { t } from '../i18n'
+
+const SLOT_TYPE_KEY: Record<RuneType, 'slotMinor' | 'slotMajor' | 'slotKey'> = {
+  minor: 'slotMinor', major: 'slotMajor', key: 'slotKey',
+}
 
 // ── Rune Select Modal ──────────────────────────────────────────────────────
 
@@ -16,7 +21,7 @@ function mountRuneSelectModal(
 
   const currentRune = currentId ? getRune(currentId) : null
   const removeHtml = currentRune
-    ? `<button class="modal-btn modal-btn--ghost rune-remove-btn" data-action="remove">Remove "${currentRune.label}"</button>`
+    ? `<button class="modal-btn modal-btn--ghost rune-remove-btn" data-action="remove">${t('rune', 'remove').replace('{label}', currentRune.label)}</button>`
     : ''
 
   const itemsHtml = available.map(r => `
@@ -30,8 +35,8 @@ function mountRuneSelectModal(
   backdrop.className = 'modal-backdrop rune-select-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel rune-select-panel" role="dialog" aria-modal="true" aria-labelledby="rune-select-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <h2 class="modal-title" id="rune-select-title">${slotType.charAt(0).toUpperCase() + slotType.slice(1)} Rune — Slot ${slotIdx + 1}</h2>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title" id="rune-select-title">${t('rune', 'selectTitle').replace('{type}', t('rune', SLOT_TYPE_KEY[slotType])).replace('{n}', String(slotIdx + 1))}</h2>
       <div class="rune-select-list">${itemsHtml}</div>
       ${removeHtml ? `<div class="rune-select-footer">${removeHtml}</div>` : ''}
     </div>
@@ -85,7 +90,7 @@ export function mountRunesModal(
       const currentId = runes.selected[i] ?? null
       const currentRune = currentId ? getRune(currentId) : null
 
-      const typeLabel = slotType.charAt(0).toUpperCase() + slotType.slice(1)
+      const typeLabel = t('rune', SLOT_TYPE_KEY[slotType])
       const typeBadgeHtml = `<span class="rune-card-badge rune-card-badge--${slotType}">${typeLabel}</span>`
       const lockedBadgeHtml = isUnlocked
         ? ''
@@ -94,17 +99,17 @@ export function mountRunesModal(
 
       if (!currentRune) {
         return `
-          <button class="rune-card rune-card--empty rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="Add ${slotType} rune to slot ${i + 1}">
+          <button class="rune-card rune-card--empty rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${t('rune', 'addToSlot').replace('{type}', typeLabel).replace('{n}', String(i + 1))}">
             ${typeBadgeHtml}${lockedBadgeHtml}
             <div class="rune-card-content">
-              <span class="rune-card-name rune-card-name--empty">+ Add rune</span>
+              <span class="rune-card-name rune-card-name--empty">${t('rune', 'addRune')}</span>
             </div>
           </button>
         `
       }
 
       return `
-        <button class="rune-card rune-card--filled rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${currentRune.label} — click to change">
+        <button class="rune-card rune-card--filled rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${t('rune', 'clickToChange').replace('{label}', currentRune.label)}">
           ${typeBadgeHtml}${lockedBadgeHtml}
           <div class="rune-card-content">
             <span class="rune-card-name">${currentRune.label}</span>
@@ -116,9 +121,9 @@ export function mountRunesModal(
 
     backdrop.innerHTML = `
       <div class="modal-panel runes-panel" role="dialog" aria-modal="true" aria-labelledby="runes-title">
-        <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-        <h2 class="modal-title" id="runes-title">${actionLabel} Runes</h2>
-        <p class="runes-level-hint">Action Lv. ${actionLevel} — ${unlocked}/6 slots unlocked — +${(actionMaxLevel - 1) * 10}% XP</p>
+        <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+        <h2 class="modal-title" id="runes-title">${t('rune', 'runesTitle').replace('{action}', actionLabel)}</h2>
+        <p class="runes-level-hint">${t('rune', 'levelHint').replace('{level}', String(actionLevel)).replace('{unlocked}', String(unlocked)).replace('{bonus}', String((actionMaxLevel - 1) * 10))}</p>
         <div class="rune-slots">${slotsHtml}</div>
       </div>
     `

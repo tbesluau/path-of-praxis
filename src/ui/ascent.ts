@@ -1,17 +1,18 @@
 import { balance } from '../config/balance'
 import type { UniversePointAllocations } from '../core/character'
+import { t } from '../i18n'
 
-const THRESHOLDS: { count: number; label: string }[] = [
-  { count: 1, label: 'Critical hit and its mastery' },
-  { count: 2, label: 'Champions and Bosses tree in the enemy mastery' },
-  { count: 3, label: '+1 action trigger slot' },
-  { count: 4, label: '+1 free mastery point per ascent for each mastery' },
-  { count: 5, label: '+1 action trigger slot' },
+const THRESHOLDS: { count: number; labelKey: 'threshold1' | 'threshold2' | 'threshold3' | 'threshold4' | 'threshold5' }[] = [
+  { count: 1, labelKey: 'threshold1' },
+  { count: 2, labelKey: 'threshold2' },
+  { count: 3, labelKey: 'threshold3' },
+  { count: 4, labelKey: 'threshold4' },
+  { count: 5, labelKey: 'threshold5' },
 ]
 
-const UP_SLOTS: { key: keyof UniversePointAllocations; label: string; max: number }[] = [
-  { key: 'placeholderA', label: '10% increased multi-action speed', max: balance.ascent.universePointMaxA },
-  { key: 'placeholderB', label: '+1% base action critical hit chance', max: balance.ascent.universePointMaxB },
+const UP_SLOTS: { key: keyof UniversePointAllocations; labelKey: 'upSlotA' | 'upSlotB'; max: number }[] = [
+  { key: 'placeholderA', labelKey: 'upSlotA', max: balance.ascent.universePointMaxA },
+  { key: 'placeholderB', labelKey: 'upSlotB', max: balance.ascent.universePointMaxB },
 ]
 
 export function mountAscentModal(
@@ -32,15 +33,15 @@ export function mountAscentModal(
     const available = totalPoints - spent
     const nextRequired = balance.ascent.requiredEnemyLevelBase + ascentCount * balance.ascent.requiredLevelStep
 
-    const thresholdsHtml = THRESHOLDS.map(t => {
-      const unlocked = ascentCount >= t.count
+    const thresholdsHtml = THRESHOLDS.map(thresh => {
+      const unlocked = ascentCount >= thresh.count
       return `
         <div class="ascent-threshold-row">
           <span class="ascent-threshold-icon${unlocked ? ' ascent-threshold-icon--unlocked' : ''}">
             ${unlocked ? '✓' : '○'}
           </span>
-          <span class="ascent-threshold-count">${t.count}</span>
-          <span class="ascent-threshold-label${unlocked ? '' : ' ascent-threshold-label--locked'}">${t.label}</span>
+          <span class="ascent-threshold-count">${thresh.count}</span>
+          <span class="ascent-threshold-label${unlocked ? '' : ' ascent-threshold-label--locked'}">${t('ascent', thresh.labelKey)}</span>
         </div>
       `
     }).join('')
@@ -53,12 +54,12 @@ export function mountAscentModal(
       const canRemove = val > 0
       return `
         <div class="universe-point-row">
-          <span class="universe-point-name">${slot.label}</span>
+          <span class="universe-point-name">${t('ascent', slot.labelKey)}</span>
           <div class="universe-point-ctrl">
-            <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="-1" aria-label="Remove point"
+            <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="-1" aria-label="${t('ascent', 'removePoint')}"
               ${canRemove ? '' : 'disabled'}><img class="enemy-level-arrow" src="${arrowLeft}" alt=""></button>
             <span class="universe-point-value">${val}/${slot.max}</span>
-            <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="1" aria-label="Add point"
+            <button class="enemy-level-btn" data-slot="${slot.key}" data-delta="1" aria-label="${t('ascent', 'addPoint')}"
               ${canAdd ? '' : 'disabled'}><img class="enemy-level-arrow" src="${arrowRight}" alt=""></button>
           </div>
         </div>
@@ -67,22 +68,22 @@ export function mountAscentModal(
 
     backdrop.innerHTML = `
       <div class="modal-panel ascent-panel" role="dialog" aria-modal="true" aria-labelledby="ascent-title">
-        <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-        <h2 class="modal-title" id="ascent-title">Ascent</h2>
+        <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+        <h2 class="modal-title" id="ascent-title">${t('ascent', 'title')}</h2>
 
         <div class="ascent-summary">
-          <span class="ascent-summary-item">Ascent count: <strong>${ascentCount}</strong></span>
+          <span class="ascent-summary-item">${t('ascent', 'ascentCount').replace('{n}', `<strong>${ascentCount}</strong>`)}</span>
           <span class="ascent-summary-sep">·</span>
-          <span class="ascent-summary-item">Next ascent: enemy level <strong>${nextRequired}</strong></span>
+          <span class="ascent-summary-item">${t('ascent', 'nextAscent').replace('{n}', `<strong>${nextRequired}</strong>`)}</span>
         </div>
 
         <section class="ascent-section">
-          <h3 class="ascent-section-title">Unlocked at</h3>
+          <h3 class="ascent-section-title">${t('ascent', 'unlockedAt')}</h3>
           <div class="ascent-threshold-list">${thresholdsHtml}</div>
         </section>
 
         <section class="ascent-section">
-          <h3 class="ascent-section-title">Universe points <span class="ascent-points-avail">(${available} available)</span></h3>
+          <h3 class="ascent-section-title">${t('ascent', 'universePoints')} <span class="ascent-points-avail">${t('ascent', 'available').replace('{n}', String(available))}</span></h3>
           <div class="universe-point-list">${pointsHtml}</div>
         </section>
       </div>

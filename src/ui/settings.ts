@@ -69,7 +69,7 @@ export function mountSettingsButton(
 ): () => void {
   const btn = document.createElement('button')
   btn.className = 'settings-btn'
-  btn.setAttribute('aria-label', 'Settings')
+  btn.setAttribute('aria-label', t('settings', 'title'))
   btn.innerHTML = '<i data-lucide="settings" aria-hidden="true"></i>'
   container.appendChild(btn)
   createIcons({ icons: { Settings } })
@@ -115,7 +115,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     const atMax = zoomIdx === ZOOM_STEPS.length - 1
     backdrop.innerHTML = `
       <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-        <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+        <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
         <h2 class="modal-title" id="settings-title">${t('settings', 'title')}</h2>
         <div class="settings-top-buttons">
           <button class="settings-top-btn" data-action="guide" aria-label="${t('settings', 'guide')}">
@@ -324,7 +324,7 @@ function mountLanguageModal(
 
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="lang-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="lang-title">${t('settings', 'languageTitle')}</h2>
       <div class="lang-options">
         ${SUPPORTED_LOCALES.map(l => `
@@ -378,7 +378,7 @@ function mountTargetingModal(
 
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="targeting-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="targeting-title">${t('game', 'targetingTitle')}</h2>
       <div class="targeting-options">
         ${TARGETING_OPTS.map(o => `
@@ -489,7 +489,7 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
   panel.setAttribute('aria-modal', 'true')
   panel.setAttribute('aria-labelledby', 'guide-title')
   panel.innerHTML = `
-    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+    <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
     <h2 class="modal-title" id="guide-title">${t('guide', 'title')}</h2>
     <div class="guide-sections"></div>
   `

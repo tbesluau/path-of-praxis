@@ -58,7 +58,7 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
 
   backdrop.innerHTML = `
     <div class="modal-panel about-panel" role="dialog" aria-modal="true" aria-labelledby="about-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="about-title">${t('about', 'title')}</h2>
       <div class="about-body">
         <p>${inline(t('about', 'body'))}</p>
@@ -116,7 +116,7 @@ function mountAboutSubModal(
 
   backdrop.innerHTML = `
     <div class="modal-panel about-panel" role="dialog" aria-modal="true" aria-labelledby="about-sub-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="about-sub-title">${title}</h2>
       <div class="about-body">${body}</div>
     </div>

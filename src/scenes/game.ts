@@ -1273,39 +1273,39 @@ export function createGameScene(
   el.innerHTML = `
     <div class="game-top-bar">
       <div class="game-top-left">
-        <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="Back to menu">
+        <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}">
           <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="die" aria-label="Die and rebirth">
+        <button class="game-action-btn game-action-btn--icon" data-action="die" aria-label="${t('game', 'dieRebirth')}">
           <i data-lucide="skull" aria-hidden="true"></i>
         </button>
       </div>
       <div class="game-top-center">
-        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="Battle configuration" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="${t('game', 'battleConfig')}" style="position:relative">
           <i data-lucide="settings-2" aria-hidden="true"></i>
           <span class="notif-dot rune-notif-dot rune-notif-dot--top" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="Masteries" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="${t('game', 'masteries')}" style="position:relative">
           <i data-lucide="award" aria-hidden="true"></i>
           <span class="notif-dot mastery-notif-dot" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" aria-label="Ascent" hidden>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" aria-label="${t('game', 'ascentBtnLabel')}" hidden>
           <i data-lucide="arrow-up" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="Enemy level" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="${t('game', 'enemyLevelLabel')}" style="position:relative">
           <span class="enemy-level-display">1 / 1</span>
           <span class="notif-dot enemy-notif-dot" hidden></span>
         </button>
       </div>
       <div class="game-top-right">
         <div class="speed-ctrl">
-          <button class="speed-pause-btn" data-action="playpause" aria-label="Pause">
+          <button class="speed-pause-btn" data-action="playpause" aria-label="${t('game', 'pauseLabel')}">
             <i data-lucide="pause" aria-hidden="true"></i>
           </button>
           <button class="speed-opt speed-opt--active" data-speed="1">×1</button>
           <button class="speed-opt speed-opt--timed" data-speed="2">
             <span>×2</span>
-            <span class="speed-stockpile" aria-label="×2 speed time remaining">0:00</span>
+            <span class="speed-stockpile" aria-label="${t('game', 'x2SpeedRemaining')}">0:00</span>
           </button>
           ${isCheatMode() ? '<button class="speed-opt" data-speed="5">×5</button>' : ''}
         </div>
@@ -1315,26 +1315,26 @@ export function createGameScene(
       <div class="buff-bar"></div>
       <div class="dps-meter" hidden></div>
       <div class="enemy-level-ctrl">
-        <span class="enemy-level-title">Enemy level</span>
+        <span class="enemy-level-title">${t('game', 'enemyLevelLabel')}</span>
         <div class="enemy-level-main">
-          <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="Decrease enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
+          <button class="enemy-level-btn" data-action="enemy-level-down" aria-label="${t('game', 'enemyLevelDown')}"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_left.png" alt=""></button>
           <span class="enemy-level-display">1 / 1</span>
-          <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="Increase enemy level"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png" alt=""></button>
-          <label class="enemy-autolevel" title="Auto-advance enemy level on unlock">
-            <input type="checkbox" class="enemy-autolevel-input" aria-label="Auto-level enemies">
+          <button class="enemy-level-btn" data-action="enemy-level-up" aria-label="${t('game', 'enemyLevelUp')}"><img class="enemy-level-arrow" src="${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG/arrowSilver_right.png" alt=""></button>
+          <label class="enemy-autolevel" title="${t('game', 'autoAdvanceTitle')}">
+            <input type="checkbox" class="enemy-autolevel-input" aria-label="${t('game', 'autoLevelAriaLabel')}">
             <span class="enemy-autolevel-track"></span>
-            <span class="enemy-autolevel-label">Auto</span>
+            <span class="enemy-autolevel-label">${t('game', 'autoLevelText')}</span>
           </label>
         </div>
         <div class="enemy-xp-bar">
           <div class="enemy-xp-bar-fill"></div>
         </div>
         <div class="ascent-bar-section" hidden>
-          <span class="ascent-bar-title">Ascent</span>
+          <span class="ascent-bar-title">${t('ascent', 'title')}</span>
           <div class="ascent-xp-bar">
             <div class="ascent-xp-bar-fill"></div>
           </div>
-          <button class="ascent-action-btn" data-action="ascend" hidden>Ascend to a new universe</button>
+          <button class="ascent-action-btn" data-action="ascend" hidden>${t('game', 'ascendBtn')}</button>
         </div>
       </div>
     </div>
@@ -1370,11 +1370,11 @@ export function createGameScene(
   }
 
   const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
-    doubleAction: 'Double action', additionalTarget: 'Bonus target', additionalProjectile: 'Extra projectile',
-    splitAction: 'Split cast', jump: 'Chain jump', tremor: 'Tremor',
+    doubleAction: t('game', 'dpsDoubleAction'), additionalTarget: t('game', 'dpsBonusTarget'), additionalProjectile: t('game', 'dpsExtraProjectile'),
+    splitAction: t('game', 'dpsSplitCast'), jump: t('game', 'dpsChainJump'), tremor: t('game', 'dpsTremor'),
   }
   const DPS_AFFLICTION_LABELS: Record<string, string> = {
-    'affliction:burn': 'Burn', 'affliction:bleed': 'Bleed', 'affliction:groundFire': 'Ground fire',
+    'affliction:burn': t('game', 'dpsAfflictionBurn'), 'affliction:bleed': t('game', 'dpsAfflictionBleed'), 'affliction:groundFire': t('game', 'dpsAfflictionGroundFire'),
   }
   const DPS_MULTI_TYPES = Object.keys(DPS_MULTI_LABELS) as MultiActionType[]
   const DPS_AFFLICTION_KEYS = Object.keys(DPS_AFFLICTION_LABELS)
@@ -1901,7 +1901,7 @@ export function createGameScene(
 
   function updateSpeedUI(): void {
     const icon = paused ? 'play' : 'pause'
-    speedPauseBtn.setAttribute('aria-label', paused ? 'Play' : 'Pause')
+    speedPauseBtn.setAttribute('aria-label', paused ? t('game', 'playLabel') : t('game', 'pauseLabel'))
     speedPauseBtn.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`
     createIcons({ icons: { Play, Pause } })
     const x2Locked = fastForwardMs <= 0
@@ -2703,7 +2703,7 @@ export function createGameScene(
 
     const masterySummaryHtml = masteryCatsHtml.trim() === '' ? '' : `
       <div class="death-mastery-summary">
-        <div class="death-summary-section-label">Mastery gains</div>
+        <div class="death-summary-section-label">${t('game', 'masteryGains')}</div>
         <div class="mastery-categories">${masteryCatsHtml}</div>
       </div>`
 
@@ -5413,26 +5413,28 @@ interface TriggerDef {
   unlockHint: string
 }
 
-const TRIGGER_DEFS: TriggerDef[] = [
-  {
-    type: 'time',
-    label: 'Time Trigger',
-    description: 'Triggers every 2 seconds. Faster actions deal more damage, slower actions deal less.',
-    unlockHint: '',
-  },
-  {
-    type: 'crit',
-    label: 'Critical Trigger',
-    description: 'Triggers when the auto-attack lands a critical strike. 10× weaker base damage, speed-balanced.',
-    unlockHint: 'Kill a boss with a critical hit',
-  },
-  {
-    type: 'affliction',
-    label: 'Affliction Trigger',
-    description: 'Triggers every 10 applied afflictions. Damage is speed-balanced.',
-    unlockHint: 'Kill a boss with affliction damage',
-  },
-]
+function getTriggerDefs(): TriggerDef[] {
+  return [
+    {
+      type: 'time',
+      label: t('game', 'triggerTime'),
+      description: t('game', 'triggerTimeDesc'),
+      unlockHint: '',
+    },
+    {
+      type: 'crit',
+      label: t('game', 'triggerCrit'),
+      description: t('game', 'triggerCritDesc'),
+      unlockHint: t('game', 'triggerCritLock'),
+    },
+    {
+      type: 'affliction',
+      label: t('game', 'triggerAffliction'),
+      description: t('game', 'triggerAfflictionDesc'),
+      unlockHint: t('game', 'triggerAfflictionLock'),
+    },
+  ]
+}
 
 function mountTriggerPickerModal(
   parent: HTMLElement,
@@ -5449,13 +5451,13 @@ function mountTriggerPickerModal(
   panel.setAttribute('role', 'dialog')
   panel.setAttribute('aria-modal', 'true')
   panel.innerHTML = `
-    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-    <h2 class="modal-title">Action Trigger</h2>
+    <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+    <h2 class="modal-title">${t('game', 'actionTriggerTitle')}</h2>
     <div class="trigger-picker-options"></div>
   `
 
   const optionsEl = panel.querySelector<HTMLElement>('.trigger-picker-options')!
-  for (const def of TRIGGER_DEFS) {
+  for (const def of getTriggerDefs()) {
     const isUnlocked = def.type === 'time' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')
     const isActive = def.type === currentType
     const btn = document.createElement('button')
@@ -5518,7 +5520,7 @@ function mountBattleConfigModal(
   panel.setAttribute('role', 'dialog')
   panel.setAttribute('aria-modal', 'true')
   panel.innerHTML = `
-    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+    <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
     <h2 class="modal-title">${t('game', 'triggersTitle')}</h2>
     <div class="trigger-list"></div>
   `
@@ -5549,7 +5551,7 @@ function mountBattleConfigModal(
 
     const runeBtn = document.createElement('button')
     runeBtn.className = 'action-trigger-rune-btn'
-    runeBtn.setAttribute('aria-label', 'Runes')
+    runeBtn.setAttribute('aria-label', t('rune', 'runesAriaLabel'))
     runeBtn.innerHTML = '<i data-lucide="sparkles" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>'
     row.appendChild(runeBtn)
 
@@ -5569,9 +5571,9 @@ function mountBattleConfigModal(
     // ── Extra slots (slot 2 / slot 3) ─────────────────────────────────────
     const SLOT_PENALTIES = [balance.ascent.slot2DamagePenalty, balance.ascent.slot3DamagePenalty]
     const TRIGGER_LABELS: Record<TriggerType, string> = {
-      time:       'Time Trigger',
-      crit:       'Critical Trigger',
-      affliction: 'Affliction Trigger',
+      time:       t('game', 'triggerTime'),
+      crit:       t('game', 'triggerCrit'),
+      affliction: t('game', 'triggerAffliction'),
     }
 
     function openTriggerPicker(slotIdx: number): void {
@@ -5601,7 +5603,7 @@ function mountBattleConfigModal(
         // Newly unlocked — show "Select action trigger" button
         const selectBtn = document.createElement('button')
         selectBtn.className = 'action-trigger-select-btn'
-        selectBtn.textContent = 'Select action trigger'
+        selectBtn.textContent = t('game', 'selectActionTrigger')
         selectBtn.addEventListener('click', () => openTriggerPicker(i))
         extraWrap.appendChild(selectBtn)
       } else {

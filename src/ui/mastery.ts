@@ -5,6 +5,7 @@ import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP } from '../config/ma
 import type { MasteryProgress } from '../core/character'
 import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
 import { linkifyNoteTerms, mountNoteModal } from './notes'
+import { t } from '../i18n'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -114,12 +115,12 @@ function mountResetConfirmModal(
   backdrop.className = 'modal-backdrop mastery-node-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-node-panel" role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <h2 class="modal-title" id="reset-confirm-title">Reset ${masteryLabel}?</h2>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title" id="reset-confirm-title">${t('mastery', 'resetTitle').replace('{name}', masteryLabel)}</h2>
       <p class="node-detail-desc">${description}</p>
       <div class="node-detail-actions reset-confirm-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="cancel">Cancel</button>
-        <button class="modal-btn modal-btn--danger" data-action="confirm">Reset</button>
+        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('mastery', 'confirmCancel')}</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm">${t('mastery', 'confirmReset')}</button>
       </div>
     </div>
   `
@@ -150,25 +151,26 @@ function mountNodeDetailModal(
   onAssign: () => void,
   onClose: () => void,
 ): () => void {
-  const typeLabelMap: Record<string, string> = { small: 'Small Node', strong: 'Strong Node', major: 'Major Node', key: 'Key Node' }
-  const typeLabel = typeLabelMap[nodeType(info.nodeIdx)]
+  const typeLabelMap: Record<string, 'nodeSmall' | 'nodeStrong' | 'nodeMajor' | 'nodeKey'> = { small: 'nodeSmall', strong: 'nodeStrong', major: 'nodeMajor', key: 'nodeKey' }
+  const typeLabel = t('mastery', typeLabelMap[nodeType(info.nodeIdx)])
 
   let actionHtml = ''
   if (info.assignInfo.kind === 'assigned') {
-    actionHtml = '<span class="node-detail-assigned">Assigned</span>'
+    actionHtml = `<span class="node-detail-assigned">${t('mastery', 'nodeAssigned')}</span>`
   } else if (info.assignInfo.kind === 'assignable') {
     const cost = info.assignInfo.cost
-    const label = `Assign (${cost} pt${cost === 1 ? '' : 's'})`
+    const label = (cost === 1 ? t('mastery', 'nodeAssignPt') : t('mastery', 'nodeAssignPts')).replace('{cost}', String(cost))
     actionHtml = `<button class="modal-btn modal-btn--primary node-detail-assign-btn" data-action="assign">${label}</button>`
   } else if (info.assignInfo.kind === 'insufficient') {
     const { cost, available } = info.assignInfo
-    actionHtml = `<span class="node-detail-blocked">Need ${cost} mastery point${cost === 1 ? '' : 's'} (have ${available})</span>`
+    const tpl = cost === 1 ? t('mastery', 'nodeNeedPt') : t('mastery', 'nodeNeedPts')
+    actionHtml = `<span class="node-detail-blocked">${tpl.replace('{cost}', String(cost)).replace('{available}', String(available))}</span>`
   } else {
     actionHtml = info.assignInfo.reason === 'sibling'
-      ? '<span class="node-detail-blocked">Another key node already chosen</span>'
+      ? `<span class="node-detail-blocked">${t('mastery', 'nodeKeyChosen')}</span>`
       : info.assignInfo.reason === 'undefined'
-      ? '<span class="node-detail-blocked">Not yet implemented</span>'
-      : '<span class="node-detail-blocked">Node not available</span>'
+      ? `<span class="node-detail-blocked">${t('mastery', 'nodeNotImpl')}</span>`
+      : `<span class="node-detail-blocked">${t('mastery', 'nodeNotAvail')}</span>`
   }
 
   const descHtml = linkifyNoteTerms(info.desc)
@@ -177,7 +179,7 @@ function mountNodeDetailModal(
   backdrop.className = 'modal-backdrop mastery-node-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-node-panel" role="dialog" aria-modal="true" aria-labelledby="node-detail-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="node-detail-title">${typeLabel}</h2>
       <p class="node-detail-tree">${info.treeLabel}</p>
       <p class="node-detail-desc">${descHtml}</p>
@@ -474,16 +476,16 @@ function mountMasteryTreeModal(
   const fmtRate = (n: number): string => Number.isInteger(n) ? String(n) : n.toFixed(1)
 
   panel.innerHTML = `
-    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+    <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
     <h2 class="modal-title" id="tree-modal-title">${def.label}</h2>
     <p class="mastery-tree-points"></p>
     <div class="mastery-trees-list"></div>
     <div class="mastery-tree-footer">
       <div class="mastery-dump">
         <span class="mastery-dump-label"></span>
-        <button class="modal-btn modal-btn--ghost mastery-dump-btn" data-action="dump" title="Click: dump 1 point · Ctrl/Cmd-click: dump all"></button>
+        <button class="modal-btn modal-btn--ghost mastery-dump-btn" data-action="dump" title="${t('mastery', 'dumpTooltip')}"></button>
       </div>
-      <button class="modal-btn modal-btn--danger mastery-reset-btn" data-action="reset">Reset (−1 level)</button>
+      <button class="modal-btn modal-btn--danger mastery-reset-btn" data-action="reset">${t('mastery', 'resetBtn')}</button>
     </div>
   `
   backdrop.appendChild(panel)
@@ -505,14 +507,19 @@ function mountMasteryTreeModal(
     const levelAvail = masteryPointsAvailable(freshP, freeUsed, dumped)
     const total = levelAvail + remaining
     const earned = Math.max(0, freshP.level - 1) + freeUsed + remaining
-    const freePart = (freeUsed + remaining) > 0 ? ` (${freeUsed + remaining} free)` : ''
-    pointsEl.textContent = `You have ${total} / ${earned} mastery point${earned !== 1 ? 's' : ''} to assign${freePart}`
+    const freeCount = freeUsed + remaining
+    const freePart = freeCount > 0 ? t('mastery', 'pointsFree').replace('{n}', String(freeCount)) : ''
+    const pointsTpl = earned !== 1 ? t('mastery', 'pointsPts') : t('mastery', 'pointsPt')
+    pointsEl.textContent = pointsTpl.replace('{total}', String(total)).replace('{earned}', String(earned)).replace('{free}', freePart)
     const dumpBonus = dumped * dumpInfo.rate
     const bonusStr = fmtRate(dumpBonus)
-    dumpLabelEl.innerHTML = dumped > 0
-      ? `Dump: <strong>${dumped}</strong> pt${dumped === 1 ? '' : 's'} → +${bonusStr}% more ${dumpInfo.label}`
-      : `Dump points for +${fmtRate(dumpInfo.rate)}% more ${dumpInfo.label} per point`
-    dumpBtn.textContent = 'Dump a point'
+    if (dumped > 0) {
+      const dumpTpl = dumped === 1 ? t('mastery', 'dumpActivePt') : t('mastery', 'dumpActivePts')
+      dumpLabelEl.innerHTML = dumpTpl.replace('{dumped}', `<strong>${dumped}</strong>`).replace('{bonus}', bonusStr).replace('{label}', dumpInfo.label)
+    } else {
+      dumpLabelEl.innerHTML = t('mastery', 'dumpLabel').replace('{rate}', fmtRate(dumpInfo.rate)).replace('{label}', dumpInfo.label)
+    }
+    dumpBtn.textContent = t('mastery', 'dumpBtn')
     dumpBtn.disabled = total <= 0
     resetBtn.disabled = freshP.level <= 1 && freeUsed === 0 && dumped === 0
   }
@@ -584,8 +591,8 @@ function mountMasteryTreeModal(
     const freshP = prog(masteryProgress, def.id)
     const willLoseLevel = freshP.level > 1
     const resetDesc = willLoseLevel
-      ? 'All assigned nodes will be cleared and you will lose 1 level in this mastery. Dumped points are refunded.'
-      : 'All assigned nodes will be cleared. Free and dumped mastery points will be returned.'
+      ? t('mastery', 'resetDescLoseLevel')
+      : t('mastery', 'resetDescNoLoseLevel')
     subCleanup = mountResetConfirmModal(
       parent,
       def.label,
@@ -635,8 +642,8 @@ export function mountMasteryModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-panel" role="dialog" aria-modal="true" aria-labelledby="mastery-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
-      <h2 class="modal-title" id="mastery-title">Masteries</h2>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title" id="mastery-title">${t('mastery', 'title')}</h2>
       <div class="mastery-categories"></div>
     </div>
   `
