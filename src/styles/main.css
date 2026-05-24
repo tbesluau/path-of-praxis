@@ -382,7 +382,7 @@ body::after {
 
 .dps-bar-track {
   flex-shrink: 0;
-  width: 25vw;
+  width: 15vw;
   display: flex;
   justify-content: flex-end;
 }
