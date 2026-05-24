@@ -3719,47 +3719,46 @@ export function createGameScene(
   startRegen()
   scheduleWave(balance.wave.spawnDelay)
 
-  setTimeout(() => {
-    if (!isTutorialSeen('first-game') && !getPrefs().tutorialDisabled) {
-      const wasPaused = paused
-      if (!wasPaused) togglePause()
-      showTutorial({
-        id: 'first-game',
-        steps: [
-          {
-            message: getTutorialMessage('first-game', 0),
-            targetSelector: '.game-viewport',
-          },
-          {
-            message: getTutorialMessage('first-game', 1),
-            targetSelector: '.stat-bar--life',
-          },
-          {
-            message: getTutorialMessage('first-game', 2),
-            targetSelector: '.stat-bar--mana',
-          },
-          {
-            message: getTutorialMessage('first-game', 3),
-            targetSelector: '.stat-bars',
-          },
-          {
-            message: getTutorialMessage('first-game', 4),
-            targetSelector: '[data-action="open-config"]',
-            requiresInteraction: true,
-          },
-          {
-            message: getTutorialMessage('first-game', 5),
-            transparent: true,
-          },
-        ],
-        guideSection: 'Actions & Action Levels',
-        parent: container,
-        openGuide,
-        onDone:  () => { if (!wasPaused && paused) togglePause() },
-        onGuide: () => { /* leave game paused — user will resume after reading the guide */ },
-      })
-    }
-  }, 0)
+  function startFirstGameTutorial(): void {
+    if (isTutorialSeen('first-game') || getPrefs().tutorialDisabled) return
+    const wasPaused = paused
+    if (!wasPaused) togglePause()
+    showTutorial({
+      id: 'first-game',
+      steps: [
+        {
+          message: getTutorialMessage('first-game', 0),
+          targetSelector: '.game-viewport',
+        },
+        {
+          message: getTutorialMessage('first-game', 1),
+          targetSelector: '.stat-bar--life',
+        },
+        {
+          message: getTutorialMessage('first-game', 2),
+          targetSelector: '.stat-bar--mana',
+        },
+        {
+          message: getTutorialMessage('first-game', 3),
+          targetSelector: '.stat-bars',
+        },
+        {
+          message: getTutorialMessage('first-game', 4),
+          targetSelector: '[data-action="open-config"]',
+          requiresInteraction: true,
+        },
+        {
+          message: getTutorialMessage('first-game', 5),
+          transparent: true,
+        },
+      ],
+      guideSection: 'Actions & Action Levels',
+      parent: container,
+      openGuide,
+      onDone:  () => { if (!wasPaused && paused) togglePause() },
+      onGuide: () => { /* leave game paused — user will resume after reading the guide */ },
+    })
+  }
 
   ;(async () => {
     try {
@@ -3825,6 +3824,14 @@ export function createGameScene(
       drawGrid()
       updateCamera()
       app.renderer.on('resize', () => { drawGrid(); updateCamera() })
+
+      // Paint one frame of the terrain + player before starting the first-game
+      // tutorial — otherwise step 0 would point at a still-black viewport.
+      app.renderer.render(app.stage)
+      requestAnimationFrame(() => {
+        if (destroyed) return
+        startFirstGameTutorial()
+      })
 
       app.ticker.add((ticker) => {
         // ── ×2-speed stockpile: detect absences (gap since last frame), then consume ─
