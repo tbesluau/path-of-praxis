@@ -907,6 +907,12 @@ export function createGameScene(
     updateActionBar()
   }
 
+  // Tracks the previous "has an unassigned rune slot" state so the first-rune
+  // tutorial only fires on a clean false→true transition. Stays null until
+  // the first refreshRuneDot call so a returning player whose dot is already
+  // visible on load doesn't get the tutorial out of context.
+  let previousRuneDotState: boolean | null = null
+
   function refreshRuneDot(): void {
     const r = getActionRunes(playerActionId)
     const level = actionProgress[playerActionId]?.level ?? 1
@@ -914,6 +920,35 @@ export function createGameScene(
     const anyUnlockedEmpty = r.selected.slice(0, unlocked).some(s => s == null)
     container.querySelectorAll<HTMLElement>('.rune-notif-dot').forEach(dot => {
       dot.hidden = !anyUnlockedEmpty
+    })
+    if (previousRuneDotState === false && anyUnlockedEmpty) {
+      startFirstRuneTutorial()
+    }
+    previousRuneDotState = anyUnlockedEmpty
+  }
+
+  function startFirstRuneTutorial(): void {
+    if (isTutorialSeen('first-rune') || getPrefs().tutorialDisabled) return
+    const wasPaused = paused
+    if (!wasPaused) togglePause()
+    showTutorial({
+      id: 'first-rune',
+      steps: [
+        {
+          message: getTutorialMessage('first-rune', 0),
+          targetSelector: '[data-action="open-config"]',
+          requiresInteraction: true,
+        },
+        {
+          message: getTutorialMessage('first-rune', 1),
+          targetSelector: '.action-trigger-rune-btn',
+          requiresInteraction: true,
+          transparent: true,  // keep the action modal visible
+        },
+      ],
+      parent: container,
+      openGuide,
+      onDone: () => { if (!wasPaused && paused) togglePause() },
     })
   }
 
@@ -2589,7 +2624,9 @@ export function createGameScene(
             },
             {
               message: getTutorialMessage('second-trigger', 1),
-              transparent: true,
+              targetSelector: '.action-trigger-select-btn',
+              requiresInteraction: true,
+              transparent: true,  // keep the action modal visible behind
             },
           ],
           guideSection: 'Action Triggers',
@@ -2608,7 +2645,6 @@ export function createGameScene(
         parent: container,
         openGuide,
         onDone: () => {},
-        noDismissOnLast: true,
       })
     }
   }

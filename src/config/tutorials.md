@@ -72,7 +72,19 @@ You unlocked a second action trigger slot! Open the battle configuration to set 
 
 ## second-trigger.1
 
-The new slot can fire on Time, Critical hit or Affliction. It applies a global damage penalty (×0.75), but a well-matched second action can hugely boost total damage.
+Tap your new trigger slot to choose how it fires — Time, Critical hit or Affliction. It applies a global ×0.75 damage penalty, but a well-matched second action more than makes up for it.
+
+---
+
+## first-rune.0
+
+You've earned a rune slot! Open your battle configuration to assign runes that buff your action.
+
+---
+
+## first-rune.1
+
+Tap the rune button next to your action to pick runes from your unlocked pool. Each one tweaks how the action behaves.
 
 ---
 
