@@ -125,6 +125,7 @@ export function showTutorial(opts: TutorialOptions): void {
 
   function positionPanel(target: Element | undefined, transparent: boolean): void {
     const pw = opts.parent.getBoundingClientRect()
+    const margin = 8
 
     if (transparent) {
       panel.style.cssText = 'bottom:24px;left:50%;transform:translateX(-50%);width:min(420px,92vw)'
@@ -140,23 +141,51 @@ export function showTutorial(opts: TutorialOptions): void {
     const tr = target.getBoundingClientRect()
     const relTop  = tr.top  - pw.top
     const relLeft = tr.left - pw.left
-    const inTop   = relTop < pw.height / 2
+    const relBottom = relTop + tr.height
 
-    arrow.hidden = false
-    arrow.dataset['dir'] = inTop ? 'down' : 'up'
-    const arrowX = relLeft + tr.width / 2 - 10
-    const arrowY = inTop ? relTop + tr.height + 6 : relTop - 22
-
-    arrow.style.left = `${Math.max(8, arrowX)}px`
-    arrow.style.top  = `${arrowY}px`
-
+    // Apply width first so the panel reflows to its final width, then measure
+    // its natural height. innerHTML must already be set by the caller for the
+    // height to be accurate.
     const panelW = Math.min(340, pw.width * 0.90)
+    panel.style.cssText = `top:0;left:0;width:${panelW}px`
+    const panelH = panel.offsetHeight
+
+    // Pick whichever side has more room. For oversized targets neither side
+    // may fit the full panel — we clamp afterwards.
+    const placeBelow = (pw.height - relBottom) >= relTop
+
+    const arrowX = relLeft + tr.width / 2 - 10
     let panelL = relLeft + tr.width / 2 - panelW / 2
-    panelL = Math.max(8, Math.min(panelL, pw.width - panelW - 8))
-    if (inTop) {
-      panel.style.cssText = `top:${arrowY + 22}px;left:${panelL}px;width:${panelW}px`
+    panelL = Math.max(margin, Math.min(panelL, pw.width - panelW - margin))
+
+    if (placeBelow) {
+      const naturalArrowY = relBottom + 6
+      const naturalPanelTop = naturalArrowY + 22
+      const clampedPanelTop = Math.max(margin, Math.min(naturalPanelTop, pw.height - panelH - margin))
+      if (clampedPanelTop === naturalPanelTop) {
+        arrow.hidden = false
+        arrow.dataset['dir'] = 'down'
+        arrow.style.left = `${Math.max(margin, arrowX)}px`
+        arrow.style.top  = `${naturalArrowY}px`
+      } else {
+        // Panel overlaps the target — drop the arrow; the gold pulse ring
+        // on the target itself is enough to identify the focus.
+        arrow.hidden = true
+      }
+      panel.style.cssText = `top:${clampedPanelTop}px;left:${panelL}px;width:${panelW}px`
     } else {
-      panel.style.cssText = `bottom:${pw.height - arrowY + 8}px;left:${panelL}px;width:${panelW}px`
+      const naturalArrowY = relTop - 22
+      const naturalPanelBottom = pw.height - naturalArrowY + 8
+      const clampedPanelBottom = Math.max(margin, Math.min(naturalPanelBottom, pw.height - panelH - margin))
+      if (clampedPanelBottom === naturalPanelBottom) {
+        arrow.hidden = false
+        arrow.dataset['dir'] = 'up'
+        arrow.style.left = `${Math.max(margin, arrowX)}px`
+        arrow.style.top  = `${naturalArrowY}px`
+      } else {
+        arrow.hidden = true
+      }
+      panel.style.cssText = `bottom:${clampedPanelBottom}px;left:${panelL}px;width:${panelW}px`
     }
   }
 
@@ -181,9 +210,6 @@ export function showTutorial(opts: TutorialOptions): void {
         currentTarget = target
       }
     }
-
-    positionBackdrop(target, transparent)
-    positionPanel(target, transparent)
 
     const disableId = `tut-disable-${opts.id}-${stepIdx}`
 
@@ -223,6 +249,10 @@ export function showTutorial(opts: TutorialOptions): void {
         ${actionHtml}
       </div>
     `
+
+    // Position after innerHTML so panel.offsetHeight reflects the real content.
+    positionBackdrop(target, transparent)
+    positionPanel(target, transparent)
 
     panel.querySelector<HTMLInputElement>('[data-tut="disable"]')!
       .addEventListener('change', () => {
