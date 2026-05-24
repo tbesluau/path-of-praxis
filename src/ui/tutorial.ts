@@ -113,10 +113,13 @@ export function showTutorial(opts: TutorialOptions): void {
     const tr = target.getBoundingClientRect()
     // Pad the cutout so the gold pulse ring (3px + 12px glow) is fully visible.
     const margin = 10
-    const cutL = Math.max(0, tr.left  - pw.left - margin)
-    const cutT = Math.max(0, tr.top   - pw.top  - margin)
-    const cutR = Math.min(pw.width,  tr.left - pw.left + tr.width  + margin)
-    const cutB = Math.min(pw.height, tr.top  - pw.top  + tr.height + margin)
+    // Round to integers — fractional strip dimensions create 1px gaps
+    // between strips and trigger sub-pixel rendering on child buttons,
+    // which surfaces as faint white lines on the border-image seams.
+    const cutL = Math.round(Math.max(0, tr.left  - pw.left - margin))
+    const cutT = Math.round(Math.max(0, tr.top   - pw.top  - margin))
+    const cutR = Math.round(Math.min(pw.width,  tr.left - pw.left + tr.width  + margin))
+    const cutB = Math.round(Math.min(pw.height, tr.top  - pw.top  + tr.height + margin))
     stripTop.style.cssText    = `position:absolute;left:0;top:0;right:0;height:${cutT}px`
     stripBottom.style.cssText = `position:absolute;left:0;top:${cutB}px;right:0;bottom:0`
     stripLeft.style.cssText   = `position:absolute;left:0;top:${cutT}px;width:${cutL}px;height:${cutB - cutT}px`
@@ -144,8 +147,9 @@ export function showTutorial(opts: TutorialOptions): void {
 
     // Apply width first so the panel reflows to its final width, then measure
     // its natural height. innerHTML must already be set by the caller for the
-    // height to be accurate.
-    const panelW = Math.min(340, pw.width * 0.90)
+    // height to be accurate. All final pixel values are rounded — sub-pixel
+    // positions cause faint white lines on child border-image buttons.
+    const panelW = Math.round(Math.min(340, pw.width * 0.90))
     panel.style.cssText = `top:0;left:0;width:${panelW}px`
     const panelH = panel.offsetHeight
 
@@ -155,17 +159,17 @@ export function showTutorial(opts: TutorialOptions): void {
 
     const arrowX = relLeft + tr.width / 2 - 10
     let panelL = relLeft + tr.width / 2 - panelW / 2
-    panelL = Math.max(margin, Math.min(panelL, pw.width - panelW - margin))
+    panelL = Math.round(Math.max(margin, Math.min(panelL, pw.width - panelW - margin)))
 
     if (placeBelow) {
       const naturalArrowY = relBottom + 6
       const naturalPanelTop = naturalArrowY + 22
-      const clampedPanelTop = Math.max(margin, Math.min(naturalPanelTop, pw.height - panelH - margin))
-      if (clampedPanelTop === naturalPanelTop) {
+      const clampedPanelTop = Math.round(Math.max(margin, Math.min(naturalPanelTop, pw.height - panelH - margin)))
+      if (clampedPanelTop === Math.round(naturalPanelTop)) {
         arrow.hidden = false
         arrow.dataset['dir'] = 'down'
-        arrow.style.left = `${Math.max(margin, arrowX)}px`
-        arrow.style.top  = `${naturalArrowY}px`
+        arrow.style.left = `${Math.round(Math.max(margin, arrowX))}px`
+        arrow.style.top  = `${Math.round(naturalArrowY)}px`
       } else {
         // Panel overlaps the target — drop the arrow; the gold pulse ring
         // on the target itself is enough to identify the focus.
@@ -175,12 +179,12 @@ export function showTutorial(opts: TutorialOptions): void {
     } else {
       const naturalArrowY = relTop - 22
       const naturalPanelBottom = pw.height - naturalArrowY + 8
-      const clampedPanelBottom = Math.max(margin, Math.min(naturalPanelBottom, pw.height - panelH - margin))
-      if (clampedPanelBottom === naturalPanelBottom) {
+      const clampedPanelBottom = Math.round(Math.max(margin, Math.min(naturalPanelBottom, pw.height - panelH - margin)))
+      if (clampedPanelBottom === Math.round(naturalPanelBottom)) {
         arrow.hidden = false
         arrow.dataset['dir'] = 'up'
-        arrow.style.left = `${Math.max(margin, arrowX)}px`
-        arrow.style.top  = `${naturalArrowY}px`
+        arrow.style.left = `${Math.round(Math.max(margin, arrowX))}px`
+        arrow.style.top  = `${Math.round(naturalArrowY)}px`
       } else {
         arrow.hidden = true
       }
@@ -224,7 +228,7 @@ export function showTutorial(opts: TutorialOptions): void {
       if (isLast) {
         actionHtml = `<button class="modal-btn modal-btn--primary" data-tut="done">Done</button>`
       } else {
-        actionHtml = `<button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>`
+        actionHtml = `<button class="modal-btn modal-btn--danger" data-tut="dismiss">Dismiss</button>`
       }
     } else if (isLast) {
       if (opts.guideSection) {
@@ -237,7 +241,7 @@ export function showTutorial(opts: TutorialOptions): void {
       }
     } else {
       actionHtml = `
-        <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>
+        <button class="modal-btn modal-btn--danger" data-tut="dismiss">Dismiss</button>
         <button class="modal-btn modal-btn--primary" data-tut="next">Next</button>
       `
     }
