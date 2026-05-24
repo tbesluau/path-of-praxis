@@ -6,6 +6,8 @@ import { createMenuScene } from './scenes/menu'
 import { createGameScene } from './scenes/game'
 import { initAds } from './ads'
 import { isAllowedToRun } from './core/host-guard'
+import { getPrefs, setPref } from './core/prefs'
+import { mountTermsAcceptanceModal } from './ui/terms'
 
 function bootstrap(): void {
   if (!isAllowedToRun()) {
@@ -17,13 +19,25 @@ function bootstrap(): void {
   initI18n()
 
   const app = document.getElementById('app')!
-  registerScenes({ menu: createMenuScene, game: createGameScene })
-  initRouter(app)
-  navigate('menu')
 
-  // Fire-and-forget: AdMob init on native; no-op on web. Ads still work even
-  // if this fails, the SDK is just re-checked lazily on first ad request.
-  void initAds()
+  const start = (): void => {
+    registerScenes({ menu: createMenuScene, game: createGameScene })
+    initRouter(app)
+    navigate('menu')
+
+    // Fire-and-forget: AdMob init on native; no-op on web. Ads still work even
+    // if this fails, the SDK is just re-checked lazily on first ad request.
+    void initAds()
+  }
+
+  if (getPrefs().acceptedTermsV1) {
+    start()
+  } else {
+    mountTermsAcceptanceModal(app, () => {
+      setPref('acceptedTermsV1', true)
+      start()
+    })
+  }
 }
 
 function renderBlockedNotice(): void {

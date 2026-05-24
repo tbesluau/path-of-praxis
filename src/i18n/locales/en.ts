@@ -140,6 +140,21 @@ export interface TranslationSchema {
     releaseNotesTitle: string
     todo: string
     todoTitle: string
+    privacy: string
+    privacyTitle: string
+    eula: string
+    eulaTitle: string
+  }
+  terms: {
+    title: string
+    intro: string
+    privacyLabel: string            // template: "I have read and accept the {link}"
+    eulaLabel: string               // template: "I have read and accept the {link}"
+    privacyLink: string
+    eulaLink: string
+    privacyTitle: string
+    eulaTitle: string
+    continue: string
   }
   character: {
     newTitle: string
@@ -342,6 +357,21 @@ export const en: TranslationSchema = {
     releaseNotesTitle: 'Release notes',
     todo: 'TODO',
     todoTitle: 'TODO',
+    privacy: 'Privacy',
+    privacyTitle: 'Privacy Policy',
+    eula: 'EULA',
+    eulaTitle: 'End User License Agreement',
+  },
+  terms: {
+    title: 'Before you play',
+    intro: 'Please review and accept both documents to continue.',
+    privacyLabel: 'I have read and accept the {link}.',
+    eulaLabel: 'I have read and accept the {link}.',
+    privacyLink: 'Privacy Policy',
+    eulaLink: 'End User License Agreement',
+    privacyTitle: 'Privacy Policy',
+    eulaTitle: 'End User License Agreement',
+    continue: 'Continue',
   },
   character: {
     newTitle: 'New Character',
