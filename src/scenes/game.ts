@@ -1611,10 +1611,12 @@ export function createGameScene(
     amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
     runEnemyXp += amount
     enemyProgress.xp += amount
+    const prevMaxLevel = enemyProgress.maxLevel
     while (enemyProgress.xp >= enemyMaxLevelXpNeeded(enemyProgress.maxLevel)) {
       enemyProgress.xp -= enemyMaxLevelXpNeeded(enemyProgress.maxLevel)
       enemyProgress.maxLevel++
     }
+    if (prevMaxLevel < 2 && enemyProgress.maxLevel >= 2) startEnemyLevelTutorial()
     updateEnemyLevelUI()
   }
 
@@ -3793,6 +3795,30 @@ export function createGameScene(
       openGuide,
       onDone:  () => { if (!wasPaused && paused) togglePause() },
       onGuide: () => { /* leave game paused — user will resume after reading the guide */ },
+    })
+  }
+
+  function startEnemyLevelTutorial(): void {
+    if (isTutorialSeen('first-enemy-level') || getPrefs().tutorialDisabled) return
+    const wasPaused = paused
+    if (!wasPaused) togglePause()
+    showTutorial({
+      id: 'first-enemy-level',
+      steps: [
+        {
+          message: getTutorialMessage('first-enemy-level', 0),
+          targetSelector: '[data-action="toggle-enemy"]',
+          requiresInteraction: true,
+        },
+        {
+          message: getTutorialMessage('first-enemy-level', 1),
+          targetSelector: '.enemy-level-ctrl',
+          transparent: true,
+        },
+      ],
+      parent: container,
+      openGuide,
+      onDone: () => { if (!wasPaused && paused) togglePause() },
     })
   }
 
