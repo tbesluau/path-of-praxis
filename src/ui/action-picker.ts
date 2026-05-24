@@ -57,7 +57,7 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
 
   if (!action) {
     wrap.classList.add('action-thumbnail--empty')
-    wrap.innerHTML = '<span class="action-thumb-empty-label">Select an action</span>'
+    wrap.innerHTML = `<span class="action-thumb-empty-label">${t('game', 'selectAnAction')}</span>`
     return wrap
   }
 
@@ -69,7 +69,7 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
         <span class="action-thumb-stat"><i data-lucide="crosshair" aria-hidden="true"></i>${t('game', 'legendRange')}</span>
         <span class="action-thumb-stat"><i data-lucide="radius" aria-hidden="true"></i>${t('game', 'legendArea')}</span>
         <span class="action-thumb-stat"><i data-lucide="test-tube" aria-hidden="true"></i>${t('game', 'legendMana')}</span>
-        ${showCritChance ? '<span class="action-thumb-stat action-thumb-stat--crit"><i data-lucide="star" aria-hidden="true"></i>Crit</span>' : ''}
+        ${showCritChance ? `<span class="action-thumb-stat action-thumb-stat--crit"><i data-lucide="star" aria-hidden="true"></i>${t('game', 'critLabel')}</span>` : ''}
       </div>
     `
     return wrap
@@ -160,7 +160,7 @@ export function mountActionPickerModal(
   panel.setAttribute('aria-labelledby', 'picker-title')
 
   panel.innerHTML = `
-    <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+    <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
     <h2 class="modal-title" id="picker-title">${t('game', 'actionPickerTitle')}</h2>
   `
 

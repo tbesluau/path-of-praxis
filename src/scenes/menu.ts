@@ -134,7 +134,7 @@ function mountNewCharacterModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-new-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="modal-new-title">${t('character', 'newTitle')}</h2>
       <div class="modal-field">
         <label class="modal-label" for="char-name-input">${t('character', 'nameLabel')}</label>
@@ -237,7 +237,7 @@ function mountLoadCharacterModal(
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-load-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="modal-load-title">${t('character', 'loadTitle')}</h2>
       <div class="char-slot-list"></div>
     </div>

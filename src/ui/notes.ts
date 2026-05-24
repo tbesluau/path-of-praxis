@@ -1,5 +1,5 @@
 import notesRaw from '../config/notes.md?raw'
-import { getLocale, type Locale } from '../i18n'
+import { getLocale, t, type Locale } from '../i18n'
 import { getNoteTranslation } from '../i18n/content'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -307,7 +307,7 @@ export function mountNoteModal(
   backdrop.className = 'modal-backdrop note-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel note-panel" role="dialog" aria-modal="true" aria-labelledby="note-title">
-      <button class="modal-close-btn" data-action="close" aria-label="Close"></button>
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title note-title" id="note-title">${entry.title}</h2>
       <div class="note-body">${bodyHtml}</div>
     </div>

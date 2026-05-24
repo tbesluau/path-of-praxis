@@ -23,6 +23,102 @@ export interface TranslationSchema {
     targetWeakestDesc: string
     targetStrongestDesc: string
     targetRandomDesc: string
+    backToMenu: string
+    dieRebirth: string
+    battleConfig: string
+    masteries: string
+    ascentBtnLabel: string
+    enemyLevelLabel: string
+    pauseLabel: string
+    playLabel: string
+    x2SpeedRemaining: string
+    enemyLevelDown: string
+    enemyLevelUp: string
+    autoAdvanceTitle: string
+    autoLevelAriaLabel: string
+    autoLevelText: string
+    ascendBtn: string
+    masteryGains: string
+    actionTriggerTitle: string
+    selectActionTrigger: string
+    triggerTime: string
+    triggerTimeDesc: string
+    triggerCrit: string
+    triggerCritDesc: string
+    triggerCritLock: string
+    triggerAffliction: string
+    triggerAfflictionDesc: string
+    triggerAfflictionLock: string
+    dpsDoubleAction: string
+    dpsBonusTarget: string
+    dpsExtraProjectile: string
+    dpsSplitCast: string
+    dpsChainJump: string
+    dpsTremor: string
+    dpsAfflictionBurn: string
+    dpsAfflictionBleed: string
+    dpsAfflictionGroundFire: string
+    selectAnAction: string
+    critLabel: string
+  }
+  mastery: {
+    title: string
+    resetTitle: string             // template: "Reset {name}?"
+    confirmCancel: string
+    confirmReset: string
+    resetDescLoseLevel: string
+    resetDescNoLoseLevel: string
+    nodeSmall: string
+    nodeStrong: string
+    nodeMajor: string
+    nodeKey: string
+    nodeAssigned: string
+    nodeAssignPt: string           // template: "Assign ({cost} pt)"
+    nodeAssignPts: string          // template: "Assign ({cost} pts)"
+    nodeNeedPt: string             // template: "Need {cost} mastery point (have {available})"
+    nodeNeedPts: string            // template: "Need {cost} mastery points (have {available})"
+    nodeKeyChosen: string
+    nodeNotImpl: string
+    nodeNotAvail: string
+    resetBtn: string               // "Reset (−1 level)"
+    dumpBtn: string
+    dumpTooltip: string
+    dumpActivePt: string           // template: "Dump: {dumped} pt → +{bonus}% more {label}"
+    dumpActivePts: string          // template: "Dump: {dumped} pts → +{bonus}% more {label}"
+    dumpLabel: string              // template: "Dump points for +{rate}% more {label} per point"
+    pointsPt: string               // template: "You have {total} / {earned} mastery point to assign{free}"
+    pointsPts: string              // template: "You have {total} / {earned} mastery points to assign{free}"
+    pointsFree: string             // template: " ({n} free)"
+  }
+  ascent: {
+    title: string
+    ascentCount: string            // template: "Ascent count: {n}"
+    nextAscent: string             // template: "Next ascent: enemy level {n}"
+    unlockedAt: string
+    universePoints: string
+    available: string              // template: "({n} available)"
+    removePoint: string
+    addPoint: string
+    threshold1: string
+    threshold2: string
+    threshold3: string
+    threshold4: string
+    threshold5: string
+    upSlotA: string
+    upSlotB: string
+  }
+  rune: {
+    addToSlot: string              // template: "Add {type} rune to slot {n}"
+    clickToChange: string          // template: "{label} — click to change"
+    addRune: string
+    remove: string                 // template: "Remove \"{label}\""
+    runesTitle: string             // template: "{action} Runes"
+    runesAriaLabel: string
+    slotMinor: string
+    slotMajor: string
+    slotKey: string
+    levelHint: string              // template: "Action Lv. {level} — {unlocked}/6 slots unlocked — +{bonus}% XP"
+    selectTitle: string            // template: "{type} Rune — Slot {n}"
   }
   menu: {
     continue: string
@@ -129,6 +225,102 @@ export const en: TranslationSchema = {
     targetWeakestDesc: 'Focus low HP',
     targetStrongestDesc: 'Focus high HP',
     targetRandomDesc: 'Pick random target',
+    backToMenu: 'Back to menu',
+    dieRebirth: 'Die and rebirth',
+    battleConfig: 'Battle configuration',
+    masteries: 'Masteries',
+    ascentBtnLabel: 'Ascent',
+    enemyLevelLabel: 'Enemy level',
+    pauseLabel: 'Pause',
+    playLabel: 'Play',
+    x2SpeedRemaining: '×2 speed time remaining',
+    enemyLevelDown: 'Decrease enemy level',
+    enemyLevelUp: 'Increase enemy level',
+    autoAdvanceTitle: 'Auto-advance enemy level on unlock',
+    autoLevelAriaLabel: 'Auto-level enemies',
+    autoLevelText: 'Auto',
+    ascendBtn: 'Ascend to a new universe',
+    masteryGains: 'Mastery gains',
+    actionTriggerTitle: 'Action Trigger',
+    selectActionTrigger: 'Select action trigger',
+    triggerTime: 'Time Trigger',
+    triggerTimeDesc: 'Triggers every 2 seconds. Faster actions deal more damage, slower actions deal less.',
+    triggerCrit: 'Critical Trigger',
+    triggerCritDesc: 'Triggers when the auto-attack lands a critical strike. 10× weaker base damage, speed-balanced.',
+    triggerCritLock: 'Kill a boss with a critical hit',
+    triggerAffliction: 'Affliction Trigger',
+    triggerAfflictionDesc: 'Triggers every 10 applied afflictions. Damage is speed-balanced.',
+    triggerAfflictionLock: 'Kill a boss with affliction damage',
+    dpsDoubleAction: 'Double action',
+    dpsBonusTarget: 'Bonus target',
+    dpsExtraProjectile: 'Extra projectile',
+    dpsSplitCast: 'Split cast',
+    dpsChainJump: 'Chain jump',
+    dpsTremor: 'Tremor',
+    dpsAfflictionBurn: 'Burn',
+    dpsAfflictionBleed: 'Bleed',
+    dpsAfflictionGroundFire: 'Ground fire',
+    selectAnAction: 'Select an action',
+    critLabel: 'Crit',
+  },
+  mastery: {
+    title: 'Masteries',
+    resetTitle: 'Reset {name}?',
+    confirmCancel: 'Cancel',
+    confirmReset: 'Reset',
+    resetDescLoseLevel: 'All assigned nodes will be cleared and you will lose 1 level in this mastery. Dumped points are refunded.',
+    resetDescNoLoseLevel: 'All assigned nodes will be cleared. Free and dumped mastery points will be returned.',
+    nodeSmall: 'Small Node',
+    nodeStrong: 'Strong Node',
+    nodeMajor: 'Major Node',
+    nodeKey: 'Key Node',
+    nodeAssigned: 'Assigned',
+    nodeAssignPt: 'Assign ({cost} pt)',
+    nodeAssignPts: 'Assign ({cost} pts)',
+    nodeNeedPt: 'Need {cost} mastery point (have {available})',
+    nodeNeedPts: 'Need {cost} mastery points (have {available})',
+    nodeKeyChosen: 'Another key node already chosen',
+    nodeNotImpl: 'Not yet implemented',
+    nodeNotAvail: 'Node not available',
+    resetBtn: 'Reset (−1 level)',
+    dumpBtn: 'Dump a point',
+    dumpTooltip: 'Click: dump 1 point · Ctrl/Cmd-click: dump all',
+    dumpActivePt: 'Dump: {dumped} pt → +{bonus}% more {label}',
+    dumpActivePts: 'Dump: {dumped} pts → +{bonus}% more {label}',
+    dumpLabel: 'Dump points for +{rate}% more {label} per point',
+    pointsPt: 'You have {total} / {earned} mastery point to assign{free}',
+    pointsPts: 'You have {total} / {earned} mastery points to assign{free}',
+    pointsFree: ' ({n} free)',
+  },
+  ascent: {
+    title: 'Ascent',
+    ascentCount: 'Ascent count: {n}',
+    nextAscent: 'Next ascent: enemy level {n}',
+    unlockedAt: 'Unlocked at',
+    universePoints: 'Universe points',
+    available: '({n} available)',
+    removePoint: 'Remove point',
+    addPoint: 'Add point',
+    threshold1: 'Critical hit and its mastery',
+    threshold2: 'Champions and Bosses tree in the enemy mastery',
+    threshold3: '+1 action trigger slot',
+    threshold4: '+1 free mastery point per ascent for each mastery',
+    threshold5: '+1 action trigger slot',
+    upSlotA: '10% increased multi-action speed',
+    upSlotB: '+1% base action critical hit chance',
+  },
+  rune: {
+    addToSlot: 'Add {type} rune to slot {n}',
+    clickToChange: '{label} — click to change',
+    addRune: '+ Add rune',
+    remove: 'Remove "{label}"',
+    runesTitle: '{action} Runes',
+    runesAriaLabel: 'Runes',
+    slotMinor: 'Minor',
+    slotMajor: 'Major',
+    slotKey: 'Key',
+    levelHint: 'Action Lv. {level} — {unlocked}/6 slots unlocked — +{bonus}% XP',
+    selectTitle: '{type} Rune — Slot {n}',
   },
   menu: {
     continue: 'Continue',
