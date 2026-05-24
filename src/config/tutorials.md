@@ -88,6 +88,18 @@ Tap the rune button next to your action to pick runes from your unlocked pool. Y
 
 ---
 
+## first-enemy-level.0
+
+You've unlocked a higher enemy level! Tap the enemy level button to open the controls.
+
+---
+
+## first-enemy-level.1
+
+Use the arrows to pick your enemy level, or enable Auto to have it advance automatically as you unlock new levels. Higher enemy levels mean tougher enemies — and more XP per fight.
+
+---
+
 ## ascent-5.0
 
 Congratulations, you've reached the current endgame. More content is being worked on as we speak. Feel free to keep enjoying this character or experiment with different builds — thank you for playing!
