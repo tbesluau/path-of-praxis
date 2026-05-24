@@ -29,8 +29,10 @@ export interface TutorialStep {
   message:              string
   targetSelector?:      string
   requiresInteraction?: boolean
-  // When true: no dark backdrop; the panel sits at the bottom-center of the
-  // viewport so it can describe an open modal underneath without hiding it.
+  // When true: no dark backdrop strips. A target (if any) still gets the
+  // gold pulse and the panel is still positioned next to it — this lets a
+  // tutorial step point at an element inside an already-open modal without
+  // covering the modal.
   transparent?:         boolean
 }
 
@@ -44,8 +46,6 @@ export interface TutorialOptions {
   // Called when "More info" is clicked. Defaults to onDone. Use this to keep
   // the game paused while the guide is shown.
   onGuide?:         () => void
-  // When true, the last step without a guideSection shows only "Done" (no "Close").
-  noDismissOnLast?: boolean
 }
 
 export function isTutorialSeen(id: string): boolean {
@@ -127,14 +127,13 @@ export function showTutorial(opts: TutorialOptions): void {
     const pw = opts.parent.getBoundingClientRect()
     const margin = 8
 
-    if (transparent) {
-      panel.style.cssText = 'bottom:24px;left:50%;transform:translateX(-50%);width:min(420px,92vw)'
-      arrow.hidden = true
-      return
-    }
-
     if (!target) {
-      panel.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);width:min(340px,90vw)'
+      // No target: transparent → bottom-center banner; opaque → center modal.
+      if (transparent) {
+        panel.style.cssText = 'bottom:24px;left:50%;transform:translateX(-50%);width:min(420px,92vw)'
+      } else {
+        panel.style.cssText = 'top:50%;left:50%;transform:translate(-50%,-50%);width:min(340px,90vw)'
+      }
       arrow.hidden = true
       return
     }
@@ -203,9 +202,7 @@ export function showTutorial(opts: TutorialOptions): void {
     let target: HTMLElement | undefined
     if (step.targetSelector) {
       target = opts.parent.querySelector<HTMLElement>(step.targetSelector) ?? undefined
-      // Only pulse-highlight when the overlay is opaque — when transparent the
-      // user is looking at an open modal and a pulsing ring elsewhere is noise.
-      if (target && !transparent) {
+      if (target) {
         target.classList.add('tutorial-target')
         currentTarget = target
       }
@@ -213,28 +210,27 @@ export function showTutorial(opts: TutorialOptions): void {
 
     const disableId = `tut-disable-${opts.id}-${stepIdx}`
 
+    // Button rules:
+    // - Whenever there's more to do (more steps, a guideSection link, or a
+    //   required click on the target), the escape-hatch button is "Dismiss".
+    // - "Done" only appears when this is the absolute final action of the
+    //   section. A single-step section with no extras shows just "Done"
+    //   (no separate Dismiss) — Done IS the only action.
     let actionHtml = ''
     if (step.requiresInteraction && target) {
-      actionHtml = `<button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>`
+      actionHtml = `<button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>`
     } else if (isLast) {
       if (opts.guideSection) {
         actionHtml = `
-          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>
+          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>
           <button class="modal-btn modal-btn--primary" data-tut="more-info">More info →</button>
         `
-      } else if (opts.noDismissOnLast) {
-        actionHtml = `
-          <button class="modal-btn modal-btn--primary" data-tut="done">Done</button>
-        `
       } else {
-        actionHtml = `
-          <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>
-          <button class="modal-btn modal-btn--primary" data-tut="done">Done</button>
-        `
+        actionHtml = `<button class="modal-btn modal-btn--primary" data-tut="done">Done</button>`
       }
     } else {
       actionHtml = `
-        <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Close</button>
+        <button class="modal-btn modal-btn--ghost" data-tut="dismiss">Dismiss</button>
         <button class="modal-btn modal-btn--primary" data-tut="next">Next</button>
       `
     }
