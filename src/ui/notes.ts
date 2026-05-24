@@ -53,7 +53,6 @@ const NOTE_TERMS: { id: string; pattern: RegExp }[] = [
   { id: 'bloodlust',             pattern: /\bBloodlust\b/gi },
   { id: 'electrified',           pattern: /\bElectrified\b/gi },
   { id: 'electrocution',         pattern: /\bElectrocuted?\b/gi },
-  { id: 'proliferate',           pattern: /\bProliferate(?:s|d|ing)?\b/gi },
   { id: 'champion',              pattern: /\bChampions?\b/gi },
   { id: 'boss',                  pattern: /\bBoss(?:es)?\b/gi },
   { id: 'frenzy',                pattern: /\bFrenzy\b/gi },
@@ -118,7 +117,7 @@ export function linkifyNoteTerms(plainText: string, excludeId?: string): string 
 }
 
 // Apply linkification to an already-safe HTML string (e.g. rendered markdown body).
-function linkifyHtml(html: string, excludeId?: string): string {
+export function linkifyHtml(html: string, excludeId?: string): string {
   let result = html
   for (const term of NOTE_TERMS) {
     if (term.id === excludeId) continue
