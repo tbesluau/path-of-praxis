@@ -40,5 +40,7 @@ export function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void {
 }
 
 export function isCheatMode(): boolean {
-  return new URLSearchParams(location.search).get('cheat') === 'bro'
+  if (new URLSearchParams(location.search).get('cheat') !== 'bro') return false
+  // Cheats are limited to the dev/staging URL — never the production site.
+  return import.meta.env.DEV || location.hostname === 'tbesluau.github.io'
 }
