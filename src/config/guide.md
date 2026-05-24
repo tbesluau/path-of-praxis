@@ -1,7 +1,3 @@
-[//]: # (Localization note: do not localize this file for now.)
-[//]: # (The guide content will change frequently as the game evolves,)
-[//]: # (making translation a poor use of effort until the game is stable.)
-
 ## Actions, Action Levels, and Runes
 
 This is the main source of damage in the game. You character and your enemies perform actions during battle to damage each other. As you keep using a given action, it gains experience based on the damage it dealt and levels up. A higher level action deals additional damage at a slightly higher pace. The highest level ever reached by an action also increases the rate of action experience you get by 10% additively per level. Leveling actions also unlocks rune slots where you can assign runes for action bonuses. Each action has six rune slots, each unlocking at a specific level:

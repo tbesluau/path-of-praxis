@@ -15,6 +15,14 @@ export interface TranslationSchema {
     legendArea: string
     legendMana: string
     targetingTitle: string
+    targetNearest: string
+    targetWeakest: string
+    targetStrongest: string
+    targetRandom: string
+    targetNearestDesc: string
+    targetWeakestDesc: string
+    targetStrongestDesc: string
+    targetRandomDesc: string
   }
   menu: {
     continue: string
@@ -59,6 +67,7 @@ export interface TranslationSchema {
     languageTitle: string
     langEn: string
     langFr: string
+    langEs: string
     close: string
     guide: string
     discord: string
@@ -72,6 +81,13 @@ export interface TranslationSchema {
   guide: {
     title: string
     comingSoon: string
+  }
+  tutorial: {
+    dismiss:  string
+    next:     string
+    done:     string
+    moreInfo: string
+    dontShow: string
   }
   awayBonus: {
     title:   string
@@ -105,6 +121,14 @@ export const en: TranslationSchema = {
     legendArea: 'Area',
     legendMana: 'Mana',
     targetingTitle: 'Targeting priority',
+    targetNearest: 'Nearest',
+    targetWeakest: 'Weakest',
+    targetStrongest: 'Strongest',
+    targetRandom: 'Random',
+    targetNearestDesc: 'Attack closest enemy',
+    targetWeakestDesc: 'Focus low HP',
+    targetStrongestDesc: 'Focus high HP',
+    targetRandomDesc: 'Pick random target',
   },
   menu: {
     continue: 'Continue',
@@ -149,6 +173,7 @@ export const en: TranslationSchema = {
     languageTitle: 'Language',
     langEn: 'English',
     langFr: 'French',
+    langEs: 'Spanish',
     close: 'Close',
     guide: 'Guide',
     discord: 'Discord',
@@ -162,6 +187,13 @@ export const en: TranslationSchema = {
   guide: {
     title: 'Guide',
     comingSoon: 'Coming soon…',
+  },
+  tutorial: {
+    dismiss:  'Dismiss',
+    next:     'Next',
+    done:     'Done',
+    moreInfo: 'More info →',
+    dontShow: "Don't show tutorials",
   },
   awayBonus: {
     title:   'Welcome back!',

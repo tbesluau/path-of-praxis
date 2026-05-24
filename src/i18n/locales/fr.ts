@@ -17,6 +17,14 @@ export const fr: TranslationSchema = {
     legendArea: 'Zone',
     legendMana: 'Mana',
     targetingTitle: 'Priorité de ciblage',
+    targetNearest: 'Plus proche',
+    targetWeakest: 'Plus faible',
+    targetStrongest: 'Plus fort',
+    targetRandom: 'Aléatoire',
+    targetNearestDesc: 'Attaquer l\'ennemi le plus proche',
+    targetWeakestDesc: 'Cibler les PV bas',
+    targetStrongestDesc: 'Cibler les PV élevés',
+    targetRandomDesc: 'Choisir une cible au hasard',
   },
   menu: {
     continue: 'Continuer',
@@ -61,6 +69,7 @@ export const fr: TranslationSchema = {
     languageTitle: 'Langue',
     langEn: 'Anglais',
     langFr: 'Français',
+    langEs: 'Espagnol',
     close: 'Fermer',
     guide: 'Guide',
     discord: 'Discord',
@@ -74,6 +83,13 @@ export const fr: TranslationSchema = {
   guide: {
     title: 'Guide',
     comingSoon: 'Bientôt disponible…',
+  },
+  tutorial: {
+    dismiss:  'Ignorer',
+    next:     'Suivant',
+    done:     'Terminé',
+    moreInfo: 'Plus d\'infos →',
+    dontShow: 'Ne plus afficher',
   },
   awayBonus: {
     title:   'Bon retour !',

@@ -31,4 +31,18 @@ describe('i18n', () => {
     expect(t('menu', 'continue')).toBe('Continuer')
     setLocale('en')
   })
+
+  it('switches locale to Spanish', () => {
+    setLocale('es')
+    expect(t('menu', 'continue')).toBe('Continuar')
+    expect(t('menu', 'about')).toBe('Acerca de')
+    expect(t('settings', 'langEs')).toBe('Español')
+  })
+
+  it('detects Spanish from browser locale', () => {
+    Object.defineProperty(navigator, 'language', { value: 'es-ES', configurable: true })
+    initI18n()
+    expect(t('menu', 'continue')).toBe('Continuar')
+    setLocale('en')
+  })
 })
