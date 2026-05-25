@@ -3508,3 +3508,49 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 .rune-remove-btn {
   width: 100%;
 }
+
+/* ── Standalone privacy-policy page ── */
+
+body.privacy-page {
+  overflow: auto;
+  touch-action: auto;
+  user-select: text;
+  height: auto;
+  min-height: 100dvh;
+  background: #120e0a;
+}
+
+.privacy-page-wrap {
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1rem 5rem;
+}
+
+.privacy-page-panel {
+  width: min(600px, 94vw);
+  max-height: none;
+  align-self: flex-start;
+}
+
+.privacy-page-back {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: #2a1005;
+  text-decoration: none;
+  opacity: 0.65;
+  align-self: flex-start;
+}
+
+.privacy-page-back:hover {
+  opacity: 1;
+}
+
+.privacy-page-title {
+  margin-top: 0;
+}
+
+.privacy-page-body {
+  overflow-y: visible;
+  max-height: none;
+}
