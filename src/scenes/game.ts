@@ -11,6 +11,7 @@ import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
+import { isPaid } from '../core/entitlement'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -1917,8 +1918,15 @@ export function createGameScene(
   }
 
   function offerRefillAd(): void {
-    mountRefillAdModal(el, 30 * 60 * 1000, (addedMs) => {
+    const addedMs = 30 * 60 * 1000
+    if (isPaid()) {
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
+      updateSpeedUI()
+      persistState()
+      return
+    }
+    mountRefillAdModal(el, addedMs, (granted) => {
+      fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + granted)
       updateSpeedUI()
       persistState()
     }, () => {})
@@ -3903,11 +3911,16 @@ export function createGameScene(
           const earned = computeAward(gap, fastForwardMs)
           if (earned > 0) {
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
-            mountAwayBonusModal(el, gap, earned, () => {}, (bonusMs) => {
-              fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
-              updateSpeedUI()
+            if (isPaid()) {
+              fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
               persistState()
-            })
+            } else {
+              mountAwayBonusModal(el, gap, earned, () => {}, (bonusMs) => {
+                fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
+                updateSpeedUI()
+                persistState()
+              })
+            }
             updateSpeedUI()
           }
         }
