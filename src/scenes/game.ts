@@ -12,6 +12,7 @@ import { mountAscentModal } from '../ui/ascent'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
+import { adsAvailable } from '../ads'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -1919,7 +1920,7 @@ export function createGameScene(
 
   function offerRefillAd(): void {
     const addedMs = 30 * 60 * 1000
-    if (isPaid()) {
+    if (isPaid() || !adsAvailable()) {
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
       updateSpeedUI()
       persistState()
@@ -3911,7 +3912,7 @@ export function createGameScene(
           const earned = computeAward(gap, fastForwardMs)
           if (earned > 0) {
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
-            if (isPaid()) {
+            if (isPaid() || !adsAvailable()) {
               fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
               persistState()
             } else {

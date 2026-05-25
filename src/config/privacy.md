@@ -12,13 +12,14 @@ The game may collect anonymous gameplay metrics — for example session length, 
 
 ### Advertising
 
-Path of Praxis shows optional rewarded video ads (for example, doubling an away-time bonus). On the web the ads are served by **Google AdSense for Games (IMA SDK)**. On iOS and Android the ads are served by **Google AdMob**. These ad networks may use a non-resettable device identifier (IDFA on iOS, GAID on Android) and standard cookies on the web to measure ad delivery and prevent fraud, subject to their own privacy policies and to any consent you have configured at the platform level.
+**The web version of Path of Praxis shows no ads.** No advertising SDK is loaded in the browser build and no ad-related data is collected when you play on the web.
 
-You can limit personalised advertising:
+On **iOS** and **Android**, Path of Praxis shows optional rewarded video ads (for example, doubling an away-time bonus). These ads are served by **Google AdMob**, which may use a non-resettable device identifier (IDFA on iOS, GAID on Android) to measure ad delivery and prevent fraud, subject to its own privacy policy and to any consent you have configured at the platform level.
+
+You can limit personalised advertising on mobile:
 
 - **iOS** — Settings → Privacy & Security → Tracking → toggle off for Path of Praxis.
 - **Android** — Settings → Google → Ads → Opt out of Ads Personalisation.
-- **Web** — your browser's ad-blocker, Do-Not-Track setting, or the Google Ad Settings page.
 
 Path of Praxis does not show ads to you outside the game.
 
