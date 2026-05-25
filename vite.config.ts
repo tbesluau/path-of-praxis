@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { resolve } from 'path'
 import { version } from './package.json'
 
 export default defineConfig({
@@ -10,6 +11,12 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main:           resolve(__dirname, 'index.html'),
+        'privacy-policy': resolve(__dirname, 'privacy-policy.html'),
+      },
+    },
   },
   test: {
     environment: 'jsdom',
