@@ -4,7 +4,7 @@ import { initI18n } from './i18n'
 import { initRouter, navigate, registerScenes } from './core/router'
 import { createMenuScene } from './scenes/menu'
 import { createGameScene } from './scenes/game'
-import { initAds } from './ads'
+import { initAds, isNative } from './ads'
 import { initEntitlement } from './core/entitlement'
 import { isAllowedToRun } from './core/host-guard'
 import { getPrefs, setPref } from './core/prefs'
@@ -15,6 +15,8 @@ function bootstrap(): void {
     renderBlockedNotice()
     return
   }
+
+  if (isNative()) document.body.classList.add('native-platform')
 
   applyTheme()
   initI18n()
