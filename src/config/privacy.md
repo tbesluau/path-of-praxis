@@ -25,7 +25,9 @@ Path of Praxis does not show ads to you outside the game.
 
 ### In-app purchases
 
-Optional in-app purchases are processed entirely by Apple App Store, Google Play, or (on the web) the third-party payment processor we integrate with. Path of Praxis never sees or stores your payment card details. We receive only the confirmation token needed to grant the purchased item to your account. Refund requests are handled by the platform that processed the transaction.
+**The web version of Path of Praxis does not offer any in-app purchases.** No payment SDK is loaded in the browser build and no payment-related data is collected when you play on the web.
+
+On **iOS** and **Android**, optional in-app purchases are processed entirely by the **Apple App Store** or **Google Play** respectively. Path of Praxis never sees or stores your payment card details — we receive only the confirmation token needed to grant the purchased item. Refund requests are handled by the platform that processed the transaction.
 
 ### Children
 
