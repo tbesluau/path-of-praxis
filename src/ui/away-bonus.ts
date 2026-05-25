@@ -1,4 +1,5 @@
 import { t } from '../i18n'
+import { isPaid } from '../core/entitlement'
 import { showRewardedAd } from '../ads'
 
 function formatDuration(ms: number): string {
@@ -25,6 +26,8 @@ export function mountAwayBonusModal(
   currentTeardown?.()
   currentTeardown = null
 
+  const paid = isPaid()
+
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop away-bonus-backdrop'
 
@@ -38,26 +41,37 @@ export function mountAwayBonusModal(
       <h2 class="modal-title" id="away-bonus-title">${t('awayBonus', 'title')}</h2>
       <p class="away-bonus-body">${body}</p>
       <div class="away-bonus-actions">
-        <button class="away-bonus-watch-ad-btn" data-action="watch-ad">${t('awayBonus', 'watchAd')}</button>
-        <button class="away-bonus-close-btn"    data-action="close">${t('awayBonus', 'close')}</button>
+        <button class="away-bonus-watch-ad-btn" data-action="claim">${paid ? t('awayBonus', 'claimDouble') : t('awayBonus', 'watchAd')}</button>
+        ${paid ? '' : `<button class="away-bonus-close-btn" data-action="close">${t('awayBonus', 'close')}</button>`}
       </div>
     </div>
   `
 
   const teardown = (): void => { backdrop.remove(); currentTeardown = null }
   const dismiss  = (): void => { teardown(); onClose() }
+
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action="close"]').forEach(btn => {
     btn.addEventListener('click', dismiss)
   })
-  const watchBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="watch-ad"]')!
-  watchBtn.addEventListener('click', async () => {
-    watchBtn.disabled = true
-    watchBtn.classList.add('away-bonus-watch-ad-btn--loading')
-    const watched = await showRewardedAd()
-    teardown()
-    if (watched && onDoubled) onDoubled(earnedMs)
-    onClose()
-  })
+
+  const claimBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="claim"]')!
+  if (paid) {
+    claimBtn.addEventListener('click', () => {
+      teardown()
+      if (onDoubled) onDoubled(earnedMs)
+      onClose()
+    })
+  } else {
+    claimBtn.addEventListener('click', async () => {
+      claimBtn.disabled = true
+      claimBtn.classList.add('away-bonus-watch-ad-btn--loading')
+      const watched = await showRewardedAd()
+      teardown()
+      if (watched && onDoubled) onDoubled(earnedMs)
+      onClose()
+    })
+  }
+
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
   parent.appendChild(backdrop)
