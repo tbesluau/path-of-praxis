@@ -5,6 +5,7 @@ import { initRouter, navigate, registerScenes } from './core/router'
 import { createMenuScene } from './scenes/menu'
 import { createGameScene } from './scenes/game'
 import { initAds } from './ads'
+import { initEntitlement } from './core/entitlement'
 import { isAllowedToRun } from './core/host-guard'
 import { getPrefs, setPref } from './core/prefs'
 import { mountTermsAcceptanceModal } from './ui/terms'
@@ -25,9 +26,8 @@ function bootstrap(): void {
     initRouter(app)
     navigate('menu')
 
-    // Fire-and-forget: AdMob init on native; no-op on web. Ads still work even
-    // if this fails, the SDK is just re-checked lazily on first ad request.
     void initAds()
+    void initEntitlement()
   }
 
   if (getPrefs().acceptedTermsV1) {

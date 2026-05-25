@@ -201,17 +201,19 @@ export interface TranslationSchema {
     dontShow: string
   }
   awayBonus: {
-    title:   string
-    body:    string      // contains "{away}" and "{earned}" placeholders
-    close:   string
-    watchAd: string      // doubles the earned ×2 time
+    title:        string
+    body:         string      // contains "{away}" and "{earned}" placeholders
+    close:        string
+    watchAd:      string      // free: "Watch ad — double reward"
+    claimDouble:  string      // paid: "Double reward"
   }
   refillAd: {
     title:   string
     body:    string
-    watchAd: string
+    watchAd: string           // free: "Watch ad — earn 30 min"
+    claim:   string           // paid: "Earn 30 min"
     skip:    string
-    refill:  string      // short CTA shown on the ×2 button when empty
+    refill:  string           // short CTA shown on the ×2 button when empty
   }
 }
 
@@ -418,15 +420,17 @@ export const en: TranslationSchema = {
     dontShow: "Don't show tutorials",
   },
   awayBonus: {
-    title:   'Welcome back!',
-    body:    'You were away for {away} and earned {earned} of ×2 speed time.',
-    close:   'Close',
-    watchAd: 'Watch ad — double reward',
+    title:        'Welcome back!',
+    body:         'You were away for {away} and earned {earned} of ×2 speed time.',
+    close:        'Close',
+    watchAd:      'Watch ad — double reward',
+    claimDouble:  'Double reward',
   },
   refillAd: {
     title:   'Stockpile empty',
     body:    'Your ×2 speed stockpile just ran out. Watch a short ad to bank 30 minutes.',
     watchAd: 'Watch ad — earn 30 min',
+    claim:   'Earn 30 min',
     skip:    'No thanks',
     refill:  'refill',
   },
