@@ -218,6 +218,11 @@ body::after {
   margin: -14px -14px 0 -14px;
 }
 
+/* Extra breathing room for native status bars (Android / iOS). */
+.native-platform .game-top-bar {
+  padding-top: 20px;
+}
+
 .game-top-left {
   grid-column: 1;
   display: flex;
