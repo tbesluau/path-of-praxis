@@ -3511,12 +3511,16 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 
 /* ── Standalone privacy-policy page ── */
 
+html:has(body.privacy-page),
 body.privacy-page {
   overflow: auto;
-  touch-action: auto;
-  user-select: text;
   height: auto;
   min-height: 100dvh;
+}
+
+body.privacy-page {
+  touch-action: auto;
+  user-select: text;
   background: #120e0a;
 }
 
