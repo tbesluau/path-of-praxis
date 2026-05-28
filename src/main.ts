@@ -32,7 +32,7 @@ function bootstrap(): void {
     void initEntitlement()
   }
 
-  if (getPrefs().acceptedTermsV1) {
+  if (getPrefs().acceptedTermsV1 || !isNative()) {
     start()
   } else {
     mountTermsAcceptanceModal(app, () => {
