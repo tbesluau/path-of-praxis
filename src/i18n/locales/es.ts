@@ -91,6 +91,7 @@ export const es: TranslationSchema = {
     pointsPt: 'Tienes {total} / {earned} punto de maestría para asignar{free}',
     pointsPts: 'Tienes {total} / {earned} puntos de maestría para asignar{free}',
     pointsFree: ' ({n} gratuito)',
+    ctrlClickHint: 'Consejo: Ctrl/Cmd + clic en un nodo para asignar todos los puntos posibles de una vez.',
   },
   ascent: {
     title: 'Ascensión',

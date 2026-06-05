@@ -71,6 +71,7 @@ export function mountSettingsButton(
   const btn = document.createElement('button')
   btn.className = 'settings-btn'
   btn.setAttribute('aria-label', t('settings', 'title'))
+  btn.setAttribute('data-tooltip', t('settings', 'title'))
   btn.innerHTML = '<i data-lucide="settings" aria-hidden="true"></i>'
   container.appendChild(btn)
   createIcons({ icons: { Settings } })
