@@ -124,6 +124,7 @@ interface SaveData {
   characters: Character[]
   currentId: string | null
 }
+export type { SaveData }
 
 function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'createdAt'>): Character {
   const maxLife = c.maxLife ?? balance.player.maxLife
@@ -287,6 +288,33 @@ export function deleteCharacter(id: string): void {
   data.characters = data.characters.filter(c => c.id !== id)
   if (data.currentId === id) data.currentId = null
   write(data)
+}
+
+// Returns the full, normalized save (all slots) for export.
+export function exportSaveData(): SaveData {
+  return read()
+}
+
+// Validate and replace the entire save with imported data. Throws if the
+// shape is unrecognisable; each character is run through `normalize` so
+// partial/legacy fields are filled in. `currentId` is kept only when it
+// still points at an imported character.
+export function importSaveData(data: unknown): void {
+  if (typeof data !== 'object' || data === null) throw new Error('Invalid save data')
+  const obj = data as { characters?: unknown; currentId?: unknown }
+  if (!Array.isArray(obj.characters)) throw new Error('Invalid save data')
+  const characters = obj.characters.slice(0, MAX_SLOTS).map((c) => {
+    if (typeof c !== 'object' || c === null) throw new Error('Invalid character entry')
+    const cc = c as Partial<Character>
+    if (typeof cc.id !== 'string' || typeof cc.name !== 'string' || typeof cc.createdAt !== 'number') {
+      throw new Error('Invalid character entry')
+    }
+    return normalize(cc as Partial<Character> & Pick<Character, 'id' | 'name' | 'createdAt'>)
+  })
+  const currentId = typeof obj.currentId === 'string' && characters.some(c => c.id === obj.currentId)
+    ? obj.currentId
+    : null
+  write({ characters, currentId })
 }
 
 export function saveCharacterState(
