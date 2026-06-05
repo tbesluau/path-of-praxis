@@ -1,8 +1,9 @@
 import 'flag-icons/css/flag-icons.min.css'
-import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle } from 'lucide'
+import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle, Save } from 'lucide'
 import { t, setLocale, getLocale, SUPPORTED_LOCALES, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
+import { exportSaveCode, importSaveCode } from '../core/save-code'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
 import { linkifyHtml, mountNoteModal } from './notes'
@@ -175,6 +176,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
             <span>${t('settings', 'resetTutorials')}</span>
           </button>
         </div>
+        <div class="modal-field">
+          <button class="settings-section-btn" data-action="save-data">
+            <i data-lucide="save" aria-hidden="true"></i>
+            <span>${t('settings', 'saveData')}</span>
+          </button>
+        </div>
         ${isCheatMode() ? `
         <div class="modal-field">
           <label class="settings-toggle-row">
@@ -203,7 +210,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         </div>` : ''}` : ''}
       </div>
     `
-    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair } })
+    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair, Save } })
 
     const stepZoom = (delta: 1 | -1): void => {
       const next = zoomIdx + delta
@@ -287,6 +294,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         }, 1200)
       })
 
+    backdrop.querySelector<HTMLButtonElement>('[data-action="save-data"]')!
+      .addEventListener('click', () => {
+        closeSub()
+        subCleanup = mountSaveDataModal(parent, () => { subCleanup = null })
+      })
+
     const targetingBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="targeting"]')
     if (targetingBtn && opts.getTargetingMode && opts.onTargetingChange) {
       const getMode = opts.getTargetingMode
@@ -361,6 +374,92 @@ function mountLanguageModal(
 
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) { backdrop.remove(); onClose() }
+  })
+
+  return () => backdrop.remove()
+}
+
+// ── Save data (import / export) modal ──────────────────────────────────────
+
+function copyText(text: string): void {
+  // Prefer the async Clipboard API; fall back to a hidden textarea + execCommand
+  // for older webviews or insecure contexts where it is unavailable.
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyViaTextarea(text))
+    return
+  }
+  copyViaTextarea(text)
+}
+
+function copyViaTextarea(text: string): void {
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.opacity = '0'
+  document.body.appendChild(ta)
+  ta.select()
+  try { document.execCommand('copy') } catch { /* nothing more we can do */ }
+  ta.remove()
+}
+
+function mountSaveDataModal(parent: HTMLElement, onClose: () => void): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="save-data-title">
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title" id="save-data-title">${t('settings', 'saveData')}</h2>
+      <p class="save-data-desc">${t('settings', 'saveDataDesc')}</p>
+      <div class="modal-field">
+        <button class="modal-btn modal-btn--primary save-data-export-btn" data-action="export">${t('settings', 'exportSave')}</button>
+      </div>
+      <div class="modal-field">
+        <label class="modal-label" for="save-import-input">${t('settings', 'importLabel')}</label>
+        <textarea id="save-import-input" class="modal-input modal-textarea" rows="3"
+          placeholder="${t('settings', 'importPlaceholder')}" autocomplete="off" spellcheck="false"></textarea>
+        <span class="modal-input-error" aria-live="polite"></span>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--primary" data-action="import" disabled>${t('settings', 'importBtn')}</button>
+      </div>
+    </div>
+  `
+
+  parent.appendChild(backdrop)
+
+  const close = (): void => { backdrop.remove(); onClose() }
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
+    .addEventListener('click', close)
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close() })
+
+  const exportBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="export"]')!
+  exportBtn.addEventListener('click', () => {
+    copyText(exportSaveCode())
+    const original = exportBtn.textContent
+    exportBtn.textContent = t('settings', 'exportCopied')
+    exportBtn.disabled = true
+    setTimeout(() => { exportBtn.textContent = original; exportBtn.disabled = false }, 1200)
+  })
+
+  const importInput = backdrop.querySelector<HTMLTextAreaElement>('#save-import-input')!
+  const importBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="import"]')!
+  const errorMsg = backdrop.querySelector<HTMLElement>('.modal-input-error')!
+
+  importInput.addEventListener('input', () => {
+    importBtn.disabled = importInput.value.trim().length === 0
+    errorMsg.textContent = ''
+  })
+
+  importBtn.addEventListener('click', () => {
+    if (!importSaveCode(importInput.value)) {
+      errorMsg.textContent = t('settings', 'importError')
+      return
+    }
+    // Rebuild the scene so the imported characters take effect immediately.
+    close()
+    navigate('menu')
   })
 
   return () => backdrop.remove()

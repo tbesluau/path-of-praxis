@@ -188,6 +188,14 @@ export interface TranslationSchema {
     zoomLabel: string
     fullscreen: string
     resetTutorials: string
+    saveData: string
+    saveDataDesc: string
+    exportSave: string
+    exportCopied: string
+    importLabel: string
+    importPlaceholder: string
+    importBtn: string
+    importError: string
   }
   guide: {
     title: string
@@ -405,6 +413,14 @@ export const en: TranslationSchema = {
     zoomLabel: 'Zoom',
     fullscreen: 'Fullscreen',
     resetTutorials: 'Reset tutorials',
+    saveData: 'Save data',
+    saveDataDesc: 'Copy your save code to back it up or move it to another device, or paste a code below to restore. Importing replaces all current characters.',
+    exportSave: 'Copy save code',
+    exportCopied: 'Copied!',
+    importLabel: 'Paste a save code',
+    importPlaceholder: 'Paste your save code here…',
+    importBtn: 'Import',
+    importError: 'Invalid save code',
   },
   guide: {
     title: 'Guide',
