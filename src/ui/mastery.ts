@@ -479,6 +479,7 @@ function mountMasteryTreeModal(
     <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
     <h2 class="modal-title" id="tree-modal-title">${def.label}</h2>
     <p class="mastery-tree-points"></p>
+    <p class="mastery-tree-hint">${t('mastery', 'ctrlClickHint')}</p>
     <div class="mastery-trees-list"></div>
     <div class="mastery-tree-footer">
       <div class="mastery-dump">

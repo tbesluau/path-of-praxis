@@ -89,6 +89,7 @@ export interface TranslationSchema {
     pointsPt: string               // template: "You have {total} / {earned} mastery point to assign{free}"
     pointsPts: string              // template: "You have {total} / {earned} mastery points to assign{free}"
     pointsFree: string             // template: " ({n} free)"
+    ctrlClickHint: string          // "Ctrl/Cmd + click a node to assign all affordable points"
   }
   ascent: {
     title: string
@@ -188,6 +189,18 @@ export interface TranslationSchema {
     zoomLabel: string
     fullscreen: string
     resetTutorials: string
+    saveData: string
+    saveDataDesc: string
+    exportSave: string
+    exportCopied: string
+    importLabel: string
+    importPlaceholder: string
+    importBtn: string
+    importError: string
+    importConfirmTitle: string
+    importConfirmBody: string
+    importConfirmBtn: string
+    cancel: string
   }
   guide: {
     title: string
@@ -306,6 +319,7 @@ export const en: TranslationSchema = {
     pointsPt: 'You have {total} / {earned} mastery point to assign{free}',
     pointsPts: 'You have {total} / {earned} mastery points to assign{free}',
     pointsFree: ' ({n} free)',
+    ctrlClickHint: 'Tip: Ctrl/Cmd + click a node to assign all affordable points at once.',
   },
   ascent: {
     title: 'Ascent',
@@ -405,6 +419,18 @@ export const en: TranslationSchema = {
     zoomLabel: 'Zoom',
     fullscreen: 'Fullscreen',
     resetTutorials: 'Reset tutorials',
+    saveData: 'Save data',
+    saveDataDesc: 'Copy your save code to back it up or move it to another device, or paste a code below to restore. Importing replaces all current characters.',
+    exportSave: 'Copy save code',
+    exportCopied: 'Copied!',
+    importLabel: 'Paste a save code',
+    importPlaceholder: 'Paste your save code here…',
+    importBtn: 'Import',
+    importError: 'Invalid save code',
+    importConfirmTitle: 'Replace all characters?',
+    importConfirmBody: 'Importing will permanently replace ALL of your existing characters with the save data. This cannot be undone.',
+    importConfirmBtn: 'Replace',
+    cancel: 'Cancel',
   },
   guide: {
     title: 'Guide',
