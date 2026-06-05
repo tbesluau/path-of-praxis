@@ -197,6 +197,10 @@ export interface TranslationSchema {
     importPlaceholder: string
     importBtn: string
     importError: string
+    importConfirmTitle: string
+    importConfirmBody: string
+    importConfirmBtn: string
+    cancel: string
   }
   guide: {
     title: string
@@ -423,6 +427,10 @@ export const en: TranslationSchema = {
     importPlaceholder: 'Paste your save code here…',
     importBtn: 'Import',
     importError: 'Invalid save code',
+    importConfirmTitle: 'Replace all characters?',
+    importConfirmBody: 'Importing will permanently replace ALL of your existing characters with the save data. This cannot be undone.',
+    importConfirmBtn: 'Replace',
+    cancel: 'Cancel',
   },
   guide: {
     title: 'Guide',

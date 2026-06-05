@@ -199,6 +199,10 @@ export const fr: TranslationSchema = {
     importPlaceholder: 'Collez votre code de sauvegarde ici…',
     importBtn: 'Importer',
     importError: 'Code de sauvegarde invalide',
+    importConfirmTitle: 'Remplacer tous les personnages ?',
+    importConfirmBody: 'L’importation remplacera définitivement TOUS vos personnages existants par les données de sauvegarde. Cette action est irréversible.',
+    importConfirmBtn: 'Remplacer',
+    cancel: 'Annuler',
   },
   guide: {
     title: 'Guide',
