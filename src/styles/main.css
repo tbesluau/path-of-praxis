@@ -283,20 +283,25 @@ body::after {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
   pointer-events: none;
   opacity: 0;
+  /* Hide instantly on mouse-out; the reveal delay is applied only on :hover. */
   transition: opacity var(--transition-fast);
+  transition-delay: 0s;
   z-index: 50;
 }
 
 /* Reveal on real-hover devices (desktop) and on keyboard focus; avoids
-   sticky tooltips on touch where there is no hover state to clear. */
+   sticky tooltips on touch where there is no hover state to clear.
+   The 1s delay means the tooltip only appears on a deliberate hover. */
 @media (hover: hover) {
   .game-top-bar [data-tooltip]:hover::after {
     opacity: 1;
+    transition-delay: 1s;
   }
 }
 
 .game-top-bar [data-tooltip]:focus-visible::after {
   opacity: 1;
+  transition-delay: 1s;
 }
 
 /* ── Top bar: wrap center group below on narrow screens ── */
@@ -1793,6 +1798,11 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   font-size: 0.8rem;
   line-height: 1.45;
   color: #5a3010;
+}
+
+.save-data-warning {
+  color: #7a3010;
+  font-weight: 600;
 }
 
 .modal-actions {

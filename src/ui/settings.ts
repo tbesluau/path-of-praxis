@@ -429,7 +429,9 @@ function mountSaveDataModal(parent: HTMLElement, onClose: () => void): () => voi
 
   parent.appendChild(backdrop)
 
-  const close = (): void => { backdrop.remove(); onClose() }
+  let confirmCleanup: (() => void) | null = null
+  const closeConfirm = (): void => { if (confirmCleanup) { confirmCleanup(); confirmCleanup = null } }
+  const close = (): void => { closeConfirm(); backdrop.remove(); onClose() }
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', close)
@@ -454,13 +456,47 @@ function mountSaveDataModal(parent: HTMLElement, onClose: () => void): () => voi
   })
 
   importBtn.addEventListener('click', () => {
-    if (!importSaveCode(importInput.value)) {
-      errorMsg.textContent = t('settings', 'importError')
-      return
-    }
-    // Rebuild the scene so the imported characters take effect immediately.
-    close()
-    navigate('menu')
+    // Warn first — importing wipes every existing character. Only apply on confirm.
+    errorMsg.textContent = ''
+    closeConfirm()
+    confirmCleanup = mountImportConfirmModal(parent, () => {
+      confirmCleanup = null
+      if (!importSaveCode(importInput.value)) {
+        errorMsg.textContent = t('settings', 'importError')
+        return
+      }
+      // Rebuild the scene so the imported characters take effect immediately.
+      close()
+      navigate('menu')
+    }, () => { confirmCleanup = null })
+  })
+
+  return () => { closeConfirm(); backdrop.remove() }
+}
+
+function mountImportConfirmModal(parent: HTMLElement, onConfirm: () => void, onClose: () => void): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="import-confirm-title">
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title" id="import-confirm-title">${t('settings', 'importConfirmTitle')}</h2>
+      <p class="save-data-desc save-data-warning">${t('settings', 'importConfirmBody')}</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('settings', 'cancel')}</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm">${t('settings', 'importConfirmBtn')}</button>
+      </div>
+    </div>
+  `
+  parent.appendChild(backdrop)
+
+  const dismiss = (): void => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) dismiss() })
+  backdrop.querySelector<HTMLButtonElement>('[data-action="confirm"]')!.addEventListener('click', () => {
+    backdrop.remove()
+    onConfirm()
   })
 
   return () => backdrop.remove()

@@ -199,6 +199,10 @@ export const es: TranslationSchema = {
     importPlaceholder: 'Pega aquí tu código de guardado…',
     importBtn: 'Importar',
     importError: 'Código de guardado no válido',
+    importConfirmTitle: '¿Reemplazar todos los personajes?',
+    importConfirmBody: 'Importar reemplazará permanentemente TODOS tus personajes existentes por los datos de guardado. Esta acción no se puede deshacer.',
+    importConfirmBtn: 'Reemplazar',
+    cancel: 'Cancelar',
   },
   guide: {
     title: 'Guía',
