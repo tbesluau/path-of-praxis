@@ -1275,26 +1275,26 @@ export function createGameScene(
   el.innerHTML = `
     <div class="game-top-bar">
       <div class="game-top-left">
-        <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}">
+        <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}" data-tooltip="${t('game', 'backToMenu')}">
           <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="die" aria-label="${t('game', 'dieRebirth')}">
+        <button class="game-action-btn game-action-btn--icon" data-action="die" aria-label="${t('game', 'dieRebirth')}" data-tooltip="${t('game', 'dieRebirth')}">
           <i data-lucide="skull" aria-hidden="true"></i>
         </button>
       </div>
       <div class="game-top-center">
-        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="${t('game', 'battleConfig')}" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="${t('game', 'battleConfig')}" data-tooltip="${t('game', 'battleConfig')}" style="position:relative">
           <i data-lucide="settings-2" aria-hidden="true"></i>
           <span class="notif-dot rune-notif-dot rune-notif-dot--top" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="${t('game', 'masteries')}" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="${t('game', 'masteries')}" data-tooltip="${t('game', 'masteries')}" style="position:relative">
           <i data-lucide="award" aria-hidden="true"></i>
           <span class="notif-dot mastery-notif-dot" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" aria-label="${t('game', 'ascentBtnLabel')}" hidden>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" aria-label="${t('game', 'ascentBtnLabel')}" data-tooltip="${t('game', 'ascentBtnLabel')}" hidden>
           <i data-lucide="arrow-up" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="${t('game', 'enemyLevelLabel')}" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="${t('game', 'enemyLevelLabel')}" data-tooltip="${t('game', 'enemyLevelLabel')}" style="position:relative">
           <span class="enemy-level-display">1 / 1</span>
           <span class="notif-dot enemy-notif-dot" hidden></span>
         </button>

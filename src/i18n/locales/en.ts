@@ -89,6 +89,7 @@ export interface TranslationSchema {
     pointsPt: string               // template: "You have {total} / {earned} mastery point to assign{free}"
     pointsPts: string              // template: "You have {total} / {earned} mastery points to assign{free}"
     pointsFree: string             // template: " ({n} free)"
+    ctrlClickHint: string          // "Ctrl/Cmd + click a node to assign all affordable points"
   }
   ascent: {
     title: string
@@ -314,6 +315,7 @@ export const en: TranslationSchema = {
     pointsPt: 'You have {total} / {earned} mastery point to assign{free}',
     pointsPts: 'You have {total} / {earned} mastery points to assign{free}',
     pointsFree: ' ({n} free)',
+    ctrlClickHint: 'Tip: Ctrl/Cmd + click a node to assign all affordable points at once.',
   },
   ascent: {
     title: 'Ascent',
