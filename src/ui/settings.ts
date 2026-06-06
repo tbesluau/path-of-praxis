@@ -14,12 +14,25 @@ const LOCALE_FLAG_CLASS: Record<Locale, string> = {
   en: 'fi fi-gb',
   fr: 'fi fi-fr',
   es: 'fi fi-es',
+  zh: 'fi fi-cn',
+  ru: 'fi fi-ru',
 }
 
-const LOCALE_NAME_KEY: Record<Locale, 'langEn' | 'langFr' | 'langEs'> = {
+const LOCALE_NAME_KEY: Record<Locale, 'langEn' | 'langFr' | 'langEs' | 'langZh' | 'langRu'> = {
   en: 'langEn',
   fr: 'langFr',
   es: 'langEs',
+  zh: 'langZh',
+  ru: 'langRu',
+}
+
+// Always shown in the language's own script, regardless of the active UI locale.
+const LOCALE_NATIVE_NAME: Record<Locale, string> = {
+  en: 'English',
+  fr: 'Français',
+  es: 'Español',
+  zh: '简体中文',
+  ru: 'Русский',
 }
 
 function isFullscreen(): boolean {
@@ -346,7 +359,7 @@ function mountLanguageModal(
         ${SUPPORTED_LOCALES.map(l => `
           <button class="lang-option${l === locale ? ' lang-option--active' : ''}" data-locale="${l}">
             <span class="${LOCALE_FLAG_CLASS[l]} lang-option-flag" role="img" aria-label="${t('settings', LOCALE_NAME_KEY[l])}"></span>
-            <span class="lang-option-name">${t('settings', LOCALE_NAME_KEY[l])}</span>
+            <span class="lang-option-name">${LOCALE_NATIVE_NAME[l]}</span>
           </button>
         `).join('')}
       </div>

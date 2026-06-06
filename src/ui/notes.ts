@@ -192,6 +192,8 @@ const NOTE_TERMS_BY_LOCALE: Record<Locale, NoteTerm[]> = {
   en: NOTE_TERMS_EN,
   fr: NOTE_TERMS_FR,
   es: NOTE_TERMS_ES,
+  zh: [],
+  ru: [],
 }
 
 // Apply a single pattern to an HTML string, protecting already-linked spans.
