@@ -5488,6 +5488,7 @@ function mountTriggerPickerModal(
     const isActive = def.type === currentType
     const btn = document.createElement('button')
     btn.className = 'trigger-picker-opt'
+    btn.dataset.sfx = 'modal'  // selecting closes the modal → modal.close, not toggle
     if (!isUnlocked) btn.classList.add('trigger-picker-opt--locked')
     if (isActive) btn.classList.add('trigger-picker-opt--active')
     btn.disabled = !isUnlocked

@@ -30,11 +30,13 @@ function bootstrap(): void {
   // are also skipped — the dismiss function plays modal.close.
   document.addEventListener('pointerdown', (e) => {
     const el = (e.target as HTMLElement | null)?.closest(
-      'button, [data-action], .lang-option, .targeting-opt, [role="button"]',
+      'button, [data-action], .lang-option, .targeting-opt, [role="button"], input[type="checkbox"], input[type="radio"]',
     ) as HTMLButtonElement | null
     if (!el || el.disabled) return
     if ((el as HTMLElement).dataset.sfx === 'modal') return
+    // Close buttons (close/skip) are handled by their modal's dismiss(), which plays modal.close.
     if ((el as HTMLElement).dataset.action === 'close') return
+    if ((el as HTMLElement).dataset.action === 'skip') return
     playSound('ui.toggle')
   }, true)
 

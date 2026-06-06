@@ -460,7 +460,7 @@ function mountSaveDataModal(parent: HTMLElement, onClose: () => void): () => voi
         <span class="modal-input-error" aria-live="polite"></span>
       </div>
       <div class="modal-actions">
-        <button class="modal-btn modal-btn--primary" data-action="import" disabled>${t('settings', 'importBtn')}</button>
+        <button class="modal-btn modal-btn--primary" data-action="import" data-sfx="modal" disabled>${t('settings', 'importBtn')}</button>
       </div>
     </div>
   `
@@ -522,8 +522,8 @@ function mountImportConfirmModal(parent: HTMLElement, onConfirm: () => void, onC
       <h2 class="modal-title" id="import-confirm-title">${t('settings', 'importConfirmTitle')}</h2>
       <p class="save-data-desc save-data-warning">${t('settings', 'importConfirmBody')}</p>
       <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('settings', 'cancel')}</button>
-        <button class="modal-btn modal-btn--danger" data-action="confirm">${t('settings', 'importConfirmBtn')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="cancel" data-sfx="modal">${t('settings', 'cancel')}</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm" data-sfx="modal">${t('settings', 'importConfirmBtn')}</button>
       </div>
     </div>
   `
