@@ -180,6 +180,8 @@ export interface TranslationSchema {
     langEn: string
     langFr: string
     langEs: string
+    langZh: string
+    langRu: string
     close: string
     guide: string
     discord: string
@@ -410,6 +412,8 @@ export const en: TranslationSchema = {
     langEn: 'English',
     langFr: 'French',
     langEs: 'Spanish',
+    langZh: 'Simplified Chinese',
+    langRu: 'Russian',
     close: 'Close',
     guide: 'Guide',
     discord: 'Discord',

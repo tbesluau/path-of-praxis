@@ -182,6 +182,8 @@ export const fr: TranslationSchema = {
     langEn: 'Anglais',
     langFr: 'Français',
     langEs: 'Espagnol',
+    langZh: 'Chinois simplifié',
+    langRu: 'Russe',
     close: 'Fermer',
     guide: 'Guide',
     discord: 'Discord',
