@@ -1282,7 +1282,7 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}" data-tooltip="${t('game', 'backToMenu')}">
           <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="die" aria-label="${t('game', 'dieRebirth')}" data-tooltip="${t('game', 'dieRebirth')}">
+        <button class="game-action-btn game-action-btn--icon" data-action="die" data-sfx="modal" aria-label="${t('game', 'dieRebirth')}" data-tooltip="${t('game', 'dieRebirth')}">
           <i data-lucide="skull" aria-hidden="true"></i>
         </button>
       </div>
@@ -1711,6 +1711,10 @@ export function createGameScene(
   let dashRemainingMs = 0
   let dashMoveX = 0
   let dashMoveY = 0
+  let dashStartX = 0          // player position when the current dash began
+  let dashStartY = 0
+  let dashMaxDist = 0         // theoretical full-dash distance (px) for this dash
+  const DASH_SOUND_MIN_FRACTION = 0.2  // only play the land sound past this share of max distance
   let playerIsKiting = false
   let playerMovedSinceLastAction = false  // key 12: first-action-after-moving
   let playerStationaryActionCount = 0    // key 13: consecutive actions without moving (0-10)
@@ -1994,8 +1998,12 @@ export function createGameScene(
 
   el.querySelector<HTMLButtonElement>('[data-action="die"]')!
     .addEventListener('click', () => {
-      playerEntity.currentLife = 0
-      killEntity(playerEntity)
+      const doDie = (): void => {
+        playerEntity.currentLife = 0
+        killEntity(playerEntity)
+      }
+      if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+      else doDie()
     })
 
   // ── PixiJS ──────────────────────────────────────────────────────────────
@@ -4115,6 +4123,16 @@ export function createGameScene(
                 x: dashMoveX * dashSpeed * MATTER_BASE_DT,
                 y: dashMoveY * dashSpeed * MATTER_BASE_DT,
               })
+              // On landing, play the dash sound only if the player actually
+              // covered at least DASH_SOUND_MIN_FRACTION of the full dash (a dash
+              // blocked immediately by a wall/enemy stays silent).
+              if (dashRemainingMs === 0 && dashMaxDist > 0) {
+                const ddx = entity.x - dashStartX
+                const ddy = entity.y - dashStartY
+                if (Math.hypot(ddx, ddy) >= DASH_SOUND_MIN_FRACTION * dashMaxDist) {
+                  playSound('player.dash')
+                }
+              }
               playerMovedSinceLastAction = true
               continue
             }
@@ -4126,7 +4144,8 @@ export function createGameScene(
               if (dashCharges > 0 && mb.kiteAllowDash) {
                 dashCharges--
                 dashRemainingMs = DASH_DURATION_MS
-                playSound('player.dash')
+                dashStartX = entity.x; dashStartY = entity.y
+                dashMaxDist = effectiveMs * dashDistMult
                 dashMoveX = kiteMoveX; dashMoveY = kiteMoveY
                 const dashSpeed = effectiveMs * DASH_SPEED_MULT * dashDistMult
                 Matter.Body.setVelocity(body, {
@@ -4150,7 +4169,8 @@ export function createGameScene(
             if (dashCharges > 0) {
               dashCharges--
               dashRemainingMs = DASH_DURATION_MS
-              playSound('player.dash')
+              dashStartX = entity.x; dashStartY = entity.y
+              dashMaxDist = effectiveMs * dashDistMult
               dashMoveX = moveX; dashMoveY = moveY
               const dashSpeed = effectiveMs * DASH_SPEED_MULT * dashDistMult
               Matter.Body.setVelocity(body, {
@@ -5483,6 +5503,38 @@ function getTriggerDefs(): TriggerDef[] {
       unlockHint: t('game', 'triggerAfflictionLock'),
     },
   ]
+}
+
+// Confirmation gate for the manual die-and-rebirth button. Can be turned off
+// via the "Confirm before manual death" setting (prefs.confirmManualDeath).
+function mountDieConfirmModal(parent: HTMLElement, onConfirm: () => void): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="die-confirm-title">
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title" id="die-confirm-title">${t('game', 'dieConfirmTitle')}</h2>
+      <p class="save-data-desc save-data-warning">${t('game', 'dieConfirmBody')}</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--ghost" data-action="cancel" data-sfx="modal">${t('settings', 'cancel')}</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm" data-sfx="modal">${t('game', 'dieConfirmYes')}</button>
+      </div>
+    </div>
+  `
+  playSound('modal.open')
+  parent.appendChild(backdrop)
+
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+  backdrop.querySelector<HTMLButtonElement>('[data-action="confirm"]')!.addEventListener('click', () => {
+    playSound('modal.close')
+    backdrop.remove()
+    onConfirm()
+  })
+
+  return () => backdrop.remove()
 }
 
 function mountTriggerPickerModal(
