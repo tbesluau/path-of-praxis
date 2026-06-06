@@ -1,4 +1,5 @@
 import { t } from '../i18n'
+import { playSound } from '../audio'
 import releaseNotesRaw from '../config/release-notes.md?raw'
 import todoRaw from '../config/todo.md?raw'
 import privacyRaw from '../config/privacy.md?raw'
@@ -56,7 +57,7 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
   const closeSub = (): void => { if (subCleanup) { subCleanup(); subCleanup = null } }
 
   const teardown = (): void => { closeSub(); backdrop.remove() }
-  const dismiss = (): void => { teardown(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); teardown(); onClose() }
 
   backdrop.innerHTML = `
     <div class="modal-panel about-panel" role="dialog" aria-modal="true" aria-labelledby="about-title">
@@ -75,14 +76,15 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
         </ul>
       </div>
       <div class="modal-actions about-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="release-notes">${t('about', 'releaseNotes')}</button>
-        <button class="modal-btn modal-btn--ghost" data-action="todo">${t('about', 'todo')}</button>
-        <button class="modal-btn modal-btn--ghost" data-action="privacy">${t('about', 'privacy')}</button>
-        <button class="modal-btn modal-btn--ghost" data-action="eula">${t('about', 'eula')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="release-notes" data-sfx="modal">${t('about', 'releaseNotes')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="todo" data-sfx="modal">${t('about', 'todo')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="privacy" data-sfx="modal">${t('about', 'privacy')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="eula" data-sfx="modal">${t('about', 'eula')}</button>
       </div>
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
@@ -138,10 +140,11 @@ function mountAboutSubModal(
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   const teardown = (): void => { backdrop.remove() }
-  const dismiss = (): void => { teardown(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); teardown(); onClose() }
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)

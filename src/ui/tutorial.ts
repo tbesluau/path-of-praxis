@@ -235,7 +235,7 @@ export function showTutorial(opts: TutorialOptions): void {
       if (opts.guideSection) {
         actionHtml = `
           <button class="modal-btn modal-btn--ghost" data-tut="done">${t('tutorial', 'done')}</button>
-          <button class="modal-btn modal-btn--primary" data-tut="more-info">${t('tutorial', 'moreInfo')}</button>
+          <button class="modal-btn modal-btn--primary" data-tut="more-info" data-sfx="modal">${t('tutorial', 'moreInfo')}</button>
         `
       } else {
         actionHtml = `<button class="modal-btn modal-btn--primary" data-tut="done">${t('tutorial', 'done')}</button>`

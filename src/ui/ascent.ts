@@ -1,6 +1,7 @@
 import { balance } from '../config/balance'
 import type { UniversePointAllocations } from '../core/character'
 import { t } from '../i18n'
+import { playSound } from '../audio'
 
 const THRESHOLDS: { count: number; labelKey: 'threshold1' | 'threshold2' | 'threshold3' | 'threshold4' | 'threshold5' }[] = [
   { count: 1, labelKey: 'threshold1' },
@@ -89,7 +90,7 @@ export function mountAscentModal(
       </div>
     `
 
-    const dismiss = (): void => { backdrop.remove(); onClose() }
+    const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
     backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
@@ -104,6 +105,7 @@ export function mountAscentModal(
   }
 
   buildPanel()
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   return () => backdrop.remove()

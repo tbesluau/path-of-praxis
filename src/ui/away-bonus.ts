@@ -1,5 +1,6 @@
 import { t } from '../i18n'
 import { showRewardedAd } from '../ads'
+import { playSound } from '../audio'
 
 function formatDuration(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
@@ -45,7 +46,7 @@ export function mountAwayBonusModal(
   `
 
   const teardown = (): void => { backdrop.remove(); currentTeardown = null }
-  const dismiss  = (): void => { teardown(); onClose() }
+  const dismiss  = (): void => { playSound('modal.close'); teardown(); onClose() }
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action="close"]').forEach(btn => {
     btn.addEventListener('click', dismiss)
   })
@@ -60,6 +61,7 @@ export function mountAwayBonusModal(
   })
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
   currentTeardown = teardown
   return teardown

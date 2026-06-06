@@ -2,6 +2,7 @@ import { t } from '../i18n'
 import privacyRaw from '../config/privacy.md?raw'
 import eulaRaw from '../config/eula.md?raw'
 import { inline, renderMarkdown } from './about'
+import { playSound } from '../audio'
 
 // Sub-modal: renders the full markdown for one legal document.
 // Stays open until the user explicitly closes it; clicking the backdrop
@@ -25,10 +26,11 @@ function mountLegalSubModal(
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   const teardown = (): void => { backdrop.remove() }
-  const dismiss = (): void => { teardown(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); teardown(); onClose() }
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
@@ -48,8 +50,8 @@ export function mountTermsAcceptanceModal(
   // No close button, no Escape, no click-outside dismiss — acceptance is mandatory.
   backdrop.className = 'modal-backdrop terms-backdrop'
 
-  const privacyLinkHtml = `<button type="button" class="terms-link" data-action="open-privacy">${inline(t('terms', 'privacyLink'))}</button>`
-  const eulaLinkHtml = `<button type="button" class="terms-link" data-action="open-eula">${inline(t('terms', 'eulaLink'))}</button>`
+  const privacyLinkHtml = `<button type="button" class="terms-link" data-action="open-privacy" data-sfx="modal">${inline(t('terms', 'privacyLink'))}</button>`
+  const eulaLinkHtml = `<button type="button" class="terms-link" data-action="open-eula" data-sfx="modal">${inline(t('terms', 'eulaLink'))}</button>`
 
   const privacyLabelHtml = inline(t('terms', 'privacyLabel')).replace('{link}', privacyLinkHtml)
   const eulaLabelHtml = inline(t('terms', 'eulaLabel')).replace('{link}', eulaLinkHtml)

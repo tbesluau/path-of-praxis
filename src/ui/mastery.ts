@@ -120,8 +120,8 @@ function mountResetConfirmModal(
       <h2 class="modal-title" id="reset-confirm-title">${t('mastery', 'resetTitle').replace('{name}', masteryLabel)}</h2>
       <p class="node-detail-desc">${description}</p>
       <div class="node-detail-actions reset-confirm-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('mastery', 'confirmCancel')}</button>
-        <button class="modal-btn modal-btn--danger" data-action="confirm">${t('mastery', 'confirmReset')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="cancel" data-sfx="modal">${t('mastery', 'confirmCancel')}</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm" data-sfx="modal">${t('mastery', 'confirmReset')}</button>
       </div>
     </div>
   `
@@ -162,7 +162,7 @@ function mountNodeDetailModal(
   } else if (info.assignInfo.kind === 'assignable') {
     const cost = info.assignInfo.cost
     const label = (cost === 1 ? t('mastery', 'nodeAssignPt') : t('mastery', 'nodeAssignPts')).replace('{cost}', String(cost))
-    actionHtml = `<button class="modal-btn modal-btn--primary node-detail-assign-btn" data-action="assign">${label}</button>`
+    actionHtml = `<button class="modal-btn modal-btn--primary node-detail-assign-btn" data-action="assign" data-sfx="modal">${label}</button>`
   } else if (info.assignInfo.kind === 'insufficient') {
     const { cost, available } = info.assignInfo
     const tpl = cost === 1 ? t('mastery', 'nodeNeedPt') : t('mastery', 'nodeNeedPts')
@@ -251,6 +251,7 @@ function mkNode(treeIdx: number, nodeIdx: number, type: NodeType, assigned: bool
   node.dataset['node'] = String(nodeIdx)
   node.setAttribute('role', 'button')
   node.setAttribute('tabindex', '0')
+  node.dataset['sfx'] = 'modal'
   node.textContent = unavailable && !assigned ? '×' : '+'
   return node
 }
@@ -489,7 +490,7 @@ function mountMasteryTreeModal(
         <span class="mastery-dump-label"></span>
         <button class="modal-btn modal-btn--ghost mastery-dump-btn" data-action="dump" title="${t('mastery', 'dumpTooltip')}"></button>
       </div>
-      <button class="modal-btn modal-btn--danger mastery-reset-btn" data-action="reset">${t('mastery', 'resetBtn')}</button>
+      <button class="modal-btn modal-btn--danger mastery-reset-btn" data-action="reset" data-sfx="modal">${t('mastery', 'resetBtn')}</button>
     </div>
   `
   backdrop.appendChild(panel)
@@ -764,7 +765,7 @@ export function mountMasteryModal(
         rowEl.className = 'mastery-row'
         rowEl.dataset['masteryId'] = r.id
         rowEl.innerHTML = `
-          <button class="mastery-name-btn" data-mastery="${r.id}">
+          <button class="mastery-name-btn" data-mastery="${r.id}" data-sfx="modal">
             <span class="mastery-name-label"></span>
             <span class="notif-dot" hidden></span>
           </button>

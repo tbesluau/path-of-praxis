@@ -183,9 +183,11 @@ export function mountActionPickerModal(
     const btn = document.createElement('button')
     btn.className = `action-picker-btn${action.id === currentActionId ? ' action-picker-btn--selected' : ''}`
     btn.dataset['actionId'] = action.id
+    btn.dataset['sfx'] = 'modal'  // selecting closes the modal → modal.close, not toggle
     btn.appendChild(buildActionThumbnail(action, false, showCritChance, critBaseAdd))
     btn.addEventListener('click', () => {
       onSelect(action.id)
+      playSound('modal.close')
       backdrop.remove()
       onClose()
     })
