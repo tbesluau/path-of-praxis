@@ -187,6 +187,8 @@ export const ru: TranslationSchema = {
     close: 'Закрыть',
     guide: 'Руководство',
     discord: 'Discord',
+    soundVolume: 'Громкость звука',
+    soundMuted: 'Отключить звук',
     showDamageNumbers: 'Показывать числа урона',
     showDpsMeter: 'Счётчик DPS',
     fullMastery: 'Полное мастерство',

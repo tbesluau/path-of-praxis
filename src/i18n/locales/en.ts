@@ -185,6 +185,8 @@ export interface TranslationSchema {
     close: string
     guide: string
     discord: string
+    soundVolume: string
+    soundMuted: string
     showDamageNumbers: string
     showDpsMeter: string
     fullMastery: string
@@ -475,6 +477,8 @@ export const en: TranslationSchema = {
     close: 'Close',
     guide: 'Guide',
     discord: 'Discord',
+    soundVolume: 'Sound volume',
+    soundMuted: 'Mute sound',
     showDamageNumbers: 'Show damage numbers',
     showDpsMeter: 'DPS meter',
     fullMastery: 'Full mastery',

@@ -24,6 +24,7 @@ import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIco
 import { getPrefs, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
+import { playSound, preloadSounds, essenceSfxId } from '../audio'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -2436,6 +2437,7 @@ export function createGameScene(
       }
       bossLastHitWasCrit.delete(entity.id)
       bossLastHitWasAffl.delete(entity.id)
+      playSound('boss.defeat')
     }
     // Proliferate roll: enemies not spawned by this tree get a chance to add one to the next wave.
     if (entity.role === 'enemy' && !proliferateSourceEntities.has(entity.id)) {
@@ -2447,9 +2449,11 @@ export function createGameScene(
     spawnDeathFragments(entity)
     removeEntity(entity)
     if (entity.role === 'player') {
+      playSound('player.death')
       playerDead = true
       modalCleanup = mountDeathModal()
     } else {
+      if (!bossEntities.has(entity.id)) playSound('enemy.death')
       const liveEnemies = entities.filter(e => e.role === 'enemy').length
       if (!paused && liveEnemies <= balance.wave.nextWaveThreshold) scheduleWave()
     }
@@ -3178,6 +3182,8 @@ export function createGameScene(
         championEntities.add(enemy.id)
         eliteEntities.add(enemy.id)
         strongEntities.add(enemy.id)
+        playSound('boss.spawn')
+        void preloadSounds(['boss.defeat'])
         if (!isTutorialSeen('first-boss') && !getPrefs().tutorialDisabled) {
           const wasPaused = paused
           if (!wasPaused) togglePause()
@@ -4384,6 +4390,9 @@ export function createGameScene(
           const prevLife = target.currentLife
           target.currentLife = Math.max(0, target.currentLife - finalDamage)
           const actualDamage = prevLife - target.currentLife
+          if (attacker.role === 'player' && target.role === 'enemy' && (actualDamage > 0 || wouldHaveLanded)) {
+            playSound(essenceSfxId(action.tags))
+          }
           // Track the last direct hit type on boss entities for trigger unlock detection.
           if (attacker.role === 'player' && target.role === 'enemy' && bossEntities.has(target.id) && actualDamage > 0) {
             bossLastHitWasCrit.set(target.id, isCrit)

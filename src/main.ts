@@ -9,6 +9,7 @@ import { initEntitlement } from './core/entitlement'
 import { isAllowedToRun } from './core/host-guard'
 import { getPrefs, setPref } from './core/prefs'
 import { mountTermsAcceptanceModal } from './ui/terms'
+import { initAudio, playSound, suspendAudio, resumeAudio } from './audio'
 
 function bootstrap(): void {
   if (!isAllowedToRun()) {
@@ -20,6 +21,21 @@ function bootstrap(): void {
 
   applyTheme()
   initI18n()
+  initAudio()
+
+  // Single delegated listener for UI click sounds.
+  // pointerdown also fires on first gesture, which resumes the AudioContext.
+  document.addEventListener('pointerdown', (e) => {
+    const el = (e.target as HTMLElement | null)?.closest(
+      'button, [data-action], .lang-option, .targeting-opt, [role="button"]',
+    ) as HTMLButtonElement | null
+    if (el && !el.disabled) playSound('ui.click')
+  }, true)
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) suspendAudio()
+    else resumeAudio()
+  })
 
   const app = document.getElementById('app')!
 

@@ -187,6 +187,8 @@ export const zh: TranslationSchema = {
     close: '关闭',
     guide: '指南',
     discord: 'Discord',
+    soundVolume: '音效音量',
+    soundMuted: '静音',
     showDamageNumbers: '显示伤害数字',
     showDpsMeter: 'DPS 计量器',
     fullMastery: '完整精通',

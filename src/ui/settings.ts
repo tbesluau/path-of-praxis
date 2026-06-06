@@ -3,6 +3,7 @@ import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, 
 import { t, setLocale, getLocale, SUPPORTED_LOCALES, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
+import { setVolume, setMuted, getVolume, isMuted } from '../audio'
 import { exportSaveCode, importSaveCode } from '../core/save-code'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
@@ -172,6 +173,21 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           </div>
         </div>
         <div class="modal-field">
+          <div class="settings-zoom-row">
+            <span class="modal-label">${t('settings', 'soundVolume')}</span>
+            <input type="range" class="settings-volume-slider" data-action="sound-volume"
+              min="0" max="100" step="5" value="${Math.round(getVolume() * 100)}"
+              aria-label="${t('settings', 'soundVolume')}">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'soundMuted')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-action="sound-muted" ${isMuted() ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div class="modal-field">
           <label class="settings-toggle-row">
             <span class="modal-label">${t('settings', 'showDamageNumbers')}</span>
             <input type="checkbox" class="settings-toggle-input" data-pref="showDamageNumbers" ${prefs.showDamageNumbers ? 'checked' : ''}>
@@ -244,6 +260,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
 
     backdrop.querySelector<HTMLInputElement>('[data-action="fullscreen"]')!
       .addEventListener('change', () => { toggleFullscreen().catch(() => render()) })
+
+    backdrop.querySelector<HTMLInputElement>('[data-action="sound-volume"]')!
+      .addEventListener('input', (e) => { setVolume(Number((e.target as HTMLInputElement).value) / 100) })
+
+    backdrop.querySelector<HTMLInputElement>('[data-action="sound-muted"]')!
+      .addEventListener('change', (e) => { setMuted((e.target as HTMLInputElement).checked) })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="guide"]')!
       .addEventListener('click', () => {
