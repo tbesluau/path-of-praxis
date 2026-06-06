@@ -1284,15 +1284,15 @@ export function createGameScene(
         </button>
       </div>
       <div class="game-top-center">
-        <button class="game-action-btn game-action-btn--icon" data-action="open-config" aria-label="${t('game', 'battleConfig')}" data-tooltip="${t('game', 'battleConfig')}" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-config" data-sfx="modal" aria-label="${t('game', 'battleConfig')}" data-tooltip="${t('game', 'battleConfig')}" style="position:relative">
           <i data-lucide="settings-2" aria-hidden="true"></i>
           <span class="notif-dot rune-notif-dot rune-notif-dot--top" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" aria-label="${t('game', 'masteries')}" data-tooltip="${t('game', 'masteries')}" style="position:relative">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" data-sfx="modal" aria-label="${t('game', 'masteries')}" data-tooltip="${t('game', 'masteries')}" style="position:relative">
           <i data-lucide="award" aria-hidden="true"></i>
           <span class="notif-dot mastery-notif-dot" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" aria-label="${t('game', 'ascentBtnLabel')}" data-tooltip="${t('game', 'ascentBtnLabel')}" hidden>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" data-sfx="modal" aria-label="${t('game', 'ascentBtnLabel')}" data-tooltip="${t('game', 'ascentBtnLabel')}" hidden>
           <i data-lucide="arrow-up" aria-hidden="true"></i>
         </button>
         <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="${t('game', 'enemyLevelLabel')}" data-tooltip="${t('game', 'enemyLevelLabel')}" style="position:relative">
@@ -1607,7 +1607,11 @@ export function createGameScene(
   })
 
   el.querySelector<HTMLButtonElement>('[data-action="toggle-enemy"]')!
-    .addEventListener('click', () => { enemyCtrlEl.classList.toggle('is-open') })
+    .addEventListener('click', () => {
+      const opening = !enemyCtrlEl.classList.contains('is-open')
+      enemyCtrlEl.classList.toggle('is-open')
+      playSound(opening ? 'modal.open' : 'modal.close')
+    })
 
   function awardEnemyXp(amount: number): void {
     amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
@@ -2449,7 +2453,6 @@ export function createGameScene(
     spawnDeathFragments(entity)
     removeEntity(entity)
     if (entity.role === 'player') {
-      playSound('player.death')
       playerDead = true
       modalCleanup = mountDeathModal()
     } else {
@@ -2734,6 +2737,7 @@ export function createGameScene(
     `
     backdrop.querySelector<HTMLButtonElement>('[data-action="rebirth"]')!
       .addEventListener('click', () => {
+        playSound('modal.close')
         applyMasteryGains(pendingGains)
         backdrop.remove()
         rebirth()
@@ -2761,6 +2765,7 @@ export function createGameScene(
           })
         }
       })
+    playSound('modal.open')
     container.appendChild(backdrop)
     return () => backdrop.remove()
   }
@@ -5493,6 +5498,7 @@ function mountTriggerPickerModal(
     `
     if (isUnlocked) {
       btn.addEventListener('click', () => {
+        playSound('modal.close')
         backdrop.remove()
         onClose()
         onSelect(def.type)
@@ -5501,12 +5507,14 @@ function mountTriggerPickerModal(
     optionsEl.appendChild(btn)
   }
 
+  const dismissTrigger = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
   panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { backdrop.remove(); onClose() })
+    .addEventListener('click', dismissTrigger)
 
   backdrop.appendChild(panel)
+  playSound('modal.open')
   parent.appendChild(backdrop)
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) { backdrop.remove(); onClose() } })
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismissTrigger() })
 
   return () => backdrop.remove()
 }
@@ -5565,6 +5573,7 @@ function mountBattleConfigModal(
 
     const card = document.createElement('button')
     card.className = 'action-trigger-card'
+    card.dataset.sfx = 'modal'
     card.appendChild(buildActionThumbnail(
       getAction(selectedActionId), false, showCritChance, critBaseAdd, hooks.getActionXp(selectedActionId),
     ))
@@ -5573,6 +5582,7 @@ function mountBattleConfigModal(
     const runeBtn = document.createElement('button')
     runeBtn.className = 'action-trigger-rune-btn'
     runeBtn.setAttribute('aria-label', t('rune', 'runesAriaLabel'))
+    runeBtn.dataset.sfx = 'modal'
     runeBtn.innerHTML = '<i data-lucide="sparkles" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>'
     row.appendChild(runeBtn)
 
@@ -5624,6 +5634,7 @@ function mountBattleConfigModal(
         // Newly unlocked — show "Select action trigger" button
         const selectBtn = document.createElement('button')
         selectBtn.className = 'action-trigger-select-btn'
+        selectBtn.dataset.sfx = 'modal'
         selectBtn.textContent = t('game', 'selectActionTrigger')
         selectBtn.addEventListener('click', () => openTriggerPicker(i))
         extraWrap.appendChild(selectBtn)
@@ -5631,6 +5642,7 @@ function mountBattleConfigModal(
         // Trigger type chosen — show same layout as auto-attack slot
         const titleBtn = document.createElement('button')
         titleBtn.className = 'action-trigger-title'
+        titleBtn.dataset.sfx = 'modal'
         titleBtn.innerHTML = `${TRIGGER_LABELS[slot.triggerType]}<span class="action-trigger-penalty">×${penalty}</span>`
         titleBtn.addEventListener('click', () => openTriggerPicker(i))
         extraWrap.appendChild(titleBtn)
@@ -5640,6 +5652,7 @@ function mountBattleConfigModal(
 
         const extraCard = document.createElement('button')
         extraCard.className = 'action-trigger-card'
+        extraCard.dataset.sfx = 'modal'
         if (slot.actionId) {
           extraCard.appendChild(buildActionThumbnail(
             getAction(slot.actionId as ActionId), false, showCritChance, critBaseAdd,
@@ -5669,6 +5682,7 @@ function mountBattleConfigModal(
           const extraRuneBtn = document.createElement('button')
           extraRuneBtn.className = 'action-trigger-rune-btn'
           extraRuneBtn.setAttribute('aria-label', 'Runes')
+          extraRuneBtn.dataset.sfx = 'modal'
           extraRuneBtn.innerHTML = '<i data-lucide="sparkles" aria-hidden="true"></i><span class="notif-dot rune-notif-dot" hidden></span>'
           const extraDot = extraRuneBtn.querySelector<HTMLElement>('.rune-notif-dot')!
           extraDot.hidden = !hooks.hasUnassignedRune(slot.actionId)
@@ -5710,13 +5724,14 @@ function mountBattleConfigModal(
     })
   }
 
-  const dismiss = () => { backdrop.remove(); onClose() }
+  const dismiss = () => { playSound('modal.close'); backdrop.remove(); onClose() }
   panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
 
   backdrop.appendChild(panel)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
   renderTriggerCard()
   return { cleanup: () => backdrop.remove(), updateXp }

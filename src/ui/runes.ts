@@ -1,6 +1,7 @@
 import { runesByType, getRune, SLOT_TYPES, SLOT_UNLOCK_LEVELS, unlockedSlotCount, getRuneLabel, getRuneDesc, type RuneId, type RuneType } from '../config/runes'
 import type { ActionRunes } from '../core/character'
 import { t } from '../i18n'
+import { playSound } from '../audio'
 
 const SLOT_TYPE_KEY: Record<RuneType, 'slotMinor' | 'slotMajor' | 'slotKey'> = {
   minor: 'slotMinor', major: 'slotMajor', key: 'slotKey',
@@ -41,9 +42,10 @@ function mountRuneSelectModal(
       ${removeHtml ? `<div class="rune-select-footer">${removeHtml}</div>` : ''}
     </div>
   `
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
-  const dismiss = (): void => { backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
@@ -160,12 +162,14 @@ export function mountRunesModal(
   let activeSelectCleanup: (() => void) | null = null
 
   const dismiss = (): void => {
+    playSound('modal.close')
     if (activeSelectCleanup) { activeSelectCleanup(); activeSelectCleanup = null }
     backdrop.remove()
     onClose()
   }
 
   buildPanel()
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   return () => {
