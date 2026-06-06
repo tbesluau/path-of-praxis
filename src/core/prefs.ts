@@ -5,6 +5,8 @@ export interface Prefs {
   showDpsMeter:       boolean
   fullMastery:        boolean
   zoomLevel:          number
+  soundVolume:        number
+  soundMuted:         boolean
   tutorialDisabled?:  boolean
   seenTutorials?:     string[]
   // Bump the suffix (V1 → V2 → …) to re-prompt all users when the
@@ -17,6 +19,8 @@ const defaults: Prefs = {
   showDpsMeter:      false,
   fullMastery:       false,
   zoomLevel:         1.0,
+  soundVolume:       0.7,
+  soundMuted:        false,
 }
 
 let cache: Prefs | null = null

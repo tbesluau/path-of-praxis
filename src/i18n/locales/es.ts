@@ -187,6 +187,8 @@ export const es: TranslationSchema = {
     close: 'Cerrar',
     guide: 'Guía',
     discord: 'Discord',
+    soundVolume: 'Volumen de sonido',
+    soundMuted: 'Silenciar sonido',
     showDamageNumbers: 'Mostrar números de daño',
     showDpsMeter: 'Medidor DPS',
     fullMastery: 'Maestría completa',
