@@ -543,8 +543,6 @@ body::after {
   border-width: 0 13.5px;
   border-image: url('/ui/composed_bars/barBack_horizontal.png') 0 9 fill stretch;
   box-sizing: border-box;
-  background: var(--bar-track);
-  background-clip: padding-box;
 }
 
 .stat-level span {
@@ -595,8 +593,6 @@ body::after {
   border-width: 0 13.5px;
   border-image: url('/ui/composed_bars/barBack_horizontal.png') 0 9 fill stretch;
   box-sizing: border-box;
-  background: var(--bar-track);
-  background-clip: padding-box;
 }
 
 .stat-bar-fill {
@@ -807,8 +803,6 @@ body::after {
   border-width: 0 9px;
   border-image: url('/ui/composed_bars/barBack_horizontal.png') 0 9 fill stretch;
   box-sizing: border-box;
-  background: var(--bar-track);
-  background-clip: padding-box;
 }
 
 .enemy-xp-bar-fill {
@@ -871,8 +865,6 @@ body::after {
   border-width: 0 9px;
   border-image: url('/ui/composed_bars/barBack_horizontal.png') 0 9 fill stretch;
   box-sizing: border-box;
-  background: var(--bar-track);
-  background-clip: padding-box;
 }
 
 .ascent-xp-bar-fill {
@@ -1426,8 +1418,6 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   border-width: 0 9px;
   border-image: url('/ui/composed_bars/barBack_horizontal.png') 0 9 fill stretch;
   box-sizing: border-box;
-  background: var(--bar-track);
-  background-clip: padding-box;
 }
 
 .action-thumb-xp-fill {
@@ -2697,8 +2687,6 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   border-width: 0 9px;
   border-image: url('/ui/composed_bars/barBack_horizontal.png') 0 9 fill stretch;
   box-sizing: border-box;
-  background: var(--bar-track);
-  background-clip: padding-box;
 }
 
 .mastery-bar-old {
