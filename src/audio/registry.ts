@@ -1,6 +1,7 @@
 export type SfxId =
   | 'action.physical' | 'action.fire' | 'action.lightning'
   | 'enemy.death'
+  | 'player.dash'
   | 'ui.toggle'
   | 'modal.open' | 'modal.close'
   | 'boss.spawn' | 'boss.defeat'
@@ -18,6 +19,7 @@ export const SFX: Record<SfxId, SfxDef> = {
   'action.fire':      { file: 'fire.ogg',        maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
   'action.lightning': { file: 'electric.ogg',    maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
   'enemy.death':      { file: 'enemy_death.ogg', maxVoices: 10, throttleMs: 30, gain: 0.6, preload: true },
+  'player.dash':      { file: 'dash.ogg',        maxVoices: 3, throttleMs: 80, gain: 0.5, preload: true },
   'ui.toggle':        { file: 'toggle.ogg',      maxVoices: 3, throttleMs: 30, gain: 0.7, preload: true },
   'modal.open':       { file: 'modal_open.ogg',  maxVoices: 2, throttleMs: 60, gain: 0.8, preload: true },
   'modal.close':      { file: 'modal_close.ogg', maxVoices: 2, throttleMs: 60, gain: 0.8, preload: true },

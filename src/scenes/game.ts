@@ -4126,6 +4126,7 @@ export function createGameScene(
               if (dashCharges > 0 && mb.kiteAllowDash) {
                 dashCharges--
                 dashRemainingMs = DASH_DURATION_MS
+                playSound('player.dash')
                 dashMoveX = kiteMoveX; dashMoveY = kiteMoveY
                 const dashSpeed = effectiveMs * DASH_SPEED_MULT * dashDistMult
                 Matter.Body.setVelocity(body, {
@@ -4149,6 +4150,7 @@ export function createGameScene(
             if (dashCharges > 0) {
               dashCharges--
               dashRemainingMs = DASH_DURATION_MS
+              playSound('player.dash')
               dashMoveX = moveX; dashMoveY = moveY
               const dashSpeed = effectiveMs * DASH_SPEED_MULT * dashDistMult
               Matter.Body.setVelocity(body, {
