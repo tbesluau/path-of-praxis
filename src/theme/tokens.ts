@@ -17,7 +17,6 @@ export const tokens = {
   // it only shows through the sub-pixel seam the stretched centre used to leave
   // before each rounded cap — the sprite itself still renders on top.
   bar: {
-    track: 'rgba(0, 0, 0, 0.22)',
     xp: '#ffcc00',     xpEdge: '#ffd948',
     life: '#e86a17',   lifeEdge: '#fa8132',
     mana: '#1ea7e1',   manaEdge: '#35baf3',

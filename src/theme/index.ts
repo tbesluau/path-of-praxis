@@ -15,7 +15,6 @@ export function applyTheme(): void {
     '--color-text-muted': tokens.color.textMuted,
     '--color-accent': tokens.color.accent,
     '--color-accent-alt': tokens.color.accentAlt,
-    '--bar-track': tokens.bar.track,
     '--bar-xp': tokens.bar.xp,
     '--bar-xp-edge': tokens.bar.xpEdge,
     '--bar-life': tokens.bar.life,
