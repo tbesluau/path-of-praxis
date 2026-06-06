@@ -1,4 +1,6 @@
 import type { ActionTag } from './masteries'
+import { t } from '../i18n'
+import type { TranslationSchema } from '../i18n/locales/en'
 
 export type SpecialTagKind = 'afflictionChance' | 'buff' | 'manaRestore' | 'cooldownReduce' | 'other'
 
@@ -47,4 +49,12 @@ export function getAction(id: ActionId): ActionDef {
 
 export function randomAction(): ActionDef {
   return allActions[Math.floor(Math.random() * allActions.length)]
+}
+
+export function getActionLabel(id: string): string {
+  return t('actionLabel', id as keyof TranslationSchema['actionLabel'])
+}
+
+export function getActionTagLabel(tag: string): string {
+  return t('actionTag', tag as keyof TranslationSchema['actionTag'])
 }

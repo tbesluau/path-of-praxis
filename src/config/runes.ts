@@ -1,3 +1,6 @@
+import { t } from '../i18n'
+import type { TranslationSchema } from '../i18n/locales/en'
+
 export type RuneType = 'minor' | 'major' | 'key'
 
 export type RuneId =
@@ -93,4 +96,12 @@ export function unlockedSlotCount(actionLevel: number): number {
     if (actionLevel >= lvl) count++
   }
   return count
+}
+
+export function getRuneLabel(id: RuneId): string {
+  return t('runeLabel', id as keyof TranslationSchema['runeLabel'])
+}
+
+export function getRuneDesc(id: RuneId): string {
+  return t('runeDesc', id as keyof TranslationSchema['runeDesc'])
 }

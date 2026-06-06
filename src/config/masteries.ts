@@ -1,4 +1,6 @@
 import { balance } from './balance'
+import { t } from '../i18n'
+import type { TranslationSchema } from '../i18n/locales/en'
 
 export type DamageEssenceTag = 'lightning' | 'fire' | 'cold' | 'physical' | 'rot'
 export type DamageTypeTag    = 'area' | 'projectile' | 'strike'
@@ -25,7 +27,10 @@ export interface MasteryDef {
   trees: MasteryTreeDef[]
 }
 
+export type MasteryCategoryId = 'action' | 'damageBase' | 'damageType' | 'lifeMana' | 'world'
+
 export interface MasteryCategoryDef {
+  id: MasteryCategoryId
   label: string
   masteries: MasteryDef[]
 }
@@ -48,6 +53,7 @@ export function nodeDescription(treeDef: MasteryTreeDef, nodeIdx: number): strin
 // Large trees come before small trees.
 export const masteryCategories: MasteryCategoryDef[] = [
   {
+    id: 'action',
     label: 'Action',
     masteries: [
       { id: 'action', label: 'Action', trees: [
@@ -63,6 +69,7 @@ export const masteryCategories: MasteryCategoryDef[] = [
     ],
   },
   {
+    id: 'damageBase',
     label: 'Damage Base',
     masteries: [
       { id: 'physical',  label: 'Physical',  tag: 'physical',  trees: [
@@ -86,6 +93,7 @@ export const masteryCategories: MasteryCategoryDef[] = [
     ],
   },
   {
+    id: 'damageType',
     label: 'Damage Type',
     masteries: [
       { id: 'area',       label: 'Area',       tag: 'area',       trees: [
@@ -109,6 +117,7 @@ export const masteryCategories: MasteryCategoryDef[] = [
     ],
   },
   {
+    id: 'lifeMana',
     label: 'Life & Mana',
     masteries: [
       { id: 'life', label: 'Life', trees: [
@@ -126,6 +135,7 @@ export const masteryCategories: MasteryCategoryDef[] = [
     ],
   },
   {
+    id: 'world',
     label: 'World',
     masteries: [
       { id: 'enemy',    label: 'Enemy',    trees: [
@@ -144,6 +154,19 @@ export const masteryCategories: MasteryCategoryDef[] = [
 ]
 
 export const allMasteries = masteryCategories.flatMap(c => c.masteries)
+
+export function getMasteryCategoryLabel(id: MasteryCategoryId): string {
+  return t('masteryCategory', id)
+}
+
+export function getMasteryLabel(id: MasteryId): string {
+  return t('masteryLabel', id)
+}
+
+export function getMasteryTreeLabel(masteryId: MasteryId, treeIdx: number): string {
+  const key = `${masteryId}_${treeIdx}` as keyof TranslationSchema['masteryTree']
+  return t('masteryTree', key)
+}
 
 function masteryXpGrowth(masteryId?: MasteryId): number {
   return (masteryId === 'life' || masteryId === 'mana')

@@ -1,7 +1,7 @@
 import type { MasteryId, NodeType } from '../config/masteries'
-import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain } from '../config/masteries'
+import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
-import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP } from '../config/mastery-nodes'
+import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP, getMasteryDumpLabel } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
 import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
 import { linkifyNoteTerms, mountNoteModal } from './notes'
@@ -394,8 +394,8 @@ function buildTreeNodes(
         detail: {
           treeIdx,
           nodeIdx,
-          treeLabel: treeDef.label,
-          desc: getNodeDescription(def.id, treeIdx, nodeIdx, treeDef.label),
+          treeLabel: getMasteryTreeLabel(def.id, treeDef.index),
+          desc: getNodeDescription(def.id, treeIdx, nodeIdx, getMasteryTreeLabel(def.id, treeDef.index)),
           info: effectiveInfo,
         },
       }))
@@ -477,7 +477,7 @@ function mountMasteryTreeModal(
 
   panel.innerHTML = `
     <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
-    <h2 class="modal-title" id="tree-modal-title">${def.label}</h2>
+    <h2 class="modal-title" id="tree-modal-title">${getMasteryLabel(def.id)}</h2>
     <p class="mastery-tree-points"></p>
     <p class="mastery-tree-hint">${t('mastery', 'ctrlClickHint')}</p>
     <div class="mastery-trees-list"></div>
@@ -516,9 +516,9 @@ function mountMasteryTreeModal(
     const bonusStr = fmtRate(dumpBonus)
     if (dumped > 0) {
       const dumpTpl = dumped === 1 ? t('mastery', 'dumpActivePt') : t('mastery', 'dumpActivePts')
-      dumpLabelEl.innerHTML = dumpTpl.replace('{dumped}', `<strong>${dumped}</strong>`).replace('{bonus}', bonusStr).replace('{label}', dumpInfo.label)
+      dumpLabelEl.innerHTML = dumpTpl.replace('{dumped}', `<strong>${dumped}</strong>`).replace('{bonus}', bonusStr).replace('{label}', getMasteryDumpLabel(def.id))
     } else {
-      dumpLabelEl.innerHTML = t('mastery', 'dumpLabel').replace('{rate}', fmtRate(dumpInfo.rate)).replace('{label}', dumpInfo.label)
+      dumpLabelEl.innerHTML = t('mastery', 'dumpLabel').replace('{rate}', fmtRate(dumpInfo.rate)).replace('{label}', getMasteryDumpLabel(def.id))
     }
     dumpBtn.textContent = t('mastery', 'dumpBtn')
     dumpBtn.disabled = total <= 0
@@ -532,7 +532,7 @@ function mountMasteryTreeModal(
     entry.className = 'mastery-tree-entry'
     const label = document.createElement('span')
     label.className = 'mastery-tree-label'
-    label.textContent = treeDef.label
+    label.textContent = getMasteryTreeLabel(def.id, treeDef.index)
     entry.appendChild(label)
     entry.appendChild(buildTreeNodes(def, treeDef, p, treeDef.index, getFreeUsedHere(), getRemainingFreePoints(), getDumpedHere()))
     list.appendChild(entry)
@@ -579,7 +579,7 @@ function mountMasteryTreeModal(
       entry.className = 'mastery-tree-entry'
       const labelEl = document.createElement('span')
       labelEl.className = 'mastery-tree-label'
-      labelEl.textContent = treeDef.label
+      labelEl.textContent = getMasteryTreeLabel(def.id, treeDef.index)
       entry.appendChild(labelEl)
       entry.appendChild(buildTreeNodes(def, treeDef, freshP, treeDef.index, getFreeUsedHere(), getRemainingFreePoints(), getDumpedHere()))
       list.appendChild(entry)
@@ -690,7 +690,7 @@ export function mountMasteryModal(
           oldPct = Math.round((p.xp / masteryXpNeeded(p.level, m.id)) * 100)
           gainPct = 0; levelsGained = 0; capped = false
         }
-        out.push({ catLabel: cat.label, id: m.id, label: m.label, state: { oldPct, gainPct, levelsGained, displayLevel: p.level, capped, pts } })
+        out.push({ catLabel: getMasteryCategoryLabel(cat.id), id: m.id, label: getMasteryLabel(m.id), state: { oldPct, gainPct, levelsGained, displayLevel: p.level, capped, pts } })
       }
     }
     return out
