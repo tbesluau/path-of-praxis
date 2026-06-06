@@ -1,12 +1,14 @@
 import { en, type TranslationSchema } from './locales/en'
 import { fr } from './locales/fr'
 import { es } from './locales/es'
+import { zh } from './locales/zh'
+import { ru } from './locales/ru'
 
-export type Locale = 'en' | 'fr' | 'es'
+export type Locale = 'en' | 'fr' | 'es' | 'zh' | 'ru'
 
-export const SUPPORTED_LOCALES: readonly Locale[] = ['en', 'fr', 'es']
+export const SUPPORTED_LOCALES: readonly Locale[] = ['en', 'fr', 'es', 'zh', 'ru']
 
-const locales: Record<Locale, TranslationSchema> = { en, fr, es }
+const locales: Record<Locale, TranslationSchema> = { en, fr, es, zh, ru }
 const LOCALE_STORAGE_KEY = 'pop:locale'
 
 let active: TranslationSchema = en

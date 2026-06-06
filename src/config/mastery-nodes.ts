@@ -1,5 +1,8 @@
 import type { MasteryId } from './masteries'
 import { nodeType } from './masteries'
+import { t, getLocale } from '../i18n'
+import type { TranslationSchema } from '../i18n/locales/en'
+import { getNodeDescTranslation } from '../i18n/content'
 
 // ── Point-dump table ───────────────────────────────────────────────────────
 // "1% more <X> per dumped point" / "0.5% more <X> per dumped point". Applied
@@ -1941,8 +1944,12 @@ const LIFE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
   },
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  small: 'Small node', strong: 'Strong node', major: 'Major node', key: 'Key node',
+const TYPE_KEY: Record<string, 'nodeSmall' | 'nodeStrong' | 'nodeMajor' | 'nodeKey'> = {
+  small: 'nodeSmall', strong: 'nodeStrong', major: 'nodeMajor', key: 'nodeKey',
+}
+
+export function getMasteryDumpLabel(id: MasteryId): string {
+  return t('masteryDump', id as keyof TranslationSchema['masteryDump'])
 }
 
 const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
@@ -2141,61 +2148,44 @@ const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
   },
 }
 
+function getEnglishNodeDescription(
+  masteryId: MasteryId,
+  treeIdx: number,
+  nodeIdx: number,
+  treeLabel: string,
+): string {
+  const tables: Partial<Record<MasteryId, Partial<Record<number, Partial<Record<number, string>>>>>> = {
+    action: ACTION_DESCRIPTIONS,
+    criticalHit: CRIT_DESCRIPTIONS,
+    life: LIFE_DESCRIPTIONS,
+    mana: MANA_DESCRIPTIONS,
+    fire: FIRE_DESCRIPTIONS,
+    enemy: ENEMY_DESCRIPTIONS,
+    projectile: PROJ_DESCRIPTIONS,
+    lightning: LIGHTNING_DESCRIPTIONS,
+    strike: STRIKE_DESCRIPTIONS,
+    physical: PHYSICAL_DESCRIPTIONS,
+    area: AREA_DESCRIPTIONS,
+    movement: MOVEMENT_DESCRIPTIONS,
+  }
+  const desc = tables[masteryId]?.[treeIdx]?.[nodeIdx]
+  if (desc !== undefined) return desc
+  return `${treeLabel} — ${t('mastery', TYPE_KEY[nodeType(nodeIdx)])}`
+}
+
 export function getNodeDescription(
   masteryId: MasteryId,
   treeIdx: number,
   nodeIdx: number,
   treeLabel: string,
 ): string {
-  if (masteryId === 'action') {
-    const desc = ACTION_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
+  const locale = getLocale()
+  if (locale !== 'en') {
+    const key = `${masteryId}_${treeIdx}_${nodeIdx}`
+    const translated = getNodeDescTranslation(locale, key)
+    if (translated) return translated
   }
-  if (masteryId === 'criticalHit') {
-    const desc = CRIT_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'life') {
-    const desc = LIFE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'mana') {
-    const desc = MANA_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'fire') {
-    const desc = FIRE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'enemy') {
-    const desc = ENEMY_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'projectile') {
-    const desc = PROJ_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'lightning') {
-    const desc = LIGHTNING_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'strike') {
-    const desc = STRIKE_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'physical') {
-    const desc = PHYSICAL_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'area') {
-    const desc = AREA_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  if (masteryId === 'movement') {
-    const desc = MOVEMENT_DESCRIPTIONS[treeIdx]?.[nodeIdx]
-    if (desc !== undefined) return desc
-  }
-  return `${treeLabel} — ${TYPE_LABEL[nodeType(nodeIdx)]}`
+  return getEnglishNodeDescription(masteryId, treeIdx, nodeIdx, treeLabel)
 }
 
 const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {

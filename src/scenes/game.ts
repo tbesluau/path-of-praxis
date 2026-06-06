@@ -16,7 +16,7 @@ import { adsAvailable } from '../ads'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
-import { allActions, getAction, randomAction, type ActionId, type ActionDef } from '../config/actions'
+import { allActions, getAction, randomAction, getActionLabel, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 import { mountSettingsButton, mountGuideModal } from '../ui/settings'
 import { showTutorial, isTutorialSeen, getTutorialMessage } from '../ui/tutorial'
@@ -1432,7 +1432,7 @@ export function createGameScene(
     for (const [actionId, byKind] of orderedEntries) {
       let total = 0
       for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
-      const label = allActions.find(a => a.id === actionId)?.label ?? actionId
+      const label = getActionLabel(actionId)
       html += actionRow(label, total)
 
       const direct   = byKind.get('direct') ?? 0
@@ -1517,7 +1517,6 @@ export function createGameScene(
 
   function openRunesModal(): void {
     if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
-    const action = getAction(playerActionId)
     const level = actionProgress[playerActionId]?.level ?? 1
     const maxLevel = actionProgress[playerActionId]?.maxLevel ?? 1
     const r = getActionRunes(playerActionId)
@@ -1527,7 +1526,7 @@ export function createGameScene(
     runesModalCleanup = mountRunesModal(
       container,
       playerActionId,
-      action.label,
+      getActionLabel(playerActionId),
       level,
       maxLevel,
       r,
@@ -1654,12 +1653,11 @@ export function createGameScene(
         openRunesModal: () => { openRunesModal() },
         openRunesModalForSlot: (actionId) => {
           if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
-          const action = getAction(actionId as ActionId)
           const level = actionProgress[actionId]?.level ?? 1
           const maxLevel = actionProgress[actionId]?.maxLevel ?? 1
           const r = getActionRunes(actionId)
           runesModalCleanup = mountRunesModal(
-            container, actionId, action.label, level, maxLevel, r,
+            container, actionId, getActionLabel(actionId), level, maxLevel, r,
             (slotIdx, runeId) => { assignRune(actionId, slotIdx, runeId) },
             () => { runesModalCleanup = null },
           )

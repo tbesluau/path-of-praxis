@@ -180,6 +180,8 @@ export interface TranslationSchema {
     langEn: string
     langFr: string
     langEs: string
+    langZh: string
+    langRu: string
     close: string
     guide: string
     discord: string
@@ -225,6 +227,64 @@ export interface TranslationSchema {
     watchAd: string
     skip:    string
     refill:  string      // short CTA shown on the ×2 button when empty
+  }
+  masteryCategory: {
+    action: string
+    damageBase: string
+    damageType: string
+    lifeMana: string
+    world: string
+  }
+  masteryLabel: {
+    action: string
+    criticalHit: string
+    physical: string
+    fire: string
+    lightning: string
+    area: string
+    projectile: string
+    strike: string
+    life: string
+    mana: string
+    enemy: string
+    movement: string
+  }
+  masteryTree: {
+    action_0: string; action_1: string; action_2: string; action_3: string
+    criticalHit_0: string; criticalHit_1: string
+    physical_0: string; physical_1: string; physical_2: string; physical_3: string
+    fire_0: string; fire_1: string; fire_2: string; fire_3: string
+    lightning_0: string; lightning_1: string; lightning_2: string; lightning_3: string
+    area_0: string; area_1: string; area_2: string; area_3: string
+    projectile_0: string; projectile_1: string; projectile_2: string; projectile_3: string
+    strike_0: string; strike_1: string; strike_2: string; strike_3: string
+    life_0: string; life_1: string; life_2: string; life_3: string
+    mana_0: string; mana_1: string; mana_2: string; mana_3: string
+    enemy_0: string; enemy_1: string; enemy_2: string; enemy_3: string
+    movement_0: string; movement_1: string; movement_2: string
+  }
+  masteryDump: {
+    action: string; criticalHit: string; physical: string; fire: string
+    lightning: string; area: string; projectile: string; strike: string
+    life: string; mana: string; enemy: string; movement: string
+  }
+  runeLabel: {
+    minorDmg: string; minorSpeed: string; minorMana: string; minorXp: string; minorAll: string
+    majorDmg: string; majorSpeed: string; majorMana: string; majorXp: string; majorAll: string
+    keySplit: string; keyHeavy: string; keyManaless: string
+  }
+  runeDesc: {
+    minorDmg: string; minorSpeed: string; minorMana: string; minorXp: string; minorAll: string
+    majorDmg: string; majorSpeed: string; majorMana: string; majorXp: string; majorAll: string
+    keySplit: string; keyHeavy: string; keyManaless: string
+  }
+  actionLabel: {
+    sword: string; bow: string; fireball: string; zap: string; 'fire-nova': string
+    grenade: string; 'hammer-slam': string; 'lightning-nova': string; bolt: string
+  }
+  actionTag: {
+    physical: string; fire: string; lightning: string; cold: string; rot: string
+    strike: string; projectile: string; area: string
   }
 }
 
@@ -410,6 +470,8 @@ export const en: TranslationSchema = {
     langEn: 'English',
     langFr: 'French',
     langEs: 'Spanish',
+    langZh: 'Simplified Chinese',
+    langRu: 'Russian',
     close: 'Close',
     guide: 'Guide',
     discord: 'Discord',
@@ -455,5 +517,75 @@ export const en: TranslationSchema = {
     watchAd: 'Watch ad — earn 30 min',
     skip:    'No thanks',
     refill:  'refill',
+  },
+  masteryCategory: {
+    action: 'Action',
+    damageBase: 'Damage Base',
+    damageType: 'Damage Type',
+    lifeMana: 'Life & Mana',
+    world: 'World',
+  },
+  masteryLabel: {
+    action: 'Action',
+    criticalHit: 'Critical Hit',
+    physical: 'Physical',
+    fire: 'Fire',
+    lightning: 'Lightning',
+    area: 'Area',
+    projectile: 'Projectile',
+    strike: 'Strike',
+    life: 'Life',
+    mana: 'Mana',
+    enemy: 'Enemy',
+    movement: 'Movement',
+  },
+  masteryTree: {
+    action_0: 'Action Damage', action_1: 'Action Speed', action_2: 'Trance', action_3: 'Mana Cost',
+    criticalHit_0: 'Critical Damage', criticalHit_1: 'Critical Chance',
+    physical_0: 'Physical Damage', physical_1: 'Bleed', physical_2: 'Resistance Breaking', physical_3: 'Bloodlust',
+    fire_0: 'Fire Damage', fire_1: 'Burning', fire_2: 'Burning Ground', fire_3: 'Immolation',
+    lightning_0: 'Lightning Damage', lightning_1: 'Electrocution', lightning_2: 'Jump', lightning_3: 'Electrifying',
+    area_0: 'Area Damage', area_1: 'Area Size', area_2: 'Tremor', area_3: 'Knockback',
+    projectile_0: 'Projectile Damage', projectile_1: 'Multiple Projectiles', projectile_2: 'Projectile Range', projectile_3: 'Knockback',
+    strike_0: 'Strike Damage', strike_1: 'Frenzy', strike_2: 'Strike Range', strike_3: 'Additional Target',
+    life_0: 'Maximum Life', life_1: 'Resistances', life_2: 'Life Regeneration', life_3: 'Life Steal',
+    mana_0: 'Maximum Mana', mana_1: 'Mana Shield', mana_2: 'Mana Regeneration', mana_3: 'Mana Steal',
+    enemy_0: 'Enemy Quantity', enemy_1: 'Enemy Quality', enemy_2: 'Champions and Bosses', enemy_3: 'Enemy Proliferation',
+    movement_0: 'Movement Speed', movement_1: 'Dash', movement_2: 'Kite',
+  },
+  masteryDump: {
+    action: 'action damage', criticalHit: 'critical hit damage', physical: 'physical damage',
+    fire: 'fire damage', lightning: 'lightning damage', area: 'area action radius',
+    projectile: 'projectile range', strike: 'strike action speed', life: 'maximum life',
+    mana: 'maximum mana', enemy: 'enemies spawned', movement: 'movement speed',
+  },
+  runeLabel: {
+    minorDmg: 'Damage', minorSpeed: 'Speed', minorMana: 'Mana', minorXp: 'Experience', minorAll: 'Sampler',
+    majorDmg: 'Damage', majorSpeed: 'Speed', majorMana: 'Mana', majorXp: 'Experience', majorAll: 'Sampler',
+    keySplit: 'Split Action', keyHeavy: 'Slow & Heavy', keyManaless: 'Manaless',
+  },
+  runeDesc: {
+    minorDmg: '+15% increased action damage',
+    minorSpeed: '+5% increased action speed',
+    minorMana: '−10% action mana cost',
+    minorXp: '+20% increased action experience',
+    minorAll: '+3.75% damage / +1.25% speed / −2.5% mana cost / +5% experience',
+    majorDmg: '10% more action damage',
+    majorSpeed: '5% more action speed',
+    majorMana: '20% less action mana cost',
+    majorXp: '15% more action experience',
+    majorAll: '2.5% more damage / 1.25% more speed / 5% less mana / 3.75% more experience',
+    keySplit: '×0.5 damage — every action automatically fires a second action',
+    keyHeavy: '×2 damage — ×0.5 action speed',
+    keyManaless: '×2 mana cost — action fires even when mana is insufficient',
+  },
+  actionLabel: {
+    sword: 'Sword Strike', bow: 'Sniping Arrow', fireball: 'Fireball', zap: 'Zap',
+    'fire-nova': 'Fire Nova', grenade: 'Grenade', 'hammer-slam': 'Hammer Slam',
+    'lightning-nova': 'Lightning Nova', bolt: 'Bolt',
+  },
+  actionTag: {
+    physical: 'physical', fire: 'fire', lightning: 'lightning', cold: 'cold', rot: 'rot',
+    strike: 'strike', projectile: 'projectile', area: 'area',
   },
 }
