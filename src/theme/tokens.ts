@@ -12,6 +12,24 @@ export const tokens = {
     accent: '#e84545',
     accentAlt: '#5a9fd4',
   },
+  // Progress/stat bar colours, sampled from the composed_bars sprites. Painted
+  // as a gradient *behind* the 9-slice sprite (background-clip: padding-box) so
+  // it only shows through the sub-pixel seam the stretched centre used to leave
+  // before each rounded cap — the sprite itself still renders on top.
+  bar: {
+    track: 'rgba(0, 0, 0, 0.22)',
+    xp: '#ffcc00',     xpEdge: '#ffd948',
+    life: '#e86a17',   lifeEdge: '#fa8132',
+    mana: '#1ea7e1',   manaEdge: '#35baf3',
+    ascent: '#73cd4b', ascentEdge: '#88e060',
+  },
+  // Button face colours, sampled from the Kenney button sprites. Same trick:
+  // a matching gradient sits behind the border-image to fill the seam that
+  // showed a white sliver around the button content.
+  button: {
+    face: '#838796', faceTop: '#969aa8', faceBottom: '#767a89',
+    beige: '#d3bf8f', beigeTop: '#e3d0a0', beigeBottom: '#c1ae7d',
+  },
   font: {
     display: "'Cinzel', 'Georgia', serif",
     body: "'Crimson Pro', 'Georgia', serif",
