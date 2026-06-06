@@ -3,6 +3,7 @@ const STORAGE_KEY = 'pop:prefs'
 export interface Prefs {
   showDamageNumbers:  boolean
   showDpsMeter:       boolean
+  confirmManualDeath: boolean
   fullMastery:        boolean
   zoomLevel:          number
   soundVolume:        number
@@ -17,6 +18,7 @@ export interface Prefs {
 const defaults: Prefs = {
   showDamageNumbers: true,
   showDpsMeter:      false,
+  confirmManualDeath: true,
   fullMastery:       false,
   zoomLevel:         1.0,
   soundVolume:       0.7,

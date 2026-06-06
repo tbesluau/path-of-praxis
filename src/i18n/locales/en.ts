@@ -25,6 +25,9 @@ export interface TranslationSchema {
     targetRandomDesc: string
     backToMenu: string
     dieRebirth: string
+    dieConfirmTitle: string
+    dieConfirmBody: string
+    dieConfirmYes: string
     battleConfig: string
     masteries: string
     ascentBtnLabel: string
@@ -192,6 +195,7 @@ export interface TranslationSchema {
     fullMastery: string
     zoomLabel: string
     fullscreen: string
+    confirmDeath: string
     resetTutorials: string
     saveData: string
     saveDataDesc: string
@@ -317,6 +321,9 @@ export const en: TranslationSchema = {
     targetRandomDesc: 'Pick random target',
     backToMenu: 'Back to menu',
     dieRebirth: 'Die and rebirth',
+    dieConfirmTitle: 'Die and rebirth?',
+    dieConfirmBody: 'Your current run will end and your masteries will be applied. Continue?',
+    dieConfirmYes: 'Die and rebirth',
     battleConfig: 'Battle configuration',
     masteries: 'Masteries',
     ascentBtnLabel: 'Ascent',
@@ -484,6 +491,7 @@ export const en: TranslationSchema = {
     fullMastery: 'Full mastery',
     zoomLabel: 'Zoom',
     fullscreen: 'Fullscreen',
+    confirmDeath: 'Confirm before manual death',
     resetTutorials: 'Reset tutorials',
     saveData: 'Save data',
     saveDataDesc: 'Copy your save code to back it up or move it to another device, or paste a code below to restore. Importing replaces all current characters.',

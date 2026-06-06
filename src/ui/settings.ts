@@ -154,6 +154,13 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         </div>` : ''}
         <div class="modal-field">
           <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'confirmDeath')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-pref="confirmManualDeath" ${prefs.confirmManualDeath ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div class="modal-field">
+          <label class="settings-toggle-row">
             <span class="modal-label">${t('settings', 'fullscreen')}</span>
             <input type="checkbox" class="settings-toggle-input" data-action="fullscreen" ${isFullscreen() ? 'checked' : ''}>
             <span class="settings-toggle-track" aria-hidden="true"></span>
@@ -285,6 +292,10 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         subCleanup = mountLanguageModal(parent, () => { subCleanup = null }, () => { render() })
       })
 
+    backdrop.querySelector<HTMLInputElement>('[data-pref="confirmManualDeath"]')!
+      .addEventListener('change', (e) => {
+        setPref('confirmManualDeath', (e.target as HTMLInputElement).checked)
+      })
     backdrop.querySelector<HTMLInputElement>('[data-pref="showDamageNumbers"]')!
       .addEventListener('change', (e) => {
         setPref('showDamageNumbers', (e.target as HTMLInputElement).checked)
