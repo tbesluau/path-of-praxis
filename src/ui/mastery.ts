@@ -6,6 +6,7 @@ import type { MasteryProgress } from '../core/character'
 import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
 import { linkifyNoteTerms, mountNoteModal } from './notes'
 import { t } from '../i18n'
+import { playSound } from '../audio'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -124,9 +125,10 @@ function mountResetConfirmModal(
       </div>
     </div>
   `
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
-  const dismiss = (): void => { backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
@@ -186,6 +188,7 @@ function mountNodeDetailModal(
       <div class="node-detail-actions">${actionHtml}</div>
     </div>
   `
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   let noteCleanup: (() => void) | null = null
@@ -203,7 +206,7 @@ function mountNodeDetailModal(
     if (e.target === backdrop) dismiss()
   })
 
-  const dismiss = (): void => { closeNote(); backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); closeNote(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.querySelector<HTMLButtonElement>('[data-action="assign"]')?.addEventListener('click', () => {
     onAssign()
@@ -538,6 +541,7 @@ function mountMasteryTreeModal(
     list.appendChild(entry)
   })
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   let subCleanup: (() => void) | null = null
@@ -616,7 +620,7 @@ function mountMasteryTreeModal(
     rebuildTrees()
   })
 
-  const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); closeSub(); backdrop.remove(); onClose() }
   panel.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
@@ -648,6 +652,7 @@ export function mountMasteryModal(
       <div class="mastery-categories"></div>
     </div>
   `
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   const categoriesEl = backdrop.querySelector<HTMLElement>('.mastery-categories')!
@@ -797,7 +802,7 @@ export function mountMasteryModal(
   // (its own state is independent of these top-level rows).
   const refreshTimer = window.setInterval(() => { if (!subCleanup) refreshRows() }, 500)
 
-  const dismiss = (): void => { window.clearInterval(refreshTimer); closeSub(); backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); window.clearInterval(refreshTimer); closeSub(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 

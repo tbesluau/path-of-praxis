@@ -23,13 +23,19 @@ function bootstrap(): void {
   initI18n()
   initAudio()
 
-  // Single delegated listener for UI click sounds.
+  // Single delegated listener for UI sounds.
   // pointerdown also fires on first gesture, which resumes the AudioContext.
+  // Buttons that open a modal are marked data-sfx="modal" — skip them here
+  // (the modal-mount function plays modal.open). Close buttons (data-action="close")
+  // are also skipped — the dismiss function plays modal.close.
   document.addEventListener('pointerdown', (e) => {
     const el = (e.target as HTMLElement | null)?.closest(
       'button, [data-action], .lang-option, .targeting-opt, [role="button"]',
     ) as HTMLButtonElement | null
-    if (el && !el.disabled) playSound('ui.click')
+    if (!el || el.disabled) return
+    if ((el as HTMLElement).dataset.sfx === 'modal') return
+    if ((el as HTMLElement).dataset.action === 'close') return
+    playSound('ui.toggle')
   }, true)
 
   document.addEventListener('visibilitychange', () => {
