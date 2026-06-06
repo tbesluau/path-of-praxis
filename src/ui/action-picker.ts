@@ -1,5 +1,6 @@
 import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star, Sparkles } from 'lucide'
 import type { ActionDef } from '../config/actions'
+import { getActionLabel, getActionTagLabel } from '../config/actions'
 import type { DamageEssenceTag, DamageTypeTag } from '../config/masteries'
 import { balance } from '../config/balance'
 import { t } from '../i18n'
@@ -78,12 +79,12 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
   const tagsHtml = action.tags.map(tag => {
     if (isEssenceTag(tag)) {
       return `<span class="action-thumb-tag ${ESSENCE_CLASS[tag]}">
-        <i data-lucide="${ESSENCE_ICON[tag]}" aria-hidden="true"></i>${tag}
+        <i data-lucide="${ESSENCE_ICON[tag]}" aria-hidden="true"></i>${getActionTagLabel(tag)}
       </span>`
     }
     if (isDamageTypeTag(tag)) {
       return `<span class="action-thumb-tag tag--neutral">
-        <i data-lucide="${DAMAGE_TYPE_ICON[tag]}" aria-hidden="true"></i>${tag}
+        <i data-lucide="${DAMAGE_TYPE_ICON[tag]}" aria-hidden="true"></i>${getActionTagLabel(tag)}
       </span>`
     }
     return ''
@@ -119,7 +120,7 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
   wrap.innerHTML = `
     <div class="action-thumb-header">
       <div class="action-thumb-icon"><i data-lucide="${action.icon}" aria-hidden="true"></i></div>
-      <span class="action-thumb-name">${action.label}</span>
+      <span class="action-thumb-name">${getActionLabel(action.id)}</span>
     </div>
     <div class="action-thumb-stats">
       <span class="action-thumb-stat"><i data-lucide="sword" aria-hidden="true"></i>${action.damage}</span>

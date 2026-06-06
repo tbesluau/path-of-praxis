@@ -14,6 +14,10 @@ import { guideFr } from './guide.fr'
 import { guideEs } from './guide.es'
 import { tutorialsFr } from './tutorials.fr'
 import { tutorialsEs } from './tutorials.es'
+import { nodesFr } from './nodes.fr'
+import { nodesEs } from './nodes.es'
+import { nodesZh } from './nodes.zh'
+import { nodesRu } from './nodes.ru'
 
 export interface ContentBlock {
   title?: string
@@ -37,6 +41,13 @@ const TUTORIALS_BY_LOCALE: Partial<Record<Locale, Record<string, string>>> = {
   es: tutorialsEs,
 }
 
+const NODES_BY_LOCALE: Partial<Record<Locale, Record<string, string>>> = {
+  fr: nodesFr,
+  es: nodesEs,
+  zh: nodesZh,
+  ru: nodesRu,
+}
+
 export function getNoteTranslation(locale: Locale, id: string): ContentBlock | undefined {
   return NOTES_BY_LOCALE[locale]?.[id]
 }
@@ -47,4 +58,8 @@ export function getGuideTranslation(locale: Locale, id: string): ContentBlock | 
 
 export function getTutorialTranslation(locale: Locale, key: string): string | undefined {
   return TUTORIALS_BY_LOCALE[locale]?.[key]
+}
+
+export function getNodeDescTranslation(locale: Locale, key: string): string | undefined {
+  return NODES_BY_LOCALE[locale]?.[key]
 }

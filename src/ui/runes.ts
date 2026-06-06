@@ -1,4 +1,4 @@
-import { runesByType, getRune, SLOT_TYPES, SLOT_UNLOCK_LEVELS, unlockedSlotCount, type RuneId, type RuneType } from '../config/runes'
+import { runesByType, getRune, SLOT_TYPES, SLOT_UNLOCK_LEVELS, unlockedSlotCount, getRuneLabel, getRuneDesc, type RuneId, type RuneType } from '../config/runes'
 import type { ActionRunes } from '../core/character'
 import { t } from '../i18n'
 
@@ -21,13 +21,13 @@ function mountRuneSelectModal(
 
   const currentRune = currentId ? getRune(currentId) : null
   const removeHtml = currentRune
-    ? `<button class="modal-btn modal-btn--ghost rune-remove-btn" data-action="remove">${t('rune', 'remove').replace('{label}', currentRune.label)}</button>`
+    ? `<button class="modal-btn modal-btn--ghost rune-remove-btn" data-action="remove">${t('rune', 'remove').replace('{label}', getRuneLabel(currentRune.id))}</button>`
     : ''
 
   const itemsHtml = available.map(r => `
     <button class="rune-select-item${r.id === currentId ? ' rune-select-item--active' : ''}" data-rune-id="${r.id}">
-      <span class="rune-select-name">${r.label}</span>
-      <span class="rune-select-desc">${r.desc}</span>
+      <span class="rune-select-name">${getRuneLabel(r.id)}</span>
+      <span class="rune-select-desc">${getRuneDesc(r.id)}</span>
     </button>
   `).join('')
 
@@ -109,11 +109,11 @@ export function mountRunesModal(
       }
 
       return `
-        <button class="rune-card rune-card--filled rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${t('rune', 'clickToChange').replace('{label}', currentRune.label)}">
+        <button class="rune-card rune-card--filled rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${t('rune', 'clickToChange').replace('{label}', getRuneLabel(currentRune.id))}">
           ${typeBadgeHtml}${lockedBadgeHtml}
           <div class="rune-card-content">
-            <span class="rune-card-name">${currentRune.label}</span>
-            <span class="rune-card-desc">${currentRune.desc}</span>
+            <span class="rune-card-name">${getRuneLabel(currentRune.id)}</span>
+            <span class="rune-card-desc">${getRuneDesc(currentRune.id)}</span>
           </div>
         </button>
       `
