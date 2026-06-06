@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
+import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
@@ -25,6 +25,8 @@ import { getPrefs, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
+import { iconTexture } from '../assets/icons'
+import { loadTileTextures } from '../assets/tile-svgs'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -1150,6 +1152,7 @@ export function createGameScene(
     }
 
     chunkBodies.set(key, bodies)
+    groupSizeCache.clear()
   }
 
   function forgetChunk(cx: number, cy: number): void {
@@ -1166,6 +1169,7 @@ export function createGameScene(
       }
     }
     generatedChunks.delete(key)
+    groupSizeCache.clear()
   }
 
   function updateChunks(): void {
@@ -2011,9 +2015,9 @@ export function createGameScene(
   let app: Application | null = null
   let floorContainer: Container | null = null
   let wallContainer: Container | null = null
-  let floorOptions:       { tex: Texture; w: number }[] = []
-  let largeObstOptions:   { tex: Texture; w: number }[] = []
-  let smallFillerOptions: { tex: Texture; w: number }[] = []
+  let floorOptions: { tex: Texture; w: number }[] = []
+  let treeOptions:  { tex: Texture; w: number }[] = []
+  let decoOptions:  { tex: Texture; w: number }[] = []
   const entityTextures = new Map<string, Texture>()
   const floorSprites: Sprite[] = []
   const wallSprites: Sprite[] = []
@@ -2276,13 +2280,31 @@ export function createGameScene(
     entityContainers.set(entity.id, c)
   }
 
-  function countBlockedNeighbors(tx: number, ty: number): number {
-    let n = 0
-    if (blockedTiles.has(`${tx + 1},${ty}`)) n++
-    if (blockedTiles.has(`${tx - 1},${ty}`)) n++
-    if (blockedTiles.has(`${tx},${ty + 1}`)) n++
-    if (blockedTiles.has(`${tx},${ty - 1}`)) n++
-    return n
+  const groupSizeCache = new Map<string, number>()
+
+  function getBlockedGroupSize(tx: number, ty: number): number {
+    const startKey = `${tx},${ty}`
+    const cached = groupSizeCache.get(startKey)
+    if (cached !== undefined) return cached
+    const visited = new Set<string>()
+    const queue: string[] = [startKey]
+    visited.add(startKey)
+    while (queue.length) {
+      const cur = queue.shift()!
+      const comma = cur.indexOf(',')
+      const cx = parseInt(cur.slice(0, comma), 10)
+      const cy = parseInt(cur.slice(comma + 1), 10)
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+        const nk = `${cx + dx},${cy + dy}`
+        if (!visited.has(nk) && blockedTiles.has(nk)) {
+          visited.add(nk)
+          queue.push(nk)
+        }
+      }
+    }
+    const size = visited.size
+    for (const k of visited) groupSizeCache.set(k, size)
+    return size
   }
 
   function drawGrid(): void {
@@ -2305,7 +2327,7 @@ export function createGameScene(
     const tEndY   = Math.ceil(bottom / gs)
     let floorIdx = 0
     let wallIdx = 0
-    if (floorContainer && wallContainer && floorOptions.length && largeObstOptions.length) {
+    if (floorContainer && wallContainer && floorOptions.length && treeOptions.length) {
       for (let ty = tStartY; ty <= tEndY; ty++) {
         for (let tx = tStartX; tx <= tEndX; tx++) {
           const fSprite = floorSprites[floorIdx] ?? (() => {
@@ -2324,8 +2346,8 @@ export function createGameScene(
           floorIdx++
 
           if (blockedTiles.has(`${tx},${ty}`)) {
-            const isLarge = countBlockedNeighbors(tx, ty) >= 1
-            const opts = isLarge ? largeObstOptions : smallFillerOptions
+            const groupSize = getBlockedGroupSize(tx, ty)
+            const opts = groupSize > 2 ? treeOptions : decoOptions
             const wSprite = wallSprites[wallIdx] ?? (() => {
               const s = new Sprite()
               s.roundPixels = true
@@ -3877,30 +3899,23 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       viewportEl.appendChild(wrapper)
 
-      // Load Tiny Dungeon tilesheet and slice tile variants.
-      // Packed sheet: 12 cols × 11 rows of 16×16 px tiles, no spacing.
-      // Tile (col, row) lives at pixel (col*16, row*16).
-      const sheet = await Assets.load<Texture>(
-        `${import.meta.env.BASE_URL}ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png`,
-      )
-      sheet.source.scaleMode = 'nearest'
-      const TILE = 16
-      // N = tile number (0-indexed), col = N%12, row = floor(N/12).
-      // See src/assets/tile-notes.md for full rationale.
-      const t = (N: number) => new Texture({
-        source: sheet.source,
-        frame: new Rectangle((N % 12) * TILE, Math.floor(N / 12) * TILE, TILE, TILE),
-      })
-      const w = (N: number, wt: number) => ({ tex: t(N), w: wt })
-      floorOptions       = [ w(48, 100), w(49, 25), w(42, 2) ]
-      largeObstOptions   = [ w(40, 100), w(28, 10), w(29, 1) ]
-      smallFillerOptions = [ w(54, 1), w(55, 1), w(63, 1), w(64, 1), w(65, 1),
-                             w(72, 1), w(74, 1), w(82, 1), w(89, 1) ]
-      entityTextures.set('player',   t(108))
-      entityTextures.set('sword',    t(97))
-      entityTextures.set('bow',      t(112))
-      entityTextures.set('fireball', t(84))
-      entityTextures.set('zap',      t(100))
+      const [tiles, playerTex, swordTex, bowTex, fireballTex, zapTex] = await Promise.all([
+        loadTileTextures(),
+        iconTexture('cowled', 64),
+        iconTexture('broadsword', 64),
+        iconTexture('bow-arrow', 64),
+        iconTexture('fireball', 64),
+        iconTexture('lightning-storm', 64),
+      ])
+      const { floorOptions: fo, treeOptions: to, decoOptions: dco } = tiles
+      floorOptions = fo
+      treeOptions  = to
+      decoOptions  = dco
+      entityTextures.set('player',   playerTex)
+      entityTextures.set('sword',    swordTex)
+      entityTextures.set('bow',      bowTex)
+      entityTextures.set('fireball', fireballTex)
+      entityTextures.set('zap',      zapTex)
 
       if (destroyed) return
 
