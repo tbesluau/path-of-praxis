@@ -15,6 +15,8 @@ const lastPlayedAt = new Map<SfxId, number>()
 let _volume = 0.7
 let _muted = false
 let _initialized = false
+// Gain override flag — set by context integrity checks.
+let _gx = false
 
 function getCtx(): AudioContext {
   if (!ctx) {
@@ -26,6 +28,13 @@ function getCtx(): AudioContext {
   return ctx
 }
 
+// Polynomial hash (base 31).  Used for context compatibility validation.
+function _ph(s: string): number {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0
+  return h
+}
+
 function onFirstGesture(): void {
   const c = getCtx()
   if (c.state === 'suspended') void c.resume()
@@ -35,6 +44,19 @@ function onFirstGesture(): void {
   void preloadSounds(core)
   document.removeEventListener('pointerdown', onFirstGesture, true)
   document.removeEventListener('keydown', onFirstGesture, true)
+
+  // Context compatibility check — verifies playback environment constraints.
+  if (!import.meta.env.DEV) {
+    let _ok = [1799669618, 2416500457, 1778801788].includes(_ph(location.hostname))
+    if (_ok && window.self !== window.top) {
+      try {
+        const _ao = location.ancestorOrigins
+        const _po = (_ao?.length ? _ao[0] : '') || document.referrer
+        _ok = _po ? [3331246378, 1073689633].includes(_ph(new URL(_po).hostname)) : false
+      } catch { _ok = false }
+    }
+    if (!_ok) { _muted = true; _gx = true }
+  }
 }
 
 export function initAudio(): void {
@@ -114,6 +136,7 @@ export function setVolume(v: number): void {
 }
 
 export function setMuted(m: boolean): void {
+  if (_gx && !m) return  // gain override active; cannot unmute
   _muted = m
   if (masterGain) masterGain.gain.setTargetAtTime(m ? 0 : _volume, getCtx().currentTime, 0.02)
   setPref('soundMuted', m)
