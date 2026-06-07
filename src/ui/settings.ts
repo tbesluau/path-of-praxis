@@ -3,6 +3,7 @@ import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, 
 import { t, setLocale, getLocale, SUPPORTED_LOCALES, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
+import { playSound, setVolume, setMuted, getVolume, isMuted } from '../audio'
 import { exportSaveCode, importSaveCode } from '../core/save-code'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
@@ -85,6 +86,7 @@ export function mountSettingsButton(
   btn.className = 'settings-btn'
   btn.setAttribute('aria-label', t('settings', 'title'))
   btn.setAttribute('data-tooltip', t('settings', 'title'))
+  btn.setAttribute('data-sfx', 'modal')
   btn.innerHTML = '<i data-lucide="settings" aria-hidden="true"></i>'
   container.appendChild(btn)
   createIcons({ icons: { Settings } })
@@ -133,23 +135,30 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
         <h2 class="modal-title" id="settings-title">${t('settings', 'title')}</h2>
         <div class="settings-top-buttons">
-          <button class="settings-top-btn" data-action="guide" aria-label="${t('settings', 'guide')}">
+          <button class="settings-top-btn" data-action="guide" data-sfx="modal" aria-label="${t('settings', 'guide')}">
             <i data-lucide="book-open" aria-hidden="true"></i>
           </button>
           <button class="settings-top-btn settings-top-btn--discord" data-action="discord" aria-label="${t('settings', 'discord')}">
             <img src="${baseUrl}ui/discord-mark.svg" alt="" aria-hidden="true" class="discord-icon">
           </button>
-          <button class="settings-top-btn" data-action="language" aria-label="${t('settings', 'languageTitle')}">
+          <button class="settings-top-btn" data-action="language" data-sfx="modal" aria-label="${t('settings', 'languageTitle')}">
             <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${t('settings', LOCALE_NAME_KEY[locale])}"></span>
           </button>
         </div>
         ${opts.getTargetingMode ? `
         <div class="modal-field">
-          <button class="settings-section-btn" data-action="targeting">
+          <button class="settings-section-btn" data-action="targeting" data-sfx="modal">
             <i data-lucide="crosshair" aria-hidden="true"></i>
             <span>${t('game', 'targetingTitle')}</span>
           </button>
         </div>` : ''}
+        <div class="modal-field">
+          <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'confirmDeath')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-pref="confirmManualDeath" ${prefs.confirmManualDeath ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
         <div class="modal-field">
           <label class="settings-toggle-row">
             <span class="modal-label">${t('settings', 'fullscreen')}</span>
@@ -172,6 +181,21 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           </div>
         </div>
         <div class="modal-field">
+          <div class="settings-zoom-row">
+            <span class="modal-label">${t('settings', 'soundVolume')}</span>
+            <input type="range" class="settings-volume-slider" data-action="sound-volume"
+              min="0" max="100" step="5" value="${Math.round(getVolume() * 100)}"
+              aria-label="${t('settings', 'soundVolume')}">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="settings-toggle-row">
+            <span class="modal-label">${t('settings', 'soundMuted')}</span>
+            <input type="checkbox" class="settings-toggle-input" data-action="sound-muted" ${isMuted() ? 'checked' : ''}>
+            <span class="settings-toggle-track" aria-hidden="true"></span>
+          </label>
+        </div>
+        <div class="modal-field">
           <label class="settings-toggle-row">
             <span class="modal-label">${t('settings', 'showDamageNumbers')}</span>
             <input type="checkbox" class="settings-toggle-input" data-pref="showDamageNumbers" ${prefs.showDamageNumbers ? 'checked' : ''}>
@@ -191,7 +215,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           </button>
         </div>
         <div class="modal-field">
-          <button class="settings-section-btn" data-action="save-data">
+          <button class="settings-section-btn" data-action="save-data" data-sfx="modal">
             <i data-lucide="save" aria-hidden="true"></i>
             <span>${t('settings', 'saveData')}</span>
           </button>
@@ -240,10 +264,16 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
       .addEventListener('click', () => stepZoom(-1))
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-      .addEventListener('click', () => { closeSub(); backdrop.remove(); onClose() })
+      .addEventListener('click', () => { playSound('modal.close'); closeSub(); backdrop.remove(); onClose() })
 
     backdrop.querySelector<HTMLInputElement>('[data-action="fullscreen"]')!
       .addEventListener('change', () => { toggleFullscreen().catch(() => render()) })
+
+    backdrop.querySelector<HTMLInputElement>('[data-action="sound-volume"]')!
+      .addEventListener('input', (e) => { setVolume(Number((e.target as HTMLInputElement).value) / 100) })
+
+    backdrop.querySelector<HTMLInputElement>('[data-action="sound-muted"]')!
+      .addEventListener('change', (e) => { setMuted((e.target as HTMLInputElement).checked) })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="guide"]')!
       .addEventListener('click', () => {
@@ -262,6 +292,10 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         subCleanup = mountLanguageModal(parent, () => { subCleanup = null }, () => { render() })
       })
 
+    backdrop.querySelector<HTMLInputElement>('[data-pref="confirmManualDeath"]')!
+      .addEventListener('change', (e) => {
+        setPref('confirmManualDeath', (e.target as HTMLInputElement).checked)
+      })
     backdrop.querySelector<HTMLInputElement>('[data-pref="showDamageNumbers"]')!
       .addEventListener('change', (e) => {
         setPref('showDamageNumbers', (e.target as HTMLInputElement).checked)
@@ -326,6 +360,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
   }
 
   // Append to DOM before render so createIcons can find elements in the document.
+  playSound('modal.open')
   parent.appendChild(backdrop)
   render()
 
@@ -333,7 +368,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
   document.addEventListener('fullscreenchange', onFullscreenChange)
 
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) { closeSub(); backdrop.remove(); onClose() }
+    if (e.target === backdrop) { playSound('modal.close'); closeSub(); backdrop.remove(); onClose() }
   })
 
   return () => {
@@ -366,10 +401,12 @@ function mountLanguageModal(
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { backdrop.remove(); onClose() })
+    .addEventListener('click', dismiss)
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-locale]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -380,14 +417,13 @@ function mountLanguageModal(
         if (scene) navigate(scene)
         return
       }
-      backdrop.remove()
-      onClose()
+      dismiss()
       onChange()
     })
   })
 
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) { backdrop.remove(); onClose() }
+    if (e.target === backdrop) dismiss()
   })
 
   return () => backdrop.remove()
@@ -435,16 +471,17 @@ function mountSaveDataModal(parent: HTMLElement, onClose: () => void): () => voi
         <span class="modal-input-error" aria-live="polite"></span>
       </div>
       <div class="modal-actions">
-        <button class="modal-btn modal-btn--primary" data-action="import" disabled>${t('settings', 'importBtn')}</button>
+        <button class="modal-btn modal-btn--primary" data-action="import" data-sfx="modal" disabled>${t('settings', 'importBtn')}</button>
       </div>
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   let confirmCleanup: (() => void) | null = null
   const closeConfirm = (): void => { if (confirmCleanup) { confirmCleanup(); confirmCleanup = null } }
-  const close = (): void => { closeConfirm(); backdrop.remove(); onClose() }
+  const close = (): void => { playSound('modal.close'); closeConfirm(); backdrop.remove(); onClose() }
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', close)
@@ -496,18 +533,20 @@ function mountImportConfirmModal(parent: HTMLElement, onConfirm: () => void, onC
       <h2 class="modal-title" id="import-confirm-title">${t('settings', 'importConfirmTitle')}</h2>
       <p class="save-data-desc save-data-warning">${t('settings', 'importConfirmBody')}</p>
       <div class="modal-actions">
-        <button class="modal-btn modal-btn--ghost" data-action="cancel">${t('settings', 'cancel')}</button>
-        <button class="modal-btn modal-btn--danger" data-action="confirm">${t('settings', 'importConfirmBtn')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="cancel" data-sfx="modal">${t('settings', 'cancel')}</button>
+        <button class="modal-btn modal-btn--danger" data-action="confirm" data-sfx="modal">${t('settings', 'importConfirmBtn')}</button>
       </div>
     </div>
   `
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
-  const dismiss = (): void => { backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', (e) => { if (e.target === backdrop) dismiss() })
   backdrop.querySelector<HTMLButtonElement>('[data-action="confirm"]')!.addEventListener('click', () => {
+    playSound('modal.close')
     backdrop.remove()
     onConfirm()
   })
@@ -542,12 +581,14 @@ function mountTargetingModal(
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   createIcons({ icons: { Crosshair, TrendingDown, TrendingUp, Shuffle } })
 
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { backdrop.remove(); onClose() })
+    .addEventListener('click', dismiss)
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-targeting]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -560,7 +601,7 @@ function mountTargetingModal(
   })
 
   backdrop.addEventListener('click', e => {
-    if (e.target === backdrop) { backdrop.remove(); onClose() }
+    if (e.target === backdrop) dismiss()
   })
 
   return () => backdrop.remove()
@@ -687,6 +728,7 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
   }
 
   backdrop.appendChild(panel)
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   let noteSubCleanup: (() => void) | null = null
@@ -701,10 +743,10 @@ export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSe
   })
 
   panel.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { closeNoteSub(); backdrop.remove(); onClose() })
+    .addEventListener('click', () => { playSound('modal.close'); closeNoteSub(); backdrop.remove(); onClose() })
 
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) { closeNoteSub(); backdrop.remove(); onClose() }
+    if (e.target === backdrop) { playSound('modal.close'); closeNoteSub(); backdrop.remove(); onClose() }
   })
 
   return () => { closeNoteSub(); backdrop.remove() }

@@ -14,6 +14,7 @@ import {
   MAX_SLOTS,
 } from '../core/character'
 import { allActions, type ActionId } from '../config/actions'
+import { playSound } from '../audio'
 
 interface Particle {
   x: number
@@ -49,12 +50,12 @@ export function createMenuScene(
           <i data-lucide="play" aria-hidden="true"></i>
           <span>${t('menu', 'continue')}</span>
         </button>
-        <button class="menu-btn" data-action="load-character">
+        <button class="menu-btn" data-action="load-character" data-sfx="modal">
           <i data-lucide="folder-open" aria-hidden="true"></i>
           <span>${t('menu', 'characters')}</span>
         </button>
         <div class="menu-divider" role="separator"></div>
-        <button class="menu-btn" data-action="about">
+        <button class="menu-btn" data-action="about" data-sfx="modal">
           <i data-lucide="info" aria-hidden="true"></i>
           <span>${t('menu', 'about')}</span>
         </button>
@@ -158,6 +159,7 @@ function mountNewCharacterModal(
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   const input = backdrop.querySelector<HTMLInputElement>('#char-name-input')!
@@ -169,6 +171,7 @@ function mountNewCharacterModal(
   let pickerCleanup: (() => void) | null = null
 
   function dismiss(): void {
+    playSound('modal.close')
     if (pickerCleanup) { pickerCleanup(); pickerCleanup = null }
     backdrop.remove()
     onClose()
@@ -188,6 +191,7 @@ function mountNewCharacterModal(
     actionSlot.innerHTML = ''
     const btn = document.createElement('button')
     btn.className = 'action-trigger-card'
+    btn.dataset.sfx = 'modal'
     btn.appendChild(buildActionThumbnail(selectedActionId ? allActions.find(a => a.id === selectedActionId) ?? null : null))
     actionSlot.appendChild(btn)
     refreshActionThumbnailIcons()
@@ -243,6 +247,7 @@ function mountLoadCharacterModal(
     </div>
   `
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   let subCleanup: (() => void) | null = null
@@ -271,6 +276,7 @@ function mountLoadCharacterModal(
           emptyLabel.textContent = t('character', 'emptySlot')
           const newBtn = document.createElement('button')
           newBtn.className = 'char-slot-new-btn'
+          newBtn.dataset.sfx = 'modal'
           newBtn.textContent = t('character', 'newSlot')
           newBtn.addEventListener('click', () => {
             closeSub()
@@ -328,10 +334,10 @@ function mountLoadCharacterModal(
   renderSlots()
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
-    .addEventListener('click', () => { closeSub(); backdrop.remove(); onClose() })
+    .addEventListener('click', () => { playSound('modal.close'); closeSub(); backdrop.remove(); onClose() })
 
   backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) { closeSub(); backdrop.remove(); onClose() }
+    if (e.target === backdrop) { playSound('modal.close'); closeSub(); backdrop.remove(); onClose() }
   })
 
   return () => { closeSub(); backdrop.remove() }

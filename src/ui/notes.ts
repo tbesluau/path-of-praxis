@@ -1,6 +1,7 @@
 import notesRaw from '../config/notes.md?raw'
 import { getLocale, t, type Locale } from '../i18n'
 import { getNoteTranslation } from '../i18n/content'
+import { playSound } from '../audio'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -314,6 +315,7 @@ export function mountNoteModal(
       <div class="note-body">${bodyHtml}</div>
     </div>
   `
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   let subCleanup: (() => void) | null = null
@@ -332,7 +334,7 @@ export function mountNoteModal(
     if (e.target === backdrop) dismiss()
   })
 
-  const dismiss = (): void => { closeSub(); backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); closeSub(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!
     .addEventListener('click', dismiss)
 

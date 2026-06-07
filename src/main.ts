@@ -9,6 +9,7 @@ import { initEntitlement } from './core/entitlement'
 import { isAllowedToRun } from './core/host-guard'
 import { getPrefs, setPref } from './core/prefs'
 import { mountTermsAcceptanceModal } from './ui/terms'
+import { initAudio, playSound, suspendAudio, resumeAudio } from './audio'
 
 function bootstrap(): void {
   if (!isAllowedToRun()) {
@@ -20,6 +21,29 @@ function bootstrap(): void {
 
   applyTheme()
   initI18n()
+  initAudio()
+
+  // Single delegated listener for UI sounds.
+  // pointerdown also fires on first gesture, which resumes the AudioContext.
+  // Buttons that open a modal are marked data-sfx="modal" — skip them here
+  // (the modal-mount function plays modal.open). Close buttons (data-action="close")
+  // are also skipped — the dismiss function plays modal.close.
+  document.addEventListener('pointerdown', (e) => {
+    const el = (e.target as HTMLElement | null)?.closest(
+      'button, [data-action], .lang-option, .targeting-opt, [role="button"], input[type="checkbox"], input[type="radio"]',
+    ) as HTMLButtonElement | null
+    if (!el || el.disabled) return
+    if ((el as HTMLElement).dataset.sfx === 'modal') return
+    // Close buttons (close/skip) are handled by their modal's dismiss(), which plays modal.close.
+    if ((el as HTMLElement).dataset.action === 'close') return
+    if ((el as HTMLElement).dataset.action === 'skip') return
+    playSound('ui.toggle')
+  }, true)
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) suspendAudio()
+    else resumeAudio()
+  })
 
   const app = document.getElementById('app')!
 

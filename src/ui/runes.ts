@@ -1,6 +1,7 @@
 import { runesByType, getRune, SLOT_TYPES, SLOT_UNLOCK_LEVELS, unlockedSlotCount, getRuneLabel, getRuneDesc, type RuneId, type RuneType } from '../config/runes'
 import type { ActionRunes } from '../core/character'
 import { t } from '../i18n'
+import { playSound } from '../audio'
 
 const SLOT_TYPE_KEY: Record<RuneType, 'slotMinor' | 'slotMajor' | 'slotKey'> = {
   minor: 'slotMinor', major: 'slotMajor', key: 'slotKey',
@@ -21,11 +22,11 @@ function mountRuneSelectModal(
 
   const currentRune = currentId ? getRune(currentId) : null
   const removeHtml = currentRune
-    ? `<button class="modal-btn modal-btn--ghost rune-remove-btn" data-action="remove">${t('rune', 'remove').replace('{label}', getRuneLabel(currentRune.id))}</button>`
+    ? `<button class="modal-btn modal-btn--ghost rune-remove-btn" data-action="remove" data-sfx="modal">${t('rune', 'remove').replace('{label}', getRuneLabel(currentRune.id))}</button>`
     : ''
 
   const itemsHtml = available.map(r => `
-    <button class="rune-select-item${r.id === currentId ? ' rune-select-item--active' : ''}" data-rune-id="${r.id}">
+    <button class="rune-select-item${r.id === currentId ? ' rune-select-item--active' : ''}" data-rune-id="${r.id}" data-sfx="modal">
       <span class="rune-select-name">${getRuneLabel(r.id)}</span>
       <span class="rune-select-desc">${getRuneDesc(r.id)}</span>
     </button>
@@ -41,9 +42,10 @@ function mountRuneSelectModal(
       ${removeHtml ? `<div class="rune-select-footer">${removeHtml}</div>` : ''}
     </div>
   `
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
-  const dismiss = (): void => { backdrop.remove(); onClose() }
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
@@ -99,7 +101,7 @@ export function mountRunesModal(
 
       if (!currentRune) {
         return `
-          <button class="rune-card rune-card--empty rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${t('rune', 'addToSlot').replace('{type}', typeLabel).replace('{n}', String(i + 1))}">
+          <button class="rune-card rune-card--empty rune-card--${slotType}${lockedClass}" data-slot="${i}" data-sfx="modal" aria-label="${t('rune', 'addToSlot').replace('{type}', typeLabel).replace('{n}', String(i + 1))}">
             ${typeBadgeHtml}${lockedBadgeHtml}
             <div class="rune-card-content">
               <span class="rune-card-name rune-card-name--empty">${t('rune', 'addRune')}</span>
@@ -109,7 +111,7 @@ export function mountRunesModal(
       }
 
       return `
-        <button class="rune-card rune-card--filled rune-card--${slotType}${lockedClass}" data-slot="${i}" aria-label="${t('rune', 'clickToChange').replace('{label}', getRuneLabel(currentRune.id))}">
+        <button class="rune-card rune-card--filled rune-card--${slotType}${lockedClass}" data-slot="${i}" data-sfx="modal" aria-label="${t('rune', 'clickToChange').replace('{label}', getRuneLabel(currentRune.id))}">
           ${typeBadgeHtml}${lockedBadgeHtml}
           <div class="rune-card-content">
             <span class="rune-card-name">${getRuneLabel(currentRune.id)}</span>
@@ -160,12 +162,14 @@ export function mountRunesModal(
   let activeSelectCleanup: (() => void) | null = null
 
   const dismiss = (): void => {
+    playSound('modal.close')
     if (activeSelectCleanup) { activeSelectCleanup(); activeSelectCleanup = null }
     backdrop.remove()
     onClose()
   }
 
   buildPanel()
+  playSound('modal.open')
   parent.appendChild(backdrop)
 
   return () => {

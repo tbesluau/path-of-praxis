@@ -1,3 +1,14 @@
+### 0.1.26 — Community feedback
+
+A round of improvements driven by player feedback since the beta.
+
+- **Import / Export** — save your character to a portable code and load it back on any device, so progress is no longer locked to a single browser.
+- **Manual death confirmation** — a confirmation step before manually dying or rebirthing prevents accidental resets. It can be turned off in Settings, above the Full-screen toggle.
+- **More languages** — additional locales added on top of English and French: Spanish, Chinese, and Russian.
+- **Sound effects** — combat actions (fire, lightning, physical), enemy and boss deaths, the player dash, and UI interactions (buttons, toggles, opening and closing modals) now have audio. Volume and mute are configurable in Settings.
+- **New terrain** — hand-drawn medieval-forest tiles replace the old map art: grassy ground with pebbles and wildflowers, wooded thickets rendered as tree canopies, and scattered decorations such as rocks, ponds, brambles, and broken carriages.
+- **Interface clarity** - top bar tooltips, mastery assignment tips
+
 ### 0.1.0 — Beta release
 
 The first public beta. Everything below was built from zero during the alpha.

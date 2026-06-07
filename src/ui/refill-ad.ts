@@ -1,5 +1,6 @@
 import { t } from '../i18n'
 import { showRewardedAd } from '../ads'
+import { playSound } from '../audio'
 
 let currentTeardown: (() => void) | null = null
 
@@ -33,7 +34,7 @@ export function mountRefillAdModal(
   `
 
   const teardown = (): void => { backdrop.remove(); currentTeardown = null }
-  const dismiss  = (): void => { teardown(); onClose() }
+  const dismiss  = (): void => { playSound('modal.close'); teardown(); onClose() }
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action="skip"]').forEach(btn => {
     btn.addEventListener('click', dismiss)
@@ -49,6 +50,7 @@ export function mountRefillAdModal(
   })
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
+  playSound('modal.open')
   parent.appendChild(backdrop)
   currentTeardown = teardown
   return teardown
