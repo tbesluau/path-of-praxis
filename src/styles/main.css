@@ -2830,10 +2830,6 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   color: #166534;
 }
 
-.mastery-level--capped {
-  color: #991b1b;
-}
-
 .mastery-gain-badge {
   position: relative;
   font-size: 0.65rem;
@@ -2846,20 +2842,6 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   padding: 1px 5px;
   min-width: 1.6rem;
   text-align: center;
-}
-
-.mastery-gain-badge--capped {
-  color: #991b1b;
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
-/* Capped-gain notification dot — overflows the badge's top-right corner. */
-.notif-dot.mastery-cap-dot {
-  width: 8px;
-  height: 8px;
-  top: -5px;
-  right: -8px;
 }
 
 /* ── Mastery name button in mastery list modal ── */

@@ -165,7 +165,11 @@ export const balance = {
     movementMasteryXpAddPerLevel: 0.20, // additive +20% of base XP per level for movement mastery (linear, not exponential)
     actionXpMultiplier:          0.2,  // fraction of run action XP that feeds tag masteries
     movementXpMult:              3,    // flat multiplier on movement mastery XP at rebirth
-    levelsPerRebirth:            5,    // max mastery levels gained per rebirth
+    // Soft cap: every level gained beyond the committed (last-rebirth) level adds
+    // a compounding XP penalty to the next. The Nth unearned level costs the
+    // natural requirement × (1 + penalty)^N. Rebirth commits the current level,
+    // resetting the penalty to zero for the next level.
+    unearnedLevelXpPenalty:      0.5,
   },
 
   // ── Enemy leveling ────────────────────────────────────────────────────────

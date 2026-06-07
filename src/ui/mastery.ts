@@ -629,7 +629,6 @@ export function mountMasteryModal(
   onDump: (id: MasteryId, count: number) => void,
   onReset: (id: MasteryId) => void,
   getPendingGains: () => Array<{ id: MasteryId; xpGain: number }>,
-  levelsPerRebirth: number,
   ascentCount: number,
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>,
   masteryDumpPoints: Partial<Record<MasteryId, number>>,
@@ -657,7 +656,6 @@ export function mountMasteryModal(
     gainPct: number
     levelsGained: number
     displayLevel: number
-    capped: boolean
     pts: number
   }
 
@@ -672,22 +670,22 @@ export function mountMasteryModal(
         // Mastery is visible — include free points in available count
         const freeUsedHere = freeMasteryPointsUsed[m.id] ?? 0
         const pts = masteryPointsAvailable(p, freeUsedHere, masteryDumpPoints[m.id] ?? 0) + getRemainingFreePoints(m.id)
-        let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
+        let oldPct: number, gainPct: number, levelsGained: number
         if (m.id === 'enemy' && xpGain > 0) {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
           levelsGained = Math.max(0, xpGain - p.level)
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
-          capped = false
         } else if (xpGain > 0) {
-          const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth, m.id)
+          const pv = previewMasteryGain(p.xp, p.level, xpGain, m.id)
           oldPct = pv.oldPct; gainPct = pv.gainPct
           levelsGained = pv.levelsGained
-          capped = levelsGained >= levelsPerRebirth
         } else {
-          oldPct = Math.round((p.xp / masteryXpNeeded(p.level, m.id)) * 100)
-          gainPct = 0; levelsGained = 0; capped = false
+          // Banked XP can exceed the natural next-level cost (leftover carried
+          // from a penalised rebirth); clamp the bar to 100%.
+          oldPct = Math.min(100, Math.round((p.xp / masteryXpNeeded(p.level, m.id)) * 100))
+          gainPct = 0; levelsGained = 0
         }
-        out.push({ catLabel: getMasteryCategoryLabel(cat.id), id: m.id, label: getMasteryLabel(m.id), state: { oldPct, gainPct, levelsGained, displayLevel: p.level, capped, pts } })
+        out.push({ catLabel: getMasteryCategoryLabel(cat.id), id: m.id, label: getMasteryLabel(m.id), state: { oldPct, gainPct, levelsGained, displayLevel: p.level, pts } })
       }
     }
     return out
@@ -702,15 +700,14 @@ export function mountMasteryModal(
     barWrap.innerHTML = renderMasteryBar(s.oldPct, s.gainPct)
     const levelEl = rowEl.querySelector<HTMLElement>('.mastery-level')!
     const levelClasses = ['mastery-level']
-    if (s.levelsGained > 0) levelClasses.push(s.capped ? 'mastery-level--capped' : 'mastery-level--gain')
+    if (s.levelsGained > 0) levelClasses.push('mastery-level--gain')
     levelEl.className = levelClasses.join(' ')
     levelEl.innerHTML = `Lv.${s.displayLevel}${s.pts > 0 ? ` · <span class="mastery-pts">${s.pts}pt</span>` : ''}`
     const badge = rowEl.querySelector<HTMLElement>('.mastery-gain-badge')!
     if (s.levelsGained > 0) {
-      badge.innerHTML = `+${s.levelsGained}<span class="notif-dot mastery-cap-dot" hidden></span>`
-      badge.className = `mastery-gain-badge${s.capped ? ' mastery-gain-badge--capped' : ''}`
+      badge.innerHTML = `+${s.levelsGained}`
+      badge.className = 'mastery-gain-badge'
       badge.hidden = false
-      badge.querySelector<HTMLElement>('.mastery-cap-dot')!.hidden = !s.capped
     } else { badge.hidden = true }
   }
 

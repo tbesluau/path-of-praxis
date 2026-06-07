@@ -2600,7 +2600,6 @@ export function createGameScene(
         (id, count) => { dumpMasteryPoints(id, count) },
         id => { resetMasteryPoints(id) },
         computeMasteryGains,
-        balance.mastery.levelsPerRebirth,
         ascentCount,
         freeMasteryPointsUsed,
         masteryDumpPoints,
@@ -3232,25 +3231,22 @@ export function createGameScene(
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
         const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-        let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
+        let oldPct: number, gainPct: number, levelsGained: number
         if (m.id === 'enemy') {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
           levelsGained = Math.max(0, xpGain - prog.level)
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
-          capped = false
         } else {
-          const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth, m.id)
+          const pv = previewMasteryGain(prog.xp, prog.level, xpGain, m.id)
           oldPct = pv.oldPct; gainPct = pv.gainPct; levelsGained = pv.levelsGained
-          capped = levelsGained >= balance.mastery.levelsPerRebirth
         }
-        const levelMod = levelsGained > 0 ? (capped ? ' mastery-level--capped' : ' mastery-level--gain') : ''
-        const badgeMod = capped ? ' mastery-gain-badge--capped' : ''
+        const levelMod = levelsGained > 0 ? ' mastery-level--gain' : ''
         return `
           <div class="mastery-row">
             ${renderMasteryBar(oldPct, gainPct)}
             <span class="mastery-label">${escapeHtml(m.label)}</span>
             <span class="mastery-level${levelMod}">Lv.${prog.level}</span>
-            ${levelsGained > 0 ? `<span class="mastery-gain-badge${badgeMod}">+${levelsGained}</span>` : ''}
+            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
           </div>`
       }).join('')
       if (!rowsHtml.trim()) return ''
@@ -3348,7 +3344,7 @@ export function createGameScene(
       const existing = masteryProgress[id]
       const nodes = existing?.nodes ?? defaultMasteryNodes()
       const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      const preview = previewMasteryGain(xp, level, xpGain, level + balance.mastery.levelsPerRebirth, id)
+      const preview = previewMasteryGain(xp, level, xpGain, id)
       masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
@@ -3385,19 +3381,7 @@ export function createGameScene(
       const isAlwaysShown = m.id === 'enemy' || m.id === 'action'
       return isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
     })
-    // A mastery is "capped" when its pending rebirth gain hits the
-    // per-rebirth level cap — the user should know they're leaving XP on
-    // the table. Enemy mastery isn't XP-based and has no cap. A mastery
-    // earning XP for the very first time has no entry in masteryProgress;
-    // fall back to a fresh-progress shape so the preview can still report cap.
-    const cap = balance.mastery.levelsPerRebirth
-    const anyCapped = computeMasteryGains().some(g => {
-      if (g.id === 'enemy') return false
-      const p = masteryProgress[g.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      const preview = previewMasteryGain(p.xp, p.level, g.xpGain, p.level + cap, g.id)
-      return preview.levelsGained >= cap
-    })
-    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints || anyCapped)
+    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints)
   }
 
   function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {
