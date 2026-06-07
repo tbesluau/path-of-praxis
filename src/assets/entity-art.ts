@@ -78,11 +78,22 @@ function strHash(s: string): number {
   return h
 }
 
+// Avalanche finalizer (mulberry32-style): scrambles all bits so every output
+// bit depends on every input bit. Needed because sequential seeds (enemy-1,
+// enemy-2, …) differ only in their low bits under djb2 — slicing high bits
+// (`>>> 8`) collided the whole wave onto one head variant.
+function mix32(x: number): number {
+  x = Math.imul(x ^ (x >>> 15), x | 1) >>> 0
+  x = (x ^ (x + Math.imul(x ^ (x >>> 7), x | 61))) >>> 0
+  return (x ^ (x >>> 14)) >>> 0
+}
+
 export function pickVariants(seed: string): { body: BodyVariant; head: HeadVariant } {
   const h = strHash(seed)
+  const hh = mix32(h)
   return {
     body: (['tunic', 'plate', 'robe'] as BodyVariant[])[h % 3],
-    head: (['hood', 'helm', 'face', 'hat', 'horned', 'bascinet'] as HeadVariant[])[(h >>> 8) % 6],
+    head: (['hood', 'helm', 'face', 'hat', 'horned', 'bascinet'] as HeadVariant[])[hh % 6],
   }
 }
 
