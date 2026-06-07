@@ -13,12 +13,8 @@ const GRASS_PLAIN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"
   <ellipse cx="34" cy="56" rx="13" ry="5" fill="#4a7230" opacity="0.4"/>
   <ellipse cx="22" cy="20" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
   <ellipse cx="52" cy="44" rx="10" ry="6" fill="#70b050" opacity="0.4"/>
-  <line x1="8" y1="20" x2="10" y2="13" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <line x1="18" y1="36" x2="20" y2="29" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="30" y1="10" x2="32" y2="4" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <line x1="44" y1="40" x2="46" y2="33" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="56" y1="24" x2="58" y2="17" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="52" y1="56" x2="54" y2="50" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <line x1="24" y1="52" x2="26" y2="46" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
 </svg>`
 
@@ -27,9 +23,7 @@ const GRASS_PEBBLES = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 6
   <ellipse cx="10" cy="48" rx="9" ry="6" fill="#4a7230" opacity="0.55"/>
   <ellipse cx="48" cy="18" rx="11" ry="7" fill="#4a7230" opacity="0.45"/>
   <ellipse cx="22" cy="22" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
-  <line x1="10" y1="22" x2="12" y2="15" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <line x1="42" y1="38" x2="44" y2="32" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="56" y1="52" x2="58" y2="46" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <ellipse cx="26" cy="38" rx="4" ry="3" fill="#8a8070"/>
   <ellipse cx="24" cy="37" rx="2" ry="1.5" fill="#b0a898" opacity="0.6"/>
   <ellipse cx="44" cy="18" rx="3" ry="2.2" fill="#7a7468"/>
@@ -47,7 +41,6 @@ const GRASS_FLOWERS = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 6
   <ellipse cx="50" cy="20" rx="11" ry="7" fill="#4a7230" opacity="0.45"/>
   <ellipse cx="24" cy="24" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
   <line x1="8" y1="20" x2="10" y2="13" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="38" y1="8" x2="40" y2="2" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <line x1="56" y1="50" x2="58" y2="44" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <circle cx="20" cy="40" r="1.8" fill="#f8f0d0"/>
   <circle cx="23.5" cy="41.5" r="1.8" fill="#f8f0d0"/>

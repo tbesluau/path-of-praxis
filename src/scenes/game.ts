@@ -2829,21 +2829,42 @@ export function createGameScene(
 
           if (blockedTiles.has(`${tx},${ty}`)) {
             const groupSize = getBlockedGroupSize(tx, ty)
-            const opts = groupSize > 2 ? treeOptions : decoOptions
-            const wSprite = wallSprites[wallIdx] ?? (() => {
-              const s = new Sprite()
-              s.roundPixels = true
-              wallContainer!.addChild(s)
-              wallSprites.push(s)
-              return s
-            })()
-            wSprite.texture = pickWeighted(tx, ty, opts)
-            wSprite.x = Math.round(tx * gs)
-            wSprite.y = Math.round(ty * gs)
-            wSprite.width = gs + 1
-            wSprite.height = gs + 1
-            wSprite.visible = true
-            wallIdx++
+            if (groupSize > 2) {
+              // Tree tile — draw 1–3 sprites per the layout
+              const layout = pickTreeLayout(tx, ty, gs)
+              for (const item of layout) {
+                const wSprite = wallSprites[wallIdx] ?? (() => {
+                  const s = new Sprite()
+                  s.roundPixels = true
+                  wallContainer!.addChild(s)
+                  wallSprites.push(s)
+                  return s
+                })()
+                wSprite.texture = pickWeighted(tx + item.sdx, ty + item.sdy, treeOptions)
+                wSprite.x = Math.round(tx * gs + item.ox)
+                wSprite.y = Math.round(ty * gs + item.oy)
+                wSprite.width  = Math.round(item.w)
+                wSprite.height = Math.round(item.h)
+                wSprite.visible = true
+                wallIdx++
+              }
+            } else {
+              // Deco tile — single sprite
+              const wSprite = wallSprites[wallIdx] ?? (() => {
+                const s = new Sprite()
+                s.roundPixels = true
+                wallContainer!.addChild(s)
+                wallSprites.push(s)
+                return s
+              })()
+              wSprite.texture = pickWeighted(tx, ty, decoOptions)
+              wSprite.x = Math.round(tx * gs)
+              wSprite.y = Math.round(ty * gs)
+              wSprite.width  = gs + 1
+              wSprite.height = gs + 1
+              wSprite.visible = true
+              wallIdx++
+            }
           }
         }
       }
@@ -6366,6 +6387,52 @@ function pickWeighted(tx: number, ty: number, options: { tex: Texture; w: number
     if (r < 0) return o.tex
   }
   return options[options.length - 1].tex
+}
+
+// Layout item: offset and size relative to one grid square (gs = 1 unit).
+interface TreeSprite { ox: number; oy: number; w: number; h: number; sdx: number; sdy: number }
+
+// Deterministically pick a multi-tree layout for a tree tile.
+// Returns 1–3 items, each describing one sprite relative to (tx*gs, ty*gs).
+// sdx/sdy are secondary hash seeds so each sprite in a multi-tree tile picks a
+// different texture.
+function pickTreeLayout(tx: number, ty: number, gs: number): TreeSprite[] {
+  // Use a secondary hash (shifted seed) for layout selection
+  const ux = tx >= 0 ? tx * 2 : -tx * 2 - 1
+  const uy = ty >= 0 ? ty * 2 : -ty * 2 - 1
+  let s = ((Math.imul(ux ^ 0xdeadbeef, 73856093) ^ Math.imul(uy ^ 0xcafef00d, 19349663)) >>> 0) || 1
+  s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0
+  const r = s / 0x100000000
+
+  if (r < 0.30) {
+    // Single normal tree
+    return [{ ox: 0, oy: 0, w: gs, h: gs, sdx: 0, sdy: 0 }]
+  } else if (r < 0.55) {
+    // Single large tree (overflows top)
+    return [{ ox: -0.15 * gs, oy: -0.30 * gs, w: 1.30 * gs, h: 1.30 * gs, sdx: 0, sdy: 0 }]
+  } else if (r < 0.65) {
+    // Single extra-large tree
+    return [{ ox: -0.25 * gs, oy: -0.50 * gs, w: 1.50 * gs, h: 1.50 * gs, sdx: 0, sdy: 0 }]
+  } else if (r < 0.85) {
+    // Two trees: back-left (slightly larger) + front-right (slightly smaller)
+    return [
+      { ox: -0.10 * gs, oy: -0.20 * gs, w: 1.15 * gs, h: 1.15 * gs, sdx: 0, sdy: 0 },
+      { ox:  0.30 * gs, oy:  0.10 * gs, w: 0.75 * gs, h: 0.75 * gs, sdx: 1, sdy: 0 },
+    ]
+  } else if (r < 0.95) {
+    // Large + small side-by-side
+    return [
+      { ox: -0.20 * gs, oy: -0.35 * gs, w: 1.20 * gs, h: 1.20 * gs, sdx: 0, sdy: 0 },
+      { ox:  0.55 * gs, oy:  0.05 * gs, w: 0.65 * gs, h: 0.65 * gs, sdx: 0, sdy: 1 },
+    ]
+  } else {
+    // Three small trees
+    return [
+      { ox: -0.05 * gs, oy: -0.10 * gs, w: 0.80 * gs, h: 0.80 * gs, sdx: 0, sdy: 0 },
+      { ox:  0.55 * gs, oy: -0.05 * gs, w: 0.70 * gs, h: 0.70 * gs, sdx: 1, sdy: 0 },
+      { ox:  0.20 * gs, oy:  0.25 * gs, w: 0.65 * gs, h: 0.65 * gs, sdx: 0, sdy: 1 },
+    ]
+  }
 }
 
 // Deterministic per-chunk PRNG (mulberry32 variant). Negative coords handled
