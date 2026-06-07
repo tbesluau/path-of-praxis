@@ -2604,7 +2604,7 @@ export function createGameScene(
         ascentCount,
         freeMasteryPointsUsed,
         masteryDumpPoints,
-        remainingFreeMasteryPoints,
+        (id: MasteryId) => remainingFreeMasteryPointsFor(id),
       )
     })
 
@@ -3367,20 +3367,20 @@ export function createGameScene(
   function totalFreeMasteryPointsEarned(): number {
     return ascentCount >= balance.ascent.freeMasteryPointsUnlockAscent ? ascentCount : 0
   }
-  function remainingFreeMasteryPoints(): number {
-    const used = (Object.values(freeMasteryPointsUsed) as number[]).reduce((s, v) => s + v, 0)
-    return totalFreeMasteryPointsEarned() - used
+  // Each mastery has its own independent budget of free points (not a shared pool).
+  function remainingFreeMasteryPointsFor(id: MasteryId): number {
+    return Math.max(0, totalFreeMasteryPointsEarned() - (freeMasteryPointsUsed[id] ?? 0))
   }
 
   function refreshMasteryDot(): void {
     const dot = el.querySelector<HTMLElement>('.mastery-notif-dot')
     if (!dot) return
-    const remaining = remainingFreeMasteryPoints()
     const hasUnspentLevelPoints = allMasteries.some(m => {
       const p = masteryProgress[m.id]
       return p ? masteryPointsAvailable(p, freeMasteryPointsUsed[m.id] ?? 0, masteryDumpPoints[m.id] ?? 0) > 0 : false
     })
-    const hasUnspentFreePoints = remaining > 0 && allMasteries.some(m => {
+    const hasUnspentFreePoints = allMasteries.some(m => {
+      if (remainingFreeMasteryPointsFor(m.id) <= 0) return false
       const p = masteryProgress[m.id]
       const isAlwaysShown = m.id === 'enemy' || m.id === 'action'
       return isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
@@ -3410,8 +3410,8 @@ export function createGameScene(
     const dumped = masteryDumpPoints[id] ?? 0
     const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
     if (levelAvail <= 0) {
-      // No level-based points; try consuming a free point
-      if (remainingFreeMasteryPoints() <= 0) return
+      // No level-based points; try consuming a free point from this mastery's budget.
+      if (remainingFreeMasteryPointsFor(id) <= 0) return
       freeMasteryPointsUsed[id] = freeUsed + 1
     }
     const nodes = existing.nodes.map(t => [...t])
@@ -3444,7 +3444,7 @@ export function createGameScene(
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
     const dumped = masteryDumpPoints[id] ?? 0
     const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
-    const freeRemaining = remainingFreeMasteryPoints()
+    const freeRemaining = remainingFreeMasteryPointsFor(id)
     const totalAvail = levelAvail + freeRemaining
     const take = Math.min(count, totalAvail)
     if (take <= 0) return
