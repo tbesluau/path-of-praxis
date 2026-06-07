@@ -680,8 +680,8 @@ export function mountMasteryModal(
           oldPct = pv.oldPct; gainPct = pv.gainPct
           levelsGained = pv.levelsGained
         } else {
-          // Banked XP can exceed the natural next-level cost (leftover carried
-          // from a penalised rebirth); clamp the bar to 100%.
+          // Stored progress is in natural units (< requirement); clamp anyway as a
+          // guard for legacy saves whose banked XP predates the natural-unit storage.
           oldPct = Math.min(100, Math.round((p.xp / masteryXpNeeded(p.level, m.id)) * 100))
           gainPct = 0; levelsGained = 0
         }
