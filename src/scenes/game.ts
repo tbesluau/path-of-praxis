@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
@@ -25,7 +25,6 @@ import { getPrefs, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
-import { iconTexture } from '../assets/icons'
 import { loadTileTextures } from '../assets/tile-svgs'
 
 const HP_BAR_H = 4
@@ -1719,6 +1718,21 @@ export function createGameScene(
   let dashStartY = 0
   let dashMaxDist = 0         // theoretical full-dash distance (px) for this dash
   const DASH_SOUND_MIN_FRACTION = 0.2  // only play the land sound past this share of max distance
+
+  // Play the dash land sound if the player covered at least DASH_SOUND_MIN_FRACTION
+  // of the full dash. Called whenever a dash ends — both on natural completion and
+  // when an action cast cancels it mid-flight — so a quick attack on arrival still
+  // sounds. dashMaxDist is zeroed afterwards to guarantee a single play per dash.
+  function endDashSound(curX: number, curY: number): void {
+    if (dashMaxDist <= 0) return
+    const ddx = curX - dashStartX
+    const ddy = curY - dashStartY
+    if (Math.hypot(ddx, ddy) >= DASH_SOUND_MIN_FRACTION * dashMaxDist) {
+      playSound('player.dash')
+    }
+    dashMaxDist = 0
+  }
+
   let playerIsKiting = false
   let playerMovedSinceLastAction = false  // key 12: first-action-after-moving
   let playerStationaryActionCount = 0    // key 13: consecutive actions without moving (0-10)
@@ -3899,23 +3913,31 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       viewportEl.appendChild(wrapper)
 
-      const [tiles, playerTex, swordTex, bowTex, fireballTex, zapTex] = await Promise.all([
+      // Terrain tiles use generated medieval-forest SVGs; entity sprites still
+      // come from the Tiny Dungeon sheet (12 cols × 11 rows of 16×16 px tiles).
+      const [tiles, sheet] = await Promise.all([
         loadTileTextures(),
-        iconTexture('cowled', 64),
-        iconTexture('broadsword', 64),
-        iconTexture('bow-arrow', 64),
-        iconTexture('fireball', 64),
-        iconTexture('lightning-storm', 64),
+        Assets.load<Texture>(
+          `${import.meta.env.BASE_URL}ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png`,
+        ),
       ])
       const { floorOptions: fo, treeOptions: to, decoOptions: dco } = tiles
       floorOptions = fo
       treeOptions  = to
       decoOptions  = dco
-      entityTextures.set('player',   playerTex)
-      entityTextures.set('sword',    swordTex)
-      entityTextures.set('bow',      bowTex)
-      entityTextures.set('fireball', fireballTex)
-      entityTextures.set('zap',      zapTex)
+      sheet.source.scaleMode = 'nearest'
+      const TILE = 16
+      // N = tile number (0-indexed), col = N%12, row = floor(N/12).
+      // See src/assets/tile-notes.md for full rationale.
+      const t = (N: number) => new Texture({
+        source: sheet.source,
+        frame: new Rectangle((N % 12) * TILE, Math.floor(N / 12) * TILE, TILE, TILE),
+      })
+      entityTextures.set('player',   t(108))
+      entityTextures.set('sword',    t(97))
+      entityTextures.set('bow',      t(112))
+      entityTextures.set('fireball', t(84))
+      entityTextures.set('zap',      t(100))
 
       if (destroyed) return
 
@@ -4138,16 +4160,10 @@ export function createGameScene(
                 x: dashMoveX * dashSpeed * MATTER_BASE_DT,
                 y: dashMoveY * dashSpeed * MATTER_BASE_DT,
               })
-              // On landing, play the dash sound only if the player actually
-              // covered at least DASH_SOUND_MIN_FRACTION of the full dash (a dash
-              // blocked immediately by a wall/enemy stays silent).
-              if (dashRemainingMs === 0 && dashMaxDist > 0) {
-                const ddx = entity.x - dashStartX
-                const ddy = entity.y - dashStartY
-                if (Math.hypot(ddx, ddy) >= DASH_SOUND_MIN_FRACTION * dashMaxDist) {
-                  playSound('player.dash')
-                }
-              }
+              // On natural landing, play the dash sound if the player covered at
+              // least DASH_SOUND_MIN_FRACTION of the full dash (a dash blocked
+              // immediately by a wall/enemy stays silent).
+              if (dashRemainingMs === 0) endDashSound(entity.x, entity.y)
               playerMovedSinceLastAction = true
               continue
             }
@@ -4942,9 +4958,12 @@ export function createGameScene(
             spawnPreHitVfx(entity, target, action, preHitDuration)
           }
 
-          // Lock player movement during the animation phase and cancel any active dash
+          // Lock player movement during the animation phase and cancel any active dash.
+          // Casting an action on arrival cuts the dash short, so sound it here too
+          // (based on distance covered) instead of waiting for the full duration.
           if (entity.role === 'player') {
             playerAnimLockMs = preHitDuration
+            if (dashRemainingMs > 0) endDashSound(entity.x, entity.y)
             dashRemainingMs = 0
           }
 
