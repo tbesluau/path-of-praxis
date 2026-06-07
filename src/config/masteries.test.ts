@@ -16,7 +16,7 @@ describe('mastery soft cap (unearned-level XP gain penalty)', () => {
     })
 
     it('matches the spec example (+0%, +50%, +125%) at penalty 0.5', () => {
-      if (penalty !== 0.5) return
+      if ((penalty as number) !== 0.5) return
       expect(Math.round((unearnedXpTax(0) - 1) * 100)).toBe(0)
       expect(Math.round((unearnedXpTax(1) - 1) * 100)).toBe(50)
       expect(Math.round((unearnedXpTax(2) - 1) * 100)).toBe(125)

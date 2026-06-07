@@ -169,7 +169,8 @@ export const balance = {
     // gained beyond the committed (last-rebirth) level taxes incoming XP by an
     // extra (1 + penalty) factor — the Nth unearned level needs (1+penalty)^N raw
     // XP per natural point. Rebirth commits the current level, resetting the tax.
-    unearnedLevelXpPenalty:      0.5,
+    // penalty=1.0 → tax doubles per level: ÷2 for 1st, ÷4 for 2nd, ÷8 for 3rd…
+    unearnedLevelXpPenalty:      1.0,
   },
 
   // ── Enemy leveling ────────────────────────────────────────────────────────
