@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
+import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
@@ -25,7 +25,6 @@ import { getPrefs, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
-import { iconTexture } from '../assets/icons'
 import { loadTileTextures } from '../assets/tile-svgs'
 
 const HP_BAR_H = 4
@@ -3899,23 +3898,31 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       viewportEl.appendChild(wrapper)
 
-      const [tiles, playerTex, swordTex, bowTex, fireballTex, zapTex] = await Promise.all([
+      // Terrain tiles use generated medieval-forest SVGs; entity sprites still
+      // come from the Tiny Dungeon sheet (12 cols × 11 rows of 16×16 px tiles).
+      const [tiles, sheet] = await Promise.all([
         loadTileTextures(),
-        iconTexture('cowled', 64),
-        iconTexture('broadsword', 64),
-        iconTexture('bow-arrow', 64),
-        iconTexture('fireball', 64),
-        iconTexture('lightning-storm', 64),
+        Assets.load<Texture>(
+          `${import.meta.env.BASE_URL}ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png`,
+        ),
       ])
       const { floorOptions: fo, treeOptions: to, decoOptions: dco } = tiles
       floorOptions = fo
       treeOptions  = to
       decoOptions  = dco
-      entityTextures.set('player',   playerTex)
-      entityTextures.set('sword',    swordTex)
-      entityTextures.set('bow',      bowTex)
-      entityTextures.set('fireball', fireballTex)
-      entityTextures.set('zap',      zapTex)
+      sheet.source.scaleMode = 'nearest'
+      const TILE = 16
+      // N = tile number (0-indexed), col = N%12, row = floor(N/12).
+      // See src/assets/tile-notes.md for full rationale.
+      const t = (N: number) => new Texture({
+        source: sheet.source,
+        frame: new Rectangle((N % 12) * TILE, Math.floor(N / 12) * TILE, TILE, TILE),
+      })
+      entityTextures.set('player',   t(108))
+      entityTextures.set('sword',    t(97))
+      entityTextures.set('bow',      t(112))
+      entityTextures.set('fireball', t(84))
+      entityTextures.set('zap',      t(100))
 
       if (destroyed) return
 
