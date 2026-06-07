@@ -5,7 +5,7 @@ import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Za
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
-import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
+import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
@@ -3406,16 +3406,20 @@ export function createGameScene(
     // Synthesize a fresh level-1 entry rather than bailing — otherwise those
     // free points are unspendable.
     const existing = masteryProgress[id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
+    if (existing.nodes[treeIdx]?.includes(nodeIdx)) return  // already assigned — nothing to charge
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
     const dumped = masteryDumpPoints[id] ?? 0
-    const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
-    if (levelAvail <= 0) {
-      // No level-based points; try consuming a free point from this mastery's budget.
-      if (remainingFreeMasteryPointsFor(id) <= 0) return
-      freeMasteryPointsUsed[id] = freeUsed + 1
+    // A node costs nodeCost() points (major 2, key 3, else 1). Pay from level
+    // points first, then top up the shortfall from this mastery's free budget.
+    const cost = nodeCost(nodeIdx)
+    const avail = masteryPointsAvailable(existing, freeUsed, dumped)
+    if (avail < cost) {
+      const need = cost - avail
+      if (remainingFreeMasteryPointsFor(id) < need) return
+      freeMasteryPointsUsed[id] = freeUsed + need
     }
     const nodes = existing.nodes.map(t => [...t])
-    if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
+    nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)

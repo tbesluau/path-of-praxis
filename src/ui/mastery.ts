@@ -1,5 +1,5 @@
 import type { MasteryId, NodeType } from '../config/masteries'
-import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel } from '../config/masteries'
+import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, nodeCost, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
 import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP, getMasteryDumpLabel } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
@@ -217,15 +217,6 @@ function mountNodeDetailModal(
 }
 
 // ── Tree Row Builder ───────────────────────────────────────────────────────
-
-// Point cost of a single node by index.
-// small / strong = 1 pt  |  major = 2 pts  |  key = 3 pts
-function nodeCost(nodeIdx: number): number {
-  const t = nodeType(nodeIdx)
-  if (t === 'major') return 2
-  if (t === 'key')   return 3
-  return 1
-}
 
 // Half-width (and half-height) of a node by index — used to extend bars
 // center-to-center so the bar's ends sit hidden under the adjacent nodes.

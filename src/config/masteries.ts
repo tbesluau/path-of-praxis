@@ -45,6 +45,15 @@ export function nodeType(nodeIdx: number): NodeType {
   return LINE_TYPES[nodeIdx]
 }
 
+// Point cost of a single node by index.
+// small / strong = 1 pt  |  major = 2 pts  |  key = 3 pts
+export function nodeCost(nodeIdx: number): number {
+  const t = nodeType(nodeIdx)
+  if (t === 'major') return 2
+  if (t === 'key')   return 3
+  return 1
+}
+
 export function nodeDescription(treeDef: MasteryTreeDef, nodeIdx: number): string {
   return `${treeDef.label} ${nodeType(nodeIdx)}`
 }

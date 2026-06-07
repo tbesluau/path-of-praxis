@@ -1,5 +1,5 @@
 import { balance } from '../config/balance'
-import type { MasteryId } from '../config/masteries'
+import { nodeCost, type MasteryId } from '../config/masteries'
 import type { RuneId } from '../config/runes'
 
 const STORAGE_KEY = 'pop:save'
@@ -31,7 +31,8 @@ export interface MasteryProgress {
 
 export function masteryPointsAvailable(prog: MasteryProgress, freePointsUsed = 0, dumped = 0): number {
   const earned = Math.max(0, prog.level - 1) + freePointsUsed
-  const spent = prog.nodes.reduce((s, t) => s + t.length, 0)
+  // Spent is cost-weighted: major nodes cost 2 pts, key nodes 3, others 1.
+  const spent = prog.nodes.reduce((s, t) => s + t.reduce((c, n) => c + nodeCost(n), 0), 0)
   return earned - spent - dumped
 }
 
