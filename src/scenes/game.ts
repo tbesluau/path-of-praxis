@@ -4313,8 +4313,8 @@ export function createGameScene(
           const rig = entityRigs.get(entity.id)
           if (rig) {
             const body2 = entityBodies.get(entity.id)
-            const vx = body2 ? body2.velocity.x : 0
-            const vy = body2 ? body2.velocity.y : 0
+            const vx = body2 ? body2.velocity.x / MATTER_BASE_DT : 0
+            const vy = body2 ? body2.velocity.y / MATTER_BASE_DT : 0
             rig.update(ticker.deltaMS, {
               vx,
               speed:    Math.hypot(vx, vy),
