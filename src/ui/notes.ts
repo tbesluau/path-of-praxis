@@ -44,6 +44,11 @@ function getNote(id: string): NoteEntry | undefined {
   }
 }
 
+/** Localized display title for a note, or undefined if the note doesn't exist. */
+export function getNoteTitle(id: string): string | undefined {
+  return getNote(id)?.title
+}
+
 // ── Linkification ─────────────────────────────────────────────────────────
 
 interface NoteTerm {

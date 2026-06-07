@@ -34,13 +34,13 @@ const WEAPON_GRIP_X = 0.5
 
 // Parts sized for BASE_RADIUS = 20 (px). All positions are in rig-local space
 // where y=0 is the entity centre (waist). Scaled via container.scale at runtime.
-const BODY_W  = 36, BODY_H  = 22
+const BODY_W  = 30, BODY_H  = 27
 const HEAD_W  = 24, HEAD_H  = 20
 const LEG_W   = 10, LEG_H   = 18
 const ARM_W   = 10, ARM_H   = 16
 
 // Rig-local positions (y < 0 = up, y > 0 = down)
-const BODY_Y      = -13
+const BODY_Y      = -11   // lowered so the slimmer, taller trunk overlaps the leg tops
 const HEAD_Y      = -26   // bottom of head (anchor = bottom-centre)
 const HEAD_X      = 2     // slight forward offset for 3/4 perspective
 const BACK_LEG_X  = -5

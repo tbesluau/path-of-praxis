@@ -27,7 +27,7 @@ export const PALETTES: Record<Tier, EntityPalette> = {
   strong:   { armor: '#2e5fa8', armorShade: '#1e3f78', trim: '#5080d0', skin: '#e0b080' },
   elite:    { armor: '#7030b0', armorShade: '#501888', trim: '#a060e0', skin: '#d8a878' },
   champion: { armor: '#a07820', armorShade: '#785510', trim: '#e0b040', skin: '#e8c088' },
-  boss:     { armor: '#b04810', armorShade: '#803000', trim: '#e86020', skin: '#f0a070' },
+  boss:     { armor: '#bc1c1c', armorShade: '#831010', trim: '#e83838', skin: '#f0a070' },
 }
 
 const ELEMENT_COLOR: Record<string, string> = {
