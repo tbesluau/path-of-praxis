@@ -4006,6 +4006,16 @@ body.privacy-page {
 .stat-origin--more { color: #8a3ca0; }   /* more — purple */
 .stat-origin--less { color: #b04010; }   /* less — red */
 
+.stat-group-sep {
+  display: inline-block;
+  width: 1px;
+  height: 0.85em;
+  background: rgba(100, 60, 20, 0.35);
+  margin: 0 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 .stat-note {
   font-family: var(--font-body);
   font-size: 0.7rem;
