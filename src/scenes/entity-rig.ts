@@ -9,12 +9,15 @@ import type { EntityRole } from '../core/entity'
 // ── Animation constants ───────────────────────────────────────────────────────
 
 const BASE_RADIUS   = 20
-const WALK_FREQ     = 0.007   // rad/ms — leg swing frequency
-const LEG_SWING     = 1.7    // max leg rotation (rad)
-const ARM_COUNTER   = 0.35   // arm counter-swing fraction of leg swing
+const WALK_FREQ     = 0.014   // rad/ms — leg swing frequency
+const LEG_SWING     = 0.85   // max leg rotation (rad)
+const ARM_COUNTER   = 0.7    // arm counter-swing fraction of leg swing
 const BOB_AMOUNT    = 2.6    // px, body vertical bob
 const BODY_WOBBLE   = 0.09   // rad, upper-body side-to-side lean while walking
 const BREATHE_FREQ  = 0.0012 // idle breathing frequency
+
+// Weapons render 20% larger than their native SVG size for visibility.
+const WEAPON_SCALE  = 1.2
 
 // Weapon anchor.y values (fraction from top = grip position in SVG)
 const WEAPON_GRIP_Y: Record<string, number> = {
@@ -97,8 +100,8 @@ export function createEntityRig(opts: {
 
   const weaponSprite = makeSprite(
     getWeaponTex(weapon),
-    getWeaponTex(weapon).width,
-    getWeaponTex(weapon).height,
+    getWeaponTex(weapon).width  * WEAPON_SCALE,
+    getWeaponTex(weapon).height * WEAPON_SCALE,
     WEAPON_GRIP_X,
     WEAPON_GRIP_Y[weapon.type] ?? 0.75,
   )
@@ -142,8 +145,8 @@ export function createEntityRig(opts: {
   function setWeapon(w: Weapon): void {
     const tex = getWeaponTex(w)
     weaponSprite.texture  = tex
-    weaponSprite.width    = tex.width
-    weaponSprite.height   = tex.height
+    weaponSprite.width    = tex.width  * WEAPON_SCALE
+    weaponSprite.height   = tex.height * WEAPON_SCALE
     weaponSprite.anchor.y = WEAPON_GRIP_Y[w.type] ?? 0.75
     weaponSprite.anchor.x = WEAPON_GRIP_X
     weaponSprite.position.set(0, ARM_H)
