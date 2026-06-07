@@ -1,7 +1,7 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
@@ -21,13 +21,16 @@ import type { SceneId } from '../core/router'
 import { mountSettingsButton, mountGuideModal } from '../ui/settings'
 import { showTutorial, isTutorialSeen, getTutorialMessage } from '../ui/tutorial'
 import { mountNoteModal, getNoteTitle } from '../ui/notes'
+import { mountCharacterModal } from '../ui/character'
+import { mountCharacterCustomizeModal } from '../ui/character-customize'
+import { mountCharacterStatsModal } from '../ui/character-stats'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
-import { getPrefs, isCheatMode } from '../core/prefs'
+import { getPrefs, setPref, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
-import { preloadEntityArt, weaponForAction, type Tier } from '../assets/entity-art'
+import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey } from '../assets/entity-art'
 import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
 
 const HP_BAR_H = 4
@@ -1288,8 +1291,8 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}" data-tooltip="${t('game', 'backToMenu')}">
           <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="die" data-sfx="modal" aria-label="${t('game', 'dieRebirth')}" data-tooltip="${t('game', 'dieRebirth')}">
-          <i data-lucide="skull" aria-hidden="true"></i>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-character" data-sfx="modal" aria-label="Main Character" data-tooltip="Main Character">
+          <i data-lucide="user" aria-hidden="true"></i>
         </button>
       </div>
       <div class="game-top-center">
@@ -1374,7 +1377,7 @@ export function createGameScene(
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
-  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull, ArrowUp, Star } })
+  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, User, ArrowUp, Star } })
 
   function openGuide(section: string): void {
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
@@ -2046,14 +2049,43 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="go-home"]')!
     .addEventListener('click', () => saveAndGoHome())
 
-  el.querySelector<HTMLButtonElement>('[data-action="die"]')!
+  el.querySelector<HTMLButtonElement>('[data-action="open-character"]')!
     .addEventListener('click', () => {
-      const doDie = (): void => {
-        playerEntity.currentLife = 0
-        killEntity(playerEntity)
-      }
-      if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
-      else doDie()
+      if (modalCleanup) { modalCleanup(); modalCleanup = null }
+      modalCleanup = mountCharacterModal(el, {
+        onDie: () => {
+          modalCleanup = null
+          const doDie = (): void => {
+            playerEntity.currentLife = 0
+            killEntity(playerEntity)
+          }
+          if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+          else doDie()
+        },
+        onCustomize: () => {
+          modalCleanup = null
+          const prefs = getPrefs()
+          const initHat   = (prefs.playerHatVariant  as HeadVariant)   ?? 'hood'
+          const initColor = (prefs.playerColorKey     as PlayerColorKey) ?? 'teal'
+          modalCleanup = mountCharacterCustomizeModal(el, {
+            initialHat:   initHat,
+            initialColor: initColor,
+            onChange: (hat, color) => {
+              setPref('playerHatVariant', hat)
+              setPref('playerColorKey', color)
+              rebuildPlayerRig(hat, color)
+            },
+            onClose: () => { modalCleanup = null },
+          })
+        },
+        onStats: () => {
+          modalCleanup = null
+          modalCleanup = mountCharacterStatsModal(el, {
+            onClose: () => { modalCleanup = null },
+          })
+        },
+        onClose: () => { modalCleanup = null },
+      })
     })
 
   // ── PixiJS ──────────────────────────────────────────────────────────────
@@ -2280,12 +2312,16 @@ export function createGameScene(
     const actionId = entity.role === 'player'
       ? playerActionId
       : (entityActions.get(entity.id) ?? 'sword') as ActionId
+    const isPlayer = entity.role === 'player'
+    const savedPrefs = getPrefs()
     const rig = createEntityRig({
       role:   entity.role,
       tier,
       weapon: weaponForAction(getAction(actionId)),
       radius: entity.radius,
       seed:   entity.id,
+      ...(isPlayer && savedPrefs.playerColorKey  ? { colorKey:     savedPrefs.playerColorKey  as PlayerColorKey } : {}),
+      ...(isPlayer && savedPrefs.playerHatVariant ? { headOverride: savedPrefs.playerHatVariant as HeadVariant  } : {}),
     })
     c.addChild(rig.container)
     entityRigs.set(entity.id, rig)
@@ -2333,6 +2369,25 @@ export function createGameScene(
     c.position.set(entity.x, entity.y)
     app.stage.addChild(c)
     entityContainers.set(entity.id, c)
+  }
+
+  function rebuildPlayerRig(hat: HeadVariant, color: PlayerColorKey): void {
+    const c = entityContainers.get('player')
+    const old = entityRigs.get('player')
+    if (!c || !old) return
+    old.container.destroy()
+    entityRigs.delete('player')
+    const rig = createEntityRig({
+      role:         'player',
+      tier:         'player',
+      weapon:       weaponForAction(getAction(playerActionId as ActionId)),
+      radius:       playerEntity.radius,
+      seed:         playerEntity.id,
+      colorKey:     color,
+      headOverride: hat,
+    })
+    c.addChildAt(rig.container, 0)
+    entityRigs.set('player', rig)
   }
 
   const groupSizeCache = new Map<string, number>()
