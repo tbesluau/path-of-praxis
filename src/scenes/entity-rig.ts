@@ -2,7 +2,8 @@ import { Container, Sprite } from 'pixi.js'
 import {
   pickVariants,
   getBodyTex, getHeadTex, getLegTex, getArmTex, getWeaponTex,
-  type Tier, type Weapon,
+  getPlayerBodyTex, getPlayerHeadTex, getPlayerLegTex, getPlayerArmTex,
+  type Tier, type Weapon, type PlayerColorKey, type HeadVariant,
 } from '../assets/entity-art'
 import type { EntityRole } from '../core/entity'
 
@@ -72,15 +73,24 @@ export interface EntityRig {
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 export function createEntityRig(opts: {
-  role:   EntityRole
-  tier:   Tier
-  weapon: Weapon
-  radius: number
-  seed:   string
+  role:         EntityRole
+  tier:         Tier
+  weapon:       Weapon
+  radius:       number
+  seed:         string
+  colorKey?:    PlayerColorKey
+  headOverride?: HeadVariant
 }): EntityRig {
   const { tier, weapon, radius, seed } = opts
-  const { body: bodyV, head: headV } = pickVariants(seed)
+  const { body: bodyV, head: seedHeadV } = pickVariants(seed)
+  const headV = opts.headOverride ?? seedHeadV
   const rigScale = radius / BASE_RADIUS
+  const colorKey = opts.colorKey
+
+  const legTex  = colorKey ? getPlayerLegTex(colorKey)           : getLegTex(tier)
+  const armTex  = colorKey ? getPlayerArmTex(colorKey)           : getArmTex(tier)
+  const bodyTex = colorKey ? getPlayerBodyTex(bodyV, colorKey)   : getBodyTex(bodyV, tier)
+  const headTex = colorKey ? getPlayerHeadTex(headV, colorKey)   : getHeadTex(headV, tier)
 
   // ── Build sprites ──────────────────────────────────────────────────────────
 
@@ -91,12 +101,12 @@ export function createEntityRig(opts: {
     return s
   }
 
-  const backLeg  = makeSprite(getLegTex(tier),  LEG_W, LEG_H, 0.5, 0)
-  const backArm  = makeSprite(getArmTex(tier),  ARM_W, ARM_H, 0.5, 0)
-  const body     = makeSprite(getBodyTex(bodyV, tier), BODY_W, BODY_H, 0.5, 0.5)
-  const head     = makeSprite(getHeadTex(headV, tier), HEAD_W, HEAD_H, 0.5, 1.0)
-  const frontLeg = makeSprite(getLegTex(tier),  LEG_W, LEG_H, 0.5, 0)
-  const frontArm = makeSprite(getArmTex(tier),  ARM_W, ARM_H, 0.5, 0)
+  const backLeg  = makeSprite(legTex,  LEG_W, LEG_H, 0.5, 0)
+  const backArm  = makeSprite(armTex,  ARM_W, ARM_H, 0.5, 0)
+  const body     = makeSprite(bodyTex, BODY_W, BODY_H, 0.5, 0.5)
+  const head     = makeSprite(headTex, HEAD_W, HEAD_H, 0.5, 1.0)
+  const frontLeg = makeSprite(legTex,  LEG_W, LEG_H, 0.5, 0)
+  const frontArm = makeSprite(armTex,  ARM_W, ARM_H, 0.5, 0)
 
   const weaponSprite = makeSprite(
     getWeaponTex(weapon),

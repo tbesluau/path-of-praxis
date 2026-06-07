@@ -6,6 +6,32 @@ import type { ActionDef } from '../config/actions'
 export type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss' | 'player'
 export type BodyVariant = 'tunic' | 'plate' | 'robe'
 export type HeadVariant = 'hood' | 'helm' | 'face' | 'hat' | 'horned' | 'bascinet'
+export type PlayerColorKey = 'teal' | 'red' | 'orange' | 'white' | 'black'
+
+export const HEAD_VARIANT_LABELS: Record<HeadVariant, string> = {
+  hood:     'Hood',
+  helm:     'Helmet',
+  face:     'Cap',
+  hat:      'Pointy Hat',
+  horned:   'Horned Helm',
+  bascinet: 'Bascinet',
+}
+
+export const PLAYER_COLOR_LABELS: Record<PlayerColorKey, string> = {
+  teal:   'Teal',
+  red:    'Red',
+  orange: 'Orange',
+  white:  'Silver',
+  black:  'Black',
+}
+
+export const PLAYER_COLOR_SWATCHES: Record<PlayerColorKey, string> = {
+  teal:   '#2a8a80',
+  red:    '#bc1c1c',
+  orange: '#b04810',
+  white:  '#c8c8c8',
+  black:  '#282828',
+}
 
 export interface EntityPalette {
   armor:      string
@@ -28,6 +54,14 @@ export const PALETTES: Record<Tier, EntityPalette> = {
   elite:    { armor: '#7030b0', armorShade: '#501888', trim: '#a060e0', skin: '#d8a878' },
   champion: { armor: '#a07820', armorShade: '#785510', trim: '#e0b040', skin: '#e8c088' },
   boss:     { armor: '#bc1c1c', armorShade: '#831010', trim: '#e83838', skin: '#f0a070' },
+}
+
+export const PLAYER_COLOR_PALETTES: Record<PlayerColorKey, EntityPalette> = {
+  teal:   { armor: '#2a8a80', armorShade: '#1e6b63', trim: '#3dbdb0', skin: '#f0c8a0' },
+  red:    { armor: '#bc1c1c', armorShade: '#831010', trim: '#e83838', skin: '#f0c8a0' },
+  orange: { armor: '#b04810', armorShade: '#7a2f06', trim: '#e87030', skin: '#f0c8a0' },
+  white:  { armor: '#c8c8c8', armorShade: '#999999', trim: '#eeeeee', skin: '#f0c8a0' },
+  black:  { armor: '#282828', armorShade: '#141414', trim: '#505050', skin: '#f0c8a0' },
 }
 
 const ELEMENT_COLOR: Record<string, string> = {
@@ -305,6 +339,19 @@ export async function preloadEntityArt(): Promise<void> {
     tasks.push(loadSvgTex(`arm_${tier}`, armSvg(p)))
   }
 
+  // Player color variants
+  for (const colorKey of Object.keys(PLAYER_COLOR_PALETTES) as PlayerColorKey[]) {
+    const p = PLAYER_COLOR_PALETTES[colorKey]
+    for (const v of ['tunic', 'plate', 'robe'] as BodyVariant[]) {
+      tasks.push(loadSvgTex(`body_${v}_pc_${colorKey}`, bodySvg(v, p)))
+    }
+    for (const v of ['hood', 'helm', 'face', 'hat', 'horned', 'bascinet'] as HeadVariant[]) {
+      tasks.push(loadSvgTex(`head_${v}_pc_${colorKey}`, headSvg(v, p)))
+    }
+    tasks.push(loadSvgTex(`leg_pc_${colorKey}`, legSvg(p)))
+    tasks.push(loadSvgTex(`arm_pc_${colorKey}`, armSvg(p)))
+  }
+
   // Non-elemental weapons
   for (const type of ['sword', 'bow', 'hammer'] as const) {
     tasks.push(loadSvgTex(`weapon_${type}`, weaponSvg({ type })))
@@ -337,4 +384,52 @@ export function getArmTex(tier: Tier): Texture {
 export function getWeaponTex(w: Weapon): Texture {
   const key = w.element ? `weapon_${w.type}_${w.element}` : `weapon_${w.type}`
   return texCache.get(key)!
+}
+
+export function getPlayerBodyTex(v: BodyVariant, colorKey: PlayerColorKey): Texture {
+  return texCache.get(`body_${v}_pc_${colorKey}`)!
+}
+export function getPlayerHeadTex(v: HeadVariant, colorKey: PlayerColorKey): Texture {
+  return texCache.get(`head_${v}_pc_${colorKey}`)!
+}
+export function getPlayerLegTex(colorKey: PlayerColorKey): Texture {
+  return texCache.get(`leg_pc_${colorKey}`)!
+}
+export function getPlayerArmTex(colorKey: PlayerColorKey): Texture {
+  return texCache.get(`arm_pc_${colorKey}`)!
+}
+
+// ── Character preview SVG ─────────────────────────────────────────────────────
+
+// Composite SVG for the customize modal preview.
+// Positions match the rig layout (BASE_RADIUS=20) at scale 1.25, waist at (40,65).
+function stripSvg(svg: string): string {
+  return svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '')
+}
+
+function embedPart(svg: string, origW: number, origH: number, tx: number, ty: number, dW: number, dH: number): string {
+  const sx = dW / origW, sy = dH / origH
+  return `<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${sx.toFixed(4)},${sy.toFixed(4)})">${stripSvg(svg)}</g>`
+}
+
+export function renderCharacterPreviewSvg(headVariant: HeadVariant, colorKey: PlayerColorKey): string {
+  const p = PLAYER_COLOR_PALETTES[colorKey]
+  const S = 1.25   // rig scale for preview
+  const CX = 40, CY = 65   // waist centre in SVG space
+
+  // Positions mirror entity-rig.ts constants × S, offsets from (CX,CY)
+  const bodyW = 30 * S, bodyH = 27 * S
+  const headW = 24 * S, headH = 20 * S
+  const legW  = 10 * S, legH  = 18 * S
+  const armW  = 10 * S, armH  = 16 * S
+
+  // back-to-front order
+  const backLeg  = embedPart(legSvg(p),  10, 18, CX + (-5)*S - legW/2, CY + 0,       legW,  legH)
+  const backArm  = embedPart(armSvg(p),  10, 16, CX + (-16)*S - armW/2, CY + (-26)*S, armW, armH)
+  const body_    = embedPart(bodySvg('tunic', p), 36, 22, CX - bodyW/2, CY + (-11)*S - bodyH/2, bodyW, bodyH)
+  const head_    = embedPart(headSvg(headVariant, p), 24, 20, CX + 2*S - headW/2, CY + (-26)*S - headH, headW, headH)
+  const frontLeg = embedPart(legSvg(p),  10, 18, CX + 5*S - legW/2, CY + 0,          legW,  legH)
+  const frontArm = embedPart(armSvg(p),  10, 16, CX + 16*S - armW/2, CY + (-26)*S,   armW,  armH)
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 100" width="80" height="100">${backLeg}${backArm}${body_}${head_}${frontLeg}${frontArm}</svg>`
 }

@@ -3762,3 +3762,130 @@ body.privacy-page {
   overflow-y: visible;
   max-height: none;
 }
+
+/* ── Character modal ─────────────────────────────────────────── */
+
+.char-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.char-modal-btn {
+  width: 100%;
+}
+
+/* ── Character customize modal ───────────────────────────────── */
+
+.char-customize-panel {
+  width: min(360px, 92vw);
+  overflow-y: auto;
+  max-height: 90dvh;
+}
+
+.char-preview-wrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-sm) 0;
+  background: rgba(0,0,0,0.12);
+  border-radius: 6px;
+}
+
+.char-preview-img {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.char-preview-img svg {
+  display: block;
+  width: 80px;
+  height: 100px;
+  image-rendering: crisp-edges;
+}
+
+.char-customize-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.char-customize-label {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #5a3010;
+  opacity: 0.8;
+}
+
+.char-hat-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.char-hat-btn {
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(90, 48, 16, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  color: #1a0a02;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  line-height: 1.2;
+}
+
+.char-hat-btn:hover {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(90, 48, 16, 0.55);
+}
+
+.char-hat-btn--active {
+  background: rgba(42, 138, 128, 0.25);
+  border-color: #2a8a80;
+  font-weight: 700;
+  color: #1e4a46;
+}
+
+.char-color-picker {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.char-color-swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.char-color-swatch:hover {
+  transform: scale(1.12);
+  border-color: rgba(0,0,0,0.6);
+}
+
+.char-color-swatch--active {
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #000, 0 2px 8px rgba(0,0,0,0.4);
+  transform: scale(1.1);
+}
+
+/* ── Character stats modal ───────────────────────────────────── */
+
+.char-stats-placeholder {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: #5a3010;
+  opacity: 0.7;
+  text-align: center;
+  padding: var(--space-lg) 0;
+}

@@ -13,6 +13,9 @@ export interface Prefs {
   // Bump the suffix (V1 → V2 → …) to re-prompt all users when the
   // Privacy Policy or EULA materially changes.
   acceptedTermsV1?:   boolean
+  // Character appearance
+  playerHatVariant?:  string
+  playerColorKey?:    string
 }
 
 const defaults: Prefs = {
