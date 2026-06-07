@@ -20,6 +20,7 @@ import { allActions, getAction, randomAction, getActionLabel, type ActionId, typ
 import type { SceneId } from '../core/router'
 import { mountSettingsButton, mountGuideModal } from '../ui/settings'
 import { showTutorial, isTutorialSeen, getTutorialMessage } from '../ui/tutorial'
+import { mountNoteModal, getNoteTitle } from '../ui/notes'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
 import { getPrefs, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
@@ -1849,6 +1850,26 @@ export function createGameScene(
 
   const buffBarEl = el.querySelector<HTMLElement>('.buff-bar')!
 
+  // Maps each status-effect id to the note that explains it (most match 1:1).
+  const EFFECT_NOTE_ID: Record<string, string> = {
+    frenzy:        'frenzy',
+    bloodlust:     'bloodlust',
+    electrified:   'electrified',
+    trance:        'trance',
+    immolation:    'immolation',
+    feedingFrenzy: 'feeding-frenzy',
+  }
+
+  // Hovering a status icon shows its name; clicking it opens the matching note.
+  buffBarEl.addEventListener('click', (e) => {
+    const icon = (e.target as HTMLElement).closest<HTMLElement>('.buff-icon')
+    if (!icon) return
+    const noteId = icon.dataset.note
+    if (!noteId) return
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    modalCleanup = mountNoteModal(el, noteId, () => { modalCleanup = null })
+  })
+
   function applyEffect(template: Omit<ActiveEffect, 'remainingMs' | 'stacks'>, durationMs: number, maxStacks = 1): void {
     const existing = activeEffects.find(e => e.id === template.id)
     if (existing) {
@@ -1918,7 +1939,15 @@ export function createGameScene(
       } else if (e.stacks > 1) {
         badge = `<span class="buff-charge">${e.stacks}</span>`
       }
-      return `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
+      const noteId = EFFECT_NOTE_ID[e.id]
+      const title  = noteId ? getNoteTitle(noteId) : undefined
+      const attrs  = [
+        `class="buff-icon buff-icon--${e.kind}"`,
+        `data-effect="${e.id}"`,
+        noteId ? `data-note="${noteId}"` : '',
+        title  ? `data-tooltip="${title}"` : '',
+      ].filter(Boolean).join(' ')
+      return `<div ${attrs}><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
     }).join('')
     if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap } })
   }
@@ -3209,7 +3238,10 @@ export function createGameScene(
       const speedScale = 1 + balance.enemyLevel.speedAddPerLevel * (enemyProgress.level - 1)
       const moveSpeedMult = (tier === 'boss' || tier === 'champion') ? ev.eliteSpeedMult
                           : tier === 'elite' ? ev.eliteSpeedMult : 1
-      const sizeMult = tier === 'boss' ? ev.bossSizeMult : tier === 'champion' ? ev.championSizeMult : 1
+      const sizeMult = tier === 'boss'     ? ev.bossSizeMult
+                     : tier === 'champion' ? ev.championSizeMult
+                     : tier === 'elite'    ? ev.eliteSizeMult
+                     : tier === 'strong'   ? ev.strongSizeMult : 1
       const spawnRadius = Math.round(balance.enemyA.radius * sizeMult)
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
@@ -3219,6 +3251,8 @@ export function createGameScene(
         { moveSpeed: balance.enemyA.moveSpeed * speedScale * moveSpeedMult, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
       assignAction(enemy, randomAction().id as ActionId)
+      // Enemies gain +0.5% range per level above 1 (area handled at cast time).
+      enemy.actionRange *= 1 + (enemyProgress.level - 1) * balance.enemyLevel.rangeAreaAddPerLevel
       enemy.actionDamage *= damageScale * balance.enemyA.damageMultiplier * dmgMult
       const rMin = tier === 'boss'      ? ev.bossResistMin
                  : tier === 'champion'  ? ev.championResistMin
@@ -4934,6 +4968,8 @@ export function createGameScene(
             const ab = entity.role === 'player' ? getAreaBonuses() : null
             let areaRadiusPx = (action.area ?? 0) * balance.player.radius
             if (ab) areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+            // Enemies gain +0.5% area size per level above 1.
+            else areaRadiusPx *= 1 + ((enemyLevels.get(entity.id) ?? 1) - 1) * balance.enemyLevel.rangeAreaAddPerLevel
             // Tremor: 0.5× base radius, then add tremor radius bonuses
             const isTremor = pending?.type === 'tremor'
             if (isTremor && ab) areaRadiusPx *= 0.5 * (1 + ab.tremorSize / 100)
