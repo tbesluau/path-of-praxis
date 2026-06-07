@@ -27,7 +27,7 @@ import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
 import { preloadEntityArt, weaponForAction, type Tier } from '../assets/entity-art'
-import { createEntityRig, type EntityRig } from './entity-rig'
+import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -2255,8 +2255,10 @@ export function createGameScene(
     entityRigs.set(entity.id, rig)
 
     if (entity.role !== 'player') {
+      // Anchor bars/markers above the rendered rig (head), not just the body radius.
+      const topY = rigTopOffset(entity.radius)
       const bar = new Graphics()
-      bar.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H))
+      bar.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H))
       c.addChild(bar)
       lifeBarGraphics.set(entity.id, bar)
       drawLifeBar(entity)
@@ -2273,13 +2275,13 @@ export function createGameScene(
         const diamond = new Graphics()
         diamond.poly([0, -7, 7, 0, 0, 7, -7, 0])
         diamond.fill({ color: 0xffd700 })
-        diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 12))
+        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 12))
         c.addChild(diamond)
       } else if (strongEntities.has(entity.id)) {
         const diamond = new Graphics()
         diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
         diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
-        diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
+        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
         c.addChild(diamond)
       }
       if (highResistEntities.has(entity.id)) {
@@ -2287,7 +2289,7 @@ export function createGameScene(
         shield.poly([0, -6, 5, -3, 5, 2, 0, 6, -5, 2, -5, -3])
         shield.fill({ color: 0xffffff })
         const barW = entity.radius * 2
-        shield.position.set(barW / 2, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
+        shield.position.set(barW / 2, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
         c.addChild(shield)
       }
     }

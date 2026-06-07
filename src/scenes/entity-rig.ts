@@ -9,10 +9,11 @@ import type { EntityRole } from '../core/entity'
 // ── Animation constants ───────────────────────────────────────────────────────
 
 const BASE_RADIUS   = 20
-const WALK_FREQ     = 0.006   // rad/ms — leg swing frequency
-const LEG_SWING     = 0.55   // max leg rotation (rad)
-const ARM_COUNTER   = 0.4    // arm counter-swing fraction of leg swing
-const BOB_AMOUNT    = 1.8    // px, body vertical bob
+const WALK_FREQ     = 0.007   // rad/ms — leg swing frequency
+const LEG_SWING     = 0.85   // max leg rotation (rad)
+const ARM_COUNTER   = 0.7    // arm counter-swing fraction of leg swing
+const BOB_AMOUNT    = 2.6    // px, body vertical bob
+const BODY_WOBBLE   = 0.09   // rad, upper-body side-to-side lean while walking
 const BREATHE_FREQ  = 0.0012 // idle breathing frequency
 
 // Weapon anchor.y values (fraction from top = grip position in SVG)
@@ -42,6 +43,15 @@ const LEG_Y       = 0
 const BACK_ARM_X  = -16
 const FRONT_ARM_X = 16
 const ARM_Y       = -26   // shoulder pivot
+
+// Topmost visual point of the rig (head crown) in rig-local space, including a
+// little headroom for the walk bob — used to place HP bars/markers above the head.
+const RIG_TOP_LOCAL = (HEAD_Y - HEAD_H) - 3   // negative (up)
+
+/** Distance from the entity centre to the top of the rendered rig for a given radius. */
+export function rigTopOffset(radius: number): number {
+  return Math.abs(RIG_TOP_LOCAL) * (radius / BASE_RADIUS)
+}
 
 // ── EntityRig interface ───────────────────────────────────────────────────────
 
@@ -151,21 +161,28 @@ export function createEntityRig(opts: {
     container.scale.x = lastFacing * rigScale
 
     const speedFrac = maxSpeed > 0 ? Math.min(1, speed / maxSpeed) : 0
+    const walking   = speedFrac > 0.05
 
     // Walk phase
-    if (speedFrac > 0.05) {
+    if (walking) {
       walkAcc += deltaMs
     }
     const walkPhase = walkAcc * WALK_FREQ
+    const stride    = Math.sin(walkPhase)          // -1 → 1, drives legs/arms/wobble
+    const bob       = Math.abs(stride)             // 0 → 1, two bobs per stride cycle
 
-    // Body bob
-    body.y  = BODY_Y  - (speedFrac > 0.05 ? Math.abs(Math.sin(walkPhase)) * BOB_AMOUNT * speedFrac : Math.sin(walkAcc * BREATHE_FREQ) * 0.4)
-    head.y  = HEAD_Y  - (speedFrac > 0.05 ? Math.abs(Math.sin(walkPhase)) * BOB_AMOUNT * speedFrac : Math.sin(walkAcc * BREATHE_FREQ) * 0.4)
+    // Body bob (vertical lift on each footfall)
+    const bobY = walking ? bob * BOB_AMOUNT * speedFrac : Math.sin(walkAcc * BREATHE_FREQ) * 0.4
+    body.y = BODY_Y - bobY
+    head.y = HEAD_Y - bobY
+
+    // Upper-body wobble — torso & head lean side to side in step with the stride
+    const wobble = walking ? stride * BODY_WOBBLE * speedFrac : 0
+    body.rotation = wobble
+    head.rotation = wobble * 0.6
 
     // Leg swing
-    const legSwing = speedFrac > 0.05
-      ? Math.sin(walkPhase) * LEG_SWING * speedFrac
-      : 0
+    const legSwing = walking ? stride * LEG_SWING * speedFrac : 0
     frontLeg.rotation = legSwing
     backLeg.rotation  = -legSwing
 
@@ -173,16 +190,19 @@ export function createEntityRig(opts: {
     if (attackRemMs > 0) {
       attackRemMs = Math.max(0, attackRemMs - deltaMs)
       const p = 1 - attackRemMs / attackTotMs   // 0 → 1
-      // wind-up (0→0.35): arm swings back; swing (0.35→0.7): arm sweeps forward; return (0.7→1)
+      // wind-up (0→0.3): arm cocks back; swing (0.3→0.65): big forward sweep;
+      // follow-through/return (0.65→1) settles back to neutral.
       let angle: number
-      if (p < 0.35)      angle = -0.9 * (p / 0.35)
-      else if (p < 0.7)  angle = -0.9 + 2.4 * ((p - 0.35) / 0.35)
-      else               angle =  1.5 - 1.5 * ((p - 0.7) / 0.3)
+      if (p < 0.3)       angle = -1.3 * (p / 0.3)
+      else if (p < 0.65) angle = -1.3 + 3.6 * ((p - 0.3) / 0.35)   // sweeps to +2.3
+      else               angle =  2.3 - 2.3 * ((p - 0.65) / 0.35)
       frontArmC.rotation = angle
-      backArm.rotation   = 0
+      // Back arm and torso counter the swing for follow-through punch
+      backArm.rotation   = angle * -0.25
+      body.rotation      = wobble + angle * 0.12
     } else {
       // Idle / walk arm swing (counter to legs)
-      const armSwing = speedFrac > 0.05 ? -legSwing * ARM_COUNTER : 0
+      const armSwing = walking ? -legSwing * ARM_COUNTER : 0
       frontArmC.rotation = armSwing
       backArm.rotation   = -armSwing
     }
