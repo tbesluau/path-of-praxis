@@ -1,4 +1,4 @@
-### 0.1.51 — Heavy Community feedback
+### 0.1.50 — Heavy Community feedback
 
 A large round of improvements driven by player feedback since the beta.
 
