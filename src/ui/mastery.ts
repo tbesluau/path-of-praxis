@@ -642,7 +642,7 @@ export function mountMasteryModal(
   ascentCount: number,
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>,
   masteryDumpPoints: Partial<Record<MasteryId, number>>,
-  getRemainingFreePoints: () => number,
+  getRemainingFreePoints: (id: MasteryId) => number,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -680,7 +680,7 @@ export function mountMasteryModal(
         if (m.id !== 'enemy' && m.id !== 'action' && p.level === 1 && p.xp === 0 && xpGain === 0) continue
         // Mastery is visible — include free points in available count
         const freeUsedHere = freeMasteryPointsUsed[m.id] ?? 0
-        const pts = masteryPointsAvailable(p, freeUsedHere, masteryDumpPoints[m.id] ?? 0) + getRemainingFreePoints()
+        const pts = masteryPointsAvailable(p, freeUsedHere, masteryDumpPoints[m.id] ?? 0) + getRemainingFreePoints(m.id)
         let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
         if (m.id === 'enemy' && xpGain > 0) {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
@@ -732,7 +732,7 @@ export function mountMasteryModal(
       // The tree modal stays open across assigns/resets, so we must NOT clear
       // subCleanup in those callbacks — only when the tree modal itself closes.
       subCleanup = mountMasteryTreeModal(
-        parent, def, masteryProgress, freeMasteryPointsUsed, masteryDumpPoints, getRemainingFreePoints, ascentCount,
+        parent, def, masteryProgress, freeMasteryPointsUsed, masteryDumpPoints, () => getRemainingFreePoints(id), ascentCount,
         (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
         (count) => { onDump(id, count); buildRows() },
         () => { onReset(id); buildRows() },
