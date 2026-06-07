@@ -2247,13 +2247,20 @@ export function createGameScene(
     const bar = lifeBarGraphics.get(entity.id)
     if (!bar) return
     const barW = entity.radius * 2
+    const isBoss = bossEntities.has(entity.id)
+    const h = isBoss ? HP_BAR_H * 2 : HP_BAR_H
     bar.clear()
-    bar.rect(-barW / 2, 0, barW, HP_BAR_H)
+    bar.rect(-barW / 2, 0, barW, h)
     bar.fill({ color: tokens.color.surfacePanel })
     const pct = Math.max(0, entity.currentLife / entity.maxLife)
     if (pct > 0) {
-      bar.rect(-barW / 2, 0, barW * pct, HP_BAR_H)
+      bar.rect(-barW / 2, 0, barW * pct, h)
       bar.fill({ color: 0xdd2222 })
+    }
+    // Bosses get a thicker bar with a bold black contour to stand out.
+    if (isBoss) {
+      bar.rect(-barW / 2, 0, barW, h)
+      bar.stroke({ color: 0x000000, width: 2 })
     }
   }
 
@@ -2286,8 +2293,9 @@ export function createGameScene(
     if (entity.role !== 'player') {
       // Anchor bars/markers above the rendered rig (head), not just the body radius.
       const topY = rigTopOffset(entity.radius)
+      const barH = bossEntities.has(entity.id) ? HP_BAR_H * 2 : HP_BAR_H
       const bar = new Graphics()
-      bar.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H))
+      bar.position.set(0, -(topY + HP_BAR_GAP + barH))
       c.addChild(bar)
       lifeBarGraphics.set(entity.id, bar)
       drawLifeBar(entity)
