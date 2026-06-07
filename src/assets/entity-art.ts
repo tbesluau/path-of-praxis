@@ -156,7 +156,7 @@ function weaponSvg(w: Weapon): string {
 </svg>`
 
   if (w.type === 'bow') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 36" width="16" height="36">
-  <path d="M8,0 Q2,4 2,18 Q2,32 8,36" fill="none" stroke="#8a5a20" stroke-width="3" stroke-linecap="round"/>
+  <path d="M8,0 Q14,4 14,18 Q14,32 8,36" fill="none" stroke="#8a5a20" stroke-width="3" stroke-linecap="round"/>
   <line x1="8" y1="0" x2="8" y2="36" stroke="#e0d090" stroke-width="1" opacity="0.85"/>
   <rect x="6" y="15" width="4" height="6" rx="1" fill="#6a4010"/>
   <circle cx="8" cy="2" r="2" fill="#a07040"/>
