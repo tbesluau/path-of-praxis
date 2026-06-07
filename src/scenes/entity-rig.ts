@@ -10,8 +10,8 @@ import type { EntityRole } from '../core/entity'
 
 const BASE_RADIUS   = 20
 const WALK_FREQ     = 0.007   // rad/ms — leg swing frequency
-const LEG_SWING     = 0.85   // max leg rotation (rad)
-const ARM_COUNTER   = 0.7    // arm counter-swing fraction of leg swing
+const LEG_SWING     = 1.7    // max leg rotation (rad)
+const ARM_COUNTER   = 0.35   // arm counter-swing fraction of leg swing
 const BOB_AMOUNT    = 2.6    // px, body vertical bob
 const BODY_WOBBLE   = 0.09   // rad, upper-body side-to-side lean while walking
 const BREATHE_FREQ  = 0.0012 // idle breathing frequency
