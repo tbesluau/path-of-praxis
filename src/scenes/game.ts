@@ -1,12 +1,12 @@
-import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
+import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
-import { allMasteries, masteryCategories, previewMasteryGain, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
+import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, type MasteryId, type ActionTag } from '../config/masteries'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountAwayBonusModal } from '../ui/away-bonus'
@@ -20,12 +20,19 @@ import { allActions, getAction, randomAction, getActionLabel, type ActionId, typ
 import type { SceneId } from '../core/router'
 import { mountSettingsButton, mountGuideModal } from '../ui/settings'
 import { showTutorial, isTutorialSeen, getTutorialMessage } from '../ui/tutorial'
+import { mountNoteModal, getNoteTitle } from '../ui/notes'
+import { mountCharacterModal } from '../ui/character'
+import { mountCharacterCustomizeModal } from '../ui/character-customize'
+import { mountCharacterStatsModal, type PlayerStatsSnapshot, type StatFactor, type StatLine, type OddsLine, type ActionStatBlock } from '../ui/character-stats'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
-import { getPrefs, isCheatMode } from '../core/prefs'
+import { getPrefs, setPref, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
+import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey } from '../assets/entity-art'
+import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
+import { createBackgroundTicker, type BackgroundTicker } from '../core/background-ticker'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -33,6 +40,14 @@ const HUD_HEIGHT = 0
 const SAVE_INTERVAL_MS = 10_000
 const MATTER_BASE_DT = 1 / 60
 const PHYSICS_MAX_STEP_MS = 1000 / 60
+// Background simulation: how often the worker tries to pump the ticker while the
+// tab is hidden (browsers clamp hidden timers to ~1 Hz regardless), and the most
+// wall-clock time a single pump will catch up. The cap stays under AWAY_DETECT_MS
+// so that anything longer (a deep OS suspend that freezes even the worker) falls
+// through to the existing away/stockpile path instead of being fast-simulated.
+const BG_TICK_INTERVAL_MS = 250
+const BG_STEP_MS = 100
+const BG_MAX_CATCHUP_MS = 1900
 
 interface DeathFragment {
   g: Graphics
@@ -819,6 +834,8 @@ export function createGameScene(
       * (1 + mb.moreMaxMana / 100)
   }
 
+  // NOTE: buildPlayerStatsSnapshot() (Character → Stats modal) mirrors this exact
+  // multiplier chain for its damage/speed breakdown — keep the two in sync.
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
@@ -1285,8 +1302,8 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}" data-tooltip="${t('game', 'backToMenu')}">
           <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="die" data-sfx="modal" aria-label="${t('game', 'dieRebirth')}" data-tooltip="${t('game', 'dieRebirth')}">
-          <i data-lucide="skull" aria-hidden="true"></i>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-character" data-sfx="modal" aria-label="Main Character" data-tooltip="Main Character">
+          <i data-lucide="user" aria-hidden="true"></i>
         </button>
       </div>
       <div class="game-top-center">
@@ -1371,7 +1388,7 @@ export function createGameScene(
   container.appendChild(el)
   const viewportEl = el.querySelector<HTMLElement>('.game-viewport')!
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
-  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, Skull, ArrowUp, Star } })
+  createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, User, ArrowUp, Star } })
 
   function openGuide(section: string): void {
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
@@ -1679,6 +1696,7 @@ export function createGameScene(
         playerActionId = id
         assignAction(playerEntity, id)
         applyAutoRunes(id)
+        entityRigs.get('player')?.setWeapon(weaponForAction(getAction(id)))
         updateActionBar()
         persistState()
       },
@@ -1812,11 +1830,19 @@ export function createGameScene(
   let regenTimer: ReturnType<typeof setInterval> | null = null
 
   const REGEN_INTERVAL_MS = 100
-  const REGEN_TICK = REGEN_INTERVAL_MS / 1000  // fraction of per-second rate per tick
+  let lastRegenAt = performance.now()
 
   function startRegen(): void {
     if (regenTimer !== null) return
+    lastRegenAt = performance.now()
     regenTimer = setInterval(() => {
+      // Credit by measured wall-clock instead of a fixed step: while the tab is
+      // hidden this interval is throttled to ~1 Hz, so a fixed 0.1 s step would
+      // starve regen relative to the worker-driven combat loop. Cap the step so a
+      // deep suspend (handled by the away/stockpile path) can't dump free regen.
+      const now = performance.now()
+      const elapsedS = Math.min(now - lastRegenAt, BG_MAX_CATCHUP_MS) / 1000
+      lastRegenAt = now
       if (playerDead) return
       const lb = getLifeBonuses()
       const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
@@ -1824,10 +1850,10 @@ export function createGameScene(
         const lifeRegenBase = playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
         let lifeRegenMult = 1 + (lb.regenIncrease + frenzyBonus) / 100
         if (lb.regenDouble) lifeRegenMult *= 2
-        playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * REGEN_TICK)
+        playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * elapsedS)
       }
       const manaRegenMult = 1 + (getManaBonuses().regenIncrease + frenzyBonus) / 100
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + playerEntity.maxMana * balance.player.regenRate * manaRegenMult * gameSpeed * REGEN_TICK)
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + playerEntity.maxMana * balance.player.regenRate * manaRegenMult * gameSpeed * elapsedS)
       updateBars()
     }, REGEN_INTERVAL_MS)
   }
@@ -1845,6 +1871,26 @@ export function createGameScene(
   // (ActiveEffect interface + activeEffects array declared above updateBars() to avoid TDZ.)
 
   const buffBarEl = el.querySelector<HTMLElement>('.buff-bar')!
+
+  // Maps each status-effect id to the note that explains it (most match 1:1).
+  const EFFECT_NOTE_ID: Record<string, string> = {
+    frenzy:        'frenzy',
+    bloodlust:     'bloodlust',
+    electrified:   'electrified',
+    trance:        'trance',
+    immolation:    'immolation',
+    feedingFrenzy: 'feeding-frenzy',
+  }
+
+  // Hovering a status icon shows its name; clicking it opens the matching note.
+  buffBarEl.addEventListener('click', (e) => {
+    const icon = (e.target as HTMLElement).closest<HTMLElement>('.buff-icon')
+    if (!icon) return
+    const noteId = icon.dataset.note
+    if (!noteId) return
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    modalCleanup = mountNoteModal(el, noteId, () => { modalCleanup = null })
+  })
 
   function applyEffect(template: Omit<ActiveEffect, 'remainingMs' | 'stacks'>, durationMs: number, maxStacks = 1): void {
     const existing = activeEffects.find(e => e.id === template.id)
@@ -1915,7 +1961,15 @@ export function createGameScene(
       } else if (e.stacks > 1) {
         badge = `<span class="buff-charge">${e.stacks}</span>`
       }
-      return `<div class="buff-icon buff-icon--${e.kind}" data-effect="${e.id}"><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
+      const noteId = EFFECT_NOTE_ID[e.id]
+      const title  = noteId ? getNoteTitle(noteId) : undefined
+      const attrs  = [
+        `class="buff-icon buff-icon--${e.kind}"`,
+        `data-effect="${e.id}"`,
+        noteId ? `data-note="${noteId}"` : '',
+        title  ? `data-tooltip="${title}"` : '',
+      ].filter(Boolean).join(' ')
+      return `<div ${attrs}><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
     }).join('')
     if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap } })
   }
@@ -2014,14 +2068,413 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="go-home"]')!
     .addEventListener('click', () => saveAndGoHome())
 
-  el.querySelector<HTMLButtonElement>('[data-action="die"]')!
-    .addEventListener('click', () => {
-      const doDie = (): void => {
-        playerEntity.currentLife = 0
-        killEntity(playerEntity)
+  // ── Character stats snapshot ───────────────────────────────────────────────
+  // Mirrors assignAction()'s multiplier chain (keep in sync) plus the cast-time
+  // affliction/crit/multi-strike/trigger expressions, recording each factor's
+  // origin so the Stats modal can show where every modifier comes from.
+  function buildPlayerStatsSnapshot(): PlayerStatsSnapshot {
+    const fmt  = (n: number, d = 1): string => {
+      const s = n.toFixed(d)
+      return s.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1')
+    }
+    const pct  = (n: number): string => `${fmt(n, 1)}%`
+    const mul  = (n: number): string => `×${fmt(n, 3)}`
+
+    // Converts a mastery node index to its position label in the tree UI.
+    // Line nodes 0-11 → "1" to "12"; key nodes 12-15 → "6t","6b","12t","12b".
+    const nodeLabel = (n: number): string => {
+      if (n < 12) return `${n + 1}`
+      if (n === 12) return '6t'
+      if (n === 13) return '6b'
+      if (n === 14) return '12t'
+      return '12b'
+    }
+
+    // Composes an origin label for an aggregate 'more' factor by listing the
+    // specific contributing nodes: "fire mastery 1.6, 1.6b, overflow".
+    // Same-category 'more' factors stack additively in the engine, so one
+    // aggregate factor is displayed (with the total %) rather than per-node.
+    const moreNodeLabel = (
+      nodes: number[][],
+      dumpedPts: number,
+      dumpedRate: number,
+      effFn: (t: number, n: number) => number,
+      masteryLabel: string,
+    ): string => {
+      const parts: string[] = []
+      if (dumpedPts > 0 && dumpedRate > 0) parts.push('overflow')
+      for (let t = 0; t < nodes.length; t++) {
+        for (const n of nodes[t]) {
+          if (effFn(t, n) > 0) parts.push(`${t + 1}.${nodeLabel(n)}`)
+        }
       }
-      if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
-      else doDie()
+      return parts.length > 0 ? `${masteryLabel} ${parts.join(', ')}` : masteryLabel
+    }
+
+    const incF = (pct2: number, origin: string, group?: string): StatFactor =>
+      ({ text: mul(1 + pct2 / 100), origin, kind: 'mul', group })
+    const moreF = (pct2: number, origin: string, group?: string): StatFactor =>
+      ({ text: mul(1 + pct2 / 100), origin, kind: 'more', group })
+
+    // ── Vitals ────────────────────────────────────────────────────────────
+    const lb = getLifeBonuses()
+    const mb = getManaBonuses()
+    const lifeNodes = masteryNodes('life', 5)
+    const lifeDumped = dumpedFor('life')
+    const manaNodes = masteryNodes('mana', 5)
+
+    const lifeFactors: StatFactor[] = [{ text: fmt(balance.player.maxLife), origin: 'base', kind: 'base' }]
+    const lifeLevelBonus = statBonus(lifeProgress.level)
+    if (lifeLevelBonus !== 1) lifeFactors.push({ text: mul(lifeLevelBonus), origin: `levels (${lifeProgress.level})`, kind: 'mul' })
+    let lifeExtra = 0
+    if (lb.regenAlsoAppliesToMax) lifeExtra += lb.regenIncrease + (lb.regenDouble ? 100 : 0)
+    if (lb.maxPerLifeLevel) lifeExtra += lifeProgress.level
+    if (lb.maxLifeIncrease + lifeExtra !== 0) lifeFactors.push(incF(lb.maxLifeIncrease + lifeExtra, 'life mastery total increased', 'life mastery'))
+    if (lb.moreMaxLife !== 0) lifeFactors.push(moreF(lb.moreMaxLife, moreNodeLabel(lifeNodes, lifeDumped, MASTERY_DUMP.life.rate, (t, n) => getLifeNodeEffect(t, n).lifeMoreMax ?? 0, 'life mastery'), 'life mastery'))
+    if (lb.lessMaxLife !== 0) lifeFactors.push({ text: mul(Math.max(0, 1 - lb.lessMaxLife / 100)), origin: 'life mastery (less)', kind: 'less', group: 'life mastery' })
+    if (mb.moreMaxLife !== 0) lifeFactors.push(moreF(mb.moreMaxLife, moreNodeLabel(manaNodes, 0, 0, (t, n) => getManaNodeEffect(t, n).manaMoreLife ?? 0, 'mana mastery'), 'mana mastery'))
+    const life: StatLine = { label: 'Life', total: fmt(computePlayerMaxLife()), factors: lifeFactors }
+
+    const manaFactors: StatFactor[] = [{ text: fmt(balance.player.maxMana), origin: 'base', kind: 'base' }]
+    const manaLevelBonus = statBonus(manaProgress.level)
+    if (manaLevelBonus !== 1) manaFactors.push({ text: mul(manaLevelBonus), origin: `levels (${manaProgress.level})`, kind: 'mul' })
+    if (mb.maxManaIncrease !== 0) manaFactors.push(incF(mb.maxManaIncrease, 'mana mastery total increased', 'mana mastery'))
+    if (mb.moreMaxMana !== 0) manaFactors.push(moreF(mb.moreMaxMana, moreNodeLabel(manaNodes, dumpedFor('mana'), MASTERY_DUMP.mana.rate, (t, n) => getManaNodeEffect(t, n).manaMoreMax ?? 0, 'mana mastery'), 'mana mastery'))
+    const mana: StatLine = { label: 'Mana', total: fmt(computePlayerMaxMana()), factors: manaFactors }
+
+    const physRes = Math.max(0, Math.min(100, lb.physRotResistance))
+    const eleRes  = Math.max(0, Math.min(100, lb.elementalResistance))
+
+    // ── Equipped actions ──────────────────────────────────────────────────
+    const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
+      : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
+    const entries: { id: ActionId; slot: number }[] = [{ id: playerActionId, slot: 0 }]
+    for (let i = 0; i < activeExtraSlotCount; i++) {
+      const sid = extraSlots[i]?.actionId
+      if (sid) entries.push({ id: sid as ActionId, slot: i + 1 })
+    }
+
+    const TRIGGER_LABEL: Record<string, string> = { time: 'Time', crit: 'Crit', affliction: 'Affliction' }
+    const critUnlocked = ascentCount >= 1 || getPrefs().fullMastery
+
+    // Pre-compute node arrays shared across all action entries
+    const actionNodes = masteryNodes('action', 5)
+    const actionDumped = dumpedFor('action')
+    const critNodes = masteryNodes('criticalHit', 5)
+    const critDumped = dumpedFor('criticalHit')
+
+    const actions: ActionStatBlock[] = entries.map(({ id, slot }) => {
+      const def = getAction(id)
+      const level = getPlayerLevel(id)
+      const tags = def.tags
+      const triggerType = slot > 0 ? (extraSlots[slot - 1]?.triggerType ?? null) : null
+      const isDependentTrigger = triggerType === 'crit' || triggerType === 'affliction'
+      const slotPenalty = slot === 1 ? balance.ascent.slot2DamagePenalty
+        : slot === 2 ? balance.ascent.slot3DamagePenalty : 1
+
+      // Pre-compute tag-specific mastery data (used in damage chain and affliction)
+      const ab = getActionBonuses()
+      const lbAct = getLifeBonuses()
+      const rb = getRuneBonuses(id)
+      const pbData  = tags.includes('projectile') ? { b: getProjectileBonuses(), nodes: masteryNodes('projectile', 5), dumped: dumpedFor('projectile') } : null
+      const sbData  = tags.includes('strike')     ? { b: getStrikeBonuses(),     nodes: masteryNodes('strike', 5),     dumped: dumpedFor('strike') }     : null
+      const libData = tags.includes('lightning')  ? { b: getLightningBonuses(),  nodes: masteryNodes('lightning', 5),  dumped: dumpedFor('lightning') }  : null
+      const fbData  = tags.includes('fire')       ? { b: getFireBonuses(),       nodes: masteryNodes('fire', 5),       dumped: dumpedFor('fire') }       : null
+      const phbData = tags.includes('physical')   ? { b: getPhysicalBonuses(),   nodes: masteryNodes('physical', 5),   dumped: dumpedFor('physical') }   : null
+      const arbData = tags.includes('area')       ? { b: getAreaBonuses(),       nodes: masteryNodes('area', 5),       dumped: dumpedFor('area') }       : null
+
+      // Damage chain — mirrors assignAction() multiplier order
+      const dmgFactors: StatFactor[] = []
+      const baseDmgLevel = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
+      dmgFactors.push({ text: fmt(def.damage, 2), origin: 'base', kind: 'base' })
+      if (level > 1) dmgFactors.push({ text: mul(baseDmgLevel / def.damage), origin: `levels (${level})`, kind: 'mul' })
+
+      // Extra slot: penalty and trigger-type bonus shown right after base & level
+      if (slot > 0) {
+        dmgFactors.push({ text: mul(slotPenalty), origin: `slot ${slot + 1} penalty`, kind: 'less' })
+        if (triggerType === 'crit') {
+          dmgFactors.push({ text: mul(balance.ascent.critTriggerDamageMult), origin: 'crit trigger penalty', kind: 'less' })
+        }
+      }
+
+      // Speed chain
+      const spdFactors: StatFactor[] = []
+      const baseSpdLevel = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
+      spdFactors.push({ text: fmt(def.speed, 2), origin: 'base', kind: 'base' })
+      if (level > 1) spdFactors.push({ text: mul(baseSpdLevel / def.speed), origin: `levels (${level})`, kind: 'mul' })
+
+      // Action mastery
+      if (ab.damageIncrease !== 0) dmgFactors.push(incF(ab.damageIncrease, 'action mastery total increased', 'action mastery'))
+      if (ab.moreDamage !== 0) dmgFactors.push(moreF(ab.moreDamage,
+        moreNodeLabel(actionNodes, actionDumped, MASTERY_DUMP.action.rate,
+          (t, n) => getActionNodeEffect(t, n).actionMoreDamage ?? 0, 'action mastery'), 'action mastery'))
+      if (ab.lessActionDamage !== 0) dmgFactors.push({ text: mul(Math.max(0, 1 - ab.lessActionDamage / 100)), origin: 'action mastery (less)', kind: 'less', group: 'action mastery' })
+      if (lbAct.lessActionDamage !== 0) dmgFactors.push({ text: mul(Math.max(0, 1 - lbAct.lessActionDamage / 100)), origin: 'life mastery (less)', kind: 'less', group: 'life mastery' })
+      if (ab.actionSpeedIncrease !== 0) spdFactors.push(incF(ab.actionSpeedIncrease, 'action mastery total increased', 'action mastery'))
+      if (ab.moreActionSpeed !== 0) spdFactors.push(moreF(ab.moreActionSpeed,
+        moreNodeLabel(actionNodes, 0, 0,
+          (t, n) => getActionNodeEffect(t, n).actionMoreSpeed ?? 0, 'action mastery'), 'action mastery'))
+      if (ab.lessActionSpeed !== 0) spdFactors.push({ text: mul(Math.max(0, 1 - ab.lessActionSpeed / 100)), origin: 'action mastery (less)', kind: 'less', group: 'action mastery' })
+
+      if (pbData) {
+        const { b: pb, nodes: projNodes } = pbData
+        if (pb.damageIncrease !== 0) dmgFactors.push(incF(pb.damageIncrease, 'projectile mastery total increased', 'projectile mastery'))
+        if (pb.moreDamage !== 0) dmgFactors.push(moreF(pb.moreDamage,
+          moreNodeLabel(projNodes, 0, 0,
+            (t, n) => getProjectileNodeEffect(t, n).projMoreDamage ?? 0, 'projectile mastery'), 'projectile mastery'))
+        if (pb.actionSpeedIncrease !== 0) spdFactors.push(incF(pb.actionSpeedIncrease, 'projectile mastery total increased', 'projectile mastery'))
+      }
+      if (sbData) {
+        const { b: sb, nodes: strikeNodes, dumped: strikeDumped } = sbData
+        if (sb.damageIncrease !== 0) dmgFactors.push(incF(sb.damageIncrease, 'strike mastery total increased', 'strike mastery'))
+        if (sb.moreDamage !== 0) dmgFactors.push(moreF(sb.moreDamage,
+          moreNodeLabel(strikeNodes, 0, 0,
+            (t, n) => getStrikeNodeEffect(t, n).strikeMoreDamage ?? 0, 'strike mastery'), 'strike mastery'))
+        if (sb.actionSpeedIncrease !== 0) spdFactors.push(incF(sb.actionSpeedIncrease, 'strike mastery total increased', 'strike mastery'))
+        if (sb.moreActionSpeed !== 0) spdFactors.push(moreF(sb.moreActionSpeed,
+          moreNodeLabel(strikeNodes, strikeDumped, MASTERY_DUMP.strike.rate,
+            (t, n) => getStrikeNodeEffect(t, n).strikeMoreActionSpeed ?? 0, 'strike mastery'), 'strike mastery'))
+      }
+      if (libData) {
+        const { b: lib, nodes: lightNodes, dumped: lightDumped } = libData
+        if (lib.damageIncrease !== 0) dmgFactors.push(incF(lib.damageIncrease, 'lightning mastery total increased', 'lightning mastery'))
+        if (lib.moreDamage !== 0) dmgFactors.push(moreF(lib.moreDamage,
+          moreNodeLabel(lightNodes, lightDumped, MASTERY_DUMP.lightning.rate,
+            (t, n) => getLightningNodeEffect(t, n).lightningMoreDamage ?? 0, 'lightning mastery'), 'lightning mastery'))
+        if (lib.actionSpeedIncrease !== 0) spdFactors.push(incF(lib.actionSpeedIncrease, 'lightning mastery total increased', 'lightning mastery'))
+        if (lib.moreActionSpeed !== 0) spdFactors.push(moreF(lib.moreActionSpeed,
+          moreNodeLabel(lightNodes, 0, 0,
+            (t, n) => getLightningNodeEffect(t, n).lightningMoreActionSpeed ?? 0, 'lightning mastery'), 'lightning mastery'))
+      }
+      if (fbData) {
+        const { b: fb, nodes: fireNodes, dumped: fireDumped } = fbData
+        if (fb.damageIncrease !== 0) dmgFactors.push(incF(fb.damageIncrease, 'fire mastery total increased', 'fire mastery'))
+        if (fb.moreDamage !== 0) dmgFactors.push(moreF(fb.moreDamage,
+          moreNodeLabel(fireNodes, fireDumped, MASTERY_DUMP.fire.rate,
+            (t, n) => getFireNodeEffect(t, n).fireMoreDamage ?? 0, 'fire mastery'), 'fire mastery'))
+        if (fb.actionSpeedIncrease !== 0) spdFactors.push(incF(fb.actionSpeedIncrease, 'fire mastery total increased', 'fire mastery'))
+      }
+      if (phbData) {
+        const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
+        if (phb.damageIncrease !== 0) dmgFactors.push(incF(phb.damageIncrease, 'physical mastery total increased', 'physical mastery'))
+        if (phb.moreDamage !== 0) dmgFactors.push(moreF(phb.moreDamage,
+          moreNodeLabel(physNodes, physDumped, MASTERY_DUMP.physical.rate,
+            (t, n) => getPhysicalNodeEffect(t, n).physicalMoreDamage ?? 0, 'physical mastery'), 'physical mastery'))
+        if (phb.actionSpeedIncrease !== 0) spdFactors.push(incF(phb.actionSpeedIncrease, 'physical mastery total increased', 'physical mastery'))
+      }
+      if (arbData) {
+        const { b: arb, nodes: areaNodes, dumped: areaDumped } = arbData
+        if (arb.damageIncrease !== 0) dmgFactors.push(incF(arb.damageIncrease, 'area mastery total increased', 'area mastery'))
+        if (arb.moreDamage !== 0) dmgFactors.push(moreF(arb.moreDamage,
+          moreNodeLabel(areaNodes, areaDumped, 0,
+            (t, n) => getAreaNodeEffect(t, n).areaMoreDamage ?? 0, 'area mastery'), 'area mastery'))
+        if (arb.lessActionSpeed !== 0) spdFactors.push({ text: mul(Math.max(0.01, 1 - arb.lessActionSpeed / 100)), origin: 'area mastery (less)', kind: 'less', group: 'area mastery' })
+      }
+
+      if (rb.damageIncrease !== 0) dmgFactors.push(incF(rb.damageIncrease, 'runes total increased', 'runes'))
+      if (rb.damageMore !== 1) dmgFactors.push({ text: mul(rb.damageMore), origin: 'runes (more)', kind: 'more', group: 'runes' })
+      if (rb.speedIncrease !== 0) spdFactors.push(incF(rb.speedIncrease, 'runes total increased', 'runes'))
+      if (rb.speedMore !== 1) spdFactors.push({ text: mul(rb.speedMore), origin: 'runes (more)', kind: 'more', group: 'runes' })
+      if (rb.slowHeavy) {
+        dmgFactors.push({ text: '×2', origin: 'rune: Slow & Heavy', kind: 'more', group: 'runes' })
+        spdFactors.push({ text: '×0.5', origin: 'rune: Slow & Heavy', kind: 'less', group: 'runes' })
+      }
+      if (mb.actionSpeedIncrease > 0) spdFactors.push(incF(mb.actionSpeedIncrease, 'mana mastery total increased', 'mana mastery'))
+
+      // Recompute totals exactly as assignAction would (authoritative source of
+      // truth for the displayed totals), via a temp entity with a throwaway id so
+      // assignAction's entityActions.set() can't corrupt real player state.
+      const tmp = { ...playerEntity, id: '__stats_preview__', role: 'player' } as Entity
+      assignAction(tmp, id)
+      entityActions.delete('__stats_preview__')
+
+      // Extra slot total: assignAction doesn't apply slot penalties, so adjust.
+      // Crit-trigger slots take a flat ×0.1 damage penalty (balance.ascent.critTriggerDamageMult).
+      const critTriggerMult = triggerType === 'crit' ? balance.ascent.critTriggerDamageMult : 1
+      const adjustedDamage = tmp.actionDamage * slotPenalty * critTriggerMult
+
+      const damage: StatLine = { label: 'Total damage', total: fmt(adjustedDamage, 2), factors: dmgFactors }
+      const speed:  StatLine = { label: 'Total speed (actions/sec)', total: fmt(tmp.actionSpeed, 2), factors: spdFactors }
+
+      // ── Multi-strike (calculation order) ──────────────────────────────────
+      const multiStrike: OddsLine[] = []
+      {
+        let chance = 0
+        const parts: string[] = []
+        if (sbData) {
+          const sb = sbData.b
+          const c = sb.additionalTargetChance * (1 + sb.additionalTargetMore / 100)
+          if (c > 0) { chance += c; parts.push('strike mastery') }
+        }
+        if (pbData) {
+          const pb = pbData.b
+          if (pb.additionalTargetChance > 0) { chance += pb.additionalTargetChance; parts.push('projectile mastery') }
+        }
+        if (chance > 0) multiStrike.push({ label: 'Additional target', odds: pct(chance), origin: parts.join(' + '), note: 'plus trance bonus while active' })
+      }
+      if (ab.doubleActionChance > 0) {
+        multiStrike.push({ label: 'Double action', odds: pct(ab.doubleActionChance), origin: 'action mastery', note: ab.doubleActionReroll ? 'rerolls once' : undefined })
+      }
+      if (pbData) {
+        const pb = pbData.b
+        if (pb.extraChance > 0) multiStrike.push({ label: 'Additional projectile', odds: pct(pb.extraChance), origin: 'projectile mastery' })
+      }
+      if (rb.splitCast) multiStrike.push({ label: 'Split action', odds: 'always', origin: 'rune: Split Action', note: 'second cast at ×0.5 damage' })
+      if (libData) {
+        const lib = libData.b
+        if (lib.jumpChance > 0) multiStrike.push({ label: 'Chain jump', odds: pct(lib.jumpChance), origin: 'lightning mastery', note: lib.jumpFromElectrocutedChance > 0 ? `+${pct(lib.jumpFromElectrocutedChance)} vs electrocuted` : undefined })
+      }
+      if (arbData) {
+        const arb = arbData.b
+        if (arb.tremorChance > 0) multiStrike.push({ label: 'Tremor', odds: pct(arb.tremorChance), origin: 'area mastery', note: 'rolled per extra area victim' })
+      }
+
+      // ── Affliction chance + damage ────────────────────────────────────────
+      let afflictionChance: OddsLine | undefined
+      let afflictionDamage: StatLine | undefined
+      const baseAffl = balance.effects.baseApplyChance
+      const strikeAffl = sbData ? sbData.b.afflictionChanceIncrease : 0
+      const slotHitDmg = adjustedDamage  // slot-adjusted hit damage (penalty + crit trigger) for affliction base
+
+      if (fbData) {
+        const { b: fb, nodes: fireNodes, dumped: fireDumped } = fbData
+        const chance = baseAffl + fb.burnApplyChance + strikeAffl
+        afflictionChance = { label: 'Burn chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + fire mastery${strikeAffl ? ' + strike' : ''}` }
+        const dps = slotHitDmg * balance.effects.burnDpsFraction * (1 + fb.burnDamageIncrease / 100) * (1 + fb.burnMoreDamage / 100) * Math.max(0, 1 - fb.burnLessDamage / 100) * fb.burnDamageMult
+        const df: StatFactor[] = [
+          { text: fmt(slotHitDmg, 2), origin: 'hit damage', kind: 'base' },
+          { text: mul(balance.effects.burnDpsFraction), origin: 'burn fraction', kind: 'mul' },
+        ]
+        if (fb.burnDamageIncrease !== 0) df.push(incF(fb.burnDamageIncrease, 'fire mastery total increased', 'fire mastery'))
+        if (fb.burnMoreDamage !== 0) df.push(moreF(fb.burnMoreDamage,
+          moreNodeLabel(fireNodes, fireDumped, 0,
+            (t, n) => getFireNodeEffect(t, n).fireBurnMoreDamage ?? 0, 'fire mastery'), 'fire mastery'))
+        afflictionDamage = { label: 'Burn DPS', total: fmt(dps, 2), factors: df }
+      } else if (phbData) {
+        const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
+        const chance = baseAffl + phb.bleedApplyChance + strikeAffl
+        afflictionChance = { label: 'Bleed chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + physical mastery${strikeAffl ? ' + strike' : ''}` }
+        const dps = slotHitDmg * balance.effects.bleedDpsFraction * (1 + phb.bleedDamageIncrease / 100) * (1 + phb.bleedMoreDamage / 100) * Math.max(0, 1 - phb.bleedLessDamage / 100) * phb.bleedDamageMult
+        const df: StatFactor[] = [
+          { text: fmt(slotHitDmg, 2), origin: 'hit damage', kind: 'base' },
+          { text: mul(balance.effects.bleedDpsFraction), origin: 'bleed fraction', kind: 'mul' },
+        ]
+        if (phb.bleedDamageIncrease !== 0) df.push(incF(phb.bleedDamageIncrease, 'physical mastery total increased', 'physical mastery'))
+        if (phb.bleedMoreDamage !== 0) df.push(moreF(phb.bleedMoreDamage,
+          moreNodeLabel(physNodes, physDumped, 0,
+            (t, n) => getPhysicalNodeEffect(t, n).physicalBleedMoreDamage ?? 0, 'physical mastery'), 'physical mastery'))
+        afflictionDamage = { label: 'Bleed DPS', total: fmt(dps, 2), factors: df }
+      } else if (libData) {
+        const { b: lib } = libData
+        const chance = baseAffl + lib.electrocuteApplyChance + strikeAffl
+        afflictionChance = { label: 'Electrocute chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + lightning mastery${strikeAffl ? ' + strike' : ''}`, note: `electrocuted enemies take +${pct(balance.effects.electrocutionBaseDamageTakenPct + lib.electrocuteDamageTakenIncrease)} damage` }
+      }
+
+      // ── Critical hit ──────────────────────────────────────────────────────
+      const cb = getCriticalHitBonuses()
+      const basCrit = baseCritChancePct(tags)
+      let critChance: OddsLine
+      if (!critUnlocked) {
+        critChance = { label: 'Crit chance', odds: 'Locked', origin: 'unlocks at 1st ascension' }
+      } else if (basCrit <= 0) {
+        critChance = { label: 'Crit chance', odds: '0%', origin: 'this action cannot crit' }
+      } else {
+        const total = (basCrit + critBaseAddTotal()) * (1 + cb.chanceIncrease / 100) * (1 + cb.chanceMore / 100)
+        critChance = { label: 'Crit chance', odds: pct(Math.min(100, total)), origin: `base ${pct(basCrit)} + crit mastery` }
+      }
+      const critMultVal = critDamageMultiplier()
+      const critDmgFactors: StatFactor[] = [{ text: `×${fmt(balance.criticalHit.damageMultiplier)}`, origin: 'base', kind: 'base' }]
+      if (cb.damageIncrease !== 0) critDmgFactors.push({ text: `+${pct(cb.damageIncrease)}`, origin: 'crit mastery total increased', kind: 'mul', group: 'crit mastery' })
+      if (cb.damageMore !== 0) critDmgFactors.push(moreF(cb.damageMore,
+        moreNodeLabel(critNodes, critDumped, MASTERY_DUMP.criticalHit.rate,
+          (t, n) => getCriticalHitNodeEffect(t, n).critDamageMore ?? 0, 'crit mastery'), 'crit mastery'))
+      const critDamage: StatLine = { label: 'Crit damage', total: mul(critMultVal), factors: critDmgFactors }
+
+      // ── Triggerable buffs ─────────────────────────────────────────────────
+      const triggerBuffs: { name: string; odds: string; effect: string }[] = []
+      if (sbData) {
+        const sb = sbData.b
+        if (sb.frenzyChance > 0) triggerBuffs.push({ name: 'Frenzy', odds: pct(sb.frenzyChance), effect: `+${fmt(sb.frenzyDamagePerCharge)}% dmg & +${fmt(sb.frenzySpeedPerCharge)}% speed per charge (strike mastery)` })
+      }
+      if (phbData) {
+        const phb = phbData.b
+        if (phb.bloodlustChance > 0) triggerBuffs.push({ name: 'Bloodlust', odds: pct(phb.bloodlustChance), effect: `+${fmt(phb.bloodlustDamage)}% physical dmg & +${fmt(phb.bloodlustActionSpeed)}% speed while active (on bleed)` })
+      }
+      if (libData) {
+        const lib = libData.b
+        if (lib.electrifyChance > 0) triggerBuffs.push({ name: 'Electrified', odds: pct(lib.electrifyChance), effect: `+${fmt(lib.electrifyActionSpeed)}% speed & −${fmt(lib.electrifyDamageReduction)}% damage taken while active` })
+      }
+      if (fbData) {
+        const fb = fbData.b
+        if (fb.immolateChance > 0) triggerBuffs.push({ name: 'Immolation', odds: pct(fb.immolateChance), effect: `+${fmt(fb.immolateDamageBonus)}% fire dmg while active (self-burns)` })
+      }
+      if (ab.tranceTriggerChance > 0) {
+        triggerBuffs.push({ name: 'Trance', odds: pct(ab.tranceTriggerChance), effect: `+${fmt(ab.tranceDamageIncrease)}% dmg & +${fmt(ab.tranceActionSpeedIncrease)}% speed per stack while active` })
+      }
+      if (lb.feedingFrenzyChance > 0 || mb.feedingFrenzyChance > 0) {
+        const c = Math.max(lb.feedingFrenzyChance, mb.feedingFrenzyChance)
+        triggerBuffs.push({ name: 'Feeding Frenzy', odds: pct(c), effect: `+${balance.buffs.feedingFrenzyStealBonus}% steal & +${balance.buffs.feedingFrenzyRegenBonus}% regen (on life/mana steal)` })
+      }
+
+      const slotNote = slot === 0 ? undefined
+        : `Extra slot ${slot + 1} — ${Math.round(slotPenalty * 100)}% damage${triggerType ? `, fires on ${TRIGGER_LABEL[triggerType] ?? triggerType}` : ''}`
+
+      return {
+        name: getActionLabel(id),
+        damage, speed, isDependentTrigger,
+        multiStrike,
+        afflictionChance, afflictionDamage,
+        critChance, critDamage, triggerBuffs, slotNote,
+      } as ActionStatBlock
+    })
+
+    return {
+      life, mana,
+      physRotResist: pct(physRes),
+      elementalResist: pct(eleRes),
+      resistNote: 'Phys/Rot applies to physical & rot hits; Elemental to fire, lightning & cold. Kiting adds more. Capped at 100%.',
+      actions,
+    }
+  }
+
+  el.querySelector<HTMLButtonElement>('[data-action="open-character"]')!
+    .addEventListener('click', () => {
+      if (modalCleanup) { modalCleanup(); modalCleanup = null }
+      modalCleanup = mountCharacterModal(el, {
+        onDie: () => {
+          modalCleanup = null
+          const doDie = (): void => {
+            playerEntity.currentLife = 0
+            killEntity(playerEntity)
+          }
+          if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+          else doDie()
+        },
+        onCustomize: () => {
+          modalCleanup = null
+          const prefs = getPrefs()
+          const initHat   = (prefs.playerHatVariant  as HeadVariant)   ?? 'hood'
+          const initColor = (prefs.playerColorKey     as PlayerColorKey) ?? 'teal'
+          modalCleanup = mountCharacterCustomizeModal(el, {
+            initialHat:   initHat,
+            initialColor: initColor,
+            onChange: (hat, color) => {
+              setPref('playerHatVariant', hat)
+              setPref('playerColorKey', color)
+              rebuildPlayerRig(hat, color)
+            },
+            onClose: () => { modalCleanup = null },
+          })
+        },
+        onStats: () => {
+          modalCleanup = null
+          modalCleanup = mountCharacterStatsModal(el, {
+            snapshot: buildPlayerStatsSnapshot(),
+            onClose: () => { modalCleanup = null },
+          })
+        },
+        onClose: () => { modalCleanup = null },
+      })
     })
 
   // ── PixiJS ──────────────────────────────────────────────────────────────
@@ -2032,11 +2485,17 @@ export function createGameScene(
   let floorOptions: { tex: Texture; w: number }[] = []
   let treeOptions:  { tex: Texture; w: number }[] = []
   let decoOptions:  { tex: Texture; w: number }[] = []
-  const entityTextures = new Map<string, Texture>()
+  const entityRigs = new Map<string, EntityRig>()
   const floorSprites: Sprite[] = []
   const wallSprites: Sprite[] = []
   let destroyed = false
   let modalCleanup: (() => void) | null = null
+
+  // Keep the simulation advancing while the tab is hidden. requestAnimationFrame
+  // (which drives Pixi's ticker) stops entirely in a backgrounded tab, so we pump
+  // the ticker manually from a Web Worker timer instead. See onVisibilityChange.
+  let bgTicker: BackgroundTicker | null = null
+  let onVisibilityChange: (() => void) | null = null
 
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
@@ -2164,11 +2623,10 @@ export function createGameScene(
         (id, count) => { dumpMasteryPoints(id, count) },
         id => { resetMasteryPoints(id) },
         computeMasteryGains,
-        balance.mastery.levelsPerRebirth,
         ascentCount,
         freeMasteryPointsUsed,
         masteryDumpPoints,
-        remainingFreeMasteryPoints,
+        (id: MasteryId) => remainingFreeMasteryPointsFor(id),
       )
     })
 
@@ -2215,46 +2673,59 @@ export function createGameScene(
     const bar = lifeBarGraphics.get(entity.id)
     if (!bar) return
     const barW = entity.radius * 2
+    const isBoss = bossEntities.has(entity.id)
+    const h = isBoss ? HP_BAR_H * 2 : HP_BAR_H
     bar.clear()
-    bar.rect(-barW / 2, 0, barW, HP_BAR_H)
+    bar.rect(-barW / 2, 0, barW, h)
     bar.fill({ color: tokens.color.surfacePanel })
     const pct = Math.max(0, entity.currentLife / entity.maxLife)
     if (pct > 0) {
-      bar.rect(-barW / 2, 0, barW * pct, HP_BAR_H)
+      bar.rect(-barW / 2, 0, barW * pct, h)
       bar.fill({ color: 0xdd2222 })
+    }
+    // Bosses get a thicker bar with a bold black contour to stand out.
+    if (isBoss) {
+      bar.rect(-barW / 2, 0, barW, h)
+      bar.stroke({ color: 0x000000, width: 2 })
     }
   }
 
-  function enemySpriteKey(action: ActionDef): 'fireball' | 'zap' | 'bow' | 'sword' {
-    const elemental = action.tags.some(tag => tag === 'fire' || tag === 'cold' || tag === 'lightning')
-    const ranged = action.range > 4
-    if (elemental) return ranged ? 'fireball' : 'zap'
-    return ranged ? 'bow' : 'sword'
+  function entityTier(id: string): Tier {
+    if (bossEntities.has(id))     return 'boss'
+    if (championEntities.has(id)) return 'champion'
+    if (eliteEntities.has(id))    return 'elite'
+    if (strongEntities.has(id))   return 'strong'
+    return 'normal'
   }
 
   function initEntityDisplay(entity: Entity): void {
     if (!app || entityContainers.has(entity.id)) return
     const c = new Container()
-    let texKey: string
-    if (entity.role === 'player') {
-      texKey = 'player'
-    } else {
-      const actionId = entityActions.get(entity.id) ?? 'sword' as ActionId
-      texKey = enemySpriteKey(getAction(actionId as ActionId))
-    }
-    const tex = entityTextures.get(texKey)
-    if (tex) {
-      const s = new Sprite(tex)
-      s.anchor.set(0.5)
-      s.roundPixels = true
-      const size = entity.radius * 2
-      s.width = size
-      s.height = size
-      c.addChild(s)
-    }
+
+    const tier: Tier = entity.role === 'player' ? 'player' : entityTier(entity.id)
+    const actionId = entity.role === 'player'
+      ? playerActionId
+      : (entityActions.get(entity.id) ?? 'sword') as ActionId
+    const isPlayer = entity.role === 'player'
+    const savedPrefs = getPrefs()
+    const rig = createEntityRig({
+      role:   entity.role,
+      tier,
+      weapon: weaponForAction(getAction(actionId)),
+      radius: entity.radius,
+      seed:   entity.id,
+      ...(isPlayer && savedPrefs.playerColorKey  ? { colorKey:     savedPrefs.playerColorKey  as PlayerColorKey } : {}),
+      ...(isPlayer && savedPrefs.playerHatVariant ? { headOverride: savedPrefs.playerHatVariant as HeadVariant  } : {}),
+    })
+    c.addChild(rig.container)
+    entityRigs.set(entity.id, rig)
+
     if (entity.role !== 'player') {
+      // Anchor bars/markers above the rendered rig (head), not just the body radius.
+      const topY = rigTopOffset(entity.radius)
+      const barH = bossEntities.has(entity.id) ? HP_BAR_H * 2 : HP_BAR_H
       const bar = new Graphics()
-      bar.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H))
+      bar.position.set(0, -(topY + HP_BAR_GAP + barH))
       c.addChild(bar)
       lifeBarGraphics.set(entity.id, bar)
       drawLifeBar(entity)
@@ -2271,13 +2742,13 @@ export function createGameScene(
         const diamond = new Graphics()
         diamond.poly([0, -7, 7, 0, 0, 7, -7, 0])
         diamond.fill({ color: 0xffd700 })
-        diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 12))
+        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 12))
         c.addChild(diamond)
       } else if (strongEntities.has(entity.id)) {
         const diamond = new Graphics()
         diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
         diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
-        diamond.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
+        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
         c.addChild(diamond)
       }
       if (highResistEntities.has(entity.id)) {
@@ -2285,13 +2756,32 @@ export function createGameScene(
         shield.poly([0, -6, 5, -3, 5, 2, 0, 6, -5, 2, -5, -3])
         shield.fill({ color: 0xffffff })
         const barW = entity.radius * 2
-        shield.position.set(barW / 2, -(entity.radius + HP_BAR_GAP + HP_BAR_H + 11))
+        shield.position.set(barW / 2, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
         c.addChild(shield)
       }
     }
     c.position.set(entity.x, entity.y)
     app.stage.addChild(c)
     entityContainers.set(entity.id, c)
+  }
+
+  function rebuildPlayerRig(hat: HeadVariant, color: PlayerColorKey): void {
+    const c = entityContainers.get('player')
+    const old = entityRigs.get('player')
+    if (!c || !old) return
+    old.container.destroy()
+    entityRigs.delete('player')
+    const rig = createEntityRig({
+      role:         'player',
+      tier:         'player',
+      weapon:       weaponForAction(getAction(playerActionId as ActionId)),
+      radius:       playerEntity.radius,
+      seed:         playerEntity.id,
+      colorKey:     color,
+      headOverride: hat,
+    })
+    c.addChildAt(rig.container, 0)
+    entityRigs.set('player', rig)
   }
 
   const groupSizeCache = new Map<string, number>()
@@ -2361,21 +2851,51 @@ export function createGameScene(
 
           if (blockedTiles.has(`${tx},${ty}`)) {
             const groupSize = getBlockedGroupSize(tx, ty)
-            const opts = groupSize > 2 ? treeOptions : decoOptions
-            const wSprite = wallSprites[wallIdx] ?? (() => {
-              const s = new Sprite()
-              s.roundPixels = true
-              wallContainer!.addChild(s)
-              wallSprites.push(s)
-              return s
-            })()
-            wSprite.texture = pickWeighted(tx, ty, opts)
-            wSprite.x = Math.round(tx * gs)
-            wSprite.y = Math.round(ty * gs)
-            wSprite.width = gs + 1
-            wSprite.height = gs + 1
-            wSprite.visible = true
-            wallIdx++
+            if (groupSize > 2) {
+              // Tree tile — draw 1–3 sprites per the layout
+              const layout = pickTreeLayout(tx, ty, gs)
+              layout.forEach((item, idx) => {
+                const wSprite = wallSprites[wallIdx] ?? (() => {
+                  const s = new Sprite()
+                  s.roundPixels = true
+                  wallContainer!.addChild(s)
+                  wallSprites.push(s)
+                  return s
+                })()
+                // ±10% jitter (deterministic per tile + sprite) so trees never
+                // sit on a perfect grid.
+                const jx = (tileHash(tx * 4 + idx + 1, ty * 4 + 7)       - 0.5) * 0.2 * gs
+                const jy = (tileHash(tx * 4 + 11,      ty * 4 + idx + 3) - 0.5) * 0.2 * gs
+                // 20% taller, anchored at the trunk base so the extra canopy
+                // grows up into the tile above.
+                const h = item.h * 1.2
+                wSprite.texture = pickWeighted(tx + item.sdx, ty + item.sdy, treeOptions)
+                wSprite.x = Math.round(tx * gs + item.ox + jx)
+                wSprite.y = Math.round(ty * gs + item.oy - item.h * 0.2 + jy)
+                wSprite.width  = Math.round(item.w)
+                wSprite.height = Math.round(h)
+                wSprite.zIndex = wallIdx
+                wSprite.visible = true
+                wallIdx++
+              })
+            } else {
+              // Deco tile — single sprite
+              const wSprite = wallSprites[wallIdx] ?? (() => {
+                const s = new Sprite()
+                s.roundPixels = true
+                wallContainer!.addChild(s)
+                wallSprites.push(s)
+                return s
+              })()
+              wSprite.texture = pickWeighted(tx, ty, decoOptions)
+              wSprite.x = Math.round(tx * gs)
+              wSprite.y = Math.round(ty * gs)
+              wSprite.width  = gs + 1
+              wSprite.height = gs + 1
+              wSprite.zIndex = wallIdx
+              wSprite.visible = true
+              wallIdx++
+            }
           }
         }
       }
@@ -2447,6 +2967,7 @@ export function createGameScene(
       c.destroy()
       entityContainers.delete(entity.id)
     }
+    entityRigs.delete(entity.id)
     lifeBarGraphics.delete(entity.id)
     actionCooldowns.delete(entity.id)
     pendingMultiActions.delete(entity.id)
@@ -2733,25 +3254,22 @@ export function createGameScene(
         const xpGain = gainById.get(m.id) ?? 0
         if (xpGain <= 0) return ''
         const prog = masteryProgress[m.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-        let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
+        let oldPct: number, gainPct: number, levelsGained: number
         if (m.id === 'enemy') {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
           levelsGained = Math.max(0, xpGain - prog.level)
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
-          capped = false
         } else {
-          const pv = previewMasteryGain(prog.xp, prog.level, xpGain, prog.level + balance.mastery.levelsPerRebirth, m.id)
+          const pv = previewMasteryGain(prog.xp, prog.level, xpGain, m.id)
           oldPct = pv.oldPct; gainPct = pv.gainPct; levelsGained = pv.levelsGained
-          capped = levelsGained >= balance.mastery.levelsPerRebirth
         }
-        const levelMod = levelsGained > 0 ? (capped ? ' mastery-level--capped' : ' mastery-level--gain') : ''
-        const badgeMod = capped ? ' mastery-gain-badge--capped' : ''
+        const levelMod = levelsGained > 0 ? ' mastery-level--gain' : ''
         return `
           <div class="mastery-row">
             ${renderMasteryBar(oldPct, gainPct)}
             <span class="mastery-label">${escapeHtml(m.label)}</span>
             <span class="mastery-level${levelMod}">Lv.${prog.level}</span>
-            ${levelsGained > 0 ? `<span class="mastery-gain-badge${badgeMod}">+${levelsGained}</span>` : ''}
+            ${levelsGained > 0 ? `<span class="mastery-gain-badge">+${levelsGained}</span>` : ''}
           </div>`
       }).join('')
       if (!rowsHtml.trim()) return ''
@@ -2849,7 +3367,7 @@ export function createGameScene(
       const existing = masteryProgress[id]
       const nodes = existing?.nodes ?? defaultMasteryNodes()
       const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      const preview = previewMasteryGain(xp, level, xpGain, level + balance.mastery.levelsPerRebirth, id)
+      const preview = previewMasteryGain(xp, level, xpGain, id)
       masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
@@ -2868,52 +3386,47 @@ export function createGameScene(
   function totalFreeMasteryPointsEarned(): number {
     return ascentCount >= balance.ascent.freeMasteryPointsUnlockAscent ? ascentCount : 0
   }
-  function remainingFreeMasteryPoints(): number {
-    const used = (Object.values(freeMasteryPointsUsed) as number[]).reduce((s, v) => s + v, 0)
-    return totalFreeMasteryPointsEarned() - used
+  // Each mastery has its own independent budget of free points (not a shared pool).
+  function remainingFreeMasteryPointsFor(id: MasteryId): number {
+    return Math.max(0, totalFreeMasteryPointsEarned() - (freeMasteryPointsUsed[id] ?? 0))
   }
 
   function refreshMasteryDot(): void {
     const dot = el.querySelector<HTMLElement>('.mastery-notif-dot')
     if (!dot) return
-    const remaining = remainingFreeMasteryPoints()
     const hasUnspentLevelPoints = allMasteries.some(m => {
       const p = masteryProgress[m.id]
       return p ? masteryPointsAvailable(p, freeMasteryPointsUsed[m.id] ?? 0, masteryDumpPoints[m.id] ?? 0) > 0 : false
     })
-    const hasUnspentFreePoints = remaining > 0 && allMasteries.some(m => {
+    const hasUnspentFreePoints = allMasteries.some(m => {
+      if (remainingFreeMasteryPointsFor(m.id) <= 0) return false
       const p = masteryProgress[m.id]
       const isAlwaysShown = m.id === 'enemy' || m.id === 'action'
       return isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
     })
-    // A mastery is "capped" when its pending rebirth gain hits the
-    // per-rebirth level cap — the user should know they're leaving XP on
-    // the table. Enemy mastery isn't XP-based and has no cap. A mastery
-    // earning XP for the very first time has no entry in masteryProgress;
-    // fall back to a fresh-progress shape so the preview can still report cap.
-    const cap = balance.mastery.levelsPerRebirth
-    const anyCapped = computeMasteryGains().some(g => {
-      if (g.id === 'enemy') return false
-      const p = masteryProgress[g.id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
-      const preview = previewMasteryGain(p.xp, p.level, g.xpGain, p.level + cap, g.id)
-      return preview.levelsGained >= cap
-    })
-    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints || anyCapped)
+    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints)
   }
 
   function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {
-    const existing = masteryProgress[id]
-    if (!existing) return
+    // Free ascent points can target a mastery that has never earned XP, so it
+    // may have no progress entry yet (e.g. right after an ascent wipes them).
+    // Synthesize a fresh level-1 entry rather than bailing — otherwise those
+    // free points are unspendable.
+    const existing = masteryProgress[id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
+    if (existing.nodes[treeIdx]?.includes(nodeIdx)) return  // already assigned — nothing to charge
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
     const dumped = masteryDumpPoints[id] ?? 0
-    const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
-    if (levelAvail <= 0) {
-      // No level-based points; try consuming a free point
-      if (remainingFreeMasteryPoints() <= 0) return
-      freeMasteryPointsUsed[id] = freeUsed + 1
+    // A node costs nodeCost() points (major 2, key 3, else 1). Pay from level
+    // points first, then top up the shortfall from this mastery's free budget.
+    const cost = nodeCost(nodeIdx)
+    const avail = masteryPointsAvailable(existing, freeUsed, dumped)
+    if (avail < cost) {
+      const need = cost - avail
+      if (remainingFreeMasteryPointsFor(id) < need) return
+      freeMasteryPointsUsed[id] = freeUsed + need
     }
     const nodes = existing.nodes.map(t => [...t])
-    if (!nodes[treeIdx].includes(nodeIdx)) nodes[treeIdx].push(nodeIdx)
+    nodes[treeIdx].push(nodeIdx)
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
@@ -2935,12 +3448,14 @@ export function createGameScene(
   // persistent "more <X>" bonus per spec). Consumes level points first; then
   // free points; clamped to whatever's actually available.
   function dumpMasteryPoints(id: MasteryId, count: number): void {
-    const existing = masteryProgress[id]
-    if (!existing || count <= 0) return
+    if (count <= 0) return
+    // As with assignMasteryNode: free points may be dumped into a mastery that
+    // has no progress entry yet, so synthesize a level-1 entry when missing.
+    const existing = masteryProgress[id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
     const dumped = masteryDumpPoints[id] ?? 0
     const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
-    const freeRemaining = remainingFreeMasteryPoints()
+    const freeRemaining = remainingFreeMasteryPointsFor(id)
     const totalAvail = levelAvail + freeRemaining
     const take = Math.min(count, totalAvail)
     if (take <= 0) return
@@ -3204,7 +3719,10 @@ export function createGameScene(
       const speedScale = 1 + balance.enemyLevel.speedAddPerLevel * (enemyProgress.level - 1)
       const moveSpeedMult = (tier === 'boss' || tier === 'champion') ? ev.eliteSpeedMult
                           : tier === 'elite' ? ev.eliteSpeedMult : 1
-      const sizeMult = tier === 'boss' ? ev.bossSizeMult : tier === 'champion' ? ev.championSizeMult : 1
+      const sizeMult = tier === 'boss'     ? ev.bossSizeMult
+                     : tier === 'champion' ? ev.championSizeMult
+                     : tier === 'elite'    ? ev.eliteSizeMult
+                     : tier === 'strong'   ? ev.strongSizeMult : 1
       const spawnRadius = Math.round(balance.enemyA.radius * sizeMult)
       const enemy = createEnemyEntity(
         `enemy-${++enemyIdCounter}`,
@@ -3214,6 +3732,8 @@ export function createGameScene(
         { moveSpeed: balance.enemyA.moveSpeed * speedScale * moveSpeedMult, maxLife: Math.round(balance.enemyA.maxLife * lifeScale * lifeMult) },
       )
       assignAction(enemy, randomAction().id as ActionId)
+      // Enemies gain +0.5% range per level above 1 (area handled at cast time).
+      enemy.actionRange *= 1 + (enemyProgress.level - 1) * balance.enemyLevel.rangeAreaAddPerLevel
       enemy.actionDamage *= damageScale * balance.enemyA.damageMultiplier * dmgMult
       const rMin = tier === 'boss'      ? ev.bossResistMin
                  : tier === 'champion'  ? ev.championResistMin
@@ -3343,6 +3863,11 @@ export function createGameScene(
   // Each action has a natural duration; if it's less than preHitDuration the animation
   // starts late (startFraction > 0) so it completes right at impact.
   function spawnPreHitVfx(attacker: Entity, target: Entity, action: ActionDef, preHitDuration: number): void {
+    const rig = entityRigs.get(attacker.id)
+    if (rig) {
+      rig.setFacing(target.x >= attacker.x ? 1 : -1)
+      rig.playAttack(preHitDuration)
+    }
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const baseAng = Math.atan2(ty - ay, tx - ax)
@@ -3413,6 +3938,11 @@ export function createGameScene(
 
   // Pre-hit VFX for area actions: an expanding ring at the area centre.
   function spawnAreaPreHitVfx(attacker: Entity, center: Entity, areaRadiusPx: number, action: ActionDef, preHitDuration: number): void {
+    const rig = entityRigs.get(attacker.id)
+    if (rig) {
+      if (center !== attacker as unknown) rig.setFacing(center.x >= attacker.x ? 1 : -1)
+      rig.playAttack(preHitDuration)
+    }
     const cx = center.x, cy = center.y
     if (action.id === 'fire-nova') {
       addVfx(preHitDuration, (g, p) => {
@@ -3908,41 +4438,73 @@ export function createGameScene(
 
       app = instance
 
+      // ── Background simulation ───────────────────────────────────────────────
+      // While the tab is visible, Pixi's ticker runs on requestAnimationFrame.
+      // When hidden, rAF stops firing, so we stop the ticker and pump it manually
+      // from a worker-driven timer, advancing it to wall-clock in <=BG_STEP_MS
+      // chunks (each pass still sees a bounded deltaMS — the ticker clamps to
+      // minFPS). This keeps combat/spawns/effects progressing in an idle tab.
+      const pumpBackground = (): void => {
+        if (destroyed || paused || !app) return
+        const ticker = app.ticker
+        const now = performance.now()
+        const elapsed = now - ticker.lastTime
+        if (elapsed <= 0) return
+        if (elapsed > BG_MAX_CATCHUP_MS) {
+          // The worker was frozen too long (deep suspend). Don't fast-simulate the
+          // whole gap; just resync the clock and let the next live tick credit it
+          // via the away/stockpile path (which keys off the unchanged lastTickAt).
+          ticker.lastTime = now
+          return
+        }
+        let target = ticker.lastTime
+        while (now - target > 0) {
+          target = Math.min(now, target + BG_STEP_MS)
+          ticker.update(target)
+        }
+      }
+      bgTicker = createBackgroundTicker(pumpBackground, BG_TICK_INTERVAL_MS)
+
+      onVisibilityChange = (): void => {
+        if (destroyed || !app) return
+        if (document.hidden) {
+          if (paused) return
+          app.ticker.stop()      // cancel the pending rAF; we drive it ourselves now
+          app.ticker.lastTime = performance.now()
+          bgTicker?.start()
+        } else {
+          bgTicker?.stop()
+          // Resync so the first live frame doesn't replay the hidden interval as
+          // one giant delta; the away/stockpile path handles any real absence.
+          app.ticker.lastTime = performance.now()
+          if (!paused) app.ticker.start()
+        }
+      }
+      document.addEventListener('visibilitychange', onVisibilityChange)
+      // The tab may already be hidden when the scene mounts.
+      if (document.hidden) onVisibilityChange()
+
       const wrapper = document.createElement('div')
       wrapper.className = 'game-canvas-wrapper'
       wrapper.appendChild(app.canvas)
       viewportEl.appendChild(wrapper)
 
-      // Terrain tiles use generated medieval-forest SVGs; entity sprites still
-      // come from the Tiny Dungeon sheet (12 cols × 11 rows of 16×16 px tiles).
-      const [tiles, sheet] = await Promise.all([
+      const [tiles] = await Promise.all([
         loadTileTextures(),
-        Assets.load<Texture>(
-          `${import.meta.env.BASE_URL}ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png`,
-        ),
+        preloadEntityArt(),
       ])
       const { floorOptions: fo, treeOptions: to, decoOptions: dco } = tiles
       floorOptions = fo
       treeOptions  = to
       decoOptions  = dco
-      sheet.source.scaleMode = 'nearest'
-      const TILE = 16
-      // N = tile number (0-indexed), col = N%12, row = floor(N/12).
-      // See src/assets/tile-notes.md for full rationale.
-      const t = (N: number) => new Texture({
-        source: sheet.source,
-        frame: new Rectangle((N % 12) * TILE, Math.floor(N / 12) * TILE, TILE, TILE),
-      })
-      entityTextures.set('player',   t(108))
-      entityTextures.set('sword',    t(97))
-      entityTextures.set('bow',      t(112))
-      entityTextures.set('fireball', t(84))
-      entityTextures.set('zap',      t(100))
 
       if (destroyed) return
 
       floorContainer = new Container()
       wallContainer  = new Container()
+      // Trees overflow upward into the tile above; sort by zIndex (assigned in
+      // top-to-bottom draw order) so lower sprites paint over higher ones.
+      wallContainer.sortableChildren = true
       burnGroundContainer = new Container()
       app.stage.addChild(floorContainer)
       app.stage.addChild(wallContainer)
@@ -4304,7 +4866,7 @@ export function createGameScene(
           physicsRemaining -= step
         }
 
-        // ── Sync positions ──────────────────────────────────────────────────
+        // ── Sync positions + animate rigs ───────────────────────────────────
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (body) {
@@ -4312,6 +4874,17 @@ export function createGameScene(
             entity.y = body.position.y
           }
           entityContainers.get(entity.id)?.position.set(entity.x, entity.y)
+          const rig = entityRigs.get(entity.id)
+          if (rig) {
+            const body2 = entityBodies.get(entity.id)
+            const vx = body2 ? body2.velocity.x / MATTER_BASE_DT : 0
+            const vy = body2 ? body2.velocity.y / MATTER_BASE_DT : 0
+            rig.update(ticker.deltaMS, {
+              vx,
+              speed:    Math.hypot(vx, vy),
+              maxSpeed: entity.moveSpeed,
+            })
+          }
         }
 
         // Track player movement for movement mastery
@@ -4470,6 +5043,10 @@ export function createGameScene(
           }
           const actualDamage = prevLife - target.currentLife
           if (attacker.role === 'player' && target.role === 'enemy' && (actualDamage > 0 || wouldHaveLanded)) {
+            playSound(essenceSfxId(action.tags))
+          }
+          // Enemies emit the same essence sound when their action lands on the player.
+          if (attacker.role === 'enemy' && target.role === 'player' && (actualDamage > 0 || wouldHaveLanded)) {
             playSound(essenceSfxId(action.tags))
           }
           // Track the last direct hit type on boss entities for trigger unlock detection.
@@ -4925,6 +5502,8 @@ export function createGameScene(
             const ab = entity.role === 'player' ? getAreaBonuses() : null
             let areaRadiusPx = (action.area ?? 0) * balance.player.radius
             if (ab) areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+            // Enemies gain +0.5% area size per level above 1.
+            else areaRadiusPx *= 1 + ((enemyLevels.get(entity.id) ?? 1) - 1) * balance.enemyLevel.rangeAreaAddPerLevel
             // Tremor: 0.5× base radius, then add tremor radius bonuses
             const isTremor = pending?.type === 'tremor'
             if (isTremor && ab) areaRadiusPx *= 0.5 * (1 + ab.tremorSize / 100)
@@ -5485,8 +6064,11 @@ export function createGameScene(
     clearInterval(dpsMeterInterval)
     clearInterval(masteryDotInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
+    if (onVisibilityChange) { document.removeEventListener('visibilitychange', onVisibilityChange); onVisibilityChange = null }
+    if (bgTicker) { bgTicker.dispose(); bgTicker = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()
+    entityRigs.clear()
     for (const f of deathFragments) f.g.destroy()
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()
@@ -5885,6 +6467,52 @@ function pickWeighted(tx: number, ty: number, options: { tex: Texture; w: number
     if (r < 0) return o.tex
   }
   return options[options.length - 1].tex
+}
+
+// Layout item: offset and size relative to one grid square (gs = 1 unit).
+interface TreeSprite { ox: number; oy: number; w: number; h: number; sdx: number; sdy: number }
+
+// Deterministically pick a multi-tree layout for a tree tile.
+// Returns 1–3 items, each describing one sprite relative to (tx*gs, ty*gs).
+// sdx/sdy are secondary hash seeds so each sprite in a multi-tree tile picks a
+// different texture.
+function pickTreeLayout(tx: number, ty: number, gs: number): TreeSprite[] {
+  // Use a secondary hash (shifted seed) for layout selection
+  const ux = tx >= 0 ? tx * 2 : -tx * 2 - 1
+  const uy = ty >= 0 ? ty * 2 : -ty * 2 - 1
+  let s = ((Math.imul(ux ^ 0xdeadbeef, 73856093) ^ Math.imul(uy ^ 0xcafef00d, 19349663)) >>> 0) || 1
+  s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0
+  const r = s / 0x100000000
+
+  if (r < 0.20) {
+    // Single normal tree
+    return [{ ox: 0, oy: 0, w: gs, h: gs, sdx: 0, sdy: 0 }]
+  } else if (r < 0.35) {
+    // Single large tree (overflows top)
+    return [{ ox: -0.15 * gs, oy: -0.30 * gs, w: 1.30 * gs, h: 1.30 * gs, sdx: 0, sdy: 0 }]
+  } else if (r < 0.45) {
+    // Single extra-large tree
+    return [{ ox: -0.25 * gs, oy: -0.50 * gs, w: 1.50 * gs, h: 1.50 * gs, sdx: 0, sdy: 0 }]
+  } else if (r < 0.72) {
+    // Two trees: back-left (slightly larger) + front-right (slightly smaller)
+    return [
+      { ox: -0.10 * gs, oy: -0.20 * gs, w: 1.15 * gs, h: 1.15 * gs, sdx: 0, sdy: 0 },
+      { ox:  0.30 * gs, oy:  0.10 * gs, w: 0.75 * gs, h: 0.75 * gs, sdx: 1, sdy: 0 },
+    ]
+  } else if (r < 0.90) {
+    // Large + small side-by-side
+    return [
+      { ox: -0.20 * gs, oy: -0.35 * gs, w: 1.20 * gs, h: 1.20 * gs, sdx: 0, sdy: 0 },
+      { ox:  0.55 * gs, oy:  0.05 * gs, w: 0.65 * gs, h: 0.65 * gs, sdx: 0, sdy: 1 },
+    ]
+  } else {
+    // Three small trees
+    return [
+      { ox: -0.05 * gs, oy: -0.10 * gs, w: 0.80 * gs, h: 0.80 * gs, sdx: 0, sdy: 0 },
+      { ox:  0.55 * gs, oy: -0.05 * gs, w: 0.70 * gs, h: 0.70 * gs, sdx: 1, sdy: 0 },
+      { ox:  0.20 * gs, oy:  0.25 * gs, w: 0.65 * gs, h: 0.65 * gs, sdx: 0, sdy: 1 },
+    ]
+  }
 }
 
 // Deterministic per-chunk PRNG (mulberry32 variant). Negative coords handled

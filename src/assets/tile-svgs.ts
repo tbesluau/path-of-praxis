@@ -6,20 +6,48 @@ function loadSvg(svg: string): Promise<Texture> {
 
 // ── Floor tiles (solid background, 3 variants) ────────────────────────────────
 
-const GRASS_PLAIN = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+// Four plain-grass variants — same palette, different patch layouts and stem
+// orientations (lean-right / lean-left / vertical / sparse), each with only 1–2
+// stems. Mixed at equal weight so plain grass stays dominant but never looks tiled.
+const GRASS_PLAIN_A = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <rect width="64" height="64" fill="#5c9040"/>
   <ellipse cx="12" cy="46" rx="9" ry="6" fill="#4a7230" opacity="0.55"/>
   <ellipse cx="50" cy="16" rx="11" ry="7" fill="#4a7230" opacity="0.45"/>
   <ellipse cx="34" cy="56" rx="13" ry="5" fill="#4a7230" opacity="0.4"/>
   <ellipse cx="22" cy="20" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
   <ellipse cx="52" cy="44" rx="10" ry="6" fill="#70b050" opacity="0.4"/>
-  <line x1="8" y1="20" x2="10" y2="13" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="18" y1="36" x2="20" y2="29" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="30" y1="10" x2="32" y2="4" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="44" y1="40" x2="46" y2="33" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="56" y1="24" x2="58" y2="17" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="52" y1="56" x2="54" y2="50" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="24" y1="52" x2="26" y2="46" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
+  <line x1="18" y1="38" x2="21" y2="30" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
+  <line x1="46" y1="42" x2="49" y2="34" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
+</svg>`
+
+const GRASS_PLAIN_B = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" fill="#5c9040"/>
+  <ellipse cx="16" cy="18" rx="10" ry="6" fill="#4a7230" opacity="0.5"/>
+  <ellipse cx="46" cy="48" rx="11" ry="7" fill="#4a7230" opacity="0.45"/>
+  <ellipse cx="30" cy="38" rx="12" ry="5" fill="#4a7230" opacity="0.4"/>
+  <ellipse cx="44" cy="18" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
+  <ellipse cx="14" cy="50" rx="9" ry="6" fill="#70b050" opacity="0.4"/>
+  <line x1="26" y1="42" x2="23" y2="34" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
+  <line x1="52" y1="30" x2="49" y2="23" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
+</svg>`
+
+const GRASS_PLAIN_C = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" fill="#5c9040"/>
+  <ellipse cx="20" cy="40" rx="10" ry="6" fill="#4a7230" opacity="0.55"/>
+  <ellipse cx="48" cy="24" rx="11" ry="7" fill="#4a7230" opacity="0.45"/>
+  <ellipse cx="36" cy="54" rx="11" ry="5" fill="#70b050" opacity="0.4"/>
+  <ellipse cx="14" cy="22" rx="7" ry="5" fill="#70b050" opacity="0.5"/>
+  <line x1="34" y1="46" x2="34" y2="38" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
+</svg>`
+
+const GRASS_PLAIN_D = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" fill="#5c9040"/>
+  <ellipse cx="10" cy="30" rx="9" ry="6" fill="#4a7230" opacity="0.5"/>
+  <ellipse cx="52" cy="50" rx="10" ry="7" fill="#4a7230" opacity="0.45"/>
+  <ellipse cx="30" cy="18" rx="12" ry="5" fill="#4a7230" opacity="0.4"/>
+  <ellipse cx="24" cy="48" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
+  <ellipse cx="50" cy="30" rx="9" ry="6" fill="#70b050" opacity="0.4"/>
+  <line x1="16" y1="54" x2="19" y2="46" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
 </svg>`
 
 const GRASS_PEBBLES = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
@@ -27,9 +55,7 @@ const GRASS_PEBBLES = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 6
   <ellipse cx="10" cy="48" rx="9" ry="6" fill="#4a7230" opacity="0.55"/>
   <ellipse cx="48" cy="18" rx="11" ry="7" fill="#4a7230" opacity="0.45"/>
   <ellipse cx="22" cy="22" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
-  <line x1="10" y1="22" x2="12" y2="15" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <line x1="42" y1="38" x2="44" y2="32" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="56" y1="52" x2="58" y2="46" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <ellipse cx="26" cy="38" rx="4" ry="3" fill="#8a8070"/>
   <ellipse cx="24" cy="37" rx="2" ry="1.5" fill="#b0a898" opacity="0.6"/>
   <ellipse cx="44" cy="18" rx="3" ry="2.2" fill="#7a7468"/>
@@ -47,7 +73,6 @@ const GRASS_FLOWERS = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 6
   <ellipse cx="50" cy="20" rx="11" ry="7" fill="#4a7230" opacity="0.45"/>
   <ellipse cx="24" cy="24" rx="8" ry="5" fill="#70b050" opacity="0.5"/>
   <line x1="8" y1="20" x2="10" y2="13" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
-  <line x1="38" y1="8" x2="40" y2="2" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <line x1="56" y1="50" x2="58" y2="44" stroke="#82c255" stroke-width="1.3" stroke-linecap="round"/>
   <circle cx="20" cy="40" r="1.8" fill="#f8f0d0"/>
   <circle cx="23.5" cy="41.5" r="1.8" fill="#f8f0d0"/>
@@ -217,18 +242,24 @@ export async function loadTileTextures(): Promise<{
   decoOptions:  { tex: Texture; w: number }[]
 }> {
   const [
-    grassPlain, grassPebbles, grassFlowers,
+    grassPlainA, grassPlainB, grassPlainC, grassPlainD, grassPebbles, grassFlowers,
     treeOak, treePine, treeMixed,
     decoRocks, decoPond, decoThorns, decoCarriage,
   ] = await Promise.all([
-    loadSvg(GRASS_PLAIN), loadSvg(GRASS_PEBBLES), loadSvg(GRASS_FLOWERS),
+    loadSvg(GRASS_PLAIN_A), loadSvg(GRASS_PLAIN_B), loadSvg(GRASS_PLAIN_C), loadSvg(GRASS_PLAIN_D),
+    loadSvg(GRASS_PEBBLES), loadSvg(GRASS_FLOWERS),
     loadSvg(TREE_OAK), loadSvg(TREE_PINE), loadSvg(TREE_MIXED),
     loadSvg(DECO_ROCKS), loadSvg(DECO_POND), loadSvg(DECO_THORNS), loadSvg(DECO_CARRIAGE),
   ])
 
   return {
     floorOptions: [
-      { tex: grassPlain,   w: 100 },
+      // Four plain variants share the original plain weight (100) → same overall
+      // probability of "plain" grass, but visually varied.
+      { tex: grassPlainA,  w: 25  },
+      { tex: grassPlainB,  w: 25  },
+      { tex: grassPlainC,  w: 25  },
+      { tex: grassPlainD,  w: 25  },
       { tex: grassPebbles, w: 25  },
       { tex: grassFlowers, w: 15  },
     ],

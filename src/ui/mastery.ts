@@ -1,5 +1,5 @@
 import type { MasteryId, NodeType } from '../config/masteries'
-import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel } from '../config/masteries'
+import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, nodeCost, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
 import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP, getMasteryDumpLabel } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
@@ -217,15 +217,6 @@ function mountNodeDetailModal(
 }
 
 // ── Tree Row Builder ───────────────────────────────────────────────────────
-
-// Point cost of a single node by index.
-// small / strong = 1 pt  |  major = 2 pts  |  key = 3 pts
-function nodeCost(nodeIdx: number): number {
-  const t = nodeType(nodeIdx)
-  if (t === 'major') return 2
-  if (t === 'key')   return 3
-  return 1
-}
 
 // Half-width (and half-height) of a node by index — used to extend bars
 // center-to-center so the bar's ends sit hidden under the adjacent nodes.
@@ -638,11 +629,10 @@ export function mountMasteryModal(
   onDump: (id: MasteryId, count: number) => void,
   onReset: (id: MasteryId) => void,
   getPendingGains: () => Array<{ id: MasteryId; xpGain: number }>,
-  levelsPerRebirth: number,
   ascentCount: number,
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>,
   masteryDumpPoints: Partial<Record<MasteryId, number>>,
-  getRemainingFreePoints: () => number,
+  getRemainingFreePoints: (id: MasteryId) => number,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
@@ -666,7 +656,6 @@ export function mountMasteryModal(
     gainPct: number
     levelsGained: number
     displayLevel: number
-    capped: boolean
     pts: number
   }
 
@@ -680,23 +669,23 @@ export function mountMasteryModal(
         if (m.id !== 'enemy' && m.id !== 'action' && p.level === 1 && p.xp === 0 && xpGain === 0) continue
         // Mastery is visible — include free points in available count
         const freeUsedHere = freeMasteryPointsUsed[m.id] ?? 0
-        const pts = masteryPointsAvailable(p, freeUsedHere, masteryDumpPoints[m.id] ?? 0) + getRemainingFreePoints()
-        let oldPct: number, gainPct: number, levelsGained: number, capped: boolean
+        const pts = masteryPointsAvailable(p, freeUsedHere, masteryDumpPoints[m.id] ?? 0) + getRemainingFreePoints(m.id)
+        let oldPct: number, gainPct: number, levelsGained: number
         if (m.id === 'enemy' && xpGain > 0) {
           // xpGain is the new absolute level (sentinel for non-XP enemy mastery)
           levelsGained = Math.max(0, xpGain - p.level)
           oldPct = 0; gainPct = levelsGained > 0 ? 1 : 0
-          capped = false
         } else if (xpGain > 0) {
-          const pv = previewMasteryGain(p.xp, p.level, xpGain, p.level + levelsPerRebirth, m.id)
+          const pv = previewMasteryGain(p.xp, p.level, xpGain, m.id)
           oldPct = pv.oldPct; gainPct = pv.gainPct
           levelsGained = pv.levelsGained
-          capped = levelsGained >= levelsPerRebirth
         } else {
-          oldPct = Math.round((p.xp / masteryXpNeeded(p.level, m.id)) * 100)
-          gainPct = 0; levelsGained = 0; capped = false
+          // Stored progress is in natural units (< requirement); clamp anyway as a
+          // guard for legacy saves whose banked XP predates the natural-unit storage.
+          oldPct = Math.min(100, Math.round((p.xp / masteryXpNeeded(p.level, m.id)) * 100))
+          gainPct = 0; levelsGained = 0
         }
-        out.push({ catLabel: getMasteryCategoryLabel(cat.id), id: m.id, label: getMasteryLabel(m.id), state: { oldPct, gainPct, levelsGained, displayLevel: p.level, capped, pts } })
+        out.push({ catLabel: getMasteryCategoryLabel(cat.id), id: m.id, label: getMasteryLabel(m.id), state: { oldPct, gainPct, levelsGained, displayLevel: p.level, pts } })
       }
     }
     return out
@@ -711,15 +700,14 @@ export function mountMasteryModal(
     barWrap.innerHTML = renderMasteryBar(s.oldPct, s.gainPct)
     const levelEl = rowEl.querySelector<HTMLElement>('.mastery-level')!
     const levelClasses = ['mastery-level']
-    if (s.levelsGained > 0) levelClasses.push(s.capped ? 'mastery-level--capped' : 'mastery-level--gain')
+    if (s.levelsGained > 0) levelClasses.push('mastery-level--gain')
     levelEl.className = levelClasses.join(' ')
     levelEl.innerHTML = `Lv.${s.displayLevel}${s.pts > 0 ? ` · <span class="mastery-pts">${s.pts}pt</span>` : ''}`
     const badge = rowEl.querySelector<HTMLElement>('.mastery-gain-badge')!
     if (s.levelsGained > 0) {
-      badge.innerHTML = `+${s.levelsGained}<span class="notif-dot mastery-cap-dot" hidden></span>`
-      badge.className = `mastery-gain-badge${s.capped ? ' mastery-gain-badge--capped' : ''}`
+      badge.innerHTML = `+${s.levelsGained}`
+      badge.className = 'mastery-gain-badge'
       badge.hidden = false
-      badge.querySelector<HTMLElement>('.mastery-cap-dot')!.hidden = !s.capped
     } else { badge.hidden = true }
   }
 
@@ -732,7 +720,7 @@ export function mountMasteryModal(
       // The tree modal stays open across assigns/resets, so we must NOT clear
       // subCleanup in those callbacks — only when the tree modal itself closes.
       subCleanup = mountMasteryTreeModal(
-        parent, def, masteryProgress, freeMasteryPointsUsed, masteryDumpPoints, getRemainingFreePoints, ascentCount,
+        parent, def, masteryProgress, freeMasteryPointsUsed, masteryDumpPoints, () => getRemainingFreePoints(id), ascentCount,
         (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
         (count) => { onDump(id, count); buildRows() },
         () => { onReset(id); buildRows() },

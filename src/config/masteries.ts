@@ -45,6 +45,15 @@ export function nodeType(nodeIdx: number): NodeType {
   return LINE_TYPES[nodeIdx]
 }
 
+// Point cost of a single node by index.
+// small / strong = 1 pt  |  major = 2 pts  |  key = 3 pts
+export function nodeCost(nodeIdx: number): number {
+  const t = nodeType(nodeIdx)
+  if (t === 'major') return 2
+  if (t === 'key')   return 3
+  return 1
+}
+
 export function nodeDescription(treeDef: MasteryTreeDef, nodeIdx: number): string {
   return `${treeDef.label} ${nodeType(nodeIdx)}`
 }
@@ -181,37 +190,59 @@ export function masteryXpNeeded(level: number, masteryId?: MasteryId): number {
   return Math.round(balance.mastery.xpPerLevel * Math.pow(masteryXpGrowth(masteryId), level - 1))
 }
 
+// Raw run XP buys less the further you climb in a single rebirth. Each level
+// gained beyond the committed baseline taxes incoming XP by an extra (1+penalty)
+// factor: the first level above base is untaxed, the next needs ×(1+penalty) raw
+// XP, the next ×(1+penalty)², … Equivalent difficulty to scaling the requirement,
+// but the *stored* progress stays in natural units — so leftover never overflows
+// a bar and nothing is discarded.
+export function unearnedXpTax(unearnedLevels: number): number {
+  return Math.pow(1 + balance.mastery.unearnedLevelXpPenalty, Math.max(0, unearnedLevels))
+}
+
 export interface MasteryGainPreview {
   fromLv: number
   toLv: number
-  newXp: number          // XP that would remain after the simulated rebirth
+  newXp: number          // XP that would remain after the simulated rebirth (natural units)
   levelsGained: number
-  cappedAtMaxLevels: boolean
   oldPct: number         // % of current bar before gain (0 when level-up occurred)
   gainPct: number        // % of current bar from gain (0 when no gain)
 }
 
-// Simulates applying xpGain on top of (currentXp, currentLevel) with an absolute
-// max-level cap. Once a mastery reaches maxLevel it stops accumulating XP — its
-// stored XP is reset to 0 and any incoming XP beyond the cap is discarded.
+// Simulates applying xpGain on top of (currentXp, currentLevel). There is no hard
+// level cap; instead the run XP poured in is taxed more per level gained this
+// rebirth (beyond `currentLevel`, the committed baseline), which throttles how far
+// a single rebirth can climb. Stored progress (newXp) is kept in natural units so
+// it never exceeds the next level's natural requirement; leftover always carries.
 export function previewMasteryGain(
   currentXp: number,
   currentLevel: number,
   xpGain: number,
-  maxLevel: number,
   masteryId?: MasteryId,
 ): MasteryGainPreview {
   const fromLv = currentLevel
-  let xp = currentXp + xpGain
   let level = currentLevel
-  while (xp >= masteryXpNeeded(level, masteryId) && level < maxLevel) {
-    xp -= masteryXpNeeded(level, masteryId)
-    level++
-  }
-  let cappedAtMaxLevels = false
-  if (level >= maxLevel) {
-    xp = 0
-    cappedAtMaxLevels = true
+  let xp = currentXp     // banked progress toward `level`, in natural units
+  let pool = xpGain      // raw run XP still to distribute
+  for (;;) {
+    const need = masteryXpNeeded(level, masteryId)
+    if (xp >= need) {
+      // Legacy carryover already completes this level — flush it at natural cost.
+      xp -= need
+      level++
+      continue
+    }
+    const tax = unearnedXpTax(level - fromLv)
+    const rawNeed = (need - xp) * tax    // raw run XP required to finish this level
+    if (pool >= rawNeed) {
+      pool -= rawNeed
+      level++
+      xp = 0
+    } else {
+      xp += pool / tax                   // convert remaining raw XP back to natural units
+      pool = 0
+      break
+    }
   }
   const levelsGained = level - fromLv
   const neededNow = masteryXpNeeded(level, masteryId)
@@ -219,18 +250,16 @@ export function previewMasteryGain(
   // still show at min-width for any non-zero value (rendered as a min-bar in CSS).
   const pctRound = (n: number): number => n <= 0 ? 0 : Math.max(1, Math.round(n))
   let oldPct: number, gainPct: number
-  if (cappedAtMaxLevels && levelsGained === 0) {
-    // Already at absolute max — incoming XP is discarded, show no bar movement.
-    oldPct = 0
-    gainPct = 0
-  } else if (levelsGained > 0) {
+  if (levelsGained > 0) {
     oldPct = 0
     // Always show at least a min-bar when a level was gained, even if remaining
-    // XP is 0 (exact boundary hit or absolute-max-level reached this rebirth).
+    // XP is 0 (exact boundary hit).
     gainPct = Math.max(1, pctRound((xp / neededNow) * 100))
   } else {
+    // No level gained → still at the untaxed first tier, so the bar moves by the
+    // raw gain (xp - currentXp === xpGain here).
     oldPct = pctRound((currentXp / neededNow) * 100)
-    gainPct = Math.min(pctRound((xpGain / neededNow) * 100), 100 - oldPct)
+    gainPct = Math.min(pctRound(((xp - currentXp) / neededNow) * 100), 100 - oldPct)
   }
-  return { fromLv, toLv: level, newXp: xp, levelsGained, cappedAtMaxLevels, oldPct, gainPct }
+  return { fromLv, toLv: level, newXp: xp, levelsGained, oldPct, gainPct }
 }

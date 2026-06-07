@@ -56,11 +56,13 @@ export const balance = {
     strongLifeMin:   1.0,  strongLifeMax:   1.8,
     strongDamageMin: 1.0,  strongDamageMax: 1.8,
     strongSpeedMult: 1.2,
+    strongSizeMult:  1.07,            // strong enemies are 7% larger than normal
     strongXpMultiplier: 2,            // XP multiplier for action/life/mana XP from strong enemies
     eliteChance:        0,             // probability that a strong enemy is upgraded to "elite" (mastery-only)
     eliteLifeMin:    1.5,  eliteLifeMax:   2.5,
     eliteDamageMin:  1.5,  eliteDamageMax: 2.5,
     eliteSpeedMult:  1.2,             // applied to BOTH attack speed AND move speed
+    eliteSizeMult:   1.15,            // elite enemies are 15% larger than normal
     eliteXpMultiplier:  3,
     championChance:     0,             // probability that an elite is upgraded to "champion" (mastery-only, requires 2 ascensions)
     championLifeMin:    3,   championLifeMax:    5,
@@ -68,7 +70,7 @@ export const balance = {
     championResistMin: 40,   championResistMax:  70,
     championActionSpeedMult: 2,
     championXpMultiplier: 5,
-    championSizeMult:   1.5,
+    championSizeMult:   1.25,         // champion enemies are 25% larger than normal
     bossChance:         0,             // probability that a champion is upgraded to "boss" (mastery-only)
     bossLifeMin:       24,   bossLifeMax:       30,
     bossDamageMin:     12,   bossDamageMax:     15,
@@ -163,7 +165,12 @@ export const balance = {
     movementMasteryXpAddPerLevel: 0.20, // additive +20% of base XP per level for movement mastery (linear, not exponential)
     actionXpMultiplier:          0.2,  // fraction of run action XP that feeds tag masteries
     movementXpMult:              3,    // flat multiplier on movement mastery XP at rebirth
-    levelsPerRebirth:            5,    // max mastery levels gained per rebirth
+    // Soft cap: run XP buys less the further you climb in one rebirth. Each level
+    // gained beyond the committed (last-rebirth) level taxes incoming XP by an
+    // extra (1 + penalty) factor — the Nth unearned level needs (1+penalty)^N raw
+    // XP per natural point. Rebirth commits the current level, resetting the tax.
+    // penalty=1.0 → tax doubles per level: ÷2 for 1st, ÷4 for 2nd, ÷8 for 3rd…
+    unearnedLevelXpPenalty:      1.0,
   },
 
   // ── Enemy leveling ────────────────────────────────────────────────────────
@@ -174,6 +181,7 @@ export const balance = {
     damageMultiplier:    1.1266, // multiplicative per-level bonus on enemy damage (~2× at lv30 vs 1.1)
     lifeAddPerLevel:     0.30, // additive life bonus per level above 1, stacks on top of lifeMultiplier
     speedAddPerLevel:    0.01, // additive move-speed bonus per level above 1 (40% faster at lv41)
+    rangeAreaAddPerLevel: 0.005, // additive +0.5% range and area size per enemy level above 1
     xpMultiplierPerLevel: 1.1, // per-enemy-level XP multiplier: 1.1^(level-1) applied to action/life/mana XP
   },
 
