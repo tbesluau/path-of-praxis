@@ -1,4 +1,4 @@
-import { Application, Assets, Container, Graphics, Rectangle, Sprite, Text, Texture } from 'pixi.js'
+import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, Skull, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
@@ -26,6 +26,8 @@ import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type Ru
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
+import { preloadEntityArt, weaponForAction, type Tier } from '../assets/entity-art'
+import { createEntityRig, type EntityRig } from './entity-rig'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -1679,6 +1681,7 @@ export function createGameScene(
         playerActionId = id
         assignAction(playerEntity, id)
         applyAutoRunes(id)
+        entityRigs.get('player')?.setWeapon(weaponForAction(getAction(id)))
         updateActionBar()
         persistState()
       },
@@ -2032,7 +2035,7 @@ export function createGameScene(
   let floorOptions: { tex: Texture; w: number }[] = []
   let treeOptions:  { tex: Texture; w: number }[] = []
   let decoOptions:  { tex: Texture; w: number }[] = []
-  const entityTextures = new Map<string, Texture>()
+  const entityRigs = new Map<string, EntityRig>()
   const floorSprites: Sprite[] = []
   const wallSprites: Sprite[] = []
   let destroyed = false
@@ -2225,33 +2228,32 @@ export function createGameScene(
     }
   }
 
-  function enemySpriteKey(action: ActionDef): 'fireball' | 'zap' | 'bow' | 'sword' {
-    const elemental = action.tags.some(tag => tag === 'fire' || tag === 'cold' || tag === 'lightning')
-    const ranged = action.range > 4
-    if (elemental) return ranged ? 'fireball' : 'zap'
-    return ranged ? 'bow' : 'sword'
+  function entityTier(id: string): Tier {
+    if (bossEntities.has(id))     return 'boss'
+    if (championEntities.has(id)) return 'champion'
+    if (eliteEntities.has(id))    return 'elite'
+    if (strongEntities.has(id))   return 'strong'
+    return 'normal'
   }
 
   function initEntityDisplay(entity: Entity): void {
     if (!app || entityContainers.has(entity.id)) return
     const c = new Container()
-    let texKey: string
-    if (entity.role === 'player') {
-      texKey = 'player'
-    } else {
-      const actionId = entityActions.get(entity.id) ?? 'sword' as ActionId
-      texKey = enemySpriteKey(getAction(actionId as ActionId))
-    }
-    const tex = entityTextures.get(texKey)
-    if (tex) {
-      const s = new Sprite(tex)
-      s.anchor.set(0.5)
-      s.roundPixels = true
-      const size = entity.radius * 2
-      s.width = size
-      s.height = size
-      c.addChild(s)
-    }
+
+    const tier: Tier = entity.role === 'player' ? 'player' : entityTier(entity.id)
+    const actionId = entity.role === 'player'
+      ? playerActionId
+      : (entityActions.get(entity.id) ?? 'sword') as ActionId
+    const rig = createEntityRig({
+      role:   entity.role,
+      tier,
+      weapon: weaponForAction(getAction(actionId)),
+      radius: entity.radius,
+      seed:   entity.id,
+    })
+    c.addChild(rig.container)
+    entityRigs.set(entity.id, rig)
+
     if (entity.role !== 'player') {
       const bar = new Graphics()
       bar.position.set(0, -(entity.radius + HP_BAR_GAP + HP_BAR_H))
@@ -2447,6 +2449,7 @@ export function createGameScene(
       c.destroy()
       entityContainers.delete(entity.id)
     }
+    entityRigs.delete(entity.id)
     lifeBarGraphics.delete(entity.id)
     actionCooldowns.delete(entity.id)
     pendingMultiActions.delete(entity.id)
@@ -3343,6 +3346,11 @@ export function createGameScene(
   // Each action has a natural duration; if it's less than preHitDuration the animation
   // starts late (startFraction > 0) so it completes right at impact.
   function spawnPreHitVfx(attacker: Entity, target: Entity, action: ActionDef, preHitDuration: number): void {
+    const rig = entityRigs.get(attacker.id)
+    if (rig) {
+      rig.setFacing(target.x >= attacker.x ? 1 : -1)
+      rig.playAttack(preHitDuration)
+    }
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const baseAng = Math.atan2(ty - ay, tx - ax)
@@ -3413,6 +3421,11 @@ export function createGameScene(
 
   // Pre-hit VFX for area actions: an expanding ring at the area centre.
   function spawnAreaPreHitVfx(attacker: Entity, center: Entity, areaRadiusPx: number, action: ActionDef, preHitDuration: number): void {
+    const rig = entityRigs.get(attacker.id)
+    if (rig) {
+      if (center !== attacker as unknown) rig.setFacing(center.x >= attacker.x ? 1 : -1)
+      rig.playAttack(preHitDuration)
+    }
     const cx = center.x, cy = center.y
     if (action.id === 'fire-nova') {
       addVfx(preHitDuration, (g, p) => {
@@ -3913,31 +3926,14 @@ export function createGameScene(
       wrapper.appendChild(app.canvas)
       viewportEl.appendChild(wrapper)
 
-      // Terrain tiles use generated medieval-forest SVGs; entity sprites still
-      // come from the Tiny Dungeon sheet (12 cols × 11 rows of 16×16 px tiles).
-      const [tiles, sheet] = await Promise.all([
+      const [tiles] = await Promise.all([
         loadTileTextures(),
-        Assets.load<Texture>(
-          `${import.meta.env.BASE_URL}ui/kenney_tiny-dungeon/Tilemap/tilemap_packed.png`,
-        ),
+        preloadEntityArt(),
       ])
       const { floorOptions: fo, treeOptions: to, decoOptions: dco } = tiles
       floorOptions = fo
       treeOptions  = to
       decoOptions  = dco
-      sheet.source.scaleMode = 'nearest'
-      const TILE = 16
-      // N = tile number (0-indexed), col = N%12, row = floor(N/12).
-      // See src/assets/tile-notes.md for full rationale.
-      const t = (N: number) => new Texture({
-        source: sheet.source,
-        frame: new Rectangle((N % 12) * TILE, Math.floor(N / 12) * TILE, TILE, TILE),
-      })
-      entityTextures.set('player',   t(108))
-      entityTextures.set('sword',    t(97))
-      entityTextures.set('bow',      t(112))
-      entityTextures.set('fireball', t(84))
-      entityTextures.set('zap',      t(100))
 
       if (destroyed) return
 
@@ -4304,7 +4300,7 @@ export function createGameScene(
           physicsRemaining -= step
         }
 
-        // ── Sync positions ──────────────────────────────────────────────────
+        // ── Sync positions + animate rigs ───────────────────────────────────
         for (const entity of entities) {
           const body = entityBodies.get(entity.id)
           if (body) {
@@ -4312,6 +4308,17 @@ export function createGameScene(
             entity.y = body.position.y
           }
           entityContainers.get(entity.id)?.position.set(entity.x, entity.y)
+          const rig = entityRigs.get(entity.id)
+          if (rig) {
+            const body2 = entityBodies.get(entity.id)
+            const vx = body2 ? body2.velocity.x : 0
+            const vy = body2 ? body2.velocity.y : 0
+            rig.update(ticker.deltaMS, {
+              vx,
+              speed:    Math.hypot(vx, vy),
+              maxSpeed: entity.moveSpeed,
+            })
+          }
         }
 
         // Track player movement for movement mastery
@@ -5487,6 +5494,7 @@ export function createGameScene(
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()
+    entityRigs.clear()
     for (const f of deathFragments) f.g.destroy()
     deathFragments.length = 0
     for (const v of vfxList) v.g.destroy()
