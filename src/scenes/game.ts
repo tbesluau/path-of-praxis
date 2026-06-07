@@ -1718,6 +1718,21 @@ export function createGameScene(
   let dashStartY = 0
   let dashMaxDist = 0         // theoretical full-dash distance (px) for this dash
   const DASH_SOUND_MIN_FRACTION = 0.2  // only play the land sound past this share of max distance
+
+  // Play the dash land sound if the player covered at least DASH_SOUND_MIN_FRACTION
+  // of the full dash. Called whenever a dash ends — both on natural completion and
+  // when an action cast cancels it mid-flight — so a quick attack on arrival still
+  // sounds. dashMaxDist is zeroed afterwards to guarantee a single play per dash.
+  function endDashSound(curX: number, curY: number): void {
+    if (dashMaxDist <= 0) return
+    const ddx = curX - dashStartX
+    const ddy = curY - dashStartY
+    if (Math.hypot(ddx, ddy) >= DASH_SOUND_MIN_FRACTION * dashMaxDist) {
+      playSound('player.dash')
+    }
+    dashMaxDist = 0
+  }
+
   let playerIsKiting = false
   let playerMovedSinceLastAction = false  // key 12: first-action-after-moving
   let playerStationaryActionCount = 0    // key 13: consecutive actions without moving (0-10)
@@ -4145,16 +4160,10 @@ export function createGameScene(
                 x: dashMoveX * dashSpeed * MATTER_BASE_DT,
                 y: dashMoveY * dashSpeed * MATTER_BASE_DT,
               })
-              // On landing, play the dash sound only if the player actually
-              // covered at least DASH_SOUND_MIN_FRACTION of the full dash (a dash
-              // blocked immediately by a wall/enemy stays silent).
-              if (dashRemainingMs === 0 && dashMaxDist > 0) {
-                const ddx = entity.x - dashStartX
-                const ddy = entity.y - dashStartY
-                if (Math.hypot(ddx, ddy) >= DASH_SOUND_MIN_FRACTION * dashMaxDist) {
-                  playSound('player.dash')
-                }
-              }
+              // On natural landing, play the dash sound if the player covered at
+              // least DASH_SOUND_MIN_FRACTION of the full dash (a dash blocked
+              // immediately by a wall/enemy stays silent).
+              if (dashRemainingMs === 0) endDashSound(entity.x, entity.y)
               playerMovedSinceLastAction = true
               continue
             }
@@ -4949,9 +4958,12 @@ export function createGameScene(
             spawnPreHitVfx(entity, target, action, preHitDuration)
           }
 
-          // Lock player movement during the animation phase and cancel any active dash
+          // Lock player movement during the animation phase and cancel any active dash.
+          // Casting an action on arrival cuts the dash short, so sound it here too
+          // (based on distance covered) instead of waiting for the full duration.
           if (entity.role === 'player') {
             playerAnimLockMs = preHitDuration
+            if (dashRemainingMs > 0) endDashSound(entity.x, entity.y)
             dashRemainingMs = 0
           }
 
