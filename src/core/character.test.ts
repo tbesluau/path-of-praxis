@@ -170,6 +170,13 @@ describe('character', () => {
       // earned 4 + free 2 = 6 earned, spent 1, dumped 3 → 2 available
       expect(character.masteryPointsAvailable(p, 2, 3)).toBe(2)
     })
+
+    it('weights node cost: major = 2, key = 3, small/strong = 1', () => {
+      // node 0 small (1) + node 5 major (2) + node 12 key (3) = 6 spent
+      const p = { xp: 0, level: 11, nodes: [[0, 5, 12], [], [], [], []] }
+      // earned 10, spent 6 → 4 available
+      expect(character.masteryPointsAvailable(p)).toBe(4)
+    })
   })
 
   describe('computeAward', () => {
