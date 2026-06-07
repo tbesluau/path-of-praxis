@@ -32,6 +32,7 @@ import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
 import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey } from '../assets/entity-art'
 import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
+import { createBackgroundTicker, type BackgroundTicker } from '../core/background-ticker'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -39,6 +40,14 @@ const HUD_HEIGHT = 0
 const SAVE_INTERVAL_MS = 10_000
 const MATTER_BASE_DT = 1 / 60
 const PHYSICS_MAX_STEP_MS = 1000 / 60
+// Background simulation: how often the worker tries to pump the ticker while the
+// tab is hidden (browsers clamp hidden timers to ~1 Hz regardless), and the most
+// wall-clock time a single pump will catch up. The cap stays under AWAY_DETECT_MS
+// so that anything longer (a deep OS suspend that freezes even the worker) falls
+// through to the existing away/stockpile path instead of being fast-simulated.
+const BG_TICK_INTERVAL_MS = 250
+const BG_STEP_MS = 100
+const BG_MAX_CATCHUP_MS = 1900
 
 interface DeathFragment {
   g: Graphics
@@ -1821,11 +1830,19 @@ export function createGameScene(
   let regenTimer: ReturnType<typeof setInterval> | null = null
 
   const REGEN_INTERVAL_MS = 100
-  const REGEN_TICK = REGEN_INTERVAL_MS / 1000  // fraction of per-second rate per tick
+  let lastRegenAt = performance.now()
 
   function startRegen(): void {
     if (regenTimer !== null) return
+    lastRegenAt = performance.now()
     regenTimer = setInterval(() => {
+      // Credit by measured wall-clock instead of a fixed step: while the tab is
+      // hidden this interval is throttled to ~1 Hz, so a fixed 0.1 s step would
+      // starve regen relative to the worker-driven combat loop. Cap the step so a
+      // deep suspend (handled by the away/stockpile path) can't dump free regen.
+      const now = performance.now()
+      const elapsedS = Math.min(now - lastRegenAt, BG_MAX_CATCHUP_MS) / 1000
+      lastRegenAt = now
       if (playerDead) return
       const lb = getLifeBonuses()
       const frenzyBonus = hasEffect('feedingFrenzy') ? balance.buffs.feedingFrenzyRegenBonus : 0
@@ -1833,10 +1850,10 @@ export function createGameScene(
         const lifeRegenBase = playerEntity.maxLife * (balance.player.regenRate + lb.regenFractionBonus)
         let lifeRegenMult = 1 + (lb.regenIncrease + frenzyBonus) / 100
         if (lb.regenDouble) lifeRegenMult *= 2
-        playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * REGEN_TICK)
+        playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + lifeRegenBase * lifeRegenMult * gameSpeed * elapsedS)
       }
       const manaRegenMult = 1 + (getManaBonuses().regenIncrease + frenzyBonus) / 100
-      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + playerEntity.maxMana * balance.player.regenRate * manaRegenMult * gameSpeed * REGEN_TICK)
+      playerEntity.currentMana = Math.min(playerEntity.maxMana, playerEntity.currentMana + playerEntity.maxMana * balance.player.regenRate * manaRegenMult * gameSpeed * elapsedS)
       updateBars()
     }, REGEN_INTERVAL_MS)
   }
@@ -2473,6 +2490,12 @@ export function createGameScene(
   const wallSprites: Sprite[] = []
   let destroyed = false
   let modalCleanup: (() => void) | null = null
+
+  // Keep the simulation advancing while the tab is hidden. requestAnimationFrame
+  // (which drives Pixi's ticker) stops entirely in a backgrounded tab, so we pump
+  // the ticker manually from a Web Worker timer instead. See onVisibilityChange.
+  let bgTicker: BackgroundTicker | null = null
+  let onVisibilityChange: (() => void) | null = null
 
   const entityContainers = new Map<string, Container>()
   const lifeBarGraphics = new Map<string, Graphics>()
@@ -4415,6 +4438,52 @@ export function createGameScene(
 
       app = instance
 
+      // ── Background simulation ───────────────────────────────────────────────
+      // While the tab is visible, Pixi's ticker runs on requestAnimationFrame.
+      // When hidden, rAF stops firing, so we stop the ticker and pump it manually
+      // from a worker-driven timer, advancing it to wall-clock in <=BG_STEP_MS
+      // chunks (each pass still sees a bounded deltaMS — the ticker clamps to
+      // minFPS). This keeps combat/spawns/effects progressing in an idle tab.
+      const pumpBackground = (): void => {
+        if (destroyed || paused || !app) return
+        const ticker = app.ticker
+        const now = performance.now()
+        const elapsed = now - ticker.lastTime
+        if (elapsed <= 0) return
+        if (elapsed > BG_MAX_CATCHUP_MS) {
+          // The worker was frozen too long (deep suspend). Don't fast-simulate the
+          // whole gap; just resync the clock and let the next live tick credit it
+          // via the away/stockpile path (which keys off the unchanged lastTickAt).
+          ticker.lastTime = now
+          return
+        }
+        let target = ticker.lastTime
+        while (now - target > 0) {
+          target = Math.min(now, target + BG_STEP_MS)
+          ticker.update(target)
+        }
+      }
+      bgTicker = createBackgroundTicker(pumpBackground, BG_TICK_INTERVAL_MS)
+
+      onVisibilityChange = (): void => {
+        if (destroyed || !app) return
+        if (document.hidden) {
+          if (paused) return
+          app.ticker.stop()      // cancel the pending rAF; we drive it ourselves now
+          app.ticker.lastTime = performance.now()
+          bgTicker?.start()
+        } else {
+          bgTicker?.stop()
+          // Resync so the first live frame doesn't replay the hidden interval as
+          // one giant delta; the away/stockpile path handles any real absence.
+          app.ticker.lastTime = performance.now()
+          if (!paused) app.ticker.start()
+        }
+      }
+      document.addEventListener('visibilitychange', onVisibilityChange)
+      // The tab may already be hidden when the scene mounts.
+      if (document.hidden) onVisibilityChange()
+
       const wrapper = document.createElement('div')
       wrapper.className = 'game-canvas-wrapper'
       wrapper.appendChild(app.canvas)
@@ -5995,6 +6064,8 @@ export function createGameScene(
     clearInterval(dpsMeterInterval)
     clearInterval(masteryDotInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
+    if (onVisibilityChange) { document.removeEventListener('visibilitychange', onVisibilityChange); onVisibilityChange = null }
+    if (bgTicker) { bgTicker.dispose(); bgTicker = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()
     entityRigs.clear()
