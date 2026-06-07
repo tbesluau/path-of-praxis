@@ -1983,11 +1983,20 @@ export function createGameScene(
     return `${m}:${r.toString().padStart(2, '0')}`
   }
 
+  let lastPauseIcon = ''
   function updateSpeedUI(): void {
     const icon = paused ? 'play' : 'pause'
-    speedPauseBtn.setAttribute('aria-label', paused ? t('game', 'playLabel') : t('game', 'pauseLabel'))
-    speedPauseBtn.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`
-    createIcons({ icons: { Play, Pause } })
+    // Only rebuild the button's icon DOM when the state actually flips. This
+    // refresh runs once a second (stockpile countdown); recreating the <svg> on
+    // every tick would destroy the node a click started on if the tick landed
+    // between mousedown and mouseup, swallowing the click ("pause needs several
+    // taps to register").
+    if (icon !== lastPauseIcon) {
+      lastPauseIcon = icon
+      speedPauseBtn.setAttribute('aria-label', paused ? t('game', 'playLabel') : t('game', 'pauseLabel'))
+      speedPauseBtn.innerHTML = `<i data-lucide="${icon}" aria-hidden="true"></i>`
+      createIcons({ icons: { Play, Pause } })
+    }
     const x2Locked = fastForwardMs <= 0
     speedOptBtns.forEach(btn => {
       const speed = Number(btn.dataset.speed)
