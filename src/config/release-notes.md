@@ -1,3 +1,14 @@
+### 0.1.51 — Heavy Community feedback
+
+A large round of improvements driven by player feedback since the beta.
+
+- **New Graphics** — main character and enemy redesigned with movement and action animations.
+- **Character and Stats screen** — die and rebirth replaced by a character button with cosmetic options, stats and maths, and still the option to manually die
+- **Removed mastery hardcap** - it's now a softcap of increasing xp penalty to encourage rebirth
+- **Idle progression** - game now continues to progress even when idled/out of focus
+- **Never done** - many small bugfixes and UX improvements
+
+
 ### 0.1.26 — Community feedback
 
 A round of improvements driven by player feedback since the beta.
