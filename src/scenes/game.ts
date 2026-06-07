@@ -4988,6 +4988,10 @@ export function createGameScene(
           if (attacker.role === 'player' && target.role === 'enemy' && (actualDamage > 0 || wouldHaveLanded)) {
             playSound(essenceSfxId(action.tags))
           }
+          // Enemies emit the same essence sound when their action lands on the player.
+          if (attacker.role === 'enemy' && target.role === 'player' && (actualDamage > 0 || wouldHaveLanded)) {
+            playSound(essenceSfxId(action.tags))
+          }
           // Track the last direct hit type on boss entities for trigger unlock detection.
           if (attacker.role === 'player' && target.role === 'enemy' && bossEntities.has(target.id) && actualDamage > 0) {
             bossLastHitWasCrit.set(target.id, isCrit)
