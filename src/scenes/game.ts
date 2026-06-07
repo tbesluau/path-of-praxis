@@ -2832,7 +2832,7 @@ export function createGameScene(
             if (groupSize > 2) {
               // Tree tile — draw 1–3 sprites per the layout
               const layout = pickTreeLayout(tx, ty, gs)
-              for (const item of layout) {
+              layout.forEach((item, idx) => {
                 const wSprite = wallSprites[wallIdx] ?? (() => {
                   const s = new Sprite()
                   s.roundPixels = true
@@ -2840,14 +2840,22 @@ export function createGameScene(
                   wallSprites.push(s)
                   return s
                 })()
+                // ±10% jitter (deterministic per tile + sprite) so trees never
+                // sit on a perfect grid.
+                const jx = (tileHash(tx * 4 + idx + 1, ty * 4 + 7)       - 0.5) * 0.2 * gs
+                const jy = (tileHash(tx * 4 + 11,      ty * 4 + idx + 3) - 0.5) * 0.2 * gs
+                // 20% taller, anchored at the trunk base so the extra canopy
+                // grows up into the tile above.
+                const h = item.h * 1.2
                 wSprite.texture = pickWeighted(tx + item.sdx, ty + item.sdy, treeOptions)
-                wSprite.x = Math.round(tx * gs + item.ox)
-                wSprite.y = Math.round(ty * gs + item.oy)
+                wSprite.x = Math.round(tx * gs + item.ox + jx)
+                wSprite.y = Math.round(ty * gs + item.oy - item.h * 0.2 + jy)
                 wSprite.width  = Math.round(item.w)
-                wSprite.height = Math.round(item.h)
+                wSprite.height = Math.round(h)
+                wSprite.zIndex = wallIdx
                 wSprite.visible = true
                 wallIdx++
-              }
+              })
             } else {
               // Deco tile — single sprite
               const wSprite = wallSprites[wallIdx] ?? (() => {
@@ -2862,6 +2870,7 @@ export function createGameScene(
               wSprite.y = Math.round(ty * gs)
               wSprite.width  = gs + 1
               wSprite.height = gs + 1
+              wSprite.zIndex = wallIdx
               wSprite.visible = true
               wallIdx++
             }
@@ -4431,6 +4440,9 @@ export function createGameScene(
 
       floorContainer = new Container()
       wallContainer  = new Container()
+      // Trees overflow upward into the tile above; sort by zIndex (assigned in
+      // top-to-bottom draw order) so lower sprites paint over higher ones.
+      wallContainer.sortableChildren = true
       burnGroundContainer = new Container()
       app.stage.addChild(floorContainer)
       app.stage.addChild(wallContainer)
@@ -6404,22 +6416,22 @@ function pickTreeLayout(tx: number, ty: number, gs: number): TreeSprite[] {
   s = (Math.imul(s ^ (s >>> 15), s | 1) ^ (s + Math.imul(s ^ (s >>> 7), s | 61))) >>> 0
   const r = s / 0x100000000
 
-  if (r < 0.30) {
+  if (r < 0.20) {
     // Single normal tree
     return [{ ox: 0, oy: 0, w: gs, h: gs, sdx: 0, sdy: 0 }]
-  } else if (r < 0.55) {
+  } else if (r < 0.35) {
     // Single large tree (overflows top)
     return [{ ox: -0.15 * gs, oy: -0.30 * gs, w: 1.30 * gs, h: 1.30 * gs, sdx: 0, sdy: 0 }]
-  } else if (r < 0.65) {
+  } else if (r < 0.45) {
     // Single extra-large tree
     return [{ ox: -0.25 * gs, oy: -0.50 * gs, w: 1.50 * gs, h: 1.50 * gs, sdx: 0, sdy: 0 }]
-  } else if (r < 0.85) {
+  } else if (r < 0.72) {
     // Two trees: back-left (slightly larger) + front-right (slightly smaller)
     return [
       { ox: -0.10 * gs, oy: -0.20 * gs, w: 1.15 * gs, h: 1.15 * gs, sdx: 0, sdy: 0 },
       { ox:  0.30 * gs, oy:  0.10 * gs, w: 0.75 * gs, h: 0.75 * gs, sdx: 1, sdy: 0 },
     ]
-  } else if (r < 0.95) {
+  } else if (r < 0.90) {
     // Large + small side-by-side
     return [
       { ox: -0.20 * gs, oy: -0.35 * gs, w: 1.20 * gs, h: 1.20 * gs, sdx: 0, sdy: 0 },
