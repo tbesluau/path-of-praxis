@@ -104,7 +104,7 @@ function renderActionBlock(block: ActionStatBlock): HTMLElement {
 
   section.appendChild(renderStatLine(block.damage))
   if (block.isDependentTrigger) {
-    section.appendChild(el('div', 'stat-note', `Cast speed: ${block.speed.total} actions/sec per trigger event`))
+    section.appendChild(el('div', 'stat-note', `Action speed: ${block.speed.total} actions/sec per trigger event`))
   } else {
     section.appendChild(renderStatLine(block.speed))
   }

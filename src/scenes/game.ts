@@ -2176,7 +2176,7 @@ export function createGameScene(
       if (slot > 0) {
         dmgFactors.push({ text: mul(slotPenalty), origin: `slot ${slot + 1} penalty`, kind: 'less' })
         if (triggerType === 'crit') {
-          dmgFactors.push({ text: mul(1 + balance.ascent.critTriggerDamageMult), origin: 'crit trigger bonus', kind: 'more' })
+          dmgFactors.push({ text: mul(balance.ascent.critTriggerDamageMult), origin: 'crit trigger penalty', kind: 'less' })
         }
       }
 
@@ -2272,8 +2272,9 @@ export function createGameScene(
       entityActions.delete('__stats_preview__')
 
       // Extra slot total: assignAction doesn't apply slot penalties, so adjust.
-      const critTriggerBonus = triggerType === 'crit' ? (1 + balance.ascent.critTriggerDamageMult) : 1
-      const adjustedDamage = tmp.actionDamage * slotPenalty * critTriggerBonus
+      // Crit-trigger slots take a flat ×0.1 damage penalty (balance.ascent.critTriggerDamageMult).
+      const critTriggerMult = triggerType === 'crit' ? balance.ascent.critTriggerDamageMult : 1
+      const adjustedDamage = tmp.actionDamage * slotPenalty * critTriggerMult
 
       const damage: StatLine = { label: 'Total damage', total: fmt(adjustedDamage, 2), factors: dmgFactors }
       const speed:  StatLine = { label: 'Total speed (actions/sec)', total: fmt(tmp.actionSpeed, 2), factors: spdFactors }
@@ -2316,7 +2317,7 @@ export function createGameScene(
       let afflictionDamage: StatLine | undefined
       const baseAffl = balance.effects.baseApplyChance
       const strikeAffl = sbData ? sbData.b.afflictionChanceIncrease : 0
-      const slotHitDmg = tmp.actionDamage * slotPenalty  // slot-adjusted hit damage for affliction base
+      const slotHitDmg = adjustedDamage  // slot-adjusted hit damage (penalty + crit trigger) for affliction base
 
       if (fbData) {
         const { b: fb, nodes: fireNodes, dumped: fireDumped } = fbData
