@@ -8,8 +8,9 @@ import { playSound } from '../audio'
 
 export interface StatFactor {
   text:   string                          // pre-formatted, e.g. "×1.25" or "100"
-  origin: string                          // e.g. "levels", "fire mastery", "rune: Damage"
+  origin: string                          // e.g. "levels", "fire mastery 1.6, 1.6b"
   kind:   'base' | 'mul' | 'more' | 'less'
+  group?: string                          // mastery category; triggers a visual separator on group change
 }
 
 export interface StatLine {
@@ -27,16 +28,17 @@ export interface OddsLine {
 }
 
 export interface ActionStatBlock {
-  name:             string
-  damage:           StatLine
-  speed:            StatLine
-  multiStrike:      OddsLine[]
+  name:              string
+  damage:            StatLine
+  speed:             StatLine
+  isDependentTrigger?: boolean           // crit/affliction slots: speed shown as damage-context note
+  multiStrike:       OddsLine[]
   afflictionChance?: OddsLine
   afflictionDamage?: StatLine
-  critChance:       OddsLine
-  critDamage:       StatLine
-  triggerBuffs:     { name: string; odds: string; effect: string }[]
-  slotNote?:        string
+  critChance:        OddsLine
+  critDamage:        StatLine
+  triggerBuffs:      { name: string; odds: string; effect: string }[]
+  slotNote?:         string
 }
 
 export interface PlayerStatsSnapshot {
@@ -66,7 +68,14 @@ function renderStatLine(line: StatLine): HTMLElement {
   formula.appendChild(el('span', 'stat-total', line.total))
   formula.appendChild(el('span', 'stat-eq', '='))
   line.factors.forEach((f, i) => {
-    if (i > 0) formula.appendChild(document.createTextNode(' '))
+    if (i > 0) {
+      const prevGroup = line.factors[i - 1].group
+      if (f.group && prevGroup && f.group !== prevGroup) {
+        formula.appendChild(el('span', 'stat-group-sep'))
+      } else {
+        formula.appendChild(document.createTextNode(' '))
+      }
+    }
     const term = el('span', 'stat-term')
     term.appendChild(el('span', 'stat-term-val', f.text))
     term.appendChild(el('span', `stat-origin stat-origin--${f.kind}`, f.origin))
@@ -94,7 +103,11 @@ function renderActionBlock(block: ActionStatBlock): HTMLElement {
   section.appendChild(header)
 
   section.appendChild(renderStatLine(block.damage))
-  section.appendChild(renderStatLine(block.speed))
+  if (block.isDependentTrigger) {
+    section.appendChild(el('div', 'stat-note', `Cast speed: ${block.speed.total} actions/sec per trigger event`))
+  } else {
+    section.appendChild(renderStatLine(block.speed))
+  }
 
   if (block.multiStrike.length > 0) {
     section.appendChild(el('div', 'stat-subhead', 'Multi-strike (in roll order)'))
