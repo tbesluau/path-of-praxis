@@ -18,11 +18,14 @@ const BREATHE_FREQ  = 0.0012 // idle breathing frequency
 
 // Weapon anchor.y values (fraction from top = grip position in SVG)
 const WEAPON_GRIP_Y: Record<string, number> = {
-  sword:  0.79,
-  bow:    0.5,
-  hammer: 0.81,
-  staff:  0.76,
-  wand:   0.75,
+  sword:          0.79,
+  bow:            0.5,
+  hammer:         0.81,
+  staff:          0.76,
+  wand:           0.75,
+  bomb:           0.25,   // hold near wick; body hangs below
+  branch_staff:   0.78,
+  lightning_bolt: 0.79,
 }
 const WEAPON_GRIP_X = 0.5
 
