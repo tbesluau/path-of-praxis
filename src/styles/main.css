@@ -3889,3 +3889,186 @@ body.privacy-page {
   text-align: center;
   padding: var(--space-lg) 0;
 }
+
+.char-stats-panel {
+  width: min(440px, 94vw);
+}
+
+.char-stats-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  overflow-y: auto;
+  max-height: 72dvh;
+  margin-right: calc(-1 * var(--space-xl));
+  padding-right: 8px;
+}
+
+.stat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--space-sm) 0;
+  border-top: 1px solid rgba(90, 48, 16, 0.25);
+}
+
+.stat-section:first-child {
+  border-top: none;
+}
+
+.stat-section-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #2a1005;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stat-slot-note,
+.stat-subhead {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7a4a1a;
+  opacity: 0.85;
+}
+
+.stat-subhead {
+  margin-top: 4px;
+}
+
+.stat-slot-note {
+  text-transform: none;
+  font-weight: 500;
+}
+
+.stat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label,
+.stat-odds-label {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3a2008;
+}
+
+.stat-formula {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: #4a2c10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 4px;
+}
+
+.stat-total {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #1a0a02;
+}
+
+.stat-eq {
+  opacity: 0.6;
+  margin: 0 2px;
+}
+
+.stat-term {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.stat-term-val {
+  font-weight: 600;
+}
+
+.stat-origin {
+  font-style: italic;
+  font-size: 0.68rem;
+  font-family: var(--font-body);
+}
+
+.stat-origin--base { color: #6a4520; }
+.stat-origin--mul  { color: #1f6e8c; }   /* increased — blue */
+.stat-origin--more { color: #8a3ca0; }   /* more — purple */
+.stat-origin--less { color: #b04010; }   /* less — red */
+
+.stat-note {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-style: italic;
+  color: #7a5230;
+  opacity: 0.9;
+}
+
+.stat-odds-list,
+.stat-buff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stat-odds-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+.stat-odds-val {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1a0a02;
+}
+
+.stat-odds-label {
+  flex: 0 0 auto;
+}
+
+.stat-buff {
+  border-left: 2px solid rgba(122, 74, 26, 0.4);
+  padding-left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.stat-buff-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat-buff-name {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2a1005;
+}
+
+.stat-buff-odds {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #1f6e8c;
+}
+
+.stat-buff-effect {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: #5a3010;
+}

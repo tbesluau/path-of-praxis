@@ -23,7 +23,7 @@ import { showTutorial, isTutorialSeen, getTutorialMessage } from '../ui/tutorial
 import { mountNoteModal, getNoteTitle } from '../ui/notes'
 import { mountCharacterModal } from '../ui/character'
 import { mountCharacterCustomizeModal } from '../ui/character-customize'
-import { mountCharacterStatsModal } from '../ui/character-stats'
+import { mountCharacterStatsModal, type PlayerStatsSnapshot, type StatFactor, type StatLine, type OddsLine, type ActionStatBlock } from '../ui/character-stats'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
 import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
@@ -825,6 +825,8 @@ export function createGameScene(
       * (1 + mb.moreMaxMana / 100)
   }
 
+  // NOTE: buildPlayerStatsSnapshot() (Character → Stats modal) mirrors this exact
+  // multiplier chain for its damage/speed breakdown — keep the two in sync.
   function assignAction(entity: Entity, id: ActionId): void {
     const def = getAction(id)
     const level = entity.role === 'player' ? getPlayerLevel(id) : 1
@@ -2049,6 +2051,284 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="go-home"]')!
     .addEventListener('click', () => saveAndGoHome())
 
+  // ── Character stats snapshot ───────────────────────────────────────────────
+  // Mirrors assignAction()'s multiplier chain (keep in sync) plus the cast-time
+  // affliction/crit/multi-strike/trigger expressions, recording each factor's
+  // origin so the Stats modal can show where every modifier comes from.
+  function buildPlayerStatsSnapshot(): PlayerStatsSnapshot {
+    const fmt  = (n: number, d = 1): string => {
+      const s = n.toFixed(d)
+      return s.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1')
+    }
+    const pct  = (n: number): string => `${fmt(n, 1)}%`
+    const mul  = (n: number): string => `×${fmt(n, 3)}`
+    const incF = (increasedPct: number, origin: string): StatFactor =>
+      ({ text: mul(1 + increasedPct / 100), origin, kind: 'mul' })
+    const moreF = (morePct: number, origin: string): StatFactor =>
+      ({ text: mul(1 + morePct / 100), origin, kind: 'more' })
+
+    // ── Vitals ────────────────────────────────────────────────────────────
+    const lb = getLifeBonuses()
+    const mb = getManaBonuses()
+
+    const lifeFactors: StatFactor[] = [{ text: fmt(balance.player.maxLife), origin: 'base', kind: 'base' }]
+    const lifeLevelBonus = statBonus(lifeProgress.level)
+    if (lifeLevelBonus !== 1) lifeFactors.push({ text: mul(lifeLevelBonus), origin: `levels (${lifeProgress.level})`, kind: 'mul' })
+    let lifeExtra = 0
+    if (lb.regenAlsoAppliesToMax) lifeExtra += lb.regenIncrease + (lb.regenDouble ? 100 : 0)
+    if (lb.maxPerLifeLevel) lifeExtra += lifeProgress.level
+    if (lb.maxLifeIncrease + lifeExtra !== 0) lifeFactors.push(incF(lb.maxLifeIncrease + lifeExtra, 'life mastery'))
+    if (lb.moreMaxLife !== 0) lifeFactors.push(moreF(lb.moreMaxLife, 'life mastery'))
+    if (lb.lessMaxLife !== 0) lifeFactors.push({ text: mul(Math.max(0, 1 - lb.lessMaxLife / 100)), origin: 'life mastery (less)', kind: 'less' })
+    if (mb.moreMaxLife !== 0) lifeFactors.push(moreF(mb.moreMaxLife, 'mana mastery'))
+    const life: StatLine = { label: 'Life', total: fmt(computePlayerMaxLife()), factors: lifeFactors }
+
+    const manaFactors: StatFactor[] = [{ text: fmt(balance.player.maxMana), origin: 'base', kind: 'base' }]
+    const manaLevelBonus = statBonus(manaProgress.level)
+    if (manaLevelBonus !== 1) manaFactors.push({ text: mul(manaLevelBonus), origin: `levels (${manaProgress.level})`, kind: 'mul' })
+    if (mb.maxManaIncrease !== 0) manaFactors.push(incF(mb.maxManaIncrease, 'mana mastery'))
+    if (mb.moreMaxMana !== 0) manaFactors.push(moreF(mb.moreMaxMana, 'mana mastery'))
+    const mana: StatLine = { label: 'Mana', total: fmt(computePlayerMaxMana()), factors: manaFactors }
+
+    const physRes = Math.max(0, Math.min(100, lb.physRotResistance))
+    const eleRes  = Math.max(0, Math.min(100, lb.elementalResistance))
+
+    // ── Equipped actions ──────────────────────────────────────────────────
+    const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
+      : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
+    const entries: { id: ActionId; slot: number }[] = [{ id: playerActionId, slot: 0 }]
+    for (let i = 0; i < activeExtraSlotCount; i++) {
+      const sid = extraSlots[i]?.actionId
+      if (sid) entries.push({ id: sid as ActionId, slot: i + 1 })
+    }
+
+    const TRIGGER_LABEL: Record<string, string> = { time: 'Time', crit: 'Crit', affliction: 'Affliction' }
+    const critUnlocked = ascentCount >= 1 || getPrefs().fullMastery
+
+    const actions: ActionStatBlock[] = entries.map(({ id, slot }) => {
+      const def = getAction(id)
+      const level = getPlayerLevel(id)
+      const tags = def.tags
+
+      // Damage chain — mirrors assignAction()
+      const dmgFactors: StatFactor[] = []
+      const baseDmgLevel = def.damage * Math.pow(balance.action.damageMult, level - 1) * (1 + (level - 1) * balance.action.damageAddPerLevel)
+      dmgFactors.push({ text: fmt(def.damage, 2), origin: 'base', kind: 'base' })
+      if (level > 1) dmgFactors.push({ text: mul(baseDmgLevel / def.damage), origin: `levels (${level})`, kind: 'mul' })
+
+      // Speed chain
+      const spdFactors: StatFactor[] = []
+      const baseSpdLevel = def.speed * (1 + (level - 1) * balance.action.speedBonusPerLevel)
+      spdFactors.push({ text: fmt(def.speed, 2), origin: 'base', kind: 'base' })
+      if (level > 1) spdFactors.push({ text: mul(baseSpdLevel / def.speed), origin: `levels (${level})`, kind: 'mul' })
+
+      const ab = getActionBonuses()
+      const lbAct = getLifeBonuses()
+      if (ab.damageIncrease !== 0) dmgFactors.push(incF(ab.damageIncrease, 'action mastery'))
+      if (ab.moreDamage !== 0) dmgFactors.push(moreF(ab.moreDamage, 'action mastery'))
+      if (ab.lessActionDamage !== 0) dmgFactors.push({ text: mul(Math.max(0, 1 - ab.lessActionDamage / 100)), origin: 'action mastery (less)', kind: 'less' })
+      if (lbAct.lessActionDamage !== 0) dmgFactors.push({ text: mul(Math.max(0, 1 - lbAct.lessActionDamage / 100)), origin: 'life mastery (less)', kind: 'less' })
+      if (ab.actionSpeedIncrease !== 0) spdFactors.push(incF(ab.actionSpeedIncrease, 'action mastery'))
+      if (ab.moreActionSpeed !== 0) spdFactors.push(moreF(ab.moreActionSpeed, 'action mastery'))
+      if (ab.lessActionSpeed !== 0) spdFactors.push({ text: mul(Math.max(0, 1 - ab.lessActionSpeed / 100)), origin: 'action mastery (less)', kind: 'less' })
+
+      if (tags.includes('projectile')) {
+        const pb = getProjectileBonuses()
+        if (pb.damageIncrease !== 0) dmgFactors.push(incF(pb.damageIncrease, 'projectile mastery'))
+        if (pb.moreDamage !== 0) dmgFactors.push(moreF(pb.moreDamage, 'projectile mastery'))
+        if (pb.actionSpeedIncrease !== 0) spdFactors.push(incF(pb.actionSpeedIncrease, 'projectile mastery'))
+      }
+      if (tags.includes('strike')) {
+        const sb = getStrikeBonuses()
+        if (sb.damageIncrease !== 0) dmgFactors.push(incF(sb.damageIncrease, 'strike mastery'))
+        if (sb.moreDamage !== 0) dmgFactors.push(moreF(sb.moreDamage, 'strike mastery'))
+        if (sb.actionSpeedIncrease !== 0) spdFactors.push(incF(sb.actionSpeedIncrease, 'strike mastery'))
+        if (sb.moreActionSpeed !== 0) spdFactors.push(moreF(sb.moreActionSpeed, 'strike mastery'))
+      }
+      if (tags.includes('lightning')) {
+        const lib = getLightningBonuses()
+        if (lib.damageIncrease !== 0) dmgFactors.push(incF(lib.damageIncrease, 'lightning mastery'))
+        if (lib.moreDamage !== 0) dmgFactors.push(moreF(lib.moreDamage, 'lightning mastery'))
+        if (lib.actionSpeedIncrease !== 0) spdFactors.push(incF(lib.actionSpeedIncrease, 'lightning mastery'))
+        if (lib.moreActionSpeed !== 0) spdFactors.push(moreF(lib.moreActionSpeed, 'lightning mastery'))
+      }
+      if (tags.includes('fire')) {
+        const fb = getFireBonuses()
+        if (fb.damageIncrease !== 0) dmgFactors.push(incF(fb.damageIncrease, 'fire mastery'))
+        if (fb.moreDamage !== 0) dmgFactors.push(moreF(fb.moreDamage, 'fire mastery'))
+        if (fb.actionSpeedIncrease !== 0) spdFactors.push(incF(fb.actionSpeedIncrease, 'fire mastery'))
+      }
+      if (tags.includes('physical')) {
+        const phb = getPhysicalBonuses()
+        if (phb.damageIncrease !== 0) dmgFactors.push(incF(phb.damageIncrease, 'physical mastery'))
+        if (phb.moreDamage !== 0) dmgFactors.push(moreF(phb.moreDamage, 'physical mastery'))
+        if (phb.actionSpeedIncrease !== 0) spdFactors.push(incF(phb.actionSpeedIncrease, 'physical mastery'))
+      }
+      if (tags.includes('area')) {
+        const arb = getAreaBonuses()
+        if (arb.damageIncrease !== 0) dmgFactors.push(incF(arb.damageIncrease, 'area mastery'))
+        if (arb.moreDamage !== 0) dmgFactors.push(moreF(arb.moreDamage, 'area mastery'))
+        if (arb.lessActionSpeed !== 0) spdFactors.push({ text: mul(Math.max(0.01, 1 - arb.lessActionSpeed / 100)), origin: 'area mastery (less)', kind: 'less' })
+      }
+
+      const rb = getRuneBonuses(id)
+      if (rb.damageIncrease !== 0) dmgFactors.push(incF(rb.damageIncrease, 'runes'))
+      if (rb.damageMore !== 1) dmgFactors.push({ text: mul(rb.damageMore), origin: 'runes (more)', kind: 'more' })
+      if (rb.speedIncrease !== 0) spdFactors.push(incF(rb.speedIncrease, 'runes'))
+      if (rb.speedMore !== 1) spdFactors.push({ text: mul(rb.speedMore), origin: 'runes (more)', kind: 'more' })
+      if (rb.slowHeavy) {
+        dmgFactors.push({ text: '×2', origin: 'rune: Slow & Heavy', kind: 'more' })
+        spdFactors.push({ text: '×0.5', origin: 'rune: Slow & Heavy', kind: 'less' })
+      }
+      if (mb.actionSpeedIncrease > 0) spdFactors.push(incF(mb.actionSpeedIncrease, 'mana mastery'))
+
+      // Recompute totals exactly as assignAction would (authoritative source of
+      // truth for the displayed totals), via a temp entity with a throwaway id so
+      // assignAction's entityActions.set() can't corrupt real player state.
+      const tmp = { ...playerEntity, id: '__stats_preview__', role: 'player' } as Entity
+      assignAction(tmp, id)
+      entityActions.delete('__stats_preview__')
+      const damage: StatLine = { label: 'Total damage', total: fmt(tmp.actionDamage, 2), factors: dmgFactors }
+      const speed:  StatLine = { label: 'Total speed (casts/s)', total: fmt(tmp.actionSpeed, 2), factors: spdFactors }
+
+      // ── Multi-strike (calculation order) ──────────────────────────────────
+      const multiStrike: OddsLine[] = []
+      // additionalTarget: strike + projectile (trance is situational → noted)
+      {
+        let chance = 0
+        const parts: string[] = []
+        if (tags.includes('strike')) {
+          const sb = getStrikeBonuses()
+          const c = sb.additionalTargetChance * (1 + sb.additionalTargetMore / 100)
+          if (c > 0) { chance += c; parts.push('strike mastery') }
+        }
+        if (tags.includes('projectile')) {
+          const pb = getProjectileBonuses()
+          if (pb.additionalTargetChance > 0) { chance += pb.additionalTargetChance; parts.push('projectile mastery') }
+        }
+        if (chance > 0) multiStrike.push({ label: 'Additional target', odds: pct(chance), origin: parts.join(' + '), note: 'plus trance bonus while active' })
+      }
+      // doubleAction
+      if (ab.doubleActionChance > 0) {
+        multiStrike.push({ label: 'Double action', odds: pct(ab.doubleActionChance), origin: 'action mastery', note: ab.doubleActionReroll ? 'rerolls once' : undefined })
+      }
+      // additionalProjectile
+      if (tags.includes('projectile')) {
+        const pb = getProjectileBonuses()
+        if (pb.extraChance > 0) multiStrike.push({ label: 'Additional projectile', odds: pct(pb.extraChance), origin: 'projectile mastery' })
+      }
+      // splitAction (key rune — guaranteed)
+      if (rb.splitCast) multiStrike.push({ label: 'Split action', odds: 'always', origin: 'rune: Split Action', note: 'second cast at ×0.5 damage' })
+      // jump (lightning)
+      if (tags.includes('lightning')) {
+        const lib = getLightningBonuses()
+        if (lib.jumpChance > 0) multiStrike.push({ label: 'Chain jump', odds: pct(lib.jumpChance), origin: 'lightning mastery', note: lib.jumpFromElectrocutedChance > 0 ? `+${pct(lib.jumpFromElectrocutedChance)} vs electrocuted` : undefined })
+      }
+      // tremor (area)
+      if (tags.includes('area')) {
+        const arb = getAreaBonuses()
+        if (arb.tremorChance > 0) multiStrike.push({ label: 'Tremor', odds: pct(arb.tremorChance), origin: 'area mastery', note: 'rolled per extra area victim' })
+      }
+
+      // ── Affliction chance + damage ────────────────────────────────────────
+      let afflictionChance: OddsLine | undefined
+      let afflictionDamage: StatLine | undefined
+      const baseAffl = balance.effects.baseApplyChance
+      const strikeAffl = tags.includes('strike') ? getStrikeBonuses().afflictionChanceIncrease : 0
+      if (tags.includes('fire')) {
+        const fb = getFireBonuses()
+        const chance = baseAffl + fb.burnApplyChance + strikeAffl
+        afflictionChance = { label: 'Burn chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + fire mastery${strikeAffl ? ' + strike' : ''}` }
+        const dps = tmp.actionDamage * balance.effects.burnDpsFraction * (1 + fb.burnDamageIncrease / 100) * (1 + fb.burnMoreDamage / 100) * Math.max(0, 1 - fb.burnLessDamage / 100) * fb.burnDamageMult
+        const df: StatFactor[] = [
+          { text: fmt(tmp.actionDamage, 2), origin: 'hit damage', kind: 'base' },
+          { text: mul(balance.effects.burnDpsFraction), origin: 'burn fraction', kind: 'mul' },
+        ]
+        if (fb.burnDamageIncrease !== 0) df.push(incF(fb.burnDamageIncrease, 'fire mastery'))
+        if (fb.burnMoreDamage !== 0) df.push(moreF(fb.burnMoreDamage, 'fire mastery'))
+        afflictionDamage = { label: 'Burn DPS', total: fmt(dps, 2), factors: df }
+      } else if (tags.includes('physical')) {
+        const phb = getPhysicalBonuses()
+        const chance = baseAffl + phb.bleedApplyChance + strikeAffl
+        afflictionChance = { label: 'Bleed chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + physical mastery${strikeAffl ? ' + strike' : ''}` }
+        const dps = tmp.actionDamage * balance.effects.bleedDpsFraction * (1 + phb.bleedDamageIncrease / 100) * (1 + phb.bleedMoreDamage / 100) * Math.max(0, 1 - phb.bleedLessDamage / 100) * phb.bleedDamageMult
+        const df: StatFactor[] = [
+          { text: fmt(tmp.actionDamage, 2), origin: 'hit damage', kind: 'base' },
+          { text: mul(balance.effects.bleedDpsFraction), origin: 'bleed fraction', kind: 'mul' },
+        ]
+        if (phb.bleedDamageIncrease !== 0) df.push(incF(phb.bleedDamageIncrease, 'physical mastery'))
+        if (phb.bleedMoreDamage !== 0) df.push(moreF(phb.bleedMoreDamage, 'physical mastery'))
+        afflictionDamage = { label: 'Bleed DPS', total: fmt(dps, 2), factors: df }
+      } else if (tags.includes('lightning')) {
+        const lib = getLightningBonuses()
+        const chance = baseAffl + lib.electrocuteApplyChance + strikeAffl
+        afflictionChance = { label: 'Electrocute chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + lightning mastery${strikeAffl ? ' + strike' : ''}`, note: `electrocuted enemies take +${pct(balance.effects.electrocutionBaseDamageTakenPct + lib.electrocuteDamageTakenIncrease)} damage` }
+      }
+
+      // ── Critical hit ──────────────────────────────────────────────────────
+      const cb = getCriticalHitBonuses()
+      const basCrit = baseCritChancePct(tags)
+      let critChance: OddsLine
+      if (!critUnlocked) {
+        critChance = { label: 'Crit chance', odds: 'Locked', origin: 'unlocks at 1st ascension' }
+      } else if (basCrit <= 0) {
+        critChance = { label: 'Crit chance', odds: '0%', origin: 'this action cannot crit' }
+      } else {
+        const total = (basCrit + critBaseAddTotal()) * (1 + cb.chanceIncrease / 100) * (1 + cb.chanceMore / 100)
+        critChance = { label: 'Crit chance', odds: pct(Math.min(100, total)), origin: `base ${pct(basCrit)} + crit mastery` }
+      }
+      const critMultVal = critDamageMultiplier()
+      const critDmgFactors: StatFactor[] = [{ text: `×${fmt(balance.criticalHit.damageMultiplier)}`, origin: 'base', kind: 'base' }]
+      if (cb.damageIncrease !== 0) critDmgFactors.push({ text: `+${pct(cb.damageIncrease)}`, origin: 'crit mastery', kind: 'mul' })
+      if (cb.damageMore !== 0) critDmgFactors.push(moreF(cb.damageMore, 'crit mastery'))
+      const critDamage: StatLine = { label: 'Crit damage', total: mul(critMultVal), factors: critDmgFactors }
+
+      // ── Triggerable buffs ─────────────────────────────────────────────────
+      const triggerBuffs: { name: string; odds: string; effect: string }[] = []
+      if (tags.includes('strike')) {
+        const sb = getStrikeBonuses()
+        if (sb.frenzyChance > 0) triggerBuffs.push({ name: 'Frenzy', odds: pct(sb.frenzyChance), effect: `+${fmt(sb.frenzyDamagePerCharge)}% dmg & +${fmt(sb.frenzySpeedPerCharge)}% speed per charge (strike mastery)` })
+      }
+      if (tags.includes('physical')) {
+        const phb = getPhysicalBonuses()
+        if (phb.bloodlustChance > 0) triggerBuffs.push({ name: 'Bloodlust', odds: pct(phb.bloodlustChance), effect: `+${fmt(phb.bloodlustDamage)}% physical dmg & +${fmt(phb.bloodlustActionSpeed)}% speed while active (on bleed)` })
+      }
+      if (tags.includes('lightning')) {
+        const lib = getLightningBonuses()
+        if (lib.electrifyChance > 0) triggerBuffs.push({ name: 'Electrified', odds: pct(lib.electrifyChance), effect: `+${fmt(lib.electrifyActionSpeed)}% speed & −${fmt(lib.electrifyDamageReduction)}% damage taken while active` })
+      }
+      if (tags.includes('fire')) {
+        const fb = getFireBonuses()
+        if (fb.immolateChance > 0) triggerBuffs.push({ name: 'Immolation', odds: pct(fb.immolateChance), effect: `+${fmt(fb.immolateDamageBonus)}% fire dmg while active (self-burns)` })
+      }
+      if (ab.tranceTriggerChance > 0) {
+        triggerBuffs.push({ name: 'Trance', odds: pct(ab.tranceTriggerChance), effect: `+${fmt(ab.tranceDamageIncrease)}% dmg & +${fmt(ab.tranceActionSpeedIncrease)}% speed per stack while active` })
+      }
+      if (lb.feedingFrenzyChance > 0 || mb.feedingFrenzyChance > 0) {
+        const c = Math.max(lb.feedingFrenzyChance, mb.feedingFrenzyChance)
+        triggerBuffs.push({ name: 'Feeding Frenzy', odds: pct(c), effect: `+${balance.buffs.feedingFrenzyStealBonus}% steal & +${balance.buffs.feedingFrenzyRegenBonus}% regen (on life/mana steal)` })
+      }
+
+      const slotNote = slot === 0 ? undefined
+        : `Extra slot ${slot + 1} — ${Math.round((slot === 1 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty) * 100)}% damage${extraSlots[slot - 1]?.triggerType ? `, fires on ${TRIGGER_LABEL[extraSlots[slot - 1].triggerType as string] ?? extraSlots[slot - 1].triggerType}` : ''}`
+
+      return {
+        name: getActionLabel(id),
+        damage, speed, multiStrike,
+        afflictionChance, afflictionDamage,
+        critChance, critDamage, triggerBuffs, slotNote,
+      } as ActionStatBlock
+    })
+
+    return {
+      life, mana,
+      physRotResist: pct(physRes),
+      elementalResist: pct(eleRes),
+      resistNote: 'Phys/Rot applies to physical & rot hits; Elemental to fire, lightning & cold. Kiting adds more. Capped at 100%.',
+      actions,
+    }
+  }
+
   el.querySelector<HTMLButtonElement>('[data-action="open-character"]')!
     .addEventListener('click', () => {
       if (modalCleanup) { modalCleanup(); modalCleanup = null }
@@ -2081,6 +2361,7 @@ export function createGameScene(
         onStats: () => {
           modalCleanup = null
           modalCleanup = mountCharacterStatsModal(el, {
+            snapshot: buildPlayerStatsSnapshot(),
             onClose: () => { modalCleanup = null },
           })
         },
