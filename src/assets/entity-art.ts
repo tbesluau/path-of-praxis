@@ -5,7 +5,7 @@ import type { ActionDef } from '../config/actions'
 
 export type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss' | 'player'
 export type BodyVariant = 'tunic' | 'plate' | 'robe'
-export type HeadVariant = 'hood' | 'helm' | 'face' | 'hat' | 'cap'
+export type HeadVariant = 'hood' | 'helm' | 'face' | 'hat' | 'horned' | 'bascinet'
 
 export interface EntityPalette {
   armor:      string
@@ -48,7 +48,7 @@ export function pickVariants(seed: string): { body: BodyVariant; head: HeadVaria
   const h = strHash(seed)
   return {
     body: (['tunic', 'plate', 'robe'] as BodyVariant[])[h % 3],
-    head: (['hood', 'helm', 'face', 'hat', 'cap'] as HeadVariant[])[(h >>> 8) % 5],
+    head: (['hood', 'helm', 'face', 'hat', 'horned', 'bascinet'] as HeadVariant[])[(h >>> 8) % 6],
   }
 }
 
@@ -125,13 +125,26 @@ function headSvg(v: HeadVariant, p: EntityPalette): string {
   <ellipse cx="10" cy="15.5" rx="1.8" ry="1.4" fill="#1a1008" ${OLs}/>
 </svg>`
 
-  if (v === 'cap') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 20" width="24" height="20">
+  if (v === 'horned') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 20" width="24" height="20">
   <ellipse cx="12" cy="15" rx="7" ry="5" fill="${p.skin}" ${OLs}/>
-  <path d="M4,12 Q4,6 12,5 Q20,6 20,12 Z" fill="${p.armor}" ${OLb}/>
-  <path d="M4,12 Q2,13 2,14 L8,14 Q7.5,12 4,12 Z" fill="${p.armorShade}" ${OL}/>
-  <path d="M4,11.5 Q12,13.5 20,11.5" fill="none" stroke="#000" stroke-width="1" opacity="0.55"/>
-  <circle cx="12" cy="5.5" r="1.2" fill="${p.trim}" ${OLs}/>
+  <path d="M5,8 Q2,3 1,0 Q4,1 6,4 Q7,6 7,9 Z" fill="#efe6d2" ${OL}/>
+  <path d="M19,8 Q22,3 23,0 Q20,1 18,4 Q17,6 17,9 Z" fill="#efe6d2" ${OL}/>
+  <path d="M4,11 Q4,2 12,2 Q20,2 20,11 Z" fill="${p.armor}" ${OLb}/>
+  <rect x="3" y="9.5" width="18" height="3" rx="1" fill="${p.armorShade}" ${OL}/>
+  <circle cx="12" cy="5" r="1.3" fill="${p.trim}" ${OLs}/>
   <ellipse cx="10" cy="14.5" rx="1.8" ry="1.4" fill="#1a1008" ${OLs}/>
+</svg>`
+
+  if (v === 'bascinet') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 20" width="24" height="20">
+  <path d="M4,11 Q4,1 12,1 Q20,1 20,11 Q20,18 12,19 Q4,18 4,11 Z" fill="${p.armor}" ${OLb}/>
+  <path d="M6,2 Q12,0 18,2 Q14,3 12,3 Q10,3 6,2 Z" fill="${p.trim}" opacity="0.45"/>
+  <path d="M12,1 L12,19" stroke="#000" stroke-width="0.9" opacity="0.55"/>
+  <path d="M5,9 L19,9" stroke="#000" stroke-width="1.4" opacity="0.85"/>
+  <rect x="5" y="9.6" width="14" height="2.4" rx="1" fill="#0a0a0a"/>
+  <line x1="8" y1="13.5" x2="8" y2="17.5" stroke="#000" stroke-width="1" opacity="0.7"/>
+  <line x1="11" y1="14" x2="11" y2="18" stroke="#000" stroke-width="1" opacity="0.7"/>
+  <line x1="14" y1="14" x2="14" y2="18" stroke="#000" stroke-width="1" opacity="0.7"/>
+  <line x1="16.5" y1="13.5" x2="16.5" y2="17.5" stroke="#000" stroke-width="1" opacity="0.7"/>
 </svg>`
 
   // hood (default)
@@ -285,7 +298,7 @@ export async function preloadEntityArt(): Promise<void> {
     for (const v of ['tunic', 'plate', 'robe'] as BodyVariant[]) {
       tasks.push(loadSvgTex(`body_${v}_${tier}`, bodySvg(v, p)))
     }
-    for (const v of ['hood', 'helm', 'face', 'hat', 'cap'] as HeadVariant[]) {
+    for (const v of ['hood', 'helm', 'face', 'hat', 'horned', 'bascinet'] as HeadVariant[]) {
       tasks.push(loadSvgTex(`head_${v}_${tier}`, headSvg(v, p)))
     }
     tasks.push(loadSvgTex(`leg_${tier}`, legSvg(p)))
