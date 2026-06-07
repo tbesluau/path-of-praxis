@@ -3401,8 +3401,11 @@ export function createGameScene(
   }
 
   function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {
-    const existing = masteryProgress[id]
-    if (!existing) return
+    // Free ascent points can target a mastery that has never earned XP, so it
+    // may have no progress entry yet (e.g. right after an ascent wipes them).
+    // Synthesize a fresh level-1 entry rather than bailing — otherwise those
+    // free points are unspendable.
+    const existing = masteryProgress[id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
     const dumped = masteryDumpPoints[id] ?? 0
     const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
@@ -3434,8 +3437,10 @@ export function createGameScene(
   // persistent "more <X>" bonus per spec). Consumes level points first; then
   // free points; clamped to whatever's actually available.
   function dumpMasteryPoints(id: MasteryId, count: number): void {
-    const existing = masteryProgress[id]
-    if (!existing || count <= 0) return
+    if (count <= 0) return
+    // As with assignMasteryNode: free points may be dumped into a mastery that
+    // has no progress entry yet, so synthesize a level-1 entry when missing.
+    const existing = masteryProgress[id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
     const dumped = masteryDumpPoints[id] ?? 0
     const levelAvail = masteryPointsAvailable(existing, freeUsed, dumped)
