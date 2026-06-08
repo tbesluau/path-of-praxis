@@ -5,6 +5,7 @@ import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
 import { playSound, setVolume, setMuted, getVolume, isMuted } from '../audio'
 import { exportSaveCode, importSaveCode } from '../core/save-code'
+import { trackEvent } from '../core/analytics'
 import { ZOOM_STEPS, indexFromZoom } from './zoom'
 import guideContent from '../config/guide.md?raw'
 import { linkifyHtml, mountNoteModal } from './notes'
@@ -490,6 +491,7 @@ function mountSaveDataModal(parent: HTMLElement, onClose: () => void): () => voi
   const exportBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="export"]')!
   exportBtn.addEventListener('click', () => {
     copyText(exportSaveCode())
+    trackEvent('save_exported')
     const original = exportBtn.textContent
     exportBtn.textContent = t('settings', 'exportCopied')
     exportBtn.disabled = true
@@ -515,6 +517,7 @@ function mountSaveDataModal(parent: HTMLElement, onClose: () => void): () => voi
         errorMsg.textContent = t('settings', 'importError')
         return
       }
+      trackEvent('save_imported')
       // Rebuild the scene so the imported characters take effect immediately.
       close()
       navigate('menu')
