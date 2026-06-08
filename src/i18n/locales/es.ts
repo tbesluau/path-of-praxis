@@ -145,7 +145,9 @@ export const es: TranslationSchema = {
     negLessMoveSpeed: '-{v}% de velocidad de movimiento',
     negLessActionSpeed: '-{v}% de velocidad de acción',
     negLessRangeAndArea: '-{v}% de alcance y área',
-    rarityLabel: '{n} línea',
+    weightLight: 'Artefacto Ligero',
+    weightMedium: 'Artefacto Medio',
+    weightHeavy: 'Artefacto Pesado',
   },
   rune: {
     addToSlot: 'Añadir runa {type} a la ranura {n}',

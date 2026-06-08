@@ -145,7 +145,9 @@ export const fr: TranslationSchema = {
     negLessMoveSpeed: '-{v}% de vitesse de déplacement',
     negLessActionSpeed: '-{v}% de vitesse d\'action',
     negLessRangeAndArea: '-{v}% de portée et zone',
-    rarityLabel: '{n} ligne',
+    weightLight: 'Artéfact Léger',
+    weightMedium: 'Artéfact Moyen',
+    weightHeavy: 'Artéfact Lourd',
   },
   rune: {
     addToSlot: 'Ajouter une rune {type} à l\'emplacement {n}',

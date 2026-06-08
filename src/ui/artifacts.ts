@@ -11,6 +11,12 @@ function rarityClass(lines: number): string {
   return 'artifact-thumb--r1'
 }
 
+function weightLabel(lines: number): string {
+  if (lines === 3) return t('artifacts', 'weightHeavy')
+  if (lines === 2) return t('artifacts', 'weightMedium')
+  return t('artifacts', 'weightLight')
+}
+
 function positiveLineHtml(line: ArtifactLine): string {
   const pd = describePositive(line.positive)
   const sourceKey = pd.source ? t('artifacts', `source${pd.source.charAt(0).toUpperCase() + pd.source.slice(1)}` as 'sourceFire') : ''
@@ -47,7 +53,7 @@ function renderArtifactThumb(
     <div class="artifact-thumb-row">
       <div class="artifact-thumb ${rc}${equippedClass}" data-artifact-id="${artifact.id}">
         <div class="artifact-thumb-header">
-          <span class="artifact-rarity-label">${t('artifacts', 'rarityLabel').replace('{n}', String(artifact.lines.length))}</span>
+          <span class="artifact-rarity-label">${weightLabel(artifact.lines.length)}</span>
         </div>
         <div class="artifact-thumb-lines">${allLinesHtml(artifact)}</div>
         ${equipBtn}
@@ -98,7 +104,7 @@ export function mountArtifactCardModal(
   const rc = rarityClass(artifact.lines.length)
   backdrop.innerHTML = `
     <div class="modal-panel artifact-card ${rc}" role="dialog" aria-modal="true">
-      <h2 class="modal-title">${t('artifacts', 'rarityLabel').replace('{n}', String(artifact.lines.length))}</h2>
+      <h2 class="modal-title">${weightLabel(artifact.lines.length)}</h2>
       <div class="artifact-card-lines">${posHtml}${negHtml}</div>
       <div class="artifact-card-actions">
         <button class="modal-btn modal-btn--danger" data-action="drop">${t('artifacts', 'drop')}</button>
@@ -176,7 +182,7 @@ export function mountArtifactsModal(
       btn.addEventListener('click', () => {
         const id = btn.dataset.artifactId!
         const art = state.getArtifacts().find(a => a.id === id)
-        const label = art ? `${t('artifacts', 'rarityLabel').replace('{n}', String(art.lines.length))}` : ''
+        const label = art ? weightLabel(art.lines.length) : ''
         mountDeleteConfirmModal(parent, label, () => {
           actions.onDelete(id)
           buildPanel()

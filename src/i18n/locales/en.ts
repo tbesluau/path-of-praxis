@@ -143,7 +143,9 @@ export interface TranslationSchema {
     negLessMoveSpeed: string         // template: "-{v}% move speed"
     negLessActionSpeed: string       // template: "-{v}% action speed"
     negLessRangeAndArea: string      // template: "-{v}% range and area"
-    rarityLabel: string              // template: "{n}-line"
+    weightLight: string              // 1-line artifact title
+    weightMedium: string             // 2-line artifact title
+    weightHeavy: string              // 3-line artifact title
   }
   rune: {
     addToSlot: string              // template: "Add {type} rune to slot {n}"
@@ -473,7 +475,9 @@ export const en: TranslationSchema = {
     negLessMoveSpeed: '-{v}% move speed',
     negLessActionSpeed: '-{v}% action speed',
     negLessRangeAndArea: '-{v}% range and area',
-    rarityLabel: '{n}-line',
+    weightLight: 'Light Artifact',
+    weightMedium: 'Medium Artifact',
+    weightHeavy: 'Heavy Artifact',
   },
   rune: {
     addToSlot: 'Add {type} rune to slot {n}',

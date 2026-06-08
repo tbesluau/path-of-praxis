@@ -145,7 +145,9 @@ export const zh: TranslationSchema = {
     negLessMoveSpeed: '-{v}%移动速度',
     negLessActionSpeed: '-{v}%行动速度',
     negLessRangeAndArea: '-{v}%范围和区域',
-    rarityLabel: '{n}条线',
+    weightLight: '轻型神器',
+    weightMedium: '中型神器',
+    weightHeavy: '重型神器',
   },
   rune: {
     addToSlot: '将 {type} 符文添加到第 {n} 槽',
