@@ -2205,6 +2205,8 @@ export function createGameScene(
         dmgFactors.push({ text: mul(slotPenalty), origin: `slot ${slot + 1} penalty`, kind: 'less' })
         if (triggerType === 'crit') {
           dmgFactors.push({ text: mul(balance.ascent.critTriggerDamageMult), origin: 'crit trigger penalty', kind: 'less' })
+        } else if (triggerType === 'affliction') {
+          dmgFactors.push({ text: mul(balance.ascent.afflictionTriggerDamageMult), origin: 'affliction trigger penalty', kind: 'less' })
         }
       }
 
@@ -2300,9 +2302,11 @@ export function createGameScene(
       entityActions.delete('__stats_preview__')
 
       // Extra slot total: assignAction doesn't apply slot penalties, so adjust.
-      // Crit-trigger slots take a flat ×0.1 damage penalty (balance.ascent.critTriggerDamageMult).
-      const critTriggerMult = triggerType === 'crit' ? balance.ascent.critTriggerDamageMult : 1
-      const adjustedDamage = tmp.actionDamage * slotPenalty * critTriggerMult
+      // Crit/affliction trigger slots take an extra flat damage penalty.
+      const triggerMult = triggerType === 'crit'       ? balance.ascent.critTriggerDamageMult
+                        : triggerType === 'affliction'  ? balance.ascent.afflictionTriggerDamageMult
+                        : 1
+      const adjustedDamage = tmp.actionDamage * slotPenalty * triggerMult
 
       const damage: StatLine = { label: 'Total damage', total: fmt(adjustedDamage, 2), factors: dmgFactors }
       const speed:  StatLine = { label: 'Total speed (actions/sec)', total: fmt(tmp.actionSpeed, 2), factors: spdFactors }
@@ -5806,7 +5810,8 @@ export function createGameScene(
             //   Dependent (crit/affliction): use full effective speed — speed bonus increases damage since frequency is fixed.
             const speedForBalance = trigger === 'time' ? leveledSpeed : effectiveSlotSpeed
             slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * speedForBalance
-            if (trigger === 'crit') slotDmg *= balance.ascent.critTriggerDamageMult
+            if (trigger === 'crit')       slotDmg *= balance.ascent.critTriggerDamageMult
+            if (trigger === 'affliction') slotDmg *= balance.ascent.afflictionTriggerDamageMult
             slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
             slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
             if (slotDef.tags.includes('projectile')) { const b = getProjectileBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }

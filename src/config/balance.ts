@@ -202,8 +202,9 @@ export const balance = {
     slot2DamagePenalty:      0.75,  // global damage multiplier for slot 2
     slot3DamagePenalty:      0.50,  // global damage multiplier for slot 3
     timeTriggerIntervalMs:  2000,   // fire period (ms) for the time trigger type
-    critTriggerDamageMult:   0.1,   // extra multiplier for crit trigger (on top of speed balance)
-    afflictionTriggerCount:   10,   // affliction applications before affliction trigger fires
+    critTriggerDamageMult:        0.1,   // extra multiplier for crit trigger (on top of speed balance)
+    afflictionTriggerDamageMult:  0.5,   // extra multiplier for affliction trigger (on top of speed balance)
+    afflictionTriggerCount:        10,   // affliction applications before affliction trigger fires
   },
 
   // ── Critical hits ─────────────────────────────────────────────────────────
