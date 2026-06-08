@@ -1,6 +1,7 @@
 import { t } from '../i18n'
 import { showRewardedAd } from '../ads'
 import { playSound } from '../audio'
+import { trackEvent } from '../core/analytics'
 
 let currentTeardown: (() => void) | null = null
 
@@ -34,7 +35,7 @@ export function mountRefillAdModal(
   `
 
   const teardown = (): void => { backdrop.remove(); currentTeardown = null }
-  const dismiss  = (): void => { playSound('modal.close'); teardown(); onClose() }
+  const dismiss  = (): void => { trackEvent('x2_speed_refill', { outcome: 'ad_skipped' }); playSound('modal.close'); teardown(); onClose() }
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action="skip"]').forEach(btn => {
     btn.addEventListener('click', dismiss)
@@ -45,6 +46,7 @@ export function mountRefillAdModal(
     watchBtn.classList.add('away-bonus-watch-ad-btn--loading')
     const watched = await showRewardedAd()
     teardown()
+    trackEvent('x2_speed_refill', { outcome: watched ? 'ad_watched' : 'ad_skipped' })
     if (watched) onRefill(rewardMs)
     onClose()
   })

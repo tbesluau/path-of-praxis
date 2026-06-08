@@ -5,7 +5,7 @@ import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Za
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
-import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, type MasteryId, type ActionTag } from '../config/masteries'
+import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
@@ -33,6 +33,7 @@ import { loadTileTextures } from '../assets/tile-svgs'
 import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey } from '../assets/entity-art'
 import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
 import { createBackgroundTicker, type BackgroundTicker } from '../core/background-ticker'
+import { trackEvent } from '../core/analytics'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -2012,6 +2013,7 @@ export function createGameScene(
   function offerRefillAd(): void {
     const addedMs = 30 * 60 * 1000
     if (isPaid() || !adsAvailable()) {
+      trackEvent('x2_speed_refill', { outcome: 'auto_granted' })
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
       updateSpeedUI()
       persistState()
@@ -2203,6 +2205,8 @@ export function createGameScene(
         dmgFactors.push({ text: mul(slotPenalty), origin: `slot ${slot + 1} penalty`, kind: 'less' })
         if (triggerType === 'crit') {
           dmgFactors.push({ text: mul(balance.ascent.critTriggerDamageMult), origin: 'crit trigger penalty', kind: 'less' })
+        } else if (triggerType === 'affliction') {
+          dmgFactors.push({ text: mul(balance.ascent.afflictionTriggerDamageMult), origin: 'affliction trigger penalty', kind: 'less' })
         }
       }
 
@@ -2298,9 +2302,11 @@ export function createGameScene(
       entityActions.delete('__stats_preview__')
 
       // Extra slot total: assignAction doesn't apply slot penalties, so adjust.
-      // Crit-trigger slots take a flat ×0.1 damage penalty (balance.ascent.critTriggerDamageMult).
-      const critTriggerMult = triggerType === 'crit' ? balance.ascent.critTriggerDamageMult : 1
-      const adjustedDamage = tmp.actionDamage * slotPenalty * critTriggerMult
+      // Crit/affliction trigger slots take an extra flat damage penalty.
+      const triggerMult = triggerType === 'crit'       ? balance.ascent.critTriggerDamageMult
+                        : triggerType === 'affliction'  ? balance.ascent.afflictionTriggerDamageMult
+                        : 1
+      const adjustedDamage = tmp.actionDamage * slotPenalty * triggerMult
 
       const damage: StatLine = { label: 'Total damage', total: fmt(adjustedDamage, 2), factors: dmgFactors }
       const speed:  StatLine = { label: 'Total speed (actions/sec)', total: fmt(tmp.actionSpeed, 2), factors: spdFactors }
@@ -2748,25 +2754,6 @@ export function createGameScene(
         halo.circle(0, 0, entity.radius + 8)
         halo.stroke({ color: 0xffffff, width: 3, alpha: 0.75 })
         c.addChildAt(halo, 0)
-        const diamond = new Graphics()
-        diamond.poly([0, -7, 7, 0, 0, 7, -7, 0])
-        diamond.fill({ color: 0xffd700 })
-        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 12))
-        c.addChild(diamond)
-      } else if (strongEntities.has(entity.id)) {
-        const diamond = new Graphics()
-        diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
-        diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
-        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
-        c.addChild(diamond)
-      }
-      if (highResistEntities.has(entity.id)) {
-        const shield = new Graphics()
-        shield.poly([0, -6, 5, -3, 5, 2, 0, 6, -5, 2, -5, -3])
-        shield.fill({ color: 0xffffff })
-        const barW = entity.radius * 2
-        shield.position.set(barW / 2, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
-        c.addChild(shield)
       }
     }
     c.position.set(entity.x, entity.y)
@@ -3139,6 +3126,16 @@ export function createGameScene(
     if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
 
     ascentCount++
+    // Capture enemy max level before the deep reset below wipes it.
+    trackEvent('ascent_completed', {
+      ascent:          String(ascentCount),
+      action:          playerActionId,
+      slot2_trigger:   extraSlots[0]?.triggerType ?? 'none',
+      slot2_action:    extraSlots[0]?.actionId    ?? 'none',
+      slot3_trigger:   extraSlots[1]?.triggerType ?? 'none',
+      slot3_action:    extraSlots[1]?.actionId    ?? 'none',
+      enemy_max_level: String(enemyProgress.maxLevel),
+    })
     ascentXp = 0
     // universePointAllocations persists; action is preserved
 
@@ -3436,6 +3433,9 @@ export function createGameScene(
     }
     const nodes = existing.nodes.map(t => [...t])
     nodes[treeIdx].push(nodeIdx)
+    if (nodeType(nodeIdx) === 'key') {
+      trackEvent('mastery_key_taken', { mastery: id, tree: String(treeIdx), node: String(nodeIdx) })
+    }
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
@@ -4907,6 +4907,7 @@ export function createGameScene(
         const damagedIds = new Set<string>()
         let playerManaSpent = false
         let currentHitMultiType: MultiActionType | undefined = undefined  // set before each applyHit call, read inside for DPS tracking
+        let currentHitIsMainSlot = false  // set before each applyHit call; gates affliction trigger counting
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
         const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false, impactX?: number, impactY?: number, isDoubleDamage = false): boolean => {
@@ -5164,8 +5165,7 @@ export function createGameScene(
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
-              afflictionAppliedThisTick++
-              afflictionLastTarget = target
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
             }
             // Burning Ground: roll on fire-tagged player hits; tile must be clear of burning ground
             if (fb.burnGroundChance > 0) {
@@ -5188,8 +5188,7 @@ export function createGameScene(
                 * (1 + lbElec.electrocuteDurationIncrease / 100)
                 * lbElec.electrocuteDurationMult
               electrocuteStacks.set(target.id, duration)
-              afflictionAppliedThisTick++
-              afflictionLastTarget = target
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
             }
           }
           // Electrifying: lightning-tagged player hits roll a chance to apply Electrified to the player
@@ -5223,8 +5222,7 @@ export function createGameScene(
               }
               // Bloodlust: roll on each successful bleed application
               if (pb.bloodlustChance > 0 && Math.random() * 100 < pb.bloodlustChance) applyBloodlust()
-              afflictionAppliedThisTick++
-              afflictionLastTarget = target
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
             }
           }
           // Resistance Breaking: roll on physical-tagged player hits to permanently reduce enemy physRot resistance
@@ -5285,6 +5283,7 @@ export function createGameScene(
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
           currentHitMultiType = ph.multiActionType
+          currentHitIsMainSlot = ph.isMainSlot ?? false
           const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions, ph.impactX, ph.impactY, ph.isDoubleDamage)
           if (ph.isMainSlot && wasCrit) mainSlotCritTarget = ph.target
           spawnPostHitVfx(ph.attacker, ph.target, ph.action, ph.multiActionType)
@@ -5792,7 +5791,8 @@ export function createGameScene(
             //   Dependent (crit/affliction): use full effective speed — speed bonus increases damage since frequency is fixed.
             const speedForBalance = trigger === 'time' ? leveledSpeed : effectiveSlotSpeed
             slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * speedForBalance
-            if (trigger === 'crit') slotDmg *= balance.ascent.critTriggerDamageMult
+            if (trigger === 'crit')       slotDmg *= balance.ascent.critTriggerDamageMult
+            if (trigger === 'affliction') slotDmg *= balance.ascent.afflictionTriggerDamageMult
             slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
             slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
             if (slotDef.tags.includes('projectile')) { const b = getProjectileBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
@@ -6447,7 +6447,9 @@ function statXpNeeded(level: number): number {
 }
 
 function enemyMaxLevelXpNeeded(maxLevel: number): number {
-  return Math.round(balance.enemyLevel.xpPerMaxLevel * Math.pow(balance.enemyLevel.xpGrowth, maxLevel - 1))
+  const base    = balance.enemyLevel.xpPerMaxLevel * Math.pow(balance.enemyLevel.xpGrowth, maxLevel - 1)
+  const divider = balance.enemyLevel.xpDividerBase + balance.enemyLevel.xpDividerPerLevel * (maxLevel - 1)
+  return Math.round(base / divider)
 }
 
 // Box-Muller transform: standard normal sample (mean 0, variance 1).

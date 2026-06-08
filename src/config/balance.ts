@@ -72,7 +72,7 @@ export const balance = {
     championXpMultiplier: 5,
     championSizeMult:   1.25,         // champion enemies are 25% larger than normal
     bossChance:         0,             // probability that a champion is upgraded to "boss" (mastery-only)
-    bossLifeMin:       24,   bossLifeMax:       30,
+    bossLifeMin:       48,   bossLifeMax:       60,
     bossDamageMin:     12,   bossDamageMax:     15,
     bossResistMin:     80,   bossResistMax:     90,
     bossActionSpeedMult: 2,
@@ -177,6 +177,8 @@ export const balance = {
   enemyLevel: {
     xpPerMaxLevel:      1000, // XP required for max-level 1 → 2
     xpGrowth:           1.5,  // each subsequent max-level costs xpGrowth× the previous
+    xpDividerBase:      0.5,  // divider at level 1 → 2× XP cost; increases xpDividerPerLevel per level
+    xpDividerPerLevel:  0.02, // +0.02 per level → divider reaches 1.0 at level 26 (unchanged), >1 above
     lifeMultiplier:      1.229, // multiplicative per-level bonus on enemy life (~2× at lv30 vs 1.2)
     damageMultiplier:    1.1266, // multiplicative per-level bonus on enemy damage (~2× at lv30 vs 1.1)
     lifeAddPerLevel:     0.30, // additive life bonus per level above 1, stacks on top of lifeMultiplier
@@ -189,7 +191,7 @@ export const balance = {
   ascent: {
     requiredEnemyLevelBase: 30,   // first ascension needs enemy maxLevel ≥ 30
     requiredLevelStep:       5,   // each subsequent ascension raises the requirement by 5
-    xpMultiplier:            5,   // ascent bar = xpMultiplier × enemy max-level XP at required level
+    xpMultiplier:           10,   // ascent bar = xpMultiplier × enemy max-level XP at required level
     damagePerAscent:        0.10, // +10% damage per ascent count (additive, independent multiplier)
     xpGainPerAscent:        0.10, // +10% all XP per ascent count
     actionSpeedPerAscent:   0.05, // +5% action speed per ascent count
@@ -202,8 +204,9 @@ export const balance = {
     slot2DamagePenalty:      0.75,  // global damage multiplier for slot 2
     slot3DamagePenalty:      0.50,  // global damage multiplier for slot 3
     timeTriggerIntervalMs:  2000,   // fire period (ms) for the time trigger type
-    critTriggerDamageMult:   0.1,   // extra multiplier for crit trigger (on top of speed balance)
-    afflictionTriggerCount:   10,   // affliction applications before affliction trigger fires
+    critTriggerDamageMult:        0.1,   // extra multiplier for crit trigger (on top of speed balance)
+    afflictionTriggerDamageMult:  0.5,   // extra multiplier for affliction trigger (on top of speed balance)
+    afflictionTriggerCount:        10,   // affliction applications before affliction trigger fires
   },
 
   // ── Critical hits ─────────────────────────────────────────────────────────
