@@ -93,6 +93,12 @@ export function createGameScene(
   ) as Partial<Record<MasteryId, MasteryProgress>>
   let masteryDumpPoints: Partial<Record<MasteryId, number>> = { ...(char?.masteryDumpPoints ?? {}) }
 
+  // Artifacts — deep-copied so mutations don't bleed into the cached Character.
+  // Declared early (ahead of the bonus getters that fold in artifactMods and the
+  // setup-time recomputeArtifactMods() call) to avoid a temporal-dead-zone access.
+  let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
+  let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
+
   const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
     JSON.stringify(char?.actionRunes ?? {}),
   ) as Partial<Record<string, ActionRunes>>
@@ -1265,9 +1271,6 @@ export function createGameScene(
   // Ascension state — persists through rebirths and across sessions
   let ascentCount = char?.ascentCount ?? 0
   let ascentXp    = char?.ascentXp ?? 0
-  // Deep-copy so mutations don't bleed into the cached Character object
-  let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
-  let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
