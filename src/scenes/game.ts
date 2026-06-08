@@ -6447,7 +6447,9 @@ function statXpNeeded(level: number): number {
 }
 
 function enemyMaxLevelXpNeeded(maxLevel: number): number {
-  return Math.round(balance.enemyLevel.xpPerMaxLevel * Math.pow(balance.enemyLevel.xpGrowth, maxLevel - 1))
+  const base    = balance.enemyLevel.xpPerMaxLevel * Math.pow(balance.enemyLevel.xpGrowth, maxLevel - 1)
+  const divider = balance.enemyLevel.xpDividerBase + balance.enemyLevel.xpDividerPerLevel * (maxLevel - 1)
+  return Math.round(base / divider)
 }
 
 // Box-Muller transform: standard normal sample (mean 0, variance 1).
