@@ -91,9 +91,9 @@ export function mountAscentModal(
         </section>
         ${ascentCount >= balance.ascent.artifactSlot1UnlockAscent ? `
           <section class="ascent-section ascent-artifacts-section">
-            <button class="ascent-artifacts-btn" data-action="open-artifacts">
-              <span>${t('ascent', 'artifactsBtn')}</span>
-              <span class="notif-dot artifact-notif-dot" hidden></span>
+            <button class="modal-btn modal-btn--primary ascent-artifacts-btn" data-action="open-artifacts" style="position:relative">
+              ${t('ascent', 'artifactsBtn')}
+              <span class="notif-dot artifact-notif-dot" hidden style="position:absolute;top:6px;right:8px"></span>
             </button>
           </section>
         ` : ''}

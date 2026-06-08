@@ -1,7 +1,9 @@
 import { t } from '../i18n'
 import { playSound } from '../audio'
-import type { Artifact } from '../config/artifacts'
+import type { Artifact, ArtifactLine } from '../config/artifacts'
 import { describePositive, describeNegative } from '../config/artifacts'
+
+const TRASH_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`
 
 function rarityClass(lines: number): string {
   if (lines === 3) return 'artifact-thumb--r3'
@@ -9,21 +11,25 @@ function rarityClass(lines: number): string {
   return 'artifact-thumb--r1'
 }
 
-function describeModLine(artifact: Artifact, lineIdx: number): string {
-  const line = artifact.lines[lineIdx]
+function positiveLineHtml(line: ArtifactLine): string {
   const pd = describePositive(line.positive)
-  const nd = describeNegative(line.negative)
   const sourceKey = pd.source ? t('artifacts', `source${pd.source.charAt(0).toUpperCase() + pd.source.slice(1)}` as 'sourceFire') : ''
   const posKey = `pos${pd.key.charAt(0).toUpperCase() + pd.key.slice(1)}` as 'posGlobalMoreDamage'
   const posText = t('artifacts', posKey)
     .replace('{v}', String(pd.value))
     .replace('{source}', sourceKey)
+  return `<span class="artifact-line-positive">${posText}</span>`
+}
+
+function negativeLineHtml(line: ArtifactLine): string {
+  const nd = describeNegative(line.negative)
   const negKey = `neg${nd.key.charAt(0).toUpperCase() + nd.key.slice(1)}` as 'negDamageTaken'
   const negText = t('artifacts', negKey).replace('{v}', String(nd.value))
-  return `<div class="artifact-line">
-    <span class="artifact-line-positive">${posText}</span>
-    <span class="artifact-line-negative">${negText}</span>
-  </div>`
+  return `<span class="artifact-line-negative">${negText}</span>`
+}
+
+function allLinesHtml(artifact: Artifact): string {
+  return artifact.lines.map(positiveLineHtml).join('') + artifact.lines.map(negativeLineHtml).join('')
 }
 
 function renderArtifactThumb(
@@ -33,19 +39,20 @@ function renderArtifactThumb(
 ): string {
   const rc = rarityClass(artifact.lines.length)
   const equippedClass = artifact.equipped ? ' artifact-thumb--equipped' : ''
-  const linesHtml = artifact.lines.map((_, i) => describeModLine(artifact, i)).join('')
   const canEquip = !artifact.equipped && used < max
   const equipBtn = artifact.equipped
     ? `<button class="artifact-thumb-equip-btn" data-artifact-id="${artifact.id}" data-action="unequip">${t('artifacts', 'unequip')}</button>`
     : `<button class="artifact-thumb-equip-btn" data-artifact-id="${artifact.id}" data-action="equip" ${canEquip ? '' : 'disabled'} title="${canEquip ? '' : t('artifacts', 'lockedHint')}">${t('artifacts', 'equip')}</button>`
   return `
-    <div class="artifact-thumb ${rc}${equippedClass}" data-artifact-id="${artifact.id}">
-      <div class="artifact-thumb-header">
-        <span class="artifact-rarity-label">${t('artifacts', 'rarityLabel').replace('{n}', String(artifact.lines.length))}</span>
-        <button class="artifact-thumb-trash" data-artifact-id="${artifact.id}" data-action="delete" aria-label="${t('artifacts', 'deleteBtn')}">✕</button>
+    <div class="artifact-thumb-row">
+      <div class="artifact-thumb ${rc}${equippedClass}" data-artifact-id="${artifact.id}">
+        <div class="artifact-thumb-header">
+          <span class="artifact-rarity-label">${t('artifacts', 'rarityLabel').replace('{n}', String(artifact.lines.length))}</span>
+        </div>
+        <div class="artifact-thumb-lines">${allLinesHtml(artifact)}</div>
+        ${equipBtn}
       </div>
-      <div class="artifact-thumb-lines">${linesHtml}</div>
-      ${equipBtn}
+      <button class="artifact-thumb-trash" data-artifact-id="${artifact.id}" data-action="delete" aria-label="${t('artifacts', 'deleteBtn')}">${TRASH_ICON}</button>
     </div>
   `
 }
@@ -86,16 +93,17 @@ export function mountArtifactCardModal(
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
-  const linesHtml = artifact.lines.map((_, i) => describeModLine(artifact, i)).join('')
+  const posHtml = artifact.lines.map(positiveLineHtml).join('')
+  const negHtml = artifact.lines.map(negativeLineHtml).join('')
   const rc = rarityClass(artifact.lines.length)
   backdrop.innerHTML = `
     <div class="modal-panel artifact-card ${rc}" role="dialog" aria-modal="true">
       <h2 class="modal-title">${t('artifacts', 'rarityLabel').replace('{n}', String(artifact.lines.length))}</h2>
-      <div class="artifact-card-lines">${linesHtml}</div>
+      <div class="artifact-card-lines">${posHtml}${negHtml}</div>
       <div class="artifact-card-actions">
-        <button class="modal-btn" data-action="bag">${t('artifacts', 'bag')}</button>
+        <button class="modal-btn modal-btn--danger" data-action="drop">${t('artifacts', 'drop')}</button>
+        <button class="modal-btn modal-btn--primary" data-action="bag">${t('artifacts', 'bag')}</button>
         <button class="modal-btn modal-btn--primary" data-action="equip">${t('artifacts', 'equip')}</button>
-        <button class="modal-btn modal-btn--ghost" data-action="drop">${t('artifacts', 'drop')}</button>
       </div>
     </div>
   `
