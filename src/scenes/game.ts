@@ -2079,6 +2079,16 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="go-home"]')!
     .addEventListener('click', () => saveAndGoHome())
 
+  // Converts a mastery node index to its position label in the tree UI.
+  // Line nodes 0-11 → "1" to "12"; key nodes 12-15 → "6t","6b","12t","12b".
+  const nodeLabel = (n: number): string => {
+    if (n < 12) return `${n + 1}`
+    if (n === 12) return '6t'
+    if (n === 13) return '6b'
+    if (n === 14) return '12t'
+    return '12b'
+  }
+
   // ── Character stats snapshot ───────────────────────────────────────────────
   // Mirrors assignAction()'s multiplier chain (keep in sync) plus the cast-time
   // affliction/crit/multi-strike/trigger expressions, recording each factor's
@@ -2090,16 +2100,6 @@ export function createGameScene(
     }
     const pct  = (n: number): string => `${fmt(n, 1)}%`
     const mul  = (n: number): string => `×${fmt(n, 3)}`
-
-    // Converts a mastery node index to its position label in the tree UI.
-    // Line nodes 0-11 → "1" to "12"; key nodes 12-15 → "6t","6b","12t","12b".
-    const nodeLabel = (n: number): string => {
-      if (n < 12) return `${n + 1}`
-      if (n === 12) return '6t'
-      if (n === 13) return '6b'
-      if (n === 14) return '12t'
-      return '12b'
-    }
 
     // Composes an origin label for an aggregate 'more' factor by listing the
     // specific contributing nodes: "fire mastery 1.6, 1.6b, overflow".
@@ -3434,7 +3434,7 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     nodes[treeIdx].push(nodeIdx)
     if (nodeType(nodeIdx) === 'key') {
-      trackEvent('mastery_key_taken', { mastery: id, tree: String(treeIdx), node: String(nodeIdx) })
+      trackEvent('mastery_key_taken', { node: `${id}${treeIdx + 1}.${nodeLabel(nodeIdx)}` })
     }
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
