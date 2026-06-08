@@ -2205,6 +2205,8 @@ export function createGameScene(
         dmgFactors.push({ text: mul(slotPenalty), origin: `slot ${slot + 1} penalty`, kind: 'less' })
         if (triggerType === 'crit') {
           dmgFactors.push({ text: mul(balance.ascent.critTriggerDamageMult), origin: 'crit trigger penalty', kind: 'less' })
+        } else if (triggerType === 'affliction') {
+          dmgFactors.push({ text: mul(balance.ascent.afflictionTriggerDamageMult), origin: 'affliction trigger penalty', kind: 'less' })
         }
       }
 
@@ -2300,9 +2302,11 @@ export function createGameScene(
       entityActions.delete('__stats_preview__')
 
       // Extra slot total: assignAction doesn't apply slot penalties, so adjust.
-      // Crit-trigger slots take a flat ×0.1 damage penalty (balance.ascent.critTriggerDamageMult).
-      const critTriggerMult = triggerType === 'crit' ? balance.ascent.critTriggerDamageMult : 1
-      const adjustedDamage = tmp.actionDamage * slotPenalty * critTriggerMult
+      // Crit/affliction trigger slots take an extra flat damage penalty.
+      const triggerMult = triggerType === 'crit'       ? balance.ascent.critTriggerDamageMult
+                        : triggerType === 'affliction'  ? balance.ascent.afflictionTriggerDamageMult
+                        : 1
+      const adjustedDamage = tmp.actionDamage * slotPenalty * triggerMult
 
       const damage: StatLine = { label: 'Total damage', total: fmt(adjustedDamage, 2), factors: dmgFactors }
       const speed:  StatLine = { label: 'Total speed (actions/sec)', total: fmt(tmp.actionSpeed, 2), factors: spdFactors }
@@ -2750,25 +2754,6 @@ export function createGameScene(
         halo.circle(0, 0, entity.radius + 8)
         halo.stroke({ color: 0xffffff, width: 3, alpha: 0.75 })
         c.addChildAt(halo, 0)
-        const diamond = new Graphics()
-        diamond.poly([0, -7, 7, 0, 0, 7, -7, 0])
-        diamond.fill({ color: 0xffd700 })
-        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 12))
-        c.addChild(diamond)
-      } else if (strongEntities.has(entity.id)) {
-        const diamond = new Graphics()
-        diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
-        diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
-        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
-        c.addChild(diamond)
-      }
-      if (highResistEntities.has(entity.id)) {
-        const shield = new Graphics()
-        shield.poly([0, -6, 5, -3, 5, 2, 0, 6, -5, 2, -5, -3])
-        shield.fill({ color: 0xffffff })
-        const barW = entity.radius * 2
-        shield.position.set(barW / 2, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
-        c.addChild(shield)
       }
     }
     c.position.set(entity.x, entity.y)
@@ -5806,7 +5791,8 @@ export function createGameScene(
             //   Dependent (crit/affliction): use full effective speed — speed bonus increases damage since frequency is fixed.
             const speedForBalance = trigger === 'time' ? leveledSpeed : effectiveSlotSpeed
             slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * speedForBalance
-            if (trigger === 'crit') slotDmg *= balance.ascent.critTriggerDamageMult
+            if (trigger === 'crit')       slotDmg *= balance.ascent.critTriggerDamageMult
+            if (trigger === 'affliction') slotDmg *= balance.ascent.afflictionTriggerDamageMult
             slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
             slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
             if (slotDef.tags.includes('projectile')) { const b = getProjectileBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
