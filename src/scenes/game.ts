@@ -2754,25 +2754,6 @@ export function createGameScene(
         halo.circle(0, 0, entity.radius + 8)
         halo.stroke({ color: 0xffffff, width: 3, alpha: 0.75 })
         c.addChildAt(halo, 0)
-        const diamond = new Graphics()
-        diamond.poly([0, -7, 7, 0, 0, 7, -7, 0])
-        diamond.fill({ color: 0xffd700 })
-        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 12))
-        c.addChild(diamond)
-      } else if (strongEntities.has(entity.id)) {
-        const diamond = new Graphics()
-        diamond.poly([0, -6, 6, 0, 0, 6, -6, 0])
-        diamond.fill({ color: eliteEntities.has(entity.id) ? 0xaa44ff : 0x4499ff })
-        diamond.position.set(0, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
-        c.addChild(diamond)
-      }
-      if (highResistEntities.has(entity.id)) {
-        const shield = new Graphics()
-        shield.poly([0, -6, 5, -3, 5, 2, 0, 6, -5, 2, -5, -3])
-        shield.fill({ color: 0xffffff })
-        const barW = entity.radius * 2
-        shield.position.set(barW / 2, -(topY + HP_BAR_GAP + HP_BAR_H + 11))
-        c.addChild(shield)
       }
     }
     c.position.set(entity.x, entity.y)

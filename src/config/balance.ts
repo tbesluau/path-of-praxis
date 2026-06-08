@@ -72,7 +72,7 @@ export const balance = {
     championXpMultiplier: 5,
     championSizeMult:   1.25,         // champion enemies are 25% larger than normal
     bossChance:         0,             // probability that a champion is upgraded to "boss" (mastery-only)
-    bossLifeMin:       24,   bossLifeMax:       30,
+    bossLifeMin:       48,   bossLifeMax:       60,
     bossDamageMin:     12,   bossDamageMax:     15,
     bossResistMin:     80,   bossResistMax:     90,
     bossActionSpeedMult: 2,
