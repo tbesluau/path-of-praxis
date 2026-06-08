@@ -13,6 +13,7 @@ let currentTeardown: (() => void) | null = null
 export function mountRefillAdModal(
   parent: HTMLElement,
   rewardMs: number,
+  ascentCount: number,
   onRefill: (addedMs: number) => void,
   onClose: () => void,
 ): () => void {
@@ -35,7 +36,7 @@ export function mountRefillAdModal(
   `
 
   const teardown = (): void => { backdrop.remove(); currentTeardown = null }
-  const dismiss  = (): void => { trackEvent('x2_speed_refill', { outcome: 'ad_skipped' }); playSound('modal.close'); teardown(); onClose() }
+  const dismiss  = (): void => { trackEvent('x2_speed_refill', { outcome: 'ad_skipped', ascent: String(ascentCount) }); playSound('modal.close'); teardown(); onClose() }
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action="skip"]').forEach(btn => {
     btn.addEventListener('click', dismiss)
@@ -46,7 +47,7 @@ export function mountRefillAdModal(
     watchBtn.classList.add('away-bonus-watch-ad-btn--loading')
     const watched = await showRewardedAd()
     teardown()
-    trackEvent('x2_speed_refill', { outcome: watched ? 'ad_watched' : 'ad_skipped' })
+    trackEvent('x2_speed_refill', { outcome: watched ? 'ad_watched' : 'ad_skipped', ascent: String(ascentCount) })
     if (watched) onRefill(rewardMs)
     onClose()
   })
