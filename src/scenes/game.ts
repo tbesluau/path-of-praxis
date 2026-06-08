@@ -4546,7 +4546,7 @@ export function createGameScene(
               fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
               persistState()
             } else {
-              mountAwayBonusModal(el, gap, earned, () => {}, (bonusMs) => {
+              mountAwayBonusModal(el, gap, earned, ascentCount, () => {}, (bonusMs) => {
                 fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
                 updateSpeedUI()
                 persistState()
