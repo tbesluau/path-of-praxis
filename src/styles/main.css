@@ -4094,13 +4094,13 @@ body.privacy-page {
 }
 
 .artifact-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   max-height: 60vh;
   overflow-y: auto;
   /* extra right padding so the trash button doesn't get clipped */
-  padding-right: var(--space-3);
+  padding-right: var(--space-2);
 }
 
 /* Wrapper that provides the positioning context for the half-merged trash btn */
@@ -4140,14 +4140,15 @@ body.privacy-page {
 .artifact-thumb--r2 .artifact-rarity-label { color: #c8a4e3; }
 .artifact-thumb--r3 .artifact-rarity-label { color: #f0d080; }
 
-/* Half-merged delete button — mirrors .action-trigger-rune-btn */
+/* Half-merged delete button — mirrors .action-trigger-rune-btn exactly
+   (same 56px size so the border-image slices render without seams) */
 .artifact-thumb-trash {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   padding: 0;
   cursor: pointer;
   border: 14px solid transparent;
@@ -4175,8 +4176,8 @@ body.privacy-page {
 }
 
 .artifact-thumb-trash svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   stroke-width: 2;
 }
 
@@ -4196,6 +4197,16 @@ body.privacy-page {
 .artifact-line-negative {
   color: #dc2626;
   font-weight: 500;
+}
+
+/* Thumbnails sit on a dark blue panel, so use lighter red/green for contrast.
+   The drop card sits on a light panel and keeps the darker shades above. */
+.artifact-thumb-lines .artifact-line-positive {
+  color: #4ade80;
+}
+
+.artifact-thumb-lines .artifact-line-negative {
+  color: #f87171;
 }
 
 /* Equip/unequip button inside the thumbnail */
@@ -4228,6 +4239,49 @@ body.privacy-page {
 
 .artifact-card {
   max-width: 360px;
+  position: relative;
+}
+
+/* Drop control — red trash button in the top-right corner of the card.
+   Matches the .modal-btn--danger aesthetic (no red Kenney asset exists). */
+.artifact-card-drop-btn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.08);
+  z-index: 2;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.artifact-card-drop-btn:hover,
+.artifact-card-drop-btn:focus-visible {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  outline: none;
+}
+
+.artifact-card-drop-btn:active {
+  transform: scale(0.94);
+}
+
+.artifact-card-drop-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.artifact-card .modal-title {
+  padding-right: 48px;
 }
 
 .artifact-card-lines {

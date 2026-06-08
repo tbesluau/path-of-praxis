@@ -145,7 +145,9 @@ export const ru: TranslationSchema = {
     negLessMoveSpeed: '-{v}% скорости движения',
     negLessActionSpeed: '-{v}% скорости действия',
     negLessRangeAndArea: '-{v}% дальности и области',
-    rarityLabel: '{n} линия',
+    weightLight: 'Лёгкий артефакт',
+    weightMedium: 'Средний артефакт',
+    weightHeavy: 'Тяжёлый артефакт',
   },
   rune: {
     addToSlot: 'Добавить руну {type} в слот {n}',
