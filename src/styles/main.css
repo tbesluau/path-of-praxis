@@ -4198,6 +4198,16 @@ body.privacy-page {
   font-weight: 500;
 }
 
+/* Thumbnails sit on a dark blue panel, so use lighter red/green for contrast.
+   The drop card sits on a light panel and keeps the darker shades above. */
+.artifact-thumb-lines .artifact-line-positive {
+  color: #4ade80;
+}
+
+.artifact-thumb-lines .artifact-line-negative {
+  color: #f87171;
+}
+
 /* Equip/unequip button inside the thumbnail */
 .artifact-thumb-equip-btn {
   width: 100%;
