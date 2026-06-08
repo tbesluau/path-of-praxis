@@ -2013,13 +2013,13 @@ export function createGameScene(
   function offerRefillAd(): void {
     const addedMs = 30 * 60 * 1000
     if (isPaid() || !adsAvailable()) {
-      trackEvent('x2_speed_refill', { outcome: 'auto_granted' })
+      trackEvent('x2_speed_refill', { outcome: 'auto_granted', ascent: String(ascentCount) })
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
       updateSpeedUI()
       persistState()
       return
     }
-    mountRefillAdModal(el, addedMs, (granted) => {
+    mountRefillAdModal(el, addedMs, ascentCount, (granted) => {
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + granted)
       updateSpeedUI()
       persistState()
@@ -4539,12 +4539,14 @@ export function createGameScene(
         if (gap >= AWAY_DETECT_MS) {
           const earned = computeAward(gap, fastForwardMs)
           if (earned > 0) {
+            // Pre-ad: ×2 time granted for being away, before the away-bonus ad is offered.
+            trackEvent('x2_speed_earned', { ascent: String(ascentCount) })
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
             if (isPaid() || !adsAvailable()) {
               fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
               persistState()
             } else {
-              mountAwayBonusModal(el, gap, earned, () => {}, (bonusMs) => {
+              mountAwayBonusModal(el, gap, earned, ascentCount, () => {}, (bonusMs) => {
                 fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
                 updateSpeedUI()
                 persistState()
@@ -4572,6 +4574,8 @@ export function createGameScene(
           // ticker.deltaMS is already scaled by app.ticker.speed = 2; divide back to real ms
           fastForwardMs = Math.max(0, fastForwardMs - ticker.deltaMS / gameSpeed)
           if (fastForwardMs === 0) {
+            // Pre-ad: the banked ×2 time just drained to zero, before the refill ad is offered.
+            trackEvent('x2_speed_depleted', { ascent: String(ascentCount) })
             setSpeed(1)
             offerRefillAd()
           }
