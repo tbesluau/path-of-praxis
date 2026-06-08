@@ -5,7 +5,7 @@ import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Za
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
-import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, type MasteryId, type ActionTag } from '../config/masteries'
+import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
@@ -33,6 +33,7 @@ import { loadTileTextures } from '../assets/tile-svgs'
 import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey } from '../assets/entity-art'
 import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
 import { createBackgroundTicker, type BackgroundTicker } from '../core/background-ticker'
+import { trackEvent } from '../core/analytics'
 
 const HP_BAR_H = 4
 const HP_BAR_GAP = 4
@@ -2012,6 +2013,7 @@ export function createGameScene(
   function offerRefillAd(): void {
     const addedMs = 30 * 60 * 1000
     if (isPaid() || !adsAvailable()) {
+      trackEvent('x2_speed_refill', { outcome: 'auto_granted' })
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
       updateSpeedUI()
       persistState()
@@ -3139,6 +3141,16 @@ export function createGameScene(
     if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
 
     ascentCount++
+    // Capture enemy max level before the deep reset below wipes it.
+    trackEvent('ascent_completed', {
+      ascent:          String(ascentCount),
+      action:          playerActionId,
+      slot2_trigger:   extraSlots[0]?.triggerType ?? 'none',
+      slot2_action:    extraSlots[0]?.actionId    ?? 'none',
+      slot3_trigger:   extraSlots[1]?.triggerType ?? 'none',
+      slot3_action:    extraSlots[1]?.actionId    ?? 'none',
+      enemy_max_level: String(enemyProgress.maxLevel),
+    })
     ascentXp = 0
     // universePointAllocations persists; action is preserved
 
@@ -3436,6 +3448,9 @@ export function createGameScene(
     }
     const nodes = existing.nodes.map(t => [...t])
     nodes[treeIdx].push(nodeIdx)
+    if (nodeType(nodeIdx) === 'key') {
+      trackEvent('mastery_key_taken', { mastery: id, tree: String(treeIdx), node: String(nodeIdx) })
+    }
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
