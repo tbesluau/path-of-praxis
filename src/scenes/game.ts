@@ -4907,6 +4907,7 @@ export function createGameScene(
         const damagedIds = new Set<string>()
         let playerManaSpent = false
         let currentHitMultiType: MultiActionType | undefined = undefined  // set before each applyHit call, read inside for DPS tracking
+        let currentHitIsMainSlot = false  // set before each applyHit call; gates affliction trigger counting
 
         // Apply a single hit: damage + XP + damage number + VFX. Mana / cooldown / triggers handled by caller.
         const applyHit = (attacker: Entity, target: Entity, damage: number, action: ActionDef, actionId: ActionId, guaranteedAfflictions = false, impactX?: number, impactY?: number, isDoubleDamage = false): boolean => {
@@ -5164,8 +5165,7 @@ export function createGameScene(
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
-              afflictionAppliedThisTick++
-              afflictionLastTarget = target
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
             }
             // Burning Ground: roll on fire-tagged player hits; tile must be clear of burning ground
             if (fb.burnGroundChance > 0) {
@@ -5188,8 +5188,7 @@ export function createGameScene(
                 * (1 + lbElec.electrocuteDurationIncrease / 100)
                 * lbElec.electrocuteDurationMult
               electrocuteStacks.set(target.id, duration)
-              afflictionAppliedThisTick++
-              afflictionLastTarget = target
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
             }
           }
           // Electrifying: lightning-tagged player hits roll a chance to apply Electrified to the player
@@ -5223,8 +5222,7 @@ export function createGameScene(
               }
               // Bloodlust: roll on each successful bleed application
               if (pb.bloodlustChance > 0 && Math.random() * 100 < pb.bloodlustChance) applyBloodlust()
-              afflictionAppliedThisTick++
-              afflictionLastTarget = target
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
             }
           }
           // Resistance Breaking: roll on physical-tagged player hits to permanently reduce enemy physRot resistance
@@ -5285,6 +5283,7 @@ export function createGameScene(
           if (!entities.includes(ph.target) || ph.target.currentLife <= 0) continue
           if (!entities.includes(ph.attacker)) continue
           currentHitMultiType = ph.multiActionType
+          currentHitIsMainSlot = ph.isMainSlot ?? false
           const wasCrit = applyHit(ph.attacker, ph.target, ph.damage, ph.action, ph.actionId, ph.guaranteedAfflictions, ph.impactX, ph.impactY, ph.isDoubleDamage)
           if (ph.isMainSlot && wasCrit) mainSlotCritTarget = ph.target
           spawnPostHitVfx(ph.attacker, ph.target, ph.action, ph.multiActionType)
