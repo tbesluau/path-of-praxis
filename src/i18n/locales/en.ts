@@ -108,8 +108,42 @@ export interface TranslationSchema {
     threshold3: string
     threshold4: string
     threshold5: string
+    threshold6: string
+    artifactsBtn: string
     upSlotA: string
     upSlotB: string
+  }
+  artifacts: {
+    title: string
+    countLabel: string       // template: "{n}/20 artifacts"
+    equippedLabel: string    // template: "Equipped: {used}/{max}"
+    full: string             // warning when at 20/20
+    equip: string
+    unequip: string
+    bag: string
+    drop: string
+    deleteBtn: string
+    deleteConfirmTitle: string
+    deleteConfirmBody: string
+    deleteConfirmBtn: string
+    lockedHint: string
+    sourceFire: string
+    sourceLightning: string
+    sourcePhysical: string
+    posSourceMoreDamage: string      // template: "{v}% more {source} damage"
+    posSourceActionSpeed: string     // template: "{v}% increased {source} action speed"
+    posSourceAffliction: string      // template: "{v}% more {source} affliction effect"
+    posGlobalActionSpeed: string     // template: "{v}% more action speed"
+    posGlobalMoreDamage: string      // template: "{v}% more damage"
+    posDoubleDamageChance: string    // template: "+{v}% double damage chance"
+    posDoubleActionChance: string    // template: "+{v}% double action chance"
+    posRangeAndArea: string          // template: "+{v}% range and area"
+    negDamageTaken: string           // template: "{v}% more damage taken"
+    negAllResistances: string        // template: "-{v}% all resistances"
+    negLessMoveSpeed: string         // template: "-{v}% move speed"
+    negLessActionSpeed: string       // template: "-{v}% action speed"
+    negLessRangeAndArea: string      // template: "-{v}% range and area"
+    rarityLabel: string              // template: "{n}-line"
   }
   rune: {
     addToSlot: string              // template: "Add {type} rune to slot {n}"
@@ -403,9 +437,43 @@ export const en: TranslationSchema = {
     threshold2: 'Champions and Bosses tree in the enemy mastery',
     threshold3: '+1 action trigger slot',
     threshold4: '+1 free mastery point per ascent for each mastery',
-    threshold5: '+1 action trigger slot',
+    threshold5: 'Artifacts — risk/reward modifiers',
+    threshold6: '+1 action trigger slot',
+    artifactsBtn: 'Artifacts',
     upSlotA: '10% increased multi-action speed',
     upSlotB: '+1% base action critical hit chance',
+  },
+  artifacts: {
+    title: 'Artifacts',
+    countLabel: '{n}/20 artifacts',
+    equippedLabel: 'Equipped: {used}/{max}',
+    full: 'Inventory full — drop an artifact to receive new ones from bosses',
+    equip: 'Equip',
+    unequip: 'Unequip',
+    bag: 'Bag',
+    drop: 'Drop',
+    deleteBtn: 'Delete',
+    deleteConfirmTitle: 'Delete artifact?',
+    deleteConfirmBody: 'This artifact will be permanently lost.',
+    deleteConfirmBtn: 'Delete',
+    lockedHint: 'Equip slots full — unequip another artifact first',
+    sourceFire: 'fire',
+    sourceLightning: 'lightning',
+    sourcePhysical: 'physical',
+    posSourceMoreDamage: '{v}% more {source} damage',
+    posSourceActionSpeed: '{v}% increased {source} action speed',
+    posSourceAffliction: '{v}% more {source} affliction effect',
+    posGlobalActionSpeed: '{v}% more action speed',
+    posGlobalMoreDamage: '{v}% more damage',
+    posDoubleDamageChance: '+{v}% double damage chance',
+    posDoubleActionChance: '+{v}% double action chance',
+    posRangeAndArea: '+{v}% range and area',
+    negDamageTaken: '{v}% more damage taken',
+    negAllResistances: '-{v}% all resistances',
+    negLessMoveSpeed: '-{v}% move speed',
+    negLessActionSpeed: '-{v}% action speed',
+    negLessRangeAndArea: '-{v}% range and area',
+    rarityLabel: '{n}-line',
   },
   rune: {
     addToSlot: 'Add {type} rune to slot {n}',
