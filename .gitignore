@@ -22,3 +22,6 @@ android/app/build/
 android/local.properties
 android/captures/
 android/.idea/
+
+# Claude Code internal state
+.claude/
