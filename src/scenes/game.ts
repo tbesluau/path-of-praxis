@@ -9,6 +9,8 @@ import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
+import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
+import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
@@ -64,6 +66,7 @@ interface Vfx {
   age: number
   maxAge: number
   tick: (progress: number) => void
+  onComplete?: () => void
 }
 
 export function createGameScene(
@@ -164,7 +167,13 @@ export function createGameScene(
   }
 
   function getActionBonuses(): ActionBonuses {
-    return computeActionBonuses(masteryNodes('action', 5), dumpedFor('action'))
+    const b = computeActionBonuses(masteryNodes('action', 5), dumpedFor('action'))
+    b.moreDamage += artifactMods.globalMoreDamage
+    b.moreActionSpeed += artifactMods.globalActionSpeedMore
+    b.lessActionSpeed += artifactMods.actionSpeedLess
+    b.doubleDamageChance += artifactMods.doubleDamageChance
+    b.doubleActionChance += artifactMods.doubleActionChance
+    return b
   }
 
   function getCriticalHitBonuses(): CriticalHitBonuses {
@@ -191,7 +200,11 @@ export function createGameScene(
   }
 
   function getFireBonuses(): FireBonuses {
-    return computeFireBonuses(masteryNodes('fire', 5), dumpedFor('fire'))
+    const b = computeFireBonuses(masteryNodes('fire', 5), dumpedFor('fire'))
+    b.moreDamage += artifactMods.fireMoreDamage
+    b.actionSpeedIncrease += artifactMods.fireActionSpeedAdd
+    b.burnMoreDamage += artifactMods.burnMoreDamage
+    return b
   }
 
   function getEnemyBonuses(): EnemyBonuses {
@@ -201,27 +214,45 @@ export function createGameScene(
   }
 
   function getProjectileBonuses(): ProjectileBonuses {
-    return computeProjectileBonuses(masteryNodes('projectile', 5), dumpedFor('projectile'))
+    const b = computeProjectileBonuses(masteryNodes('projectile', 5), dumpedFor('projectile'))
+    b.rangeMore += artifactMods.rangeMore
+    return b
   }
 
   function getLightningBonuses(): LightningBonuses {
-    return computeLightningBonuses(masteryNodes('lightning', 5), dumpedFor('lightning'))
+    const b = computeLightningBonuses(masteryNodes('lightning', 5), dumpedFor('lightning'))
+    b.moreDamage += artifactMods.lightningMoreDamage
+    b.moreActionSpeed += artifactMods.lightningMoreActionSpeed
+    b.electrocuteDamageTakenIncrease += artifactMods.electrocuteEffectAdd
+    return b
   }
 
   function getStrikeBonuses(): StrikeBonuses {
-    return computeStrikeBonuses(masteryNodes('strike', 5), dumpedFor('strike'))
+    const b = computeStrikeBonuses(masteryNodes('strike', 5), dumpedFor('strike'))
+    b.moreRange += artifactMods.rangeMore
+    return b
   }
 
   function getPhysicalBonuses(): PhysicalBonuses {
-    return computePhysicalBonuses(masteryNodes('physical', 5), dumpedFor('physical'))
+    const b = computePhysicalBonuses(masteryNodes('physical', 5), dumpedFor('physical'))
+    b.moreDamage += artifactMods.physicalMoreDamage
+    b.actionSpeedIncrease += artifactMods.physicalActionSpeedAdd
+    b.bleedMoreDamage += artifactMods.bleedMoreDamage
+    return b
   }
 
   function getAreaBonuses(): AreaBonuses {
-    return computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
+    const b = computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
+    b.moreSize += artifactMods.areaMore
+    return b
   }
 
   function getMovementBonuses(): MovementBonuses {
     return computeMovementBonuses(masteryNodes('movement', 4), dumpedFor('movement'))
+  }
+
+  function recomputeArtifactMods(): void {
+    artifactMods = computeArtifactMods(artifacts)
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -858,13 +889,13 @@ export function createGameScene(
       const pb = getProjectileBonuses()
       entity.actionDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
       entity.actionSpeed  *= (1 + pb.actionSpeedIncrease / 100)
-      entity.actionRange  *= (1 + pb.rangeIncrease / 100) * (1 + pb.rangeMore / 100)
+      entity.actionRange  *= (1 + pb.rangeIncrease / 100) * (1 + pb.rangeMore / 100) * Math.max(0, 1 - artifactMods.rangeLess / 100)
     }
     if (entity.role === 'player' && def.tags.includes('strike')) {
       const sb = getStrikeBonuses()
       entity.actionDamage *= (1 + sb.damageIncrease / 100) * (1 + sb.moreDamage / 100)
       entity.actionSpeed  *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100)
-      entity.actionRange  *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100)
+      entity.actionRange  *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100) * Math.max(0, 1 - artifactMods.rangeLess / 100)
     }
     if (entity.role === 'player' && def.tags.includes('lightning')) {
       const lb = getLightningBonuses()
@@ -887,7 +918,7 @@ export function createGameScene(
       entity.actionSpeed  *= Math.max(0.01, 1 - ab.lessActionSpeed / 100)
       // Self-targeted area uses (2/3 × area radius) as trigger range — grow it with size bonuses
       if (def.selfTargeted) {
-        entity.actionRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+        entity.actionRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) * Math.max(0, 1 - artifactMods.areaLess / 100)
       }
     }
     if (entity.role === 'player') {
@@ -1033,6 +1064,7 @@ export function createGameScene(
     updateStatLevels()
   }
 
+  recomputeArtifactMods()
   assignAction(playerEntity, playerActionId)
   applyAutoRunes(playerActionId)
 
@@ -1233,6 +1265,9 @@ export function createGameScene(
   // Ascension state — persists through rebirths and across sessions
   let ascentCount = char?.ascentCount ?? 0
   let ascentXp    = char?.ascentXp ?? 0
+  // Deep-copy so mutations don't bleed into the cached Character object
+  let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
+  let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
@@ -1290,6 +1325,7 @@ export function createGameScene(
       Date.now(),
       fastForwardMs,
       masteryDumpPoints,
+      artifacts,
     )
   }
   let playerPrevX = 0
@@ -1316,8 +1352,9 @@ export function createGameScene(
           <i data-lucide="award" aria-hidden="true"></i>
           <span class="notif-dot mastery-notif-dot" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" data-sfx="modal" aria-label="${t('game', 'ascentBtnLabel')}" data-tooltip="${t('game', 'ascentBtnLabel')}" hidden>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" data-sfx="modal" aria-label="${t('game', 'ascentBtnLabel')}" data-tooltip="${t('game', 'ascentBtnLabel')}" hidden style="position:relative">
           <i data-lucide="arrow-up" aria-hidden="true"></i>
+          <span class="notif-dot artifact-notif-dot" hidden></span>
         </button>
         <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="${t('game', 'enemyLevelLabel')}" data-tooltip="${t('game', 'enemyLevelLabel')}" style="position:relative">
           <span class="enemy-level-display">1 / 1</span>
@@ -2672,7 +2709,61 @@ export function createGameScene(
         pendingPostModalTutorial = null
         queued?.()
       },
+      () => openArtifactsModal(),
     )
+  }
+
+  function openArtifactsModal(): void {
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    modalCleanup = mountArtifactsModal(
+      container,
+      {
+        getArtifacts: () => [...artifacts],
+        getMaxEquipped: () => maxEquippedArtifacts(ascentCount),
+        getMax: () => balance.artifacts.maxCount,
+      },
+      {
+        onEquip: (id) => {
+          const art = artifacts.find(a => a.id === id)
+          if (!art) return
+          const usedEq = artifacts.filter(a => a.equipped).length
+          if (usedEq >= maxEquippedArtifacts(ascentCount)) return
+          art.equipped = true
+          recomputeArtifactMods()
+          assignAction(playerEntity, playerActionId)
+          persistState()
+          refreshArtifactDot()
+        },
+        onUnequip: (id) => {
+          const art = artifacts.find(a => a.id === id)
+          if (!art) return
+          art.equipped = false
+          recomputeArtifactMods()
+          assignAction(playerEntity, playerActionId)
+          persistState()
+          refreshArtifactDot()
+        },
+        onDelete: (id) => {
+          const idx = artifacts.findIndex(a => a.id === id)
+          if (idx === -1) return
+          const wasEquipped = artifacts[idx].equipped
+          artifacts.splice(idx, 1)
+          if (wasEquipped) {
+            recomputeArtifactMods()
+            assignAction(playerEntity, playerActionId)
+          }
+          persistState()
+          refreshArtifactDot()
+        },
+      },
+      () => { modalCleanup = null },
+    )
+  }
+
+  function refreshArtifactDot(): void {
+    const dot = el.querySelector<HTMLElement>('.artifact-notif-dot')
+    if (!dot) return
+    dot.hidden = artifacts.length < balance.artifacts.maxCount
   }
 
   el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
@@ -3006,6 +3097,12 @@ export function createGameScene(
       bossLastHitWasCrit.delete(entity.id)
       bossLastHitWasAffl.delete(entity.id)
       playSound('boss.defeat')
+      if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent
+          && artifacts.length < balance.artifacts.maxCount) {
+        const bossX = entity.x, bossY = entity.y
+        const dropped = rollArtifact()
+        if (dropped) playArtifactDropAnimation(bossX, bossY, dropped)
+      }
     }
     // Proliferate roll: enemies not spawned by this tree get a chance to add one to the next wave.
     if (entity.role === 'enemy' && !proliferateSourceEntities.has(entity.id)) {
@@ -3861,11 +3958,57 @@ export function createGameScene(
     })
   }
 
-  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void): void {
+  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void, onComplete?: () => void): void {
     if (!app) return
     const g = new Graphics()
     app.stage.addChild(g)
-    vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p) })
+    vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p), onComplete })
+  }
+
+  function playArtifactDropAnimation(sx: number, sy: number, artifact: Artifact): void {
+    if (!app) return
+    const RARITY_COLORS: Record<number, number> = { 1: 0x4a7ea5, 2: 0x7b5ea7, 3: 0xc89b3c }
+    const rarityColor = RARITY_COLORS[artifact.lines.length] ?? 0x4a7ea5
+    const targetX = app.screen.width / 2
+    const targetY = app.screen.height / 2
+    addVfx(1200, (g, p) => {
+      g.clear()
+      const cx = sx + (targetX - sx) * p
+      const cy = sy + (targetY - sy) * p
+      const scale = 0.3 + p * 1.1
+      g.position.set(cx, cy)
+      g.rotation = p * Math.PI * 4
+      const w = 60 * scale, h = 80 * scale
+      g.roundRect(-w / 2, -h / 2, w, h, 6 * scale)
+      g.fill({ color: rarityColor, alpha: 0.85 })
+      g.roundRect(-w / 2, -h / 2, w, h, 6 * scale)
+      g.stroke({ color: 0xffffff, width: 2, alpha: 0.6 })
+      const n = artifact.lines.length
+      for (let i = 0; i < n; i++) {
+        const lineY = -h * 0.15 + (i / Math.max(1, n - 1)) * h * 0.3
+        g.rect(-w * 0.35, lineY - 2 * scale, w * 0.7, 3 * scale)
+        g.fill({ color: 0xffffff, alpha: 0.55 })
+      }
+    }, () => {
+      if (destroyed) return
+      mountArtifactCardModal(el, artifact, {
+        onBag: () => {
+          artifacts.push(artifact)
+          persistState()
+          refreshArtifactDot()
+        },
+        onEquip: () => {
+          const usedEq = artifacts.filter(a => a.equipped).length
+          if (usedEq < maxEquippedArtifacts(ascentCount)) artifact.equipped = true
+          artifacts.push(artifact)
+          recomputeArtifactMods()
+          assignAction(playerEntity, playerActionId)
+          persistState()
+          refreshArtifactDot()
+        },
+        onDrop: () => {},
+      }, () => {})
+    })
   }
 
   // Pre-hit VFX: spawned at attack-start, plays until damage lands (1/3 of cycle).
@@ -4603,7 +4746,7 @@ export function createGameScene(
         for (let i = vfxList.length - 1; i >= 0; i--) {
           const v = vfxList[i]
           v.age += ticker.deltaMS
-          if (v.age >= v.maxAge) { v.g.destroy(); vfxList.splice(i, 1); continue }
+          if (v.age >= v.maxAge) { v.g.destroy(); vfxList.splice(i, 1); v.onComplete?.(); continue }
           v.tick(v.age / v.maxAge)
         }
 
@@ -4722,6 +4865,7 @@ export function createGameScene(
             const effectiveMs = entity.moveSpeed
               * (1 + mb.moveSpeedIncrease / 100)
               * (1 + mb.moveMoreSpeed / 100)
+              * Math.max(0, 1 - artifactMods.moveSpeedLess / 100)
 
             // dashLessDistance penalty from extra-charge key node, stacked with dashDistanceIncrease
             const dashDistMult = (1 + mb.dashDistanceIncrease / 100)
@@ -4933,8 +5077,9 @@ export function createGameScene(
               const movB = getMovementBonuses()
               totalResistance += movB.kiteResistance
             }
-            totalResistance = Math.max(0, Math.min(100, totalResistance))
+            totalResistance = Math.max(0, Math.min(100, totalResistance - artifactMods.resistanceLess))
             finalDamage = damage * (1 - totalResistance / 100)
+            if (artifactMods.damageTakenMore > 0) finalDamage *= 1 + artifactMods.damageTakenMore / 100
             if (lb.resistAbsorbLifePercent > 0 && totalResistance > 0) {
               const absorbed = damage - finalDamage
               playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + absorbed * lb.resistAbsorbLifePercent / 100)
@@ -5513,7 +5658,7 @@ export function createGameScene(
           if (action.tags.includes('area')) {
             const ab = entity.role === 'player' ? getAreaBonuses() : null
             let areaRadiusPx = (action.area ?? 0) * balance.player.radius
-            if (ab) areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+            if (ab) areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) * Math.max(0, 1 - artifactMods.areaLess / 100)
             // Enemies gain +0.5% area size per level above 1.
             else areaRadiusPx *= 1 + ((enemyLevels.get(entity.id) ?? 1) - 1) * balance.enemyLevel.rangeAreaAddPerLevel
             // Tremor: 0.5× base radius, then add tremor radius bonuses

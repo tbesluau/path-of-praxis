@@ -1,6 +1,8 @@
 import { balance } from '../config/balance'
 import { nodeCost, type MasteryId } from '../config/masteries'
 import type { RuneId } from '../config/runes'
+import type { Artifact } from '../config/artifacts'
+import { maxEquippedArtifacts } from '../config/artifacts'
 
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
@@ -119,6 +121,7 @@ export interface Character {
   unlockedTriggers: ('crit' | 'affliction')[]
   lastSeenAt: number       // Date.now() at last save/frame; basis for the ×2-speed away bonus
   fastForwardMs: number    // remaining ×2-speed stockpile in ms (≤ 3_600_000)
+  artifacts: Artifact[]
 }
 
 interface SaveData {
@@ -126,6 +129,24 @@ interface SaveData {
   currentId: string | null
 }
 export type { SaveData }
+
+function isValidArtifact(a: unknown): a is Artifact {
+  if (typeof a !== 'object' || a === null) return false
+  const art = a as Record<string, unknown>
+  if (typeof art.id !== 'string') return false
+  if (!Array.isArray(art.lines) || art.lines.length < 1 || art.lines.length > 3) return false
+  for (const line of art.lines as unknown[]) {
+    if (typeof line !== 'object' || line === null) return false
+    const l = line as Record<string, unknown>
+    const p = l.positive as Record<string, unknown> | undefined
+    const n = l.negative as Record<string, unknown> | undefined
+    if (!p || !n) return false
+    if (typeof p.value !== 'number' || typeof n.value !== 'number') return false
+  }
+  if (typeof art.equipped !== 'boolean') return false
+  if (typeof art.createdAt !== 'number') return false
+  return true
+}
 
 function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'createdAt'>): Character {
   const maxLife = c.maxLife ?? balance.player.maxLife
@@ -202,6 +223,20 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     fastForwardMs: typeof c.fastForwardMs === 'number'
       ? Math.max(0, Math.min(3_600_000, Math.floor(c.fastForwardMs)))
       : 0,
+    artifacts: (() => {
+      if (!Array.isArray(c.artifacts)) return []
+      const raw = (c.artifacts as Artifact[]).filter(isValidArtifact).slice(0, 20)
+      const ascentCnt = typeof c.ascentCount === 'number' ? c.ascentCount : 0
+      const maxEquipped = maxEquippedArtifacts(ascentCnt)
+      let equippedCount = 0
+      return raw.map(a => {
+        if (a.equipped) {
+          if (equippedCount < maxEquipped) { equippedCount++; return a }
+          return { ...a, equipped: false }
+        }
+        return a
+      })
+    })(),
   }
 }
 
@@ -283,6 +318,7 @@ export function createCharacter(name: string, actionId: string): Character {
     unlockedTriggers: [],
     lastSeenAt: Date.now(),
     fastForwardMs: 0,
+    artifacts: [],
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -353,6 +389,7 @@ export function saveCharacterState(
   lastSeenAt?: number,
   fastForwardMs?: number,
   masteryDumpPoints?: Partial<Record<MasteryId, number>>,
+  artifacts?: Artifact[],
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -377,5 +414,6 @@ export function saveCharacterState(
   if (lastSeenAt !== undefined) char.lastSeenAt = lastSeenAt
   if (fastForwardMs !== undefined) char.fastForwardMs = fastForwardMs
   if (masteryDumpPoints !== undefined) char.masteryDumpPoints = masteryDumpPoints
+  if (artifacts !== undefined) char.artifacts = artifacts
   write(data)
 }
