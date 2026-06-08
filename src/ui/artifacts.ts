@@ -104,10 +104,10 @@ export function mountArtifactCardModal(
   const rc = rarityClass(artifact.lines.length)
   backdrop.innerHTML = `
     <div class="modal-panel artifact-card ${rc}" role="dialog" aria-modal="true">
+      <button class="artifact-card-drop-btn" data-action="drop" aria-label="${t('artifacts', 'drop')}" title="${t('artifacts', 'drop')}">${TRASH_ICON}</button>
       <h2 class="modal-title">${weightLabel(artifact.lines.length)}</h2>
       <div class="artifact-card-lines">${posHtml}${negHtml}</div>
       <div class="artifact-card-actions">
-        <button class="modal-btn modal-btn--danger" data-action="drop">${t('artifacts', 'drop')}</button>
         <button class="modal-btn modal-btn--primary" data-action="bag">${t('artifacts', 'bag')}</button>
         <button class="modal-btn modal-btn--primary" data-action="equip">${t('artifacts', 'equip')}</button>
       </div>

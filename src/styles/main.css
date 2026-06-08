@@ -4238,6 +4238,49 @@ body.privacy-page {
 
 .artifact-card {
   max-width: 360px;
+  position: relative;
+}
+
+/* Drop control — red trash button in the top-right corner of the card.
+   Matches the .modal-btn--danger aesthetic (no red Kenney asset exists). */
+.artifact-card-drop-btn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.08);
+  z-index: 2;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.artifact-card-drop-btn:hover,
+.artifact-card-drop-btn:focus-visible {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  outline: none;
+}
+
+.artifact-card-drop-btn:active {
+  transform: scale(0.94);
+}
+
+.artifact-card-drop-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.artifact-card .modal-title {
+  padding-right: 48px;
 }
 
 .artifact-card-lines {
