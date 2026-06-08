@@ -4094,13 +4094,13 @@ body.privacy-page {
 }
 
 .artifact-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
   max-height: 60vh;
   overflow-y: auto;
   /* extra right padding so the trash button doesn't get clipped */
-  padding-right: var(--space-3);
+  padding-right: var(--space-2);
 }
 
 /* Wrapper that provides the positioning context for the half-merged trash btn */
@@ -4140,14 +4140,15 @@ body.privacy-page {
 .artifact-thumb--r2 .artifact-rarity-label { color: #c8a4e3; }
 .artifact-thumb--r3 .artifact-rarity-label { color: #f0d080; }
 
-/* Half-merged delete button — mirrors .action-trigger-rune-btn */
+/* Half-merged delete button — mirrors .action-trigger-rune-btn exactly
+   (same 56px size so the border-image slices render without seams) */
 .artifact-thumb-trash {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   padding: 0;
   cursor: pointer;
   border: 14px solid transparent;
@@ -4175,8 +4176,8 @@ body.privacy-page {
 }
 
 .artifact-thumb-trash svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   stroke-width: 2;
 }
 
