@@ -16,6 +16,11 @@ export interface Prefs {
   // Character appearance
   playerHatVariant?:  string
   playerColorKey?:    string
+  // Stable, anonymous analytics client identifier. Generated on first use and
+  // persisted here alongside the other settings — it lives in localStorage,
+  // NOT in the character save, so it never rides along with an exported save
+  // code (a save imported on another device keeps that device's own id).
+  clientId?:          string
 }
 
 const defaults: Prefs = {
@@ -49,6 +54,29 @@ export function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void {
   const p = load()
   p[key] = value
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)) } catch { /* storage disabled */ }
+}
+
+function generateClientId(): string {
+  try {
+    if (crypto?.randomUUID) return crypto.randomUUID()
+  } catch { /* fall through to manual UUIDv4 */ }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
+// Returns the stable anonymous analytics client id, generating and persisting
+// one on first call. Stored with the prefs so it survives reloads but stays out
+// of the exportable character save.
+export function getClientId(): string {
+  const p = load()
+  if (!p.clientId) {
+    p.clientId = generateClientId()
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)) } catch { /* storage disabled */ }
+  }
+  return p.clientId
 }
 
 export function isCheatMode(): boolean {

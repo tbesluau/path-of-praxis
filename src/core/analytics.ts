@@ -6,6 +6,16 @@
 // the Cloudflare dashboard (pathofpraxis.com → Zaraz → Tools → Google
 // Analytics 4, mapping these events as triggers). No script tag in index.html.
 // Calls here are silent no-ops in development or before Zaraz loads.
+//
+// Every event carries a stable `client_id` (persisted in localStorage via
+// prefs). Without it, Zaraz's edge relay attributes each Measurement Protocol
+// hit to a fresh user/session — especially inside the cross-origin
+// galaxy.click iframe, where Zaraz's own cookie storage is unreliable — so the
+// dashboard saw a brand-new session on every call. A consistent client_id lets
+// GA4 stitch events into real users and sessions. Map this field to the GA4
+// client ID in the Cloudflare Zaraz dashboard.
+import { getClientId } from './prefs'
+
 declare global {
   interface Window {
     zaraz?: { track?: (name: string, props?: Record<string, string>) => void }
@@ -14,5 +24,5 @@ declare global {
 
 export function trackEvent(name: string, props?: Record<string, string>): void {
   if (import.meta.env.DEV) return
-  try { window.zaraz?.track?.(name, props) } catch { /* never surface */ }
+  try { window.zaraz?.track?.(name, { client_id: getClientId(), ...props }) } catch { /* never surface */ }
 }
