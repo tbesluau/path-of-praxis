@@ -4189,7 +4189,10 @@ body.privacy-page {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 0.72rem;
+  font-size: 0.82rem;
+  /* beige-light plate behind the modifier lines, from the asset pack */
+  border: 12px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panelInset_beigeLight.png') 12 fill stretch;
   margin-bottom: var(--space-xs);
 }
 
@@ -4203,20 +4206,12 @@ body.privacy-page {
   font-weight: 500;
 }
 
-/* Thumbnails sit on a dark blue panel, so use lighter red/green for contrast.
-   The drop card sits on a light panel and keeps the darker shades above. */
-.artifact-thumb-lines .artifact-line-positive {
-  color: #4ade80;
-}
-
-.artifact-thumb-lines .artifact-line-negative {
-  color: #f87171;
-}
-
 /* Equip/unequip button inside the thumbnail — mirrors .game-action-btn hover
    (border-image swap + translateY press-down, no brightness wash). */
 .artifact-thumb-equip-btn {
   width: 100%;
+  /* breathing room between the modifier lines plate and the equip button */
+  margin-top: var(--space-sm);
   min-height: 36px;
   padding: 0 var(--space-sm);
   border: 14px solid transparent;
