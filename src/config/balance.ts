@@ -223,8 +223,8 @@ export const balance = {
     // Multi-line artifacts require a minimum boss level. Below it, that tier's
     // drop probability folds back into the no-drop pool instead of downgrading.
     lineUnlockLevels: {
-      two:   30,   // 2-line artifacts only drop above boss level 30
-      three: 50,   // 3-line artifacts only drop above boss level 50
+      two:   30,   // 2-line artifacts require boss level 30+
+      three: 50,   // 3-line artifacts require boss level 50+
     },
   },
 
