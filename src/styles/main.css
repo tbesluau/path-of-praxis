@@ -4098,7 +4098,7 @@ body.privacy-page {
   display: flex;
   flex-direction: column;
   /* a bit of vertical space between artifacts in the list */
-  gap: var(--space-md);
+  gap: var(--space-lg);
   max-height: 60vh;
   overflow-y: auto;
   /* extra right padding so the trash button doesn't get clipped */
@@ -4305,7 +4305,7 @@ body.privacy-page {
 .artifact-card-actions {
   display: flex;
   /* a bit of space between the Bag and Equip buttons */
-  gap: var(--space-md);
+  gap: var(--space-xl);
   justify-content: flex-end;
   flex-wrap: wrap;
 }
