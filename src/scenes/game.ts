@@ -3988,25 +3988,31 @@ export function createGameScene(
     if (!app) return
     const RARITY_COLORS: Record<number, number> = { 1: 0x4a7ea5, 2: 0x7b5ea7, 3: 0xc89b3c }
     const rarityColor = RARITY_COLORS[artifact.lines.length] ?? 0x4a7ea5
-    const targetX = app.screen.width / 2
-    const targetY = app.screen.height / 2
-    addVfx(1200, (g, p) => {
+    addVfx(1500, (g, p) => {
+      if (!app) return
       g.clear()
-      const cx = sx + (targetX - sx) * p
-      const cy = sy + (targetY - sy) * p
-      const scale = 0.3 + p * 1.1
-      g.position.set(cx, cy)
-      g.rotation = p * Math.PI * 4
-      const w = 60 * scale, h = 80 * scale
-      g.roundRect(-w / 2, -h / 2, w, h, 6 * scale)
-      g.fill({ color: rarityColor, alpha: 0.85 })
-      g.roundRect(-w / 2, -h / 2, w, h, 6 * scale)
-      g.stroke({ color: 0xffffff, width: 2, alpha: 0.6 })
+      // Ease-out so the card decelerates as it settles into the centre.
+      const e = 1 - Math.pow(1 - p, 3)
+      // VFX live on the camera-transformed stage (world space). The camera keeps
+      // the player screen-centred, so the player's world position is the centre
+      // of the visible play area — fly the card there as the player moves.
+      g.position.set(sx + (playerEntity.x - sx) * e, sy + (playerEntity.y - sy) * e)
+      g.rotation = e * Math.PI * 3
+      // Cancel the camera zoom so the card grows toward a fixed on-screen size
+      // instead of being multiplied by the current zoom level.
+      const zoom = app.stage.scale.x || 1
+      g.scale.set((0.35 + e * 0.9) / zoom)
+      // Geometry below is authored in on-screen pixels; g.scale handles sizing.
+      const w = 64, h = 84
+      g.roundRect(-w / 2, -h / 2, w, h, 7)
+      g.fill({ color: rarityColor, alpha: 0.9 })
+      g.roundRect(-w / 2, -h / 2, w, h, 7)
+      g.stroke({ color: 0xffffff, width: 2.5, alpha: 0.65 })
       const n = artifact.lines.length
       for (let i = 0; i < n; i++) {
         const lineY = -h * 0.15 + (i / Math.max(1, n - 1)) * h * 0.3
-        g.rect(-w * 0.35, lineY - 2 * scale, w * 0.7, 3 * scale)
-        g.fill({ color: 0xffffff, alpha: 0.55 })
+        g.rect(-w * 0.32, lineY - 2, w * 0.64, 4)
+        g.fill({ color: 0xffffff, alpha: 0.6 })
       }
     }, () => {
       if (destroyed) return
