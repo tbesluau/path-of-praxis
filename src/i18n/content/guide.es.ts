@@ -77,10 +77,31 @@ El progreso de Ascensión es independiente de tu partida. Puedes intentarlo en c
     body: `Los disparadores de acción ejecutan una acción automáticamente cuando se cumple una condición. La primera ranura siempre es el **Ataque automático** — se dispara con un temporizador continuo. Otras ranuras de disparador se desbloquean al Ascender.
 
 - La **ranura 2** se desbloquea en la Ascensión 3. Tipos de disparador: **Tiempo** (temporizador periódico), **Golpe crítico** (se dispara tras un crítico — desbloqueo: matar a un jefe con un crítico), **Aflicción** (se dispara tras acumular cargas de aflicción — desbloqueo: matar a un jefe con un golpe de aflicción).
-- La **ranura 3** se desbloquea en la Ascensión 5 con las mismas opciones de disparador.
+- La **ranura 3** se desbloquea en la Ascensión 6 con las mismas opciones de disparador.
 
 Cada ranura adicional aplica una penalización global de daño: ×0,75 para la ranura 2, ×0,50 para la ranura 3. A pesar de esto, una segunda acción bien combinada puede aumentar significativamente la producción total de daño.
 
 Abre el panel de configuración de combate (en la barra superior) para cambiar tu acción o configurar las ranuras de disparador.`,
+  },
+
+  'Artifacts': {
+    title: 'Artefactos',
+    body: `Los artefactos son objetos raros que dejan caer los jefes una vez que has alcanzado la Ascensión 5. Cada artefacto lleva un modificador positivo asociado a uno negativo — un equilibrio riesgo/recompensa que tú decides aceptar o rechazar.
+
+Cuando se derrota a un jefe, una carta de botín vuela hacia el centro de la pantalla. Puedes **Guardarla** (conservarla para más tarde), **Equiparla** inmediatamente, o **Descartarla** definitivamente.
+
+Tu inventario puede contener hasta 20 artefactos. Una vez lleno, los jefes dejan de soltar nuevos artefactos hasta que hagas sitio.
+
+Las **ranuras de equipamiento** se desbloquean con la Ascensión:
+- **Ascensión 5** — se desbloquea 1 ranura
+- **Ascensión 10** — se desbloquea una 2ª ranura
+
+Solo los artefactos equipados aplican sus modificadores. Los modificadores de todos los artefactos equipados se acumulan.
+
+La **rareza** está determinada por el número de pares de modificadores: un Artefacto Ligero tiene un par, un Artefacto Medio tiene dos, y un Artefacto Pesado tiene tres. Los artefactos más raros solo empiezan a caer a niveles de jefe más altos:
+- **Nivel de jefe 30+** — los Artefactos Medios (2 líneas) pueden caer
+- **Nivel de jefe 50+** — los Artefactos Pesados (3 líneas) pueden caer
+
+Para gestionar tu colección, abre el panel de Artefactos desde el menú de Ascensión (disponible a partir de la Ascensión 5). Desde allí puedes equipar, desequipar o eliminar permanentemente artefactos.`,
   },
 }

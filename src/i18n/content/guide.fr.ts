@@ -80,10 +80,31 @@ La progression de l'Ascension est séparée de ta partie. Tu peux la tenter à t
     body: `Les déclencheurs d'action déclenchent une action automatiquement quand une condition est remplie. Le premier emplacement est toujours l'**Auto-attaque** — il se déclenche sur une minuterie continue. D'autres emplacements de déclencheur se débloquent en Ascendant.
 
 - L'**emplacement 2** se débloque à l'Ascension 3. Types de déclencheur : **Temps** (minuterie périodique), **Coup critique** (se déclenche après un crit — déblocage : tuer un boss avec un crit), **Affliction** (se déclenche après avoir accumulé des stacks d'affliction — déblocage : tuer un boss avec un coup d'affliction).
-- L'**emplacement 3** se débloque à l'Ascension 5 avec les mêmes options de déclencheur.
+- L'**emplacement 3** se débloque à l'Ascension 6 avec les mêmes options de déclencheur.
 
 Chaque emplacement supplémentaire applique une pénalité globale de dégâts : ×0,75 pour l'emplacement 2, ×0,50 pour l'emplacement 3. Malgré cela, une seconde action bien adaptée peut augmenter significativement la sortie de dégâts totale.
 
 Ouvre le panneau de configuration de combat (dans la barre du haut) pour changer ton action ou configurer les emplacements de déclencheur.`,
+  },
+
+  'Artifacts': {
+    title: 'Artefacts',
+    body: `Les artefacts sont des objets rares lâchés par les boss une fois que tu as atteint l'Ascension 5. Chaque artefact porte un modificateur positif associé à un modificateur négatif — un compromis risque/récompense que tu choisis d'accepter ou de refuser.
+
+Quand un boss est vaincu, une carte de butin vole vers le centre de l'écran. Tu peux la **Mettre en sac** (la garder pour plus tard), **Équiper** l'artefact immédiatement, ou le **Jeter** définitivement.
+
+Ton inventaire peut contenir jusqu'à 20 artefacts. Une fois plein, les boss ne lâchent plus de nouveaux artefacts tant que tu ne libères pas de place.
+
+Les **emplacements d'équipement** se débloquent avec l'Ascension :
+- **Ascension 5** — 1 emplacement se débloque
+- **Ascension 10** — un 2e emplacement se débloque
+
+Seuls les artefacts équipés appliquent leurs modificateurs. Les modificateurs de tous les artefacts équipés s'accumulent.
+
+La **rareté** est déterminée par le nombre de paires de modificateurs : un Artefact Léger en a une, un Artefact Moyen en a deux, et un Artefact Lourd en a trois. Les artefacts plus rares ne commencent à tomber qu'à des niveaux de boss plus élevés :
+- **Niveau de boss 30+** — les Artefacts Moyens (2 lignes) peuvent tomber
+- **Niveau de boss 50+** — les Artefacts Lourds (3 lignes) peuvent tomber
+
+Pour gérer ta collection, ouvre le panneau Artefacts depuis le menu d'Ascension (disponible à partir de l'Ascension 5). Tu peux y équiper, déséquiper ou supprimer définitivement des artefacts.`,
   },
 }
