@@ -1,4 +1,4 @@
-### 0.1.71 — Artifacts
+### 0.2.0 — Artifacts
 
 A new late game mechanic with pros and cons to be weighted by the user.
 
