@@ -48,8 +48,19 @@ const PHYSICS_MAX_STEP_MS = 1000 / 60
 // wall-clock time a single pump will catch up. The cap stays under AWAY_DETECT_MS
 // so that anything longer (a deep OS suspend that freezes even the worker) falls
 // through to the existing away/stockpile path instead of being fast-simulated.
+//
+// BG_STEP_MS must match the visible frame cadence (~1/60 s). The per-tick action
+// loop fires each entity at most once and resets its cooldown to the full base
+// value, so a step larger than an actor's cooldown throttles its fire rate. At
+// 100 ms that capped fast attackers (cooldown < 100 ms) to ~10 hits/s while
+// hidden, starving the player's per-hit-capped life steal and slowing clears —
+// causing deaths that never happen while visible. Stepping at one frame makes the
+// hidden sim advance identically to the foreground (combat, life steal, projectile
+// travel, afflictions all fine-grained). Worst-case work per pump is bounded by
+// BG_MAX_CATCHUP_MS / BG_STEP_MS sub-ticks, matching 60 fps compute — only while
+// hidden, with no rendering.
 const BG_TICK_INTERVAL_MS = 250
-const BG_STEP_MS = 100
+const BG_STEP_MS = PHYSICS_MAX_STEP_MS  // one frame (~16.67 ms); see note above
 const BG_MAX_CATCHUP_MS = 1900
 
 interface DeathFragment {
