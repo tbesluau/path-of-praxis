@@ -4106,6 +4106,7 @@ body.privacy-page {
 /* Wrapper that provides the positioning context for the half-merged trash btn */
 .artifact-thumb-row {
   position: relative;
+  /* 37px leaves exactly enough room for the 44px button to half-overlap (44-37=7px into thumb) */
   padding-right: 37px;
 }
 
@@ -4140,15 +4141,16 @@ body.privacy-page {
 .artifact-thumb--r2 .artifact-rarity-label { color: #c8a4e3; }
 .artifact-thumb--r3 .artifact-rarity-label { color: #f0d080; }
 
-/* Half-merged delete button — mirrors .action-trigger-rune-btn exactly
-   (same 56px size so the border-image slices render without seams) */
+/* Half-merged delete button — 44px matches .modal-close-btn, which keeps the
+   buttonSquare_blue.png (45×49) center strip near 1:1 scale and avoids seams.
+   translateZ(0) forces a compositing layer inside the overflow-y:auto grid. */
 .artifact-thumb-trash {
   position: absolute;
   right: 0;
   top: 50%;
-  transform: translateY(-50%);
-  width: 56px;
-  height: 56px;
+  transform: translateY(-50%) translateZ(0);
+  width: 44px;
+  height: 44px;
   padding: 0;
   cursor: pointer;
   border: 14px solid transparent;
@@ -4158,7 +4160,7 @@ body.privacy-page {
   align-items: center;
   justify-content: center;
   z-index: 2;
-  transition: transform var(--transition-fast);
+  transition: transform var(--transition-fast), filter var(--transition-fast);
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
 }
@@ -4168,16 +4170,18 @@ body.privacy-page {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
+  transform: translateY(calc(-50% + 2px)) translateZ(0);
+  filter: brightness(1.1);
   outline: none;
 }
 
 .artifact-thumb-trash:active {
-  transform: translateY(calc(-50% + 2px)) scale(0.96);
+  transform: translateY(calc(-50% + 2px)) scale(0.96) translateZ(0);
 }
 
 .artifact-thumb-trash svg {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   stroke-width: 2;
 }
 
@@ -4221,7 +4225,7 @@ body.privacy-page {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: filter var(--transition-fast);
+  transition: transform var(--transition-fast), filter var(--transition-fast);
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
 }
@@ -4230,6 +4234,12 @@ body.privacy-page {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
+  transform: translateY(2px);
+  filter: brightness(1.1);
+}
+
+.artifact-thumb-equip-btn:active {
+  transform: translateY(2px) scale(0.98);
 }
 
 .artifact-thumb-equip-btn:disabled {
