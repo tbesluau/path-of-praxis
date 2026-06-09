@@ -9,6 +9,8 @@ import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
+import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
+import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
@@ -46,8 +48,19 @@ const PHYSICS_MAX_STEP_MS = 1000 / 60
 // wall-clock time a single pump will catch up. The cap stays under AWAY_DETECT_MS
 // so that anything longer (a deep OS suspend that freezes even the worker) falls
 // through to the existing away/stockpile path instead of being fast-simulated.
+//
+// BG_STEP_MS must match the visible frame cadence (~1/60 s). The per-tick action
+// loop fires each entity at most once and resets its cooldown to the full base
+// value, so a step larger than an actor's cooldown throttles its fire rate. At
+// 100 ms that capped fast attackers (cooldown < 100 ms) to ~10 hits/s while
+// hidden, starving the player's per-hit-capped life steal and slowing clears —
+// causing deaths that never happen while visible. Stepping at one frame makes the
+// hidden sim advance identically to the foreground (combat, life steal, projectile
+// travel, afflictions all fine-grained). Worst-case work per pump is bounded by
+// BG_MAX_CATCHUP_MS / BG_STEP_MS sub-ticks, matching 60 fps compute — only while
+// hidden, with no rendering.
 const BG_TICK_INTERVAL_MS = 250
-const BG_STEP_MS = 100
+const BG_STEP_MS = PHYSICS_MAX_STEP_MS  // one frame (~16.67 ms); see note above
 const BG_MAX_CATCHUP_MS = 1900
 
 interface DeathFragment {
@@ -64,6 +77,7 @@ interface Vfx {
   age: number
   maxAge: number
   tick: (progress: number) => void
+  onComplete?: () => void
 }
 
 export function createGameScene(
@@ -89,6 +103,12 @@ export function createGameScene(
     JSON.stringify(char?.masteryProgress ?? {}),
   ) as Partial<Record<MasteryId, MasteryProgress>>
   let masteryDumpPoints: Partial<Record<MasteryId, number>> = { ...(char?.masteryDumpPoints ?? {}) }
+
+  // Artifacts — deep-copied so mutations don't bleed into the cached Character.
+  // Declared early (ahead of the bonus getters that fold in artifactMods and the
+  // setup-time recomputeArtifactMods() call) to avoid a temporal-dead-zone access.
+  let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
+  let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
 
   const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
     JSON.stringify(char?.actionRunes ?? {}),
@@ -164,7 +184,13 @@ export function createGameScene(
   }
 
   function getActionBonuses(): ActionBonuses {
-    return computeActionBonuses(masteryNodes('action', 5), dumpedFor('action'))
+    const b = computeActionBonuses(masteryNodes('action', 5), dumpedFor('action'))
+    b.moreDamage += artifactMods.globalMoreDamage
+    b.moreActionSpeed += artifactMods.globalActionSpeedMore
+    b.lessActionSpeed += artifactMods.actionSpeedLess
+    b.doubleDamageChance += artifactMods.doubleDamageChance
+    b.doubleActionChance += artifactMods.doubleActionChance
+    return b
   }
 
   function getCriticalHitBonuses(): CriticalHitBonuses {
@@ -191,7 +217,11 @@ export function createGameScene(
   }
 
   function getFireBonuses(): FireBonuses {
-    return computeFireBonuses(masteryNodes('fire', 5), dumpedFor('fire'))
+    const b = computeFireBonuses(masteryNodes('fire', 5), dumpedFor('fire'))
+    b.moreDamage += artifactMods.fireMoreDamage
+    b.actionSpeedIncrease += artifactMods.fireActionSpeedAdd
+    b.burnMoreDamage += artifactMods.burnMoreDamage
+    return b
   }
 
   function getEnemyBonuses(): EnemyBonuses {
@@ -201,27 +231,45 @@ export function createGameScene(
   }
 
   function getProjectileBonuses(): ProjectileBonuses {
-    return computeProjectileBonuses(masteryNodes('projectile', 5), dumpedFor('projectile'))
+    const b = computeProjectileBonuses(masteryNodes('projectile', 5), dumpedFor('projectile'))
+    b.rangeMore += artifactMods.rangeMore
+    return b
   }
 
   function getLightningBonuses(): LightningBonuses {
-    return computeLightningBonuses(masteryNodes('lightning', 5), dumpedFor('lightning'))
+    const b = computeLightningBonuses(masteryNodes('lightning', 5), dumpedFor('lightning'))
+    b.moreDamage += artifactMods.lightningMoreDamage
+    b.moreActionSpeed += artifactMods.lightningMoreActionSpeed
+    b.electrocuteDamageTakenIncrease += artifactMods.electrocuteEffectAdd
+    return b
   }
 
   function getStrikeBonuses(): StrikeBonuses {
-    return computeStrikeBonuses(masteryNodes('strike', 5), dumpedFor('strike'))
+    const b = computeStrikeBonuses(masteryNodes('strike', 5), dumpedFor('strike'))
+    b.moreRange += artifactMods.rangeMore
+    return b
   }
 
   function getPhysicalBonuses(): PhysicalBonuses {
-    return computePhysicalBonuses(masteryNodes('physical', 5), dumpedFor('physical'))
+    const b = computePhysicalBonuses(masteryNodes('physical', 5), dumpedFor('physical'))
+    b.moreDamage += artifactMods.physicalMoreDamage
+    b.actionSpeedIncrease += artifactMods.physicalActionSpeedAdd
+    b.bleedMoreDamage += artifactMods.bleedMoreDamage
+    return b
   }
 
   function getAreaBonuses(): AreaBonuses {
-    return computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
+    const b = computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
+    b.moreSize += artifactMods.areaMore
+    return b
   }
 
   function getMovementBonuses(): MovementBonuses {
     return computeMovementBonuses(masteryNodes('movement', 4), dumpedFor('movement'))
+  }
+
+  function recomputeArtifactMods(): void {
+    artifactMods = computeArtifactMods(artifacts)
   }
 
   // ── Damage-type effects (burning + immolation) ────────────────────────────
@@ -858,13 +906,13 @@ export function createGameScene(
       const pb = getProjectileBonuses()
       entity.actionDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
       entity.actionSpeed  *= (1 + pb.actionSpeedIncrease / 100)
-      entity.actionRange  *= (1 + pb.rangeIncrease / 100) * (1 + pb.rangeMore / 100)
+      entity.actionRange  *= (1 + pb.rangeIncrease / 100) * (1 + pb.rangeMore / 100) * Math.max(0, 1 - artifactMods.rangeLess / 100)
     }
     if (entity.role === 'player' && def.tags.includes('strike')) {
       const sb = getStrikeBonuses()
       entity.actionDamage *= (1 + sb.damageIncrease / 100) * (1 + sb.moreDamage / 100)
       entity.actionSpeed  *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100)
-      entity.actionRange  *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100)
+      entity.actionRange  *= (1 + sb.rangeIncrease / 100) * (1 + sb.moreRange / 100) * Math.max(0, 1 - artifactMods.rangeLess / 100)
     }
     if (entity.role === 'player' && def.tags.includes('lightning')) {
       const lb = getLightningBonuses()
@@ -887,7 +935,7 @@ export function createGameScene(
       entity.actionSpeed  *= Math.max(0.01, 1 - ab.lessActionSpeed / 100)
       // Self-targeted area uses (2/3 × area radius) as trigger range — grow it with size bonuses
       if (def.selfTargeted) {
-        entity.actionRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+        entity.actionRange *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) * Math.max(0, 1 - artifactMods.areaLess / 100)
       }
     }
     if (entity.role === 'player') {
@@ -1033,6 +1081,7 @@ export function createGameScene(
     updateStatLevels()
   }
 
+  recomputeArtifactMods()
   assignAction(playerEntity, playerActionId)
   applyAutoRunes(playerActionId)
 
@@ -1290,6 +1339,7 @@ export function createGameScene(
       Date.now(),
       fastForwardMs,
       masteryDumpPoints,
+      artifacts,
     )
   }
   let playerPrevX = 0
@@ -1316,8 +1366,9 @@ export function createGameScene(
           <i data-lucide="award" aria-hidden="true"></i>
           <span class="notif-dot mastery-notif-dot" hidden></span>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" data-sfx="modal" aria-label="${t('game', 'ascentBtnLabel')}" data-tooltip="${t('game', 'ascentBtnLabel')}" hidden>
+        <button class="game-action-btn game-action-btn--icon" data-action="open-ascent" data-sfx="modal" aria-label="${t('game', 'ascentBtnLabel')}" data-tooltip="${t('game', 'ascentBtnLabel')}" hidden style="position:relative">
           <i data-lucide="arrow-up" aria-hidden="true"></i>
+          <span class="notif-dot artifact-notif-dot" hidden></span>
         </button>
         <button class="game-action-btn game-action-btn--icon game-action-btn--enemy-toggle" data-action="toggle-enemy" aria-label="${t('game', 'enemyLevelLabel')}" data-tooltip="${t('game', 'enemyLevelLabel')}" style="position:relative">
           <span class="enemy-level-display">1 / 1</span>
@@ -2013,13 +2064,13 @@ export function createGameScene(
   function offerRefillAd(): void {
     const addedMs = 30 * 60 * 1000
     if (isPaid() || !adsAvailable()) {
-      trackEvent('x2_speed_refill', { outcome: 'auto_granted' })
+      trackEvent('x2_speed_refill', { outcome: 'auto_granted', ascent: String(ascentCount) })
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
       updateSpeedUI()
       persistState()
       return
     }
-    mountRefillAdModal(el, addedMs, (granted) => {
+    mountRefillAdModal(el, addedMs, ascentCount, (granted) => {
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + granted)
       updateSpeedUI()
       persistState()
@@ -2079,6 +2130,16 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="go-home"]')!
     .addEventListener('click', () => saveAndGoHome())
 
+  // Converts a mastery node index to its position label in the tree UI.
+  // Line nodes 0-11 → "1" to "12"; key nodes 12-15 → "6t","6b","12t","12b".
+  const nodeLabel = (n: number): string => {
+    if (n < 12) return `${n + 1}`
+    if (n === 12) return '6t'
+    if (n === 13) return '6b'
+    if (n === 14) return '12t'
+    return '12b'
+  }
+
   // ── Character stats snapshot ───────────────────────────────────────────────
   // Mirrors assignAction()'s multiplier chain (keep in sync) plus the cast-time
   // affliction/crit/multi-strike/trigger expressions, recording each factor's
@@ -2090,16 +2151,6 @@ export function createGameScene(
     }
     const pct  = (n: number): string => `${fmt(n, 1)}%`
     const mul  = (n: number): string => `×${fmt(n, 3)}`
-
-    // Converts a mastery node index to its position label in the tree UI.
-    // Line nodes 0-11 → "1" to "12"; key nodes 12-15 → "6t","6b","12t","12b".
-    const nodeLabel = (n: number): string => {
-      if (n < 12) return `${n + 1}`
-      if (n === 12) return '6t'
-      if (n === 13) return '6b'
-      if (n === 14) return '12t'
-      return '12b'
-    }
 
     // Composes an origin label for an aggregate 'more' factor by listing the
     // specific contributing nodes: "fire mastery 1.6, 1.6b, overflow".
@@ -2672,7 +2723,61 @@ export function createGameScene(
         pendingPostModalTutorial = null
         queued?.()
       },
+      () => openArtifactsModal(),
     )
+  }
+
+  function openArtifactsModal(): void {
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    modalCleanup = mountArtifactsModal(
+      container,
+      {
+        getArtifacts: () => [...artifacts],
+        getMaxEquipped: () => maxEquippedArtifacts(ascentCount),
+        getMax: () => balance.artifacts.maxCount,
+      },
+      {
+        onEquip: (id) => {
+          const art = artifacts.find(a => a.id === id)
+          if (!art) return
+          const usedEq = artifacts.filter(a => a.equipped).length
+          if (usedEq >= maxEquippedArtifacts(ascentCount)) return
+          art.equipped = true
+          recomputeArtifactMods()
+          assignAction(playerEntity, playerActionId)
+          persistState()
+          refreshArtifactDot()
+        },
+        onUnequip: (id) => {
+          const art = artifacts.find(a => a.id === id)
+          if (!art) return
+          art.equipped = false
+          recomputeArtifactMods()
+          assignAction(playerEntity, playerActionId)
+          persistState()
+          refreshArtifactDot()
+        },
+        onDelete: (id) => {
+          const idx = artifacts.findIndex(a => a.id === id)
+          if (idx === -1) return
+          const wasEquipped = artifacts[idx].equipped
+          artifacts.splice(idx, 1)
+          if (wasEquipped) {
+            recomputeArtifactMods()
+            assignAction(playerEntity, playerActionId)
+          }
+          persistState()
+          refreshArtifactDot()
+        },
+      },
+      () => { modalCleanup = null },
+    )
+  }
+
+  function refreshArtifactDot(): void {
+    const dot = el.querySelector<HTMLElement>('.artifact-notif-dot')
+    if (!dot) return
+    dot.hidden = artifacts.length < balance.artifacts.maxCount
   }
 
   el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
@@ -3006,6 +3111,17 @@ export function createGameScene(
       bossLastHitWasCrit.delete(entity.id)
       bossLastHitWasAffl.delete(entity.id)
       playSound('boss.defeat')
+      if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent
+          && artifacts.length < balance.artifacts.maxCount) {
+        const bossX = entity.x, bossY = entity.y
+        // Boss level gates how many lines an artifact may roll; below the
+        // threshold that tier's chance folds into the no-drop pool.
+        const bossLevel = enemyLevels.get(entity.id) ?? 1
+        const lu = balance.artifacts.lineUnlockLevels
+        const maxLines: 1 | 2 | 3 = bossLevel > lu.three ? 3 : bossLevel > lu.two ? 2 : 1
+        const dropped = rollArtifact(Math.random, maxLines)
+        if (dropped) playArtifactDropAnimation(bossX, bossY, dropped)
+      }
     }
     // Proliferate roll: enemies not spawned by this tree get a chance to add one to the next wave.
     if (entity.role === 'enemy' && !proliferateSourceEntities.has(entity.id)) {
@@ -3434,7 +3550,7 @@ export function createGameScene(
     const nodes = existing.nodes.map(t => [...t])
     nodes[treeIdx].push(nodeIdx)
     if (nodeType(nodeIdx) === 'key') {
-      trackEvent('mastery_key_taken', { mastery: id, tree: String(treeIdx), node: String(nodeIdx) })
+      trackEvent('mastery_key_taken', { node: `${id}${treeIdx + 1}.${nodeLabel(nodeIdx)}` })
     }
     masteryProgress[id] = { ...existing, nodes }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
@@ -3861,11 +3977,63 @@ export function createGameScene(
     })
   }
 
-  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void): void {
+  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void, onComplete?: () => void): void {
     if (!app) return
     const g = new Graphics()
     app.stage.addChild(g)
-    vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p) })
+    vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p), onComplete })
+  }
+
+  function playArtifactDropAnimation(sx: number, sy: number, artifact: Artifact): void {
+    if (!app) return
+    const RARITY_COLORS: Record<number, number> = { 1: 0x4a7ea5, 2: 0x7b5ea7, 3: 0xc89b3c }
+    const rarityColor = RARITY_COLORS[artifact.lines.length] ?? 0x4a7ea5
+    addVfx(1500, (g, p) => {
+      if (!app) return
+      g.clear()
+      // Ease-out so the card decelerates as it settles into the centre.
+      const e = 1 - Math.pow(1 - p, 3)
+      // VFX live on the camera-transformed stage (world space). The camera keeps
+      // the player screen-centred, so the player's world position is the centre
+      // of the visible play area — fly the card there as the player moves.
+      g.position.set(sx + (playerEntity.x - sx) * e, sy + (playerEntity.y - sy) * e)
+      g.rotation = e * Math.PI * 3
+      // Cancel the camera zoom so the card grows toward a fixed on-screen size
+      // instead of being multiplied by the current zoom level.
+      const zoom = app.stage.scale.x || 1
+      g.scale.set((0.35 + e * 0.9) / zoom)
+      // Geometry below is authored in on-screen pixels; g.scale handles sizing.
+      const w = 64, h = 84
+      g.roundRect(-w / 2, -h / 2, w, h, 7)
+      g.fill({ color: rarityColor, alpha: 0.9 })
+      g.roundRect(-w / 2, -h / 2, w, h, 7)
+      g.stroke({ color: 0xffffff, width: 2.5, alpha: 0.65 })
+      const n = artifact.lines.length
+      for (let i = 0; i < n; i++) {
+        const lineY = -h * 0.15 + (i / Math.max(1, n - 1)) * h * 0.3
+        g.rect(-w * 0.32, lineY - 2, w * 0.64, 4)
+        g.fill({ color: 0xffffff, alpha: 0.6 })
+      }
+    }, () => {
+      if (destroyed) return
+      mountArtifactCardModal(el, artifact, {
+        onBag: () => {
+          artifacts.push(artifact)
+          persistState()
+          refreshArtifactDot()
+        },
+        onEquip: () => {
+          const usedEq = artifacts.filter(a => a.equipped).length
+          if (usedEq < maxEquippedArtifacts(ascentCount)) artifact.equipped = true
+          artifacts.push(artifact)
+          recomputeArtifactMods()
+          assignAction(playerEntity, playerActionId)
+          persistState()
+          refreshArtifactDot()
+        },
+        onDrop: () => {},
+      }, () => {})
+    })
   }
 
   // Pre-hit VFX: spawned at attack-start, plays until damage lands (1/3 of cycle).
@@ -4539,12 +4707,14 @@ export function createGameScene(
         if (gap >= AWAY_DETECT_MS) {
           const earned = computeAward(gap, fastForwardMs)
           if (earned > 0) {
+            // Pre-ad: ×2 time granted for being away, before the away-bonus ad is offered.
+            trackEvent('x2_speed_earned', { ascent: String(ascentCount) })
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
             if (isPaid() || !adsAvailable()) {
               fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
               persistState()
             } else {
-              mountAwayBonusModal(el, gap, earned, () => {}, (bonusMs) => {
+              mountAwayBonusModal(el, gap, earned, ascentCount, () => {}, (bonusMs) => {
                 fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
                 updateSpeedUI()
                 persistState()
@@ -4572,6 +4742,8 @@ export function createGameScene(
           // ticker.deltaMS is already scaled by app.ticker.speed = 2; divide back to real ms
           fastForwardMs = Math.max(0, fastForwardMs - ticker.deltaMS / gameSpeed)
           if (fastForwardMs === 0) {
+            // Pre-ad: the banked ×2 time just drained to zero, before the refill ad is offered.
+            trackEvent('x2_speed_depleted', { ascent: String(ascentCount) })
             setSpeed(1)
             offerRefillAd()
           }
@@ -4599,7 +4771,7 @@ export function createGameScene(
         for (let i = vfxList.length - 1; i >= 0; i--) {
           const v = vfxList[i]
           v.age += ticker.deltaMS
-          if (v.age >= v.maxAge) { v.g.destroy(); vfxList.splice(i, 1); continue }
+          if (v.age >= v.maxAge) { v.g.destroy(); vfxList.splice(i, 1); v.onComplete?.(); continue }
           v.tick(v.age / v.maxAge)
         }
 
@@ -4718,6 +4890,7 @@ export function createGameScene(
             const effectiveMs = entity.moveSpeed
               * (1 + mb.moveSpeedIncrease / 100)
               * (1 + mb.moveMoreSpeed / 100)
+              * Math.max(0, 1 - artifactMods.moveSpeedLess / 100)
 
             // dashLessDistance penalty from extra-charge key node, stacked with dashDistanceIncrease
             const dashDistMult = (1 + mb.dashDistanceIncrease / 100)
@@ -4929,8 +5102,9 @@ export function createGameScene(
               const movB = getMovementBonuses()
               totalResistance += movB.kiteResistance
             }
-            totalResistance = Math.max(0, Math.min(100, totalResistance))
+            totalResistance = Math.max(0, Math.min(100, totalResistance - artifactMods.resistanceLess))
             finalDamage = damage * (1 - totalResistance / 100)
+            if (artifactMods.damageTakenMore > 0) finalDamage *= 1 + artifactMods.damageTakenMore / 100
             if (lb.resistAbsorbLifePercent > 0 && totalResistance > 0) {
               const absorbed = damage - finalDamage
               playerEntity.currentLife = Math.min(playerEntity.maxLife, playerEntity.currentLife + absorbed * lb.resistAbsorbLifePercent / 100)
@@ -5509,7 +5683,7 @@ export function createGameScene(
           if (action.tags.includes('area')) {
             const ab = entity.role === 'player' ? getAreaBonuses() : null
             let areaRadiusPx = (action.area ?? 0) * balance.player.radius
-            if (ab) areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100)
+            if (ab) areaRadiusPx *= (1 + ab.sizeIncrease / 100) * (1 + ab.moreSize / 100) * Math.max(0, 1 - artifactMods.areaLess / 100)
             // Enemies gain +0.5% area size per level above 1.
             else areaRadiusPx *= 1 + ((enemyLevels.get(entity.id) ?? 1) - 1) * balance.enemyLevel.rangeAreaAddPerLevel
             // Tremor: 0.5× base radius, then add tremor radius bonuses

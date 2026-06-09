@@ -1,9 +1,9 @@
-import { t } from '../i18n'
+import { t, getLocale } from '../i18n'
 import { playSound } from '../audio'
-import releaseNotesRaw from '../config/release-notes.md?raw'
 import todoRaw from '../config/todo.md?raw'
 import privacyRaw from '../config/privacy.md?raw'
 import eulaRaw from '../config/eula.md?raw'
+import { getLocalizedReleaseNotes } from '../i18n/content'
 
 export function inline(text: string): string {
   return text
@@ -93,7 +93,7 @@ export function mountAboutModal(parent: HTMLElement, onClose: () => void): () =>
   backdrop.querySelector<HTMLButtonElement>('[data-action="release-notes"]')!
     .addEventListener('click', () => {
       closeSub()
-      subCleanup = mountAboutSubModal(parent, t('about', 'releaseNotesTitle'), releaseNotesRaw, () => { subCleanup = null })
+      subCleanup = mountAboutSubModal(parent, t('about', 'releaseNotesTitle'), getLocalizedReleaseNotes(getLocale()), () => { subCleanup = null })
     })
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="todo"]')!

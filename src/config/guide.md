@@ -63,8 +63,28 @@ Ascent progress is separate from your run. You can attempt it at any time from t
 Action triggers fire an action automatically when a condition is met. The first slot is always the **Auto attack** — it fires on a continuous timer. Additional trigger slots unlock by Ascending.
 
 - **Slot 2** unlocks on Ascent 3. Trigger types: **Time** (periodic timer), **Critical hit** (fires after landing a crit — unlock: kill a boss with a crit), **Affliction** (fires after accumulating affliction stacks — unlock: kill a boss with an affliction hit).
-- **Slot 3** unlocks on Ascent 5 with the same trigger options.
+- **Slot 3** unlocks on Ascent 6 with the same trigger options.
 
 Each extra slot applies a global damage penalty: ×0.75 for slot 2, ×0.50 for slot 3. Despite this, a well-matched second action can significantly increase total damage output.
 
 Open the battle configuration panel (in the top bar) to change your action or configure trigger slots.
+
+## Artifacts
+
+Artifacts are rare items dropped by bosses once you have reached Ascension 5. Each artifact carries one positive modifier paired with one negative modifier — a risk/reward trade-off you choose to accept or reject.
+
+When a boss is defeated, a drop card flies to the center of the screen. You can **Bag** it (keep it for later), **Equip** it immediately, or **Drop** it entirely.
+
+Your inventory holds up to 20 artifacts. Once full, bosses stop dropping new ones until you make room.
+
+**Equip slots** unlock with Ascent progress:
+- **Ascent 5** — 1 equip slot unlocks
+- **Ascent 10** — a 2nd equip slot unlocks
+
+Only equipped artifacts apply their modifiers. All equipped artifacts' modifiers stack together.
+
+**Rarity** is determined by how many modifier pairs the artifact has: a Light Artifact has one pair, a Medium Artifact has two, and a Heavy Artifact has three. Rarer artifacts only begin dropping at higher boss levels:
+- **Boss level 30+** — Medium Artifacts (2 lines) can drop
+- **Boss level 50+** — Heavy Artifacts (3 lines) can drop
+
+To manage your collection, open the Artifacts panel from the Ascent menu (available from Ascent 5 onward). From there you can equip, unequip, or permanently delete artifacts.

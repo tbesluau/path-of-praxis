@@ -8,6 +8,7 @@
 // anything.
 
 import type { Locale } from '..'
+import releaseNotesRaw from '../../config/release-notes.md?raw'
 import { notesFr } from './notes.fr'
 import { notesEs } from './notes.es'
 import { guideFr } from './guide.fr'
@@ -18,6 +19,10 @@ import { nodesFr } from './nodes.fr'
 import { nodesEs } from './nodes.es'
 import { nodesZh } from './nodes.zh'
 import { nodesRu } from './nodes.ru'
+import { releaseNotesFr } from './release-notes.fr'
+import { releaseNotesEs } from './release-notes.es'
+import { releaseNotesZh } from './release-notes.zh'
+import { releaseNotesRu } from './release-notes.ru'
 
 export interface ContentBlock {
   title?: string
@@ -48,6 +53,13 @@ const NODES_BY_LOCALE: Partial<Record<Locale, Record<string, string>>> = {
   ru: nodesRu,
 }
 
+const RELEASE_NOTES_BY_LOCALE: Partial<Record<Locale, Record<string, string>>> = {
+  fr: releaseNotesFr,
+  es: releaseNotesEs,
+  zh: releaseNotesZh,
+  ru: releaseNotesRu,
+}
+
 export function getNoteTranslation(locale: Locale, id: string): ContentBlock | undefined {
   return NOTES_BY_LOCALE[locale]?.[id]
 }
@@ -62,4 +74,22 @@ export function getTutorialTranslation(locale: Locale, key: string): string | un
 
 export function getNodeDescTranslation(locale: Locale, key: string): string | undefined {
   return NODES_BY_LOCALE[locale]?.[key]
+}
+
+export function getLocalizedReleaseNotes(locale: Locale): string {
+  const translations = RELEASE_NOTES_BY_LOCALE[locale]
+  if (!translations) return releaseNotesRaw
+  // Split into per-version blocks and substitute any that have a translation.
+  // Each block starts with "### X.X.XX"; splitting on the lookahead keeps the
+  // heading attached to its block rather than leaving it stranded.
+  const blocks = releaseNotesRaw.split(/(?=^### )/m)
+  return blocks.map(block => {
+    const match = /^### (\S+)/.exec(block)
+    if (match) {
+      const version = match[1]
+      const tr = translations[version]
+      if (tr) return tr + '\n\n'
+    }
+    return block
+  }).join('')
 }

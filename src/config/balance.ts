@@ -200,13 +200,32 @@ export const balance = {
     universePointMaxB:      10,
     freeMasteryPointsUnlockAscent: 4,  // ascentCount at which free mastery points are earned (1 per ascent)
     slot2UnlockAscent:       3,    // ascentCount required for 2nd action trigger slot
-    slot3UnlockAscent:       5,    // ascentCount required for 3rd action trigger slot
+    slot3UnlockAscent:       6,    // ascentCount required for 3rd action trigger slot
     slot2DamagePenalty:      0.75,  // global damage multiplier for slot 2
     slot3DamagePenalty:      0.50,  // global damage multiplier for slot 3
+    artifactSlot1UnlockAscent: 5,   // ascentCount required for 1st artifact equip slot
+    artifactSlot2UnlockAscent: 10,  // ascentCount required for 2nd artifact equip slot
     timeTriggerIntervalMs:  2000,   // fire period (ms) for the time trigger type
     critTriggerDamageMult:        0.1,   // extra multiplier for crit trigger (on top of speed balance)
     afflictionTriggerDamageMult:  0.5,   // extra multiplier for affliction trigger (on top of speed balance)
     afflictionTriggerCount:        10,   // affliction applications before affliction trigger fires
+  },
+
+  // ── Artifacts ─────────────────────────────────────────────────────────────
+  artifacts: {
+    maxCount: 20,
+    dropChances: {
+      one:   0.25,   // 1-line artifact
+      two:   0.10,   // 2-line artifact
+      three: 0.05,   // 3-line artifact
+      // remainder 0.60 = no drop
+    },
+    // Multi-line artifacts require a minimum boss level. Below it, that tier's
+    // drop probability folds back into the no-drop pool instead of downgrading.
+    lineUnlockLevels: {
+      two:   30,   // 2-line artifacts only drop above boss level 30
+      three: 50,   // 3-line artifacts only drop above boss level 50
+    },
   },
 
   // ── Critical hits ─────────────────────────────────────────────────────────

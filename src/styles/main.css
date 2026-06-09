@@ -1311,6 +1311,7 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
+  transform: translateY(calc(-50% + 2px));
   outline: none;
 }
 
@@ -4063,4 +4064,266 @@ body.privacy-page {
   font-family: var(--font-body);
   font-size: 0.72rem;
   color: #5a3010;
+}
+
+/* ── Artifacts ──────────────────────────────────────────────────────────── */
+.artifacts-backdrop .artifacts-panel {
+  max-width: 580px;
+  width: 95vw;
+}
+
+.artifacts-header-info {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  margin-bottom: var(--space-md);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.artifact-count {
+  font-weight: 600;
+}
+
+.artifact-warning {
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.artifact-grid {
+  display: flex;
+  flex-direction: column;
+  /* a bit of vertical space between artifacts in the list */
+  gap: var(--space-lg);
+  max-height: 60vh;
+  overflow-y: auto;
+  /* extra right padding so the trash button doesn't get clipped */
+  padding-right: var(--space-sm);
+}
+
+/* Wrapper that provides the positioning context for the half-merged trash btn */
+.artifact-thumb-row {
+  position: relative;
+  /* 37px leaves room for the 44px button to half-overlap (44-37=7px into thumb) */
+  padding-right: 37px;
+}
+
+.artifact-thumb {
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.artifact-thumb--equipped {
+  filter: brightness(1.15);
+}
+
+.artifact-thumb-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.artifact-rarity-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.artifact-thumb--r1 .artifact-rarity-label { color: #7ec8e3; }
+.artifact-thumb--r2 .artifact-rarity-label { color: #c8a4e3; }
+.artifact-thumb--r3 .artifact-rarity-label { color: #f0d080; }
+
+/* Half-merged delete button — mirrors .action-trigger-rune-btn exactly,
+   including the translateY press-down on hover so the whole button depresses. */
+.artifact-thumb-trash {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  cursor: pointer;
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue.png') 14 fill stretch;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform var(--transition-fast);
+  background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
+  background-clip: padding-box;
+}
+
+.artifact-thumb-trash:hover,
+.artifact-thumb-trash:focus-visible {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
+  background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
+  background-clip: padding-box;
+  transform: translateY(calc(-50% + 2px));
+  outline: none;
+}
+
+.artifact-thumb-trash:active {
+  transform: translateY(calc(-50% + 2px)) scale(0.96);
+}
+
+.artifact-thumb-trash svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.artifact-thumb-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.95rem;
+  /* solid beige-light plate behind the modifier lines — same asset the modals
+     use for their light interior (panelInset has a see-through centre). */
+  border: 16px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_beigeLight.png') 16 fill stretch;
+  margin-bottom: var(--space-xs);
+}
+
+.artifact-line-positive {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.artifact-line-negative {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+/* Equip/unequip button inside the thumbnail — mirrors .game-action-btn hover
+   (border-image swap + translateY press-down, no brightness wash). */
+.artifact-thumb-equip-btn {
+  width: 100%;
+  /* breathing room between the modifier lines plate and the equip button */
+  margin-top: var(--space-sm);
+  min-height: 36px;
+  padding: 0 var(--space-sm);
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+  background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
+  background-clip: padding-box;
+}
+
+.artifact-thumb-equip-btn:hover:not(:disabled) {
+  border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
+  background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
+  background-clip: padding-box;
+  transform: translateY(2px);
+}
+
+.artifact-thumb-equip-btn:active {
+  transform: translateY(2px) scale(0.98);
+}
+
+.artifact-thumb-equip-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.artifact-card {
+  max-width: 360px;
+  position: relative;
+}
+
+/* Drop control — red trash button in the top-right corner of the card.
+   Matches the .modal-btn--danger aesthetic (no red Kenney asset exists). */
+.artifact-card-drop-btn {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.08);
+  z-index: 2;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.artifact-card-drop-btn:hover,
+.artifact-card-drop-btn:focus-visible {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  outline: none;
+}
+
+.artifact-card-drop-btn:active {
+  transform: scale(0.94);
+}
+
+.artifact-card-drop-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.artifact-card .modal-title {
+  padding-right: 48px;
+}
+
+.artifact-card-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: var(--space-md) 0;
+  font-size: 0.9rem;
+}
+
+.artifact-card-actions {
+  display: flex;
+  /* a bit of space between the Bag and Equip buttons */
+  gap: var(--space-xl);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.artifact-notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.ascent-artifacts-section {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+/* Artifacts button in ascent modal — use game button style via modal-btn--primary;
+   this class only handles width and spacing overrides */
+.ascent-artifacts-btn {
+  width: 100%;
+  min-height: 44px;
 }

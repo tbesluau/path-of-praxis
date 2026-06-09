@@ -3,12 +3,13 @@ import type { UniversePointAllocations } from '../core/character'
 import { t } from '../i18n'
 import { playSound } from '../audio'
 
-const THRESHOLDS: { count: number; labelKey: 'threshold1' | 'threshold2' | 'threshold3' | 'threshold4' | 'threshold5' }[] = [
+const THRESHOLDS: { count: number; labelKey: 'threshold1' | 'threshold2' | 'threshold3' | 'threshold4' | 'threshold5' | 'threshold6' }[] = [
   { count: 1, labelKey: 'threshold1' },
   { count: 2, labelKey: 'threshold2' },
   { count: 3, labelKey: 'threshold3' },
   { count: 4, labelKey: 'threshold4' },
   { count: 5, labelKey: 'threshold5' },
+  { count: 6, labelKey: 'threshold6' },
 ]
 
 const UP_SLOTS: { key: keyof UniversePointAllocations; labelKey: 'upSlotA' | 'upSlotB'; max: number }[] = [
@@ -22,6 +23,7 @@ export function mountAscentModal(
   getAllocations: () => UniversePointAllocations,
   onAllocate: (slot: keyof UniversePointAllocations, delta: 1 | -1) => void,
   onClose: () => void,
+  onOpenArtifacts?: () => void,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop ascent-backdrop'
@@ -87,6 +89,14 @@ export function mountAscentModal(
           <h3 class="ascent-section-title">${t('ascent', 'universePoints')} <span class="ascent-points-avail">${t('ascent', 'available').replace('{n}', String(available))}</span></h3>
           <div class="universe-point-list">${pointsHtml}</div>
         </section>
+        ${ascentCount >= balance.ascent.artifactSlot1UnlockAscent ? `
+          <section class="ascent-section ascent-artifacts-section">
+            <button class="modal-btn modal-btn--primary ascent-artifacts-btn" data-action="open-artifacts" style="position:relative">
+              ${t('ascent', 'artifactsBtn')}
+              <span class="notif-dot artifact-notif-dot" hidden style="position:absolute;top:6px;right:8px"></span>
+            </button>
+          </section>
+        ` : ''}
       </div>
     `
 
@@ -102,6 +112,14 @@ export function mountAscentModal(
         buildPanel()
       })
     })
+
+    const artifactsBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="open-artifacts"]')
+    if (artifactsBtn && onOpenArtifacts) {
+      artifactsBtn.addEventListener('click', () => {
+        playSound('modal.open')
+        onOpenArtifacts()
+      })
+    }
   }
 
   buildPanel()
