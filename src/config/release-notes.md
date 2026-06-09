@@ -1,10 +1,10 @@
 ### 0.2.0 — Artifacts
 
-A new late game mechanic with pros and cons to be weighted by the user.
+A new late-game mechanic with pros and cons to be weighed carefully.
 
-- **Itroduced Artifacts** — dropped by bosses, with more stats at higher levels. They have pros and cons so weight them carefully.
-- **Better Idle progression** - better frame management to prevent damage/heal bursts leading to easier deaths
-- **Never done** - many small bugfixes and UX improvements
+- **Introduced Artifacts** — dropped by bosses after Ascension 5, with more modifier lines at higher boss levels. Each artifact carries a positive and a negative modifier — weigh them before equipping.
+- **Better Idle progression** — improved frame management to prevent damage and heal bursts that could cause unexpected deaths
+- **Never done** — many small bugfixes and UX improvements
 
 ### 0.1.50 — Heavy Community feedback
 
