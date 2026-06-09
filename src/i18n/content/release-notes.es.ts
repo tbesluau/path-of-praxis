@@ -2,7 +2,7 @@
 // See release-notes.fr.ts for the schema.
 
 export const releaseNotesEs: Record<string, string> = {
-  '0.1.71': `### 0.1.71 — Artefactos
+  '0.2.0': `### 0.2.0 — Artefactos
 
 Una nueva mecánica de juego avanzado cuyos pros y contras el jugador debe sopesar con cuidado.
 

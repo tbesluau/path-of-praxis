@@ -2,7 +2,7 @@
 // See release-notes.fr.ts for the schema.
 
 export const releaseNotesZh: Record<string, string> = {
-  '0.1.71': `### 0.1.71 — 神器
+  '0.2.0': `### 0.2.0 — 神器
 
 一种新的后期游戏机制，玩家需要审慎权衡其利与弊。
 
