@@ -1311,6 +1311,7 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
+  transform: translateY(calc(-50% + 2px));
   outline: none;
 }
 
@@ -4073,10 +4074,10 @@ body.privacy-page {
 
 .artifacts-header-info {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-md);
   align-items: center;
-  margin-bottom: var(--space-3);
-  font-size: var(--text-sm);
+  margin-bottom: var(--space-md);
+  font-size: 0.85rem;
   color: var(--color-text-muted);
 }
 
@@ -4085,10 +4086,10 @@ body.privacy-page {
 }
 
 .artifact-warning {
-  color: var(--color-error, #ef4444);
-  font-size: var(--text-sm);
-  margin-bottom: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   background: rgba(239, 68, 68, 0.1);
   border-radius: var(--radius-sm);
 }
@@ -4096,27 +4097,28 @@ body.privacy-page {
 .artifact-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  /* a bit of vertical space between artifacts in the list */
+  gap: var(--space-md);
   max-height: 60vh;
   overflow-y: auto;
   /* extra right padding so the trash button doesn't get clipped */
-  padding-right: var(--space-2);
+  padding-right: var(--space-sm);
 }
 
 /* Wrapper that provides the positioning context for the half-merged trash btn */
 .artifact-thumb-row {
   position: relative;
-  /* 37px leaves exactly enough room for the 44px button to half-overlap (44-37=7px into thumb) */
+  /* 37px leaves room for the 44px button to half-overlap (44-37=7px into thumb) */
   padding-right: 37px;
 }
 
 .artifact-thumb {
   border: 14px solid transparent;
   border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_blue.png') 14 fill stretch;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-sm) var(--space-md);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-xs);
 }
 
 .artifact-thumb--equipped {
@@ -4130,7 +4132,7 @@ body.privacy-page {
 }
 
 .artifact-rarity-label {
-  font-size: var(--text-xs);
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -4141,14 +4143,13 @@ body.privacy-page {
 .artifact-thumb--r2 .artifact-rarity-label { color: #c8a4e3; }
 .artifact-thumb--r3 .artifact-rarity-label { color: #f0d080; }
 
-/* Half-merged delete button — 44px matches .modal-close-btn, which keeps the
-   buttonSquare_blue.png (45×49) center strip near 1:1 scale and avoids seams.
-   translateZ(0) forces a compositing layer inside the overflow-y:auto grid. */
+/* Half-merged delete button — mirrors .action-trigger-rune-btn exactly,
+   including the translateY press-down on hover so the whole button depresses. */
 .artifact-thumb-trash {
   position: absolute;
   right: 0;
   top: 50%;
-  transform: translateY(-50%) translateZ(0);
+  transform: translateY(-50%);
   width: 44px;
   height: 44px;
   padding: 0;
@@ -4160,7 +4161,7 @@ body.privacy-page {
   align-items: center;
   justify-content: center;
   z-index: 2;
-  transition: transform var(--transition-fast), filter var(--transition-fast);
+  transition: transform var(--transition-fast);
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
 }
@@ -4170,18 +4171,17 @@ body.privacy-page {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonSquare_blue_pressed.png');
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
-  transform: translateY(calc(-50% + 2px)) translateZ(0);
-  filter: brightness(1.1);
+  transform: translateY(calc(-50% + 2px));
   outline: none;
 }
 
 .artifact-thumb-trash:active {
-  transform: translateY(calc(-50% + 2px)) scale(0.96) translateZ(0);
+  transform: translateY(calc(-50% + 2px)) scale(0.96);
 }
 
 .artifact-thumb-trash svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   stroke-width: 2;
 }
 
@@ -4190,7 +4190,7 @@ body.privacy-page {
   flex-direction: column;
   gap: 3px;
   font-size: 0.72rem;
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--space-xs);
 }
 
 .artifact-line-positive {
@@ -4213,11 +4213,12 @@ body.privacy-page {
   color: #f87171;
 }
 
-/* Equip/unequip button inside the thumbnail */
+/* Equip/unequip button inside the thumbnail — mirrors .game-action-btn hover
+   (border-image swap + translateY press-down, no brightness wash). */
 .artifact-thumb-equip-btn {
   width: 100%;
   min-height: 36px;
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-sm);
   border: 14px solid transparent;
   border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
   color: #fff;
@@ -4225,7 +4226,7 @@ body.privacy-page {
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform var(--transition-fast), filter var(--transition-fast);
+  transition: transform var(--transition-fast);
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
 }
@@ -4235,7 +4236,6 @@ body.privacy-page {
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
   transform: translateY(2px);
-  filter: brightness(1.1);
 }
 
 .artifact-thumb-equip-btn:active {
@@ -4256,8 +4256,8 @@ body.privacy-page {
    Matches the .modal-btn--danger aesthetic (no red Kenney asset exists). */
 .artifact-card-drop-btn {
   position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
+  top: var(--space-sm);
+  right: var(--space-sm);
   width: 40px;
   height: 40px;
   padding: 0;
@@ -4298,13 +4298,14 @@ body.privacy-page {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  margin: var(--space-3) 0;
+  margin: var(--space-md) 0;
   font-size: 0.9rem;
 }
 
 .artifact-card-actions {
   display: flex;
-  gap: var(--space-2);
+  /* a bit of space between the Bag and Equip buttons */
+  gap: var(--space-md);
   justify-content: flex-end;
   flex-wrap: wrap;
 }
@@ -4313,14 +4314,14 @@ body.privacy-page {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-error, #ef4444);
+  background: #ef4444;
   display: inline-block;
   flex-shrink: 0;
 }
 
 .ascent-artifacts-section {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
   border-top: 1px solid rgba(0, 0, 0, 0.2);
 }
 
