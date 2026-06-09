@@ -63,6 +63,30 @@ describe('rollLineCount', () => {
     expect(rollLineCount(() => 0.95)).toBe(3)
     expect(rollLineCount(() => 0.99)).toBe(3)
   })
+
+  it('folds capped tiers into the no-drop pool', () => {
+    // maxLines=1: the 2- and 3-line bands become no drop (0), 1-line unchanged.
+    expect(rollLineCount(() => 0.70, 1)).toBe(1)
+    expect(rollLineCount(() => 0.90, 1)).toBe(0)  // was 2
+    expect(rollLineCount(() => 0.97, 1)).toBe(0)  // was 3
+    // maxLines=2: only the 3-line band folds to no drop.
+    expect(rollLineCount(() => 0.90, 2)).toBe(2)
+    expect(rollLineCount(() => 0.97, 2)).toBe(0)  // was 3
+    // maxLines=3 keeps the full distribution.
+    expect(rollLineCount(() => 0.97, 3)).toBe(3)
+  })
+
+  it('capping never downgrades a tier — only removes it', () => {
+    const rng = makeLcg(7)
+    const N = 5000
+    const capped = [0, 0, 0, 0]
+    for (let i = 0; i < N; i++) capped[rollLineCount(rng, 1)]++
+    // No 2- or 3-line results survive; their mass moved to 0, not to 1.
+    expect(capped[2]).toBe(0)
+    expect(capped[3]).toBe(0)
+    expect(capped[1] / N).toBeCloseTo(0.25, 1)   // 1-line share unchanged
+    expect(capped[0] / N).toBeCloseTo(0.75, 1)   // 0.60 + 0.10 + 0.05
+  })
 })
 
 describe('drawPositives', () => {
@@ -110,6 +134,16 @@ describe('rollArtifact', () => {
     const art = rollArtifact(() => 0.70)
     expect(art).not.toBeNull()
     expect(art!.lines).toHaveLength(1)
+  })
+
+  it('respects the maxLines cap (gated tiers become null)', () => {
+    // A roll that would be a 3-line artifact is suppressed when capped to 1 or 2.
+    expect(rollArtifact(() => 0.97, 1)).toBeNull()
+    expect(rollArtifact(() => 0.97, 2)).toBeNull()
+    expect(rollArtifact(() => 0.97, 3)!.lines).toHaveLength(3)
+    // A 2-line roll is suppressed at cap 1 but allowed at cap 2.
+    expect(rollArtifact(() => 0.90, 1)).toBeNull()
+    expect(rollArtifact(() => 0.90, 2)!.lines).toHaveLength(2)
   })
 
   it('artifact values are in valid ranges', () => {

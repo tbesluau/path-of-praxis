@@ -89,12 +89,15 @@ export function rollValue(min: number, max: number, rng = Math.random): number {
   return Math.round(Math.max(min, Math.min(max, raw)) * 10) / 10
 }
 
-export function rollLineCount(rng = Math.random): 0 | 1 | 2 | 3 {
+// `maxLines` caps how many lines an artifact may roll (boss-level gating).
+// A tier above the cap folds back into the no-drop pool (returns 0), so the
+// disallowed probability mass becomes "no drop" rather than a smaller artifact.
+export function rollLineCount(rng = Math.random, maxLines: 1 | 2 | 3 = 3): 0 | 1 | 2 | 3 {
   const r = rng()
   if (r < 0.60) return 0
   if (r < 0.85) return 1
-  if (r < 0.95) return 2
-  return 3
+  if (r < 0.95) return maxLines >= 2 ? 2 : 0
+  return maxLines >= 3 ? 3 : 0
 }
 
 export function drawPositives(n: number, rng = Math.random): PositiveModifier[] {
@@ -150,8 +153,8 @@ export function drawNegatives(n: number, rng = Math.random): NegativeModifier[] 
   }))
 }
 
-export function rollArtifact(rng = Math.random): Artifact | null {
-  const n = rollLineCount(rng)
+export function rollArtifact(rng = Math.random, maxLines: 1 | 2 | 3 = 3): Artifact | null {
+  const n = rollLineCount(rng, maxLines)
   if (n === 0) return null
   const positives = drawPositives(n, rng)
   const negatives = drawNegatives(n, rng)
