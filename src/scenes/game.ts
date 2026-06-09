@@ -3103,7 +3103,12 @@ export function createGameScene(
       if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent
           && artifacts.length < balance.artifacts.maxCount) {
         const bossX = entity.x, bossY = entity.y
-        const dropped = rollArtifact()
+        // Boss level gates how many lines an artifact may roll; below the
+        // threshold that tier's chance folds into the no-drop pool.
+        const bossLevel = enemyLevels.get(entity.id) ?? 1
+        const lu = balance.artifacts.lineUnlockLevels
+        const maxLines: 1 | 2 | 3 = bossLevel > lu.three ? 3 : bossLevel > lu.two ? 2 : 1
+        const dropped = rollArtifact(Math.random, maxLines)
         if (dropped) playArtifactDropAnimation(bossX, bossY, dropped)
       }
     }

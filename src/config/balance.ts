@@ -220,6 +220,12 @@ export const balance = {
       three: 0.05,   // 3-line artifact
       // remainder 0.60 = no drop
     },
+    // Multi-line artifacts require a minimum boss level. Below it, that tier's
+    // drop probability folds back into the no-drop pool instead of downgrading.
+    lineUnlockLevels: {
+      two:   30,   // 2-line artifacts only drop above boss level 30
+      three: 50,   // 3-line artifacts only drop above boss level 50
+    },
   },
 
   // ── Critical hits ─────────────────────────────────────────────────────────
