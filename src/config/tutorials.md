@@ -100,6 +100,6 @@ Use the arrows to pick your enemy level, or enable Auto to have it advance autom
 
 ---
 
-## ascent-5.0
+## ascent-7.0
 
 Congratulations, you've reached the current endgame. More content is being worked on as we speak. Feel free to keep enjoying this character or experiment with different builds — thank you for playing!
