@@ -3344,10 +3344,10 @@ export function createGameScene(
       }
     }
 
-    if (ascentCount === 5 && !isTutorialSeen('ascent-5') && !getPrefs().tutorialDisabled) {
+    if (ascentCount === 7 && !isTutorialSeen('ascent-7') && !getPrefs().tutorialDisabled) {
       showTutorial({
-        id: 'ascent-5',
-        steps: [{ message: getTutorialMessage('ascent-5', 0) }],
+        id: 'ascent-7',
+        steps: [{ message: getTutorialMessage('ascent-7', 0) }],
         parent: container,
         openGuide,
         onDone: () => {},
