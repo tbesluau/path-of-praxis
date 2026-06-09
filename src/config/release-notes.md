@@ -1,3 +1,11 @@
+### 0.1.71 — Artifacts
+
+A new late game mechanic with pros and cons to be weighted by the user.
+
+- **Itroduced Artifacts** — dropped by bosses, with more stats at higher levels. They have pros and cons so weight them carefully.
+- **Better Idle progression** - better frame management to prevent damage/heal bursts leading to easier deaths
+- **Never done** - many small bugfixes and UX improvements
+
 ### 0.1.50 — Heavy Community feedback
 
 A large round of improvements driven by player feedback since the beta.
@@ -7,7 +15,6 @@ A large round of improvements driven by player feedback since the beta.
 - **Removed mastery hardcap** - it's now a softcap of increasing xp penalty to encourage rebirth
 - **Idle progression** - game now continues to progress even when idled/out of focus
 - **Never done** - many small bugfixes and UX improvements
-
 
 ### 0.1.26 — Community feedback
 
