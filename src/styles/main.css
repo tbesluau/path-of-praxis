@@ -4188,11 +4188,12 @@ body.privacy-page {
 .artifact-thumb-lines {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: 0.82rem;
-  /* beige-light plate behind the modifier lines, from the asset pack */
-  border: 12px solid transparent;
-  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panelInset_beigeLight.png') 12 fill stretch;
+  gap: 4px;
+  font-size: 0.95rem;
+  /* solid beige-light plate behind the modifier lines — same asset the modals
+     use for their light interior (panelInset has a see-through centre). */
+  border: 16px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/panel_beigeLight.png') 16 fill stretch;
   margin-bottom: var(--space-xs);
 }
 
