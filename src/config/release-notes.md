@@ -1,4 +1,4 @@
-### 0.1.71 — Artifacts
+### 0.2.0 — Artifacts (beta)
 
 A new late-game mechanic with pros and cons to be weighed carefully.
 

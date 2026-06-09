@@ -1,10 +1,10 @@
 // French translations for src/config/release-notes.md.
-// Keys are version strings (e.g. '0.1.71'). Values are the full translated
+// Keys are version strings (e.g. '0.2.0'). Values are the full translated
 // section markdown including the ### heading line.
 // Missing versions fall back to the English source automatically.
 
 export const releaseNotesFr: Record<string, string> = {
-  '0.1.71': `### 0.1.71 — Artefacts
+  '0.2.0': `### 0.2.0 — Artefacts (bêta)
 
 Un nouveau mécanisme de fin de partie dont les avantages et inconvénients sont à peser soigneusement.
 

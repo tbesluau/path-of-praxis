@@ -2,7 +2,7 @@
 // See release-notes.fr.ts for the schema.
 
 export const releaseNotesRu: Record<string, string> = {
-  '0.1.71': `### 0.1.71 — Артефакты
+  '0.2.0': `### 0.2.0 — Артефакты (бета)
 
 Новая механика поздней игры, плюсы и минусы которой игрок должен тщательно взвесить.
 
