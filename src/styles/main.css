@@ -3136,6 +3136,131 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   font-style: italic;
 }
 
+/* ── Mastery node code badge ─────────────────────────────────────────── */
+
+.node-code-badge {
+  position: absolute;
+  top: var(--space-sm);
+  right: 3rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #7a5020;
+  background: rgba(90, 48, 16, 0.1);
+  border: 1px solid rgba(90, 48, 16, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  pointer-events: none;
+  user-select: text;
+}
+
+/* ── Mastery plan actions (Save / Load / Assign All row) ─────────────── */
+
+.mastery-plan-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-sm);
+}
+
+.mastery-plan-btn {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  padding: 5px 8px;
+  min-height: 36px;
+}
+
+.mastery-plan-active {
+  flex: 1 1 100%;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  color: #5a3010;
+  background: rgba(90, 48, 16, 0.08);
+  border: 1px solid rgba(90, 48, 16, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Mastery preset modal ─────────────────────────────────────────────── */
+
+.mastery-preset-panel {
+  width: min(360px, 92vw);
+}
+
+.mastery-preset-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.mastery-preset-slot-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  min-height: 48px;
+  padding: 6px 12px;
+}
+
+.mastery-preset-slot-btn:disabled {
+  opacity: 0.45;
+}
+
+.mastery-preset-slot-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.mastery-preset-slot-preview {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.63rem;
+  color: #5a3010;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mastery-preset-paste-row {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.mastery-preset-paste-input {
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  padding: 6px 8px;
+  border: 1px solid rgba(90, 48, 16, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 240, 220, 0.5);
+  color: #1a0a02;
+  min-width: 0;
+}
+
+.mastery-preset-paste-input:focus {
+  outline: none;
+  border-color: rgba(90, 48, 16, 0.7);
+}
+
+.mastery-preset-error {
+  font-size: 0.72rem;
+  color: #9a2020;
+  margin-top: 4px;
+  min-height: 1rem;
+}
+
 /* ── Note links (clickable terms in node descriptions / note bodies) ── */
 
 .note-link {
