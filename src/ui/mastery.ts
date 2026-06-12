@@ -1,5 +1,5 @@
 import type { MasteryId, NodeType } from '../config/masteries'
-import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, nodeCost, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel } from '../config/masteries'
+import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, nodeCost, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel, MASTERY_LETTER, TREE_LETTER, nodeToCode, codeToNode } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
 import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP, getMasteryDumpLabel } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
@@ -7,6 +7,7 @@ import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
 import { linkifyNoteTerms, mountNoteModal } from './notes'
 import { t } from '../i18n'
 import { playSound } from '../audio'
+import { getPrefs, setPref } from '../core/prefs'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -145,6 +146,8 @@ function mountResetConfirmModal(
 function mountNodeDetailModal(
   parent: HTMLElement,
   info: {
+    masteryId: MasteryId
+    treeIdx: number
     treeLabel: string
     nodeIdx: number
     desc: string
@@ -176,12 +179,15 @@ function mountNodeDetailModal(
   }
 
   const descHtml = linkifyNoteTerms(info.desc)
+  const code = nodeToCode(info.masteryId, info.treeIdx, info.nodeIdx)
+  const codeBadge = code ? `<span class="node-code-badge">${code}</span>` : ''
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop mastery-node-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-node-panel" role="dialog" aria-modal="true" aria-labelledby="node-detail-title">
       <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      ${codeBadge}
       <h2 class="modal-title" id="node-detail-title">${typeLabel}</h2>
       <p class="node-detail-tree">${info.treeLabel}</p>
       <p class="node-detail-desc">${descHtml}</p>
@@ -548,7 +554,7 @@ function mountMasteryTreeModal(
     closeSub()
     subCleanup = mountNodeDetailModal(
       parent,
-      { treeLabel: detail.treeLabel, nodeIdx: detail.nodeIdx, desc: detail.desc, assignInfo: detail.info },
+      { masteryId: def.id, treeIdx: detail.treeIdx, treeLabel: detail.treeLabel, nodeIdx: detail.nodeIdx, desc: detail.desc, assignInfo: detail.info },
       () => {
         if (detail.info.kind === 'assignable') {
           for (const nIdx of detail.info.path) onAssign(detail.treeIdx, nIdx)
@@ -619,6 +625,198 @@ function mountMasteryTreeModal(
   return () => { closeSub(); backdrop.remove() }
 }
 
+// ── Build plan helpers ─────────────────────────────────────────────────────
+
+// Canonical mastery order for save-string generation.
+const CANONICAL_MASTERY_ORDER: MasteryId[] = [
+  'action', 'criticalHit', 'physical', 'fire', 'lightning',
+  'area', 'projectile', 'strike', 'life', 'mana', 'enemy', 'movement',
+]
+
+// Generates a save string from the current mastery state.
+// Nodes are listed in canonical order (1-6, key 6a/6b if assigned, 7-12, key 12a/12b if assigned).
+export function generateMasterySaveString(
+  masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
+): string {
+  const codes: string[] = []
+  for (const masteryId of CANONICAL_MASTERY_ORDER) {
+    const p = masteryProgress[masteryId]
+    if (!p) continue
+    const treeLetter = TREE_LETTER[masteryId]
+    for (const [treeIdxStr] of Object.entries(treeLetter)) {
+      const treeIdx = Number(treeIdxStr)
+      const assigned = new Set(p.nodes[treeIdx] ?? [])
+      if (assigned.size === 0) continue
+      const MASTERY_L = MASTERY_LETTER[masteryId]
+      const TREE_L = treeLetter[treeIdx]
+      // Line nodes 0-5
+      for (let i = 0; i <= 5; i++) {
+        if (assigned.has(i)) codes.push(`${MASTERY_L}${TREE_L}${i + 1}`)
+      }
+      // Key 12 or 13 (after first major)
+      if (assigned.has(12)) codes.push(`${MASTERY_L}${TREE_L}6a`)
+      if (assigned.has(13)) codes.push(`${MASTERY_L}${TREE_L}6b`)
+      // Line nodes 6-11
+      for (let i = 6; i <= 11; i++) {
+        if (assigned.has(i)) codes.push(`${MASTERY_L}${TREE_L}${i + 1}`)
+      }
+      // Key 14 or 15 (after second major)
+      if (assigned.has(14)) codes.push(`${MASTERY_L}${TREE_L}12a`)
+      if (assigned.has(15)) codes.push(`${MASTERY_L}${TREE_L}12b`)
+    }
+  }
+  return codes.join(', ')
+}
+
+// Parses a save string into a per-mastery ordered list of {treeIdx, nodeIdx}.
+// Returns null if the string has no valid tokens.
+export function parseMasterySaveString(
+  str: string,
+): Map<MasteryId, Array<{ treeIdx: number; nodeIdx: number }>> | null {
+  const tokens = str.split(/,\s*/).map(s => s.trim()).filter(Boolean)
+  const result = new Map<MasteryId, Array<{ treeIdx: number; nodeIdx: number }>>()
+  let anyValid = false
+  for (const token of tokens) {
+    const parsed = codeToNode(token)
+    if (!parsed) continue
+    anyValid = true
+    const list = result.get(parsed.masteryId) ?? []
+    list.push({ treeIdx: parsed.treeIdx, nodeIdx: parsed.nodeIdx })
+    result.set(parsed.masteryId, list)
+  }
+  return anyValid ? result : null
+}
+
+// Truncate plan string for display.
+function truncatePlan(str: string, maxLen = 28): string {
+  return str.length <= maxLen ? str : str.slice(0, maxLen - 1) + '…'
+}
+
+// ── Preset Save Modal ──────────────────────────────────────────────────────
+
+export function mountMasteryPresetSaveModal(
+  parent: HTMLElement,
+  currentPlan: string,
+  onClose: () => void,
+): () => void {
+  const prefs = getPrefs()
+  const presets: [string?, string?, string?] = [...(prefs.masteryPresets ?? [undefined, undefined, undefined])] as [string?, string?, string?]
+
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop mastery-node-backdrop'
+
+  function buildHtml(): string {
+    const slots = ([0, 1, 2] as const).map(i => {
+      const saved = presets[i]
+      const label = t('mastery', 'slot').replace('{n}', String(i + 1))
+      const preview = saved ? `<span class="mastery-preset-slot-preview">${truncatePlan(saved)}</span>` : `<span class="mastery-preset-slot-preview">${t('mastery', 'slotEmpty')}</span>`
+      return `<button class="modal-btn modal-btn--ghost mastery-preset-slot-btn" data-slot="${i}" data-sfx="modal"><span class="mastery-preset-slot-label">${label}</span>${preview}</button>`
+    }).join('')
+    return `
+      <div class="modal-panel mastery-preset-panel" role="dialog" aria-modal="true" aria-labelledby="preset-save-title">
+        <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+        <h2 class="modal-title" id="preset-save-title">${t('mastery', 'savePlan')}</h2>
+        <div class="mastery-preset-slots">${slots}</div>
+        <button class="modal-btn modal-btn--ghost" data-action="copy" data-sfx="modal">${t('mastery', 'copyClipboard')}</button>
+      </div>
+    `
+  }
+
+  backdrop.innerHTML = buildHtml()
+  playSound('modal.open')
+  parent.appendChild(backdrop)
+
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+
+  backdrop.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset['slot']!, 10) as 0 | 1 | 2
+      presets[i] = currentPlan
+      setPref('masteryPresets', presets)
+      dismiss()
+    })
+  })
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="copy"]')!.addEventListener('click', () => {
+    navigator.clipboard?.writeText(currentPlan).catch(() => { /* ignore */ })
+    dismiss()
+  })
+
+  return () => backdrop.remove()
+}
+
+// ── Preset Load Modal ──────────────────────────────────────────────────────
+
+export function mountMasteryPresetLoadModal(
+  parent: HTMLElement,
+  onLoad: (plan: string) => void,
+  onClose: () => void,
+): () => void {
+  const prefs = getPrefs()
+  const presets: [string?, string?, string?] = [...(prefs.masteryPresets ?? [undefined, undefined, undefined])] as [string?, string?, string?]
+
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop mastery-node-backdrop'
+
+  const slots = ([0, 1, 2] as const).map(i => {
+    const saved = presets[i]
+    const label = t('mastery', 'slot').replace('{n}', String(i + 1))
+    const preview = saved ? `<span class="mastery-preset-slot-preview">${truncatePlan(saved)}</span>` : `<span class="mastery-preset-slot-preview">${t('mastery', 'slotEmpty')}</span>`
+    const disabled = saved ? '' : ' disabled'
+    return `<button class="modal-btn modal-btn--ghost mastery-preset-slot-btn" data-slot="${i}" data-sfx="modal"${disabled}><span class="mastery-preset-slot-label">${label}</span>${preview}</button>`
+  }).join('')
+
+  backdrop.innerHTML = `
+    <div class="modal-panel mastery-preset-panel" role="dialog" aria-modal="true" aria-labelledby="preset-load-title">
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title" id="preset-load-title">${t('mastery', 'loadPlan')}</h2>
+      <div class="mastery-preset-slots">${slots}</div>
+      <div class="mastery-preset-paste-row">
+        <input class="mastery-preset-paste-input" type="text" placeholder="FD1, FB1, …" />
+        <button class="modal-btn modal-btn--primary mastery-plan-btn" data-action="import" data-sfx="modal">${t('mastery', 'importCode')}</button>
+      </div>
+      <div class="mastery-preset-error" aria-live="polite"></div>
+    </div>
+  `
+  playSound('modal.open')
+  parent.appendChild(backdrop)
+
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
+  const errorEl = backdrop.querySelector<HTMLElement>('.mastery-preset-error')!
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+
+  backdrop.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset['slot']!, 10) as 0 | 1 | 2
+      const plan = presets[i]
+      if (plan) { onLoad(plan); dismiss() }
+    })
+  })
+
+  const importBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="import"]')!
+  const pasteInput = backdrop.querySelector<HTMLInputElement>('.mastery-preset-paste-input')!
+
+  const tryImport = (): void => {
+    const val = pasteInput.value.trim()
+    if (!val) return
+    const parsed = parseMasterySaveString(val)
+    if (!parsed) {
+      errorEl.textContent = t('mastery', 'planInvalid')
+      return
+    }
+    onLoad(val)
+    dismiss()
+  }
+
+  importBtn.addEventListener('click', tryImport)
+  pasteInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tryImport() } })
+
+  return () => backdrop.remove()
+}
+
 // ── Mastery Modal (main list) ──────────────────────────────────────────────
 
 export function mountMasteryModal(
@@ -634,12 +832,21 @@ export function mountMasteryModal(
   masteryDumpPoints: Partial<Record<MasteryId, number>>,
   getRemainingFreePoints: (id: MasteryId) => number,
 ): () => void {
+  // Active plan: persisted in prefs, reset on ascent.
+  let activePlan: string | null = getPrefs().activeMasteryPlan ?? null
+
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   backdrop.innerHTML = `
     <div class="modal-panel mastery-panel" role="dialog" aria-modal="true" aria-labelledby="mastery-title">
       <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
       <h2 class="modal-title" id="mastery-title">${t('mastery', 'title')}</h2>
+      <div class="mastery-plan-actions">
+        <button class="modal-btn modal-btn--ghost mastery-plan-btn" data-action="save-plan" data-sfx="modal">${t('mastery', 'savePlan')}</button>
+        <button class="modal-btn modal-btn--ghost mastery-plan-btn" data-action="load-plan" data-sfx="modal">${t('mastery', 'loadPlan')}</button>
+        <button class="modal-btn modal-btn--primary mastery-plan-btn" data-action="assign-all" data-sfx="modal">${t('mastery', 'assignAll')}</button>
+        <span class="mastery-plan-active" hidden></span>
+      </div>
       <div class="mastery-categories"></div>
     </div>
   `
@@ -647,6 +854,20 @@ export function mountMasteryModal(
   parent.appendChild(backdrop)
 
   const categoriesEl = backdrop.querySelector<HTMLElement>('.mastery-categories')!
+  const planActiveEl = backdrop.querySelector<HTMLElement>('.mastery-plan-active')!
+  const assignAllBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="assign-all"]')!
+
+  function refreshPlanUI(): void {
+    if (activePlan) {
+      planActiveEl.textContent = truncatePlan(activePlan)
+      planActiveEl.hidden = false
+      assignAllBtn.disabled = false
+    } else {
+      planActiveEl.hidden = true
+      assignAllBtn.disabled = true
+    }
+  }
+  refreshPlanUI()
 
   let subCleanup: (() => void) | null = null
   function closeSub(): void { if (subCleanup) { subCleanup(); subCleanup = null } }
@@ -790,6 +1011,62 @@ export function mountMasteryModal(
   // in the background, so refresh every 500 ms unless a sub-modal is open
   // (its own state is independent of these top-level rows).
   const refreshTimer = window.setInterval(() => { if (!subCleanup) refreshRows() }, 500)
+
+  // Plan action buttons
+  backdrop.querySelector<HTMLButtonElement>('[data-action="save-plan"]')!.addEventListener('click', () => {
+    closeSub()
+    const current = generateMasterySaveString(masteryProgress)
+    subCleanup = mountMasteryPresetSaveModal(parent, current, () => { subCleanup = null })
+  })
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="load-plan"]')!.addEventListener('click', () => {
+    closeSub()
+    subCleanup = mountMasteryPresetLoadModal(parent, (plan) => {
+      activePlan = plan
+      setPref('activeMasteryPlan', plan)
+      refreshPlanUI()
+    }, () => { subCleanup = null })
+  })
+
+  assignAllBtn.addEventListener('click', () => {
+    if (!activePlan) return
+    const plan = parseMasterySaveString(activePlan)
+    if (!plan) return
+    for (const [masteryId, entries] of plan) {
+      const masteryDef = allMasteries.find(m => m.id === masteryId)
+      if (!masteryDef) continue
+      let pointer = 0
+      let madeProgress = true
+      while (madeProgress && pointer < entries.length) {
+        madeProgress = false
+        const entry = entries[pointer]
+        const treeDef = masteryDef.trees.find(tr => tr.index === entry.treeIdx)
+        if (!treeDef) { pointer++; madeProgress = true; continue }
+        const p = prog(masteryProgress, masteryId)
+        const freeUsedHere = freeMasteryPointsUsed[masteryId] ?? 0
+        const dumped = masteryDumpPoints[masteryId] ?? 0
+        const available = masteryPointsAvailable(p, freeUsedHere, dumped) + getRemainingFreePoints(masteryId)
+        const result = computeAssignPath(p, treeDef, entry.treeIdx, entry.nodeIdx)
+        if (!Array.isArray(result)) {
+          pointer++; madeProgress = true; continue  // structural block — skip
+        }
+        if (result.length === 0) {
+          pointer++; madeProgress = true; continue  // already assigned
+        }
+        const cost = result.reduce((s, idx) => s + nodeCost(idx), 0)
+        if (available >= cost) {
+          for (const nIdx of result) onAssign(masteryId, entry.treeIdx, nIdx)
+          pointer++; madeProgress = true
+        }
+        // else: can't afford — stop for this mastery
+      }
+      // Dump remaining free points for this mastery after plan is done
+      const freshP = prog(masteryProgress, masteryId)
+      const remaining = masteryPointsAvailable(freshP, freeMasteryPointsUsed[masteryId] ?? 0, masteryDumpPoints[masteryId] ?? 0) + getRemainingFreePoints(masteryId)
+      if (remaining > 0) onDump(masteryId, remaining)
+    }
+    buildRows()
+  })
 
   const dismiss = (): void => { playSound('modal.close'); window.clearInterval(refreshTimer); closeSub(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)

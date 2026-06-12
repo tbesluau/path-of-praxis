@@ -93,6 +93,16 @@ export interface TranslationSchema {
     pointsPts: string              // template: "You have {total} / {earned} mastery points to assign{free}"
     pointsFree: string             // template: " ({n} free)"
     ctrlClickHint: string          // "Ctrl/Cmd + click a node to assign all affordable points"
+    savePlan: string               // "Save plan"
+    loadPlan: string               // "Load plan"
+    assignAll: string              // "Assign all"
+    slot: string                   // template: "Slot {n}"
+    slotEmpty: string              // "(empty)"
+    copyClipboard: string          // "Copy to clipboard"
+    importCode: string             // "Import"
+    planActive: string             // template: "{code}" — truncated active plan indicator
+    planInvalid: string            // "Invalid build code"
+    assignAllNone: string          // "No plan loaded"
   }
   ascent: {
     title: string
@@ -425,6 +435,16 @@ export const en: TranslationSchema = {
     pointsPts: 'You have {total} / {earned} mastery points to assign{free}',
     pointsFree: ' ({n} free)',
     ctrlClickHint: 'Tip: Ctrl/Cmd + click a node to assign all affordable points at once.',
+    savePlan: 'Save plan',
+    loadPlan: 'Load plan',
+    assignAll: 'Assign all',
+    slot: 'Slot {n}',
+    slotEmpty: '(empty)',
+    copyClipboard: 'Copy to clipboard',
+    importCode: 'Import',
+    planActive: '{code}',
+    planInvalid: 'Invalid build code',
+    assignAllNone: 'No plan loaded',
   },
   ascent: {
     title: 'Ascent',
