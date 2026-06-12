@@ -6627,8 +6627,19 @@ function statXpNeeded(level: number): number {
   return Math.round(balance.stat.xpPerLevel * Math.pow(balance.stat.xpGrowth, level - 1))
 }
 
+// Per-level cost multiplier for reaching `level`: base xpGrowth, softened to
+// the tier value at and after each tier's fromLevel (e.g. 1.4× from level 30).
+function enemyMaxLevelGrowthAt(level: number): number {
+  let growth: number = balance.enemyLevel.xpGrowth
+  for (const tier of balance.enemyLevel.xpGrowthTiers) {
+    if (level >= tier.fromLevel) growth = tier.growth
+  }
+  return growth
+}
+
 function enemyMaxLevelXpNeeded(maxLevel: number): number {
-  const base    = balance.enemyLevel.xpPerMaxLevel * Math.pow(balance.enemyLevel.xpGrowth, maxLevel - 1)
+  let base = balance.enemyLevel.xpPerMaxLevel
+  for (let level = 2; level <= maxLevel; level++) base *= enemyMaxLevelGrowthAt(level)
   const divider = balance.enemyLevel.xpDividerBase + balance.enemyLevel.xpDividerPerLevel * (maxLevel - 1)
   return Math.round(base / divider)
 }

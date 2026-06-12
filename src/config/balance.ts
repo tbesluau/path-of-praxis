@@ -177,6 +177,13 @@ export const balance = {
   enemyLevel: {
     xpPerMaxLevel:      1000, // XP required for max-level 1 → 2
     xpGrowth:           1.5,  // each subsequent max-level costs xpGrowth× the previous
+    // Growth softens at higher levels: from each threshold level onward, the
+    // per-level cost multiplier drops to the given value (divider unchanged).
+    xpGrowthTiers:      [
+      { fromLevel: 30, growth: 1.4 },
+      { fromLevel: 40, growth: 1.3 },
+      { fromLevel: 50, growth: 1.2 },
+    ],
     xpDividerBase:      0.5,  // divider at level 1 → 2× XP cost; increases xpDividerPerLevel per level
     xpDividerPerLevel:  0.02, // +0.02 per level → divider reaches 1.0 at level 26 (unchanged), >1 above
     lifeMultiplier:      1.229, // multiplicative per-level bonus on enemy life (~2× at lv30 vs 1.2)
