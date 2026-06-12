@@ -105,6 +105,7 @@ export const es: TranslationSchema = {
     planActive: '{code}',
     planInvalid: 'Código de build inválido',
     assignAllNone: 'No hay plan cargado',
+    saveNoHistory: 'El orden en que se asignaron tus nodos actuales no fue registrado. Guardar planes se desbloquea tras tu próxima Ascensión o un reinicio de maestría.',
   },
   ascent: {
     title: 'Ascensión',

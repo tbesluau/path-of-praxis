@@ -103,6 +103,7 @@ export interface TranslationSchema {
     planActive: string             // template: "{code}" — truncated active plan indicator
     planInvalid: string            // "Invalid build code"
     assignAllNone: string          // "No plan loaded"
+    saveNoHistory: string          // shown when assignment order is unknown (legacy nodes)
   }
   ascent: {
     title: string
@@ -445,6 +446,7 @@ export const en: TranslationSchema = {
     planActive: '{code}',
     planInvalid: 'Invalid build code',
     assignAllNone: 'No plan loaded',
+    saveNoHistory: 'The order your current nodes were assigned in was not recorded. Saving plans unlocks after your next Ascent or a mastery reset.',
   },
   ascent: {
     title: 'Ascent',
