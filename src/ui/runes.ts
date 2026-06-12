@@ -74,16 +74,19 @@ export function mountRunesModal(
   parent: HTMLElement,
   _actionId: string,
   actionLabel: string,
-  actionLevel: number,
-  actionMaxLevel: number,
+  getLevels: () => { level: number; maxLevel: number },
   runes: ActionRunes,
   onAssign: (slotIdx: number, runeId: RuneId | null) => void,
   onClose: () => void,
-): () => void {
+): { cleanup: () => void; refresh: () => void } {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop runes-backdrop'
 
+  // `runes` is the live state object — the game mutates it in the background
+  // (auto-fill on level-up), so every rebuild re-reads it and `refresh()` lets
+  // the game re-sync an open overview instead of leaving stale slot cards.
   function buildPanel(): void {
+    const { level: actionLevel, maxLevel: actionMaxLevel } = getLevels()
     const unlocked = unlockedSlotCount(actionLevel)
 
     const slotsHtml = SLOT_TYPES.map((slotType, i) => {
@@ -131,7 +134,6 @@ export function mountRunesModal(
     `
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
-    backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
 
     backdrop.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -168,12 +170,17 @@ export function mountRunesModal(
     onClose()
   }
 
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+
   buildPanel()
   playSound('modal.open')
   parent.appendChild(backdrop)
 
-  return () => {
-    if (activeSelectCleanup) { activeSelectCleanup(); activeSelectCleanup = null }
-    backdrop.remove()
+  return {
+    cleanup: () => {
+      if (activeSelectCleanup) { activeSelectCleanup(); activeSelectCleanup = null }
+      backdrop.remove()
+    },
+    refresh: buildPanel,
   }
 }

@@ -1022,6 +1022,9 @@ export function createGameScene(
     })
   }
 
+  let runesModal: { cleanup: () => void; refresh: () => void } | null = null
+  let runesModalActionId: string | null = null
+
   function applyAutoRunes(actionId: string): void {
     const r = getActionRunes(actionId)
     if (!r.autoApply) return
@@ -1040,13 +1043,23 @@ export function createGameScene(
       actionRunes[actionId] = r
       if (actionId === playerActionId) assignAction(playerEntity, actionId as ActionId)
       refreshRuneDot()
+      // Re-sync an open runes overview so auto-filled slots don't show as
+      // empty cards hiding an actually-equipped rune.
+      if (runesModal && runesModalActionId === actionId) runesModal.refresh()
       persistState()
     }
   }
 
   function assignRune(actionId: string, slotIdx: number, runeId: RuneId | null): void {
     const r = getActionRunes(actionId)
+    const previous = r.selected[slotIdx] ?? null
     r.selected[slotIdx] = runeId
+    // Explicit removal forgets the rune: otherwise the level-up auto-fill
+    // would immediately re-equip it from history, making it impossible to
+    // keep a slot empty. Re-picking it manually re-adds it to history.
+    if (runeId === null && previous !== null) {
+      r.history = r.history.filter(h => h !== previous)
+    }
     // Track newly chosen runes for future auto-fill; keep autoApply on so any
     // remaining empty slot continues to be pre-filled from history.
     if (runeId && !r.history.includes(runeId)) r.history.unshift(runeId)
@@ -1589,26 +1602,29 @@ export function createGameScene(
   // keeps the gear-button dot honest without sprinkling calls everywhere.
   const masteryDotInterval = setInterval(refreshMasteryDot, 500)
 
-  let runesModalCleanup: (() => void) | null = null
-
-  function openRunesModal(): void {
-    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
-    const level = actionProgress[playerActionId]?.level ?? 1
-    const maxLevel = actionProgress[playerActionId]?.maxLevel ?? 1
-    const r = getActionRunes(playerActionId)
+  function openRunesModalFor(actionId: string): void {
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
+    const r = getActionRunes(actionId)
     // Mount on `container` (not `el`): the .scene-game element has a transform
     // that creates a stacking context, which would clip our modal beneath
     // sibling backdrops like the trigger config. Container sits above that.
-    runesModalCleanup = mountRunesModal(
+    runesModal = mountRunesModal(
       container,
-      playerActionId,
-      getActionLabel(playerActionId),
-      level,
-      maxLevel,
+      actionId,
+      getActionLabel(actionId),
+      () => {
+        const p = actionProgress[actionId]
+        return { level: p?.level ?? 1, maxLevel: p?.maxLevel ?? 1 }
+      },
       r,
-      (slotIdx, runeId) => { assignRune(playerActionId, slotIdx, runeId) },
-      () => { runesModalCleanup = null },
+      (slotIdx, runeId) => { assignRune(actionId, slotIdx, runeId) },
+      () => { runesModal = null; runesModalActionId = null },
     )
+    runesModalActionId = actionId
+  }
+
+  function openRunesModal(): void {
+    openRunesModalFor(playerActionId)
   }
 
   const enemyCtrlEl         = el.querySelector<HTMLElement>('.enemy-level-ctrl')!
@@ -1731,17 +1747,7 @@ export function createGameScene(
           return getActionRunes(id).selected.slice(0, unlocked).some(s => s == null)
         },
         openRunesModal: () => { openRunesModal() },
-        openRunesModalForSlot: (actionId) => {
-          if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
-          const level = actionProgress[actionId]?.level ?? 1
-          const maxLevel = actionProgress[actionId]?.maxLevel ?? 1
-          const r = getActionRunes(actionId)
-          runesModalCleanup = mountRunesModal(
-            container, actionId, getActionLabel(actionId), level, maxLevel, r,
-            (slotIdx, runeId) => { assignRune(actionId, slotIdx, runeId) },
-            () => { runesModalCleanup = null },
-          )
-        },
+        openRunesModalForSlot: (actionId) => { openRunesModalFor(actionId) },
         getUnlockedTriggers: () => [...unlockedTriggers],
       },
       (id) => {
@@ -3144,7 +3150,7 @@ export function createGameScene(
 
   function rebirth(): void {
     modalCleanup = null
-    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
 
     // Rune assignments persist across rebirth: locked-slot pre-assignments stay
     // intact and reactivate as the action levels back up. Only update history so
@@ -3239,7 +3245,7 @@ export function createGameScene(
 
   function ascend(): void {
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
-    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
 
     ascentCount++
     // Capture enemy max level before the deep reset below wipes it.
