@@ -21,6 +21,10 @@ export interface Prefs {
   // NOT in the character save, so it never rides along with an exported save
   // code (a save imported on another device keeps that device's own id).
   clientId?:          string
+  // Mastery build-plan presets (up to 3 saved strings). Cross-character, persists across ascents.
+  masteryPresets?:    [string?, string?, string?]
+  // The currently active mastery build plan. Cleared on ascent.
+  activeMasteryPlan?: string
 }
 
 const defaults: Prefs = {
