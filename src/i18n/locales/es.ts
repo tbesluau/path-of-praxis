@@ -54,6 +54,8 @@ export const es: TranslationSchema = {
     triggerAffliction: 'Disparador de aflicción',
     triggerAfflictionDesc: 'Se activa cada 10 aflicciones aplicadas. El daño está equilibrado por velocidad.',
     triggerAfflictionLock: 'Mata a un jefe con daño de aflicción',
+    triggerMana: 'Disparador de maná',
+    triggerManaDesc: 'Se activa cada 100 de maná gastado por tus acciones. El daño está equilibrado por velocidad.',
     dpsDoubleAction: 'Doble acción',
     dpsBonusTarget: 'Objetivo bonus',
     dpsExtraProjectile: 'Proyectil extra',

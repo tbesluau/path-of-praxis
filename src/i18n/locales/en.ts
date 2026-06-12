@@ -52,6 +52,8 @@ export interface TranslationSchema {
     triggerAffliction: string
     triggerAfflictionDesc: string
     triggerAfflictionLock: string
+    triggerMana: string
+    triggerManaDesc: string
     dpsDoubleAction: string
     dpsBonusTarget: string
     dpsExtraProjectile: string
@@ -395,6 +397,8 @@ export const en: TranslationSchema = {
     triggerAffliction: 'Affliction Trigger',
     triggerAfflictionDesc: 'Triggers every 10 applied afflictions. Damage is speed-balanced.',
     triggerAfflictionLock: 'Kill a boss with affliction damage',
+    triggerMana: 'Mana Trigger',
+    triggerManaDesc: 'Triggers every 100 mana spent by your actions. Damage is speed-balanced.',
     dpsDoubleAction: 'Double action',
     dpsBonusTarget: 'Bonus target',
     dpsExtraProjectile: 'Extra projectile',

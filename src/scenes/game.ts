@@ -1301,6 +1301,8 @@ export function createGameScene(
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
+  const manaTriggerCounters = [0, 0]        // per extra slot, counts mana spent by the player
+  let manaSpentThisTick = 0                 // player mana paid this tick (any slot, any cast)
   let mainSlotCritTarget: Entity | null = null
   let afflictionAppliedThisTick = 0
   let afflictionLastTarget: Entity | null = null
@@ -2222,7 +2224,7 @@ export function createGameScene(
       if (sid) entries.push({ id: sid as ActionId, slot: i + 1 })
     }
 
-    const TRIGGER_LABEL: Record<string, string> = { time: 'Time', crit: 'Crit', affliction: 'Affliction' }
+    const TRIGGER_LABEL: Record<string, string> = { time: 'Time', crit: 'Crit', affliction: 'Affliction', mana: 'Mana' }
     const critUnlocked = ascentCount >= 1 || getPrefs().fullMastery
 
     // Pre-compute node arrays shared across all action entries
@@ -2236,7 +2238,8 @@ export function createGameScene(
       const level = getPlayerLevel(id)
       const tags = def.tags
       const triggerType = slot > 0 ? (extraSlots[slot - 1]?.triggerType ?? null) : null
-      const isDependentTrigger = triggerType === 'crit' || triggerType === 'affliction'
+      // Fixed-frequency triggers (crit/affliction/mana): speed converts to damage, not cast rate
+      const isDependentTrigger = triggerType === 'crit' || triggerType === 'affliction' || triggerType === 'mana'
       const slotPenalty = slot === 1 ? balance.ascent.slot2DamagePenalty
         : slot === 2 ? balance.ascent.slot3DamagePenalty : 1
 
@@ -3226,6 +3229,9 @@ export function createGameScene(
     extraSlotTimers.length = 0
     afflictionTriggerCounters[0] = 0
     afflictionTriggerCounters[1] = 0
+    manaTriggerCounters[0] = 0
+    manaTriggerCounters[1] = 0
+    manaSpentThisTick = 0
     mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
     afflictionLastTarget = null
@@ -3288,6 +3294,9 @@ export function createGameScene(
     extraSlotTimers.length = 0
     afflictionTriggerCounters[0] = 0
     afflictionTriggerCounters[1] = 0
+    manaTriggerCounters[0] = 0
+    manaTriggerCounters[1] = 0
+    manaSpentThisTick = 0
     mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
     afflictionLastTarget = null
@@ -4843,13 +4852,13 @@ export function createGameScene(
           const dist = Math.sqrt(dx * dx + dy * dy)
 
           // Movement range: minimum of all independent-trigger action ranges
-          // (auto-attack + time-trigger extra slots). Dependent triggers ignore range.
+          // (auto-attack + time/mana-trigger extra slots). Dependent triggers ignore range.
           let effectiveRange = entity.actionRange
           if (entity.role === 'player') {
             const activeSlotCt = ascentCount >= balance.ascent.slot3UnlockAscent ? 2 : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
             for (let si = 0; si < activeSlotCt; si++) {
               const sl = extraSlots[si]
-              if (!sl?.actionId || sl.triggerType !== 'time') continue
+              if (!sl?.actionId || (sl.triggerType !== 'time' && sl.triggerType !== 'mana')) continue
               const sd = getAction(sl.actionId as ActionId)
               const baseRU = sd.selfTargeted ? (sd.area ?? 0) * (2 / 3) : sd.range
               let sr = baseRU * balance.player.radius
@@ -5767,6 +5776,7 @@ export function createGameScene(
             if (entity.role === 'player') {
               playerManaSpent = true
               if (!replenish && paidCost > 0) {
+                manaSpentThisTick += paidCost
                 const eLevel = enemyLevels.get(target.id) ?? 1
                 const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
                 awardStatXp('mana', paidCost * balance.stat.manaXpMultiplier * xpMult)
@@ -5963,6 +5973,7 @@ export function createGameScene(
             }
 
             playerEntity.currentMana = Math.max(0, playerEntity.currentMana - slotDef.manaCost)
+            manaSpentThisTick += slotDef.manaCost
 
             const slotLevel = actionProgress[slotActionId]?.level ?? 1
             let slotDmg = slotDef.damage
@@ -5988,7 +5999,7 @@ export function createGameScene(
 
             // Speed-balance:
             //   Independent (time): use native speed only — action speed bonus shortens the interval instead.
-            //   Dependent (crit/affliction): use full effective speed — speed bonus increases damage since frequency is fixed.
+            //   Fixed-frequency (crit/affliction/mana): use full effective speed — speed bonus increases damage since frequency is fixed.
             const speedForBalance = trigger === 'time' ? leveledSpeed : effectiveSlotSpeed
             slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * speedForBalance
             if (trigger === 'crit')       slotDmg *= balance.ascent.critTriggerDamageMult
@@ -6163,6 +6174,19 @@ export function createGameScene(
             }
           }
 
+          // Mana trigger: fire once per threshold of mana spent by the player (any slot).
+          // Mana spent by the trigger's own cast lands in manaSpentThisTick and counts next tick.
+          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+            const slot = extraSlots[slotI]
+            if (!slot?.actionId || slot.triggerType !== 'mana') continue
+            manaTriggerCounters[slotI] = (manaTriggerCounters[slotI] ?? 0) + manaSpentThisTick
+            if (manaTriggerCounters[slotI] >= balance.ascent.manaTriggerSpend) {
+              manaTriggerCounters[slotI] -= balance.ascent.manaTriggerSpend
+              if (fireExtraSlot(slotI, 'mana')) extraManaSpent = true
+            }
+          }
+          manaSpentThisTick = 0
+
           if (extraManaSpent) updateBars()
 
           // ── Extra slot multi-action queue processing ──────────────────────
@@ -6327,6 +6351,12 @@ function getTriggerDefs(): TriggerDef[] {
       description: t('game', 'triggerAfflictionDesc'),
       unlockHint: t('game', 'triggerAfflictionLock'),
     },
+    {
+      type: 'mana',
+      label: t('game', 'triggerMana'),
+      description: t('game', 'triggerManaDesc'),
+      unlockHint: '',
+    },
   ]
 }
 
@@ -6384,7 +6414,7 @@ function mountTriggerPickerModal(
 
   const optionsEl = panel.querySelector<HTMLElement>('.trigger-picker-options')!
   for (const def of getTriggerDefs()) {
-    const isUnlocked = def.type === 'time' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')
+    const isUnlocked = def.type === 'time' || def.type === 'mana' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')
     const isActive = def.type === currentType
     const btn = document.createElement('button')
     btn.className = 'trigger-picker-opt'
@@ -6506,6 +6536,7 @@ function mountBattleConfigModal(
       time:       t('game', 'triggerTime'),
       crit:       t('game', 'triggerCrit'),
       affliction: t('game', 'triggerAffliction'),
+      mana:       t('game', 'triggerMana'),
     }
 
     function openTriggerPicker(slotIdx: number): void {
