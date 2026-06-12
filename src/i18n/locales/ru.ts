@@ -54,6 +54,8 @@ export const ru: TranslationSchema = {
     triggerAffliction: 'Триггер недуга',
     triggerAfflictionDesc: 'Срабатывает каждые 10 применённых недугов. Урон сбалансирован скоростью.',
     triggerAfflictionLock: 'Убить босса уроном от недугов',
+    triggerMana: 'Триггер маны',
+    triggerManaDesc: 'Срабатывает за каждые 100 маны, потраченной вашими действиями. Урон сбалансирован скоростью.',
     dpsDoubleAction: 'Двойное действие',
     dpsBonusTarget: 'Бонусная цель',
     dpsExtraProjectile: 'Дополнительный снаряд',

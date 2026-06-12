@@ -31,7 +31,7 @@ export interface ActionStatBlock {
   name:              string
   damage:            StatLine
   speed:             StatLine
-  isDependentTrigger?: boolean           // crit/affliction slots: speed shown as damage-context note
+  isDependentTrigger?: boolean           // crit/affliction/mana slots: speed shown as damage-context note
   multiStrike:       OddsLine[]
   afflictionChance?: OddsLine
   afflictionDamage?: StatLine
