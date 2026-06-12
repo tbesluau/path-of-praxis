@@ -105,6 +105,7 @@ export const zh: TranslationSchema = {
     planActive: '{code}',
     planInvalid: '无效的构建代码',
     assignAllNone: '未加载方案',
+    saveNoHistory: '当前节点的分配顺序未被记录。下次升华或重置精通后即可保存方案。',
   },
   ascent: {
     title: '升华',

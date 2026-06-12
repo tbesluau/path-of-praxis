@@ -3497,7 +3497,7 @@ export function createGameScene(
       const nodes = existing?.nodes ?? defaultMasteryNodes()
       const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
       const preview = previewMasteryGain(xp, level, xpGain, id)
-      masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
+      masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes, nodeHistory: existing?.nodeHistory }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
     const existingEnemy = masteryProgress['enemy']
@@ -3507,6 +3507,7 @@ export function createGameScene(
         xp: 0,
         level: newEnemyLevel,
         nodes: existingEnemy?.nodes ?? defaultMasteryNodes(),
+        nodeHistory: existingEnemy?.nodeHistory,
       }
     }
     refreshMasteryDot()
@@ -3556,10 +3557,18 @@ export function createGameScene(
     }
     const nodes = existing.nodes.map(t => [...t])
     nodes[treeIdx].push(nodeIdx)
+    // Record the exact assignment order (interleaved across trees) for build
+    // plans. Legacy progress whose nodes predate nodeHistory stays unrecorded
+    // — a history started mid-way would misstate the order — until an ascent
+    // or mastery reset wipes the nodes and recording can start from scratch.
+    const hadAnyNode = existing.nodes.some(t => t.length > 0)
+    const nodeHistory = existing.nodeHistory !== undefined || !hadAnyNode
+      ? [...(existing.nodeHistory ?? []), [treeIdx, nodeIdx] as [number, number]]
+      : undefined
     if (nodeType(nodeIdx) === 'key') {
       trackEvent('mastery_key_taken', { node: `${id}${treeIdx + 1}.${nodeLabel(nodeIdx)}` })
     }
-    masteryProgress[id] = { ...existing, nodes }
+    masteryProgress[id] = { ...existing, nodes, nodeHistory }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
@@ -3621,6 +3630,8 @@ export function createGameScene(
       xp: 0,
       level: existing.level > 1 ? existing.level - 1 : 1,
       nodes: defaultMasteryNodes(),
+      // Fresh slate: order recording (re)starts here, even for legacy progress.
+      nodeHistory: [],
     }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)

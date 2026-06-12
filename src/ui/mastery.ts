@@ -1,9 +1,9 @@
 import type { MasteryId, NodeType } from '../config/masteries'
-import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, nodeCost, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel, MASTERY_LETTER, TREE_LETTER, nodeToCode, codeToNode } from '../config/masteries'
+import { masteryCategories, allMasteries, masteryXpNeeded, nodeType, nodeCost, previewMasteryGain, getMasteryCategoryLabel, getMasteryLabel, getMasteryTreeLabel, nodeToCode, codeToNode } from '../config/masteries'
 import type { MasteryDef, MasteryTreeDef } from '../config/masteries'
 import { getNodeDescription, nodeHasAnyEffect, MASTERY_DUMP, getMasteryDumpLabel } from '../config/mastery-nodes'
 import type { MasteryProgress } from '../core/character'
-import { masteryPointsAvailable, defaultMasteryNodes } from '../core/character'
+import { masteryPointsAvailable, defaultMasteryNodes, masteryHistoryComplete } from '../core/character'
 import { linkifyNoteTerms, mountNoteModal } from './notes'
 import { t } from '../i18n'
 import { playSound } from '../audio'
@@ -633,36 +633,25 @@ const CANONICAL_MASTERY_ORDER: MasteryId[] = [
   'area', 'projectile', 'strike', 'life', 'mana', 'enemy', 'movement',
 ]
 
-// Generates a save string from the current mastery state.
-// Nodes are listed in canonical order (1-6, key 6a/6b if assigned, 7-12, key 12a/12b if assigned).
+// Generates a save string from the current mastery state, replaying each
+// mastery's nodeHistory so the exact assignment order — interleaved across
+// that mastery's trees (e.g. FD1, FB1, FD2) — is preserved. Masteries are
+// independent, so they're emitted in canonical letter order.
+// Returns null when any mastery with assigned nodes lacks a complete history
+// (nodes assigned before nodeHistory existed): the real order is unknowable,
+// so saving a misleading plan is blocked until an ascent or reset wipes it.
 export function generateMasterySaveString(
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
-): string {
+): string | null {
   const codes: string[] = []
   for (const masteryId of CANONICAL_MASTERY_ORDER) {
     const p = masteryProgress[masteryId]
     if (!p) continue
-    const treeLetter = TREE_LETTER[masteryId]
-    for (const [treeIdxStr] of Object.entries(treeLetter)) {
-      const treeIdx = Number(treeIdxStr)
-      const assigned = new Set(p.nodes[treeIdx] ?? [])
-      if (assigned.size === 0) continue
-      const MASTERY_L = MASTERY_LETTER[masteryId]
-      const TREE_L = treeLetter[treeIdx]
-      // Line nodes 0-5
-      for (let i = 0; i <= 5; i++) {
-        if (assigned.has(i)) codes.push(`${MASTERY_L}${TREE_L}${i + 1}`)
-      }
-      // Key 12 or 13 (after first major)
-      if (assigned.has(12)) codes.push(`${MASTERY_L}${TREE_L}6a`)
-      if (assigned.has(13)) codes.push(`${MASTERY_L}${TREE_L}6b`)
-      // Line nodes 6-11
-      for (let i = 6; i <= 11; i++) {
-        if (assigned.has(i)) codes.push(`${MASTERY_L}${TREE_L}${i + 1}`)
-      }
-      // Key 14 or 15 (after second major)
-      if (assigned.has(14)) codes.push(`${MASTERY_L}${TREE_L}12a`)
-      if (assigned.has(15)) codes.push(`${MASTERY_L}${TREE_L}12b`)
+    if (p.nodes.every(t => t.length === 0)) continue
+    if (!masteryHistoryComplete(p)) return null
+    for (const [treeIdx, nodeIdx] of p.nodeHistory!) {
+      const code = nodeToCode(masteryId, treeIdx, nodeIdx)
+      if (code) codes.push(code)
     }
   }
   return codes.join(', ')
@@ -696,28 +685,34 @@ function truncatePlan(str: string, maxLen = 28): string {
 
 export function mountMasteryPresetSaveModal(
   parent: HTMLElement,
-  currentPlan: string,
+  // null = assignment order unknown (legacy nodes without history) — saving
+  // is blocked with an explanation instead of writing a misleading plan.
+  currentPlan: string | null,
   onClose: () => void,
 ): () => void {
   const prefs = getPrefs()
   const presets: [string?, string?, string?] = [...(prefs.masteryPresets ?? [undefined, undefined, undefined])] as [string?, string?, string?]
+  const blocked = currentPlan === null
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop mastery-node-backdrop'
 
   function buildHtml(): string {
+    const disabledAttr = blocked ? ' disabled' : ''
     const slots = ([0, 1, 2] as const).map(i => {
       const saved = presets[i]
       const label = t('mastery', 'slot').replace('{n}', String(i + 1))
       const preview = saved ? `<span class="mastery-preset-slot-preview">${truncatePlan(saved)}</span>` : `<span class="mastery-preset-slot-preview">${t('mastery', 'slotEmpty')}</span>`
-      return `<button class="modal-btn modal-btn--ghost mastery-preset-slot-btn" data-slot="${i}" data-sfx="modal"><span class="mastery-preset-slot-label">${label}</span>${preview}</button>`
+      return `<button class="modal-btn modal-btn--ghost mastery-preset-slot-btn" data-slot="${i}" data-sfx="modal"${disabledAttr}><span class="mastery-preset-slot-label">${label}</span>${preview}</button>`
     }).join('')
+    const blockedHtml = blocked ? `<div class="mastery-preset-error">${t('mastery', 'saveNoHistory')}</div>` : ''
     return `
       <div class="modal-panel mastery-preset-panel" role="dialog" aria-modal="true" aria-labelledby="preset-save-title">
         <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
         <h2 class="modal-title" id="preset-save-title">${t('mastery', 'savePlan')}</h2>
+        ${blockedHtml}
         <div class="mastery-preset-slots">${slots}</div>
-        <button class="modal-btn modal-btn--ghost" data-action="copy" data-sfx="modal">${t('mastery', 'copyClipboard')}</button>
+        <button class="modal-btn modal-btn--ghost" data-action="copy" data-sfx="modal"${disabledAttr}>${t('mastery', 'copyClipboard')}</button>
       </div>
     `
   }
@@ -732,6 +727,7 @@ export function mountMasteryPresetSaveModal(
 
   backdrop.querySelectorAll<HTMLButtonElement>('[data-slot]').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (currentPlan === null) return
       const i = parseInt(btn.dataset['slot']!, 10) as 0 | 1 | 2
       presets[i] = currentPlan
       setPref('masteryPresets', presets)
@@ -740,6 +736,7 @@ export function mountMasteryPresetSaveModal(
   })
 
   backdrop.querySelector<HTMLButtonElement>('[data-action="copy"]')!.addEventListener('click', () => {
+    if (currentPlan === null) return
     navigator.clipboard?.writeText(currentPlan).catch(() => { /* ignore */ })
     dismiss()
   })
