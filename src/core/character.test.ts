@@ -221,4 +221,47 @@ describe('character', () => {
       expect(character.computeAward(NaN, 0)).toBe(0)
     })
   })
+
+  describe('mastery node history', () => {
+    const prog = (nodes: number[][], nodeHistory?: Array<[number, number]>) =>
+      ({ xp: 0, level: 10, nodes, nodeHistory })
+
+    it('masteryHistoryComplete is true when no nodes are assigned', () => {
+      expect(character.masteryHistoryComplete(prog([[], [], [], [], []]))).toBe(true)
+      expect(character.masteryHistoryComplete(prog([[], [], [], [], []], []))).toBe(true)
+    })
+
+    it('masteryHistoryComplete accepts a full interleaved history', () => {
+      const p = prog([[0, 1], [0], [], [], []], [[0, 0], [1, 0], [0, 1]])
+      expect(character.masteryHistoryComplete(p)).toBe(true)
+    })
+
+    it('masteryHistoryComplete rejects missing, short, duplicated, or mismatched histories', () => {
+      const nodes = [[0, 1], [0], [], [], []]
+      expect(character.masteryHistoryComplete(prog(nodes))).toBe(false)                                   // legacy: absent
+      expect(character.masteryHistoryComplete(prog(nodes, [[0, 0], [1, 0]]))).toBe(false)                 // too short
+      expect(character.masteryHistoryComplete(prog(nodes, [[0, 0], [0, 0], [1, 0]]))).toBe(false)         // duplicate
+      expect(character.masteryHistoryComplete(prog(nodes, [[0, 0], [1, 0], [2, 5]]))).toBe(false)         // not assigned
+    })
+
+    it('masteryHistoryComplete rejects a non-empty history when no nodes are assigned', () => {
+      expect(character.masteryHistoryComplete(prog([[], [], [], [], []], [[0, 0]]))).toBe(false)
+    })
+
+    it('normalize keeps a reconciling nodeHistory and drops a corrupt one', () => {
+      character.importSaveData({
+        currentId: 'h1',
+        characters: [{
+          id: 'h1', name: 'H', createdAt: 1,
+          masteryProgress: {
+            fire:   { xp: 0, level: 9, nodes: [[0, 1], [0], [], [], []], nodeHistory: [[0, 0], [1, 0], [0, 1]] },
+            action: { xp: 0, level: 9, nodes: [[0, 1], [], [], [], []], nodeHistory: [[0, 0]] },  // length mismatch
+          },
+        }],
+      })
+      const c = character.getCharacters().find(x => x.id === 'h1')!
+      expect(c.masteryProgress.fire?.nodeHistory).toEqual([[0, 0], [1, 0], [0, 1]])
+      expect(c.masteryProgress.action?.nodeHistory).toBeUndefined()
+    })
+  })
 })

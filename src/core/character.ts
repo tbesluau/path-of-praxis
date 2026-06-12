@@ -29,6 +29,32 @@ export interface MasteryProgress {
   xp: number
   level: number
   nodes: number[][]  // [treeIdx 0-4][...assigned nodeIdx 0-15]
+  // Exact assignment order as [treeIdx, nodeIdx] pairs, interleaved across
+  // this mastery's trees (masteries themselves are independent). Absent on
+  // progress whose nodes predate this field: a history started mid-way would
+  // misstate the order, so legacy progress stays unrecorded until the next
+  // ascent wipes all masteries and fresh entries start recording from [].
+  // Per-mastery resets preserve recording status but never grant it.
+  nodeHistory?: Array<[number, number]>
+}
+
+// True when nodeHistory is a faithful, complete record of the assigned nodes:
+// every assigned node appears exactly once and nothing extra is listed.
+// Trivially true when no nodes are assigned.
+export function masteryHistoryComplete(prog: MasteryProgress): boolean {
+  const total = prog.nodes.reduce((s, t) => s + t.length, 0)
+  const history = prog.nodeHistory
+  if (total === 0) return !history || history.length === 0
+  if (!history || history.length !== total) return false
+  const seen = prog.nodes.map(() => new Set<number>())
+  for (const entry of history) {
+    if (!Array.isArray(entry) || entry.length !== 2) return false
+    const [treeIdx, nodeIdx] = entry
+    if (!prog.nodes[treeIdx]?.includes(nodeIdx)) return false
+    if (seen[treeIdx].has(nodeIdx)) return false
+    seen[treeIdx].add(nodeIdx)
+  }
+  return true
 }
 
 export function masteryPointsAvailable(prog: MasteryProgress, freePointsUsed = 0, dumped = 0): number {
@@ -173,14 +199,21 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     enemyProgress: c.enemyProgress ?? { xp: 0, level: 1, maxLevel: 1, autoLevel: false },
     targetingMode: c.targetingMode ?? 'nearest',
     masteryProgress: Object.fromEntries(
-      Object.entries(c.masteryProgress ?? {}).map(([k, v]) => [
-        k,
-        {
+      Object.entries(c.masteryProgress ?? {}).map(([k, v]) => {
+        const prog: MasteryProgress = {
           xp: Number.isFinite(v.xp) ? v.xp : 0,
           level: Number.isFinite(v.level) ? v.level : 1,
           nodes: v.nodes ?? defaultMasteryNodes(),
-        },
-      ]),
+          nodeHistory: Array.isArray(v.nodeHistory) ? v.nodeHistory : undefined,
+        }
+        // A history that doesn't reconcile with the assigned nodes (corrupted
+        // or hand-edited import) is worse than none — drop it so the progress
+        // is treated as legacy (order unknown).
+        if (prog.nodeHistory !== undefined && !masteryHistoryComplete(prog)) {
+          delete prog.nodeHistory
+        }
+        return [k, prog]
+      }),
     ) as Partial<Record<MasteryId, MasteryProgress>>,
     runProgress: c.runProgress ? {
       // Scrub any NaN/missing fields a corrupted save may have left behind so

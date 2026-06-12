@@ -164,6 +164,83 @@ export const masteryCategories: MasteryCategoryDef[] = [
 
 export const allMasteries = masteryCategories.flatMap(c => c.masteries)
 
+// ── Mastery node codes ─────────────────────────────────────────────────────
+// Human-readable identifiers: one mastery letter + one tree letter + position.
+// Examples: FD6a = Fire/Damage tree, first major key (top); HM1 = Life/MaxLife, node 1.
+
+export const MASTERY_LETTER: Record<MasteryId, string> = {
+  action: 'A', criticalHit: 'C', physical: 'P', fire: 'F', lightning: 'L',
+  area: 'R', projectile: 'J', strike: 'S', life: 'H', mana: 'M', enemy: 'E', movement: 'V',
+}
+
+// Keyed by treeIdx (MasteryTreeDef.index), not display order.
+export const TREE_LETTER: Record<MasteryId, Record<number, string>> = {
+  action:      { 0: 'D', 1: 'S', 2: 'T', 3: 'C' },
+  criticalHit: { 0: 'D', 1: 'H' },
+  physical:    { 0: 'D', 1: 'B', 2: 'R', 3: 'L' },
+  fire:        { 0: 'D', 1: 'B', 2: 'G', 3: 'I' },
+  lightning:   { 0: 'D', 1: 'E', 2: 'J', 3: 'T' },
+  area:        { 0: 'D', 1: 'S', 2: 'T', 3: 'K' },
+  projectile:  { 0: 'D', 1: 'M', 2: 'R', 3: 'K' },
+  strike:      { 0: 'D', 1: 'F', 2: 'R', 3: 'T' },
+  life:        { 0: 'M', 1: 'R', 2: 'G', 3: 'T' },
+  mana:        { 0: 'M', 1: 'S', 2: 'G', 3: 'T' },
+  enemy:       { 0: 'Q', 1: 'U', 2: 'B', 3: 'P' },
+  movement:    { 0: 'S', 1: 'D', 2: 'K' },
+}
+
+// Reverse maps for codeToNode.
+const LETTER_TO_MASTERY: Record<string, MasteryId> = Object.fromEntries(
+  Object.entries(MASTERY_LETTER).map(([id, l]) => [l, id as MasteryId]),
+)
+
+const LETTER_TO_TREE: Record<MasteryId, Record<string, number>> = Object.fromEntries(
+  (Object.entries(TREE_LETTER) as [MasteryId, Record<number, string>][]).map(([id, map]) => [
+    id,
+    Object.fromEntries(Object.entries(map).map(([idx, l]) => [l, Number(idx)])),
+  ]),
+) as Record<MasteryId, Record<string, number>>
+
+// nodeIdx → display position suffix:
+//   0-11  → "1"–"12"
+//   12    → "6a"  (top key after first major)
+//   13    → "6b"  (bottom key after first major)
+//   14    → "12a" (top key after second major)
+//   15    → "12b" (bottom key after second major)
+export function nodeToCode(masteryId: MasteryId, treeIdx: number, nodeIdx: number): string {
+  const m = MASTERY_LETTER[masteryId]
+  const treeMap = TREE_LETTER[masteryId]
+  const tl = treeMap?.[treeIdx]
+  if (!m || !tl) return ''
+  if (nodeIdx < 12) return `${m}${tl}${nodeIdx + 1}`
+  if (nodeIdx === 12) return `${m}${tl}6a`
+  if (nodeIdx === 13) return `${m}${tl}6b`
+  if (nodeIdx === 14) return `${m}${tl}12a`
+  return `${m}${tl}12b`
+}
+
+export function codeToNode(
+  code: string,
+): { masteryId: MasteryId; treeIdx: number; nodeIdx: number } | null {
+  const match = code.match(/^([A-Z])([A-Z])(\d+)(a|b)?$/)
+  if (!match) return null
+  const [, mLetter, tLetter, numStr, side] = match
+  const masteryId = LETTER_TO_MASTERY[mLetter]
+  if (!masteryId) return null
+  const treeIdx = LETTER_TO_TREE[masteryId]?.[tLetter]
+  if (treeIdx === undefined) return null
+  const num = parseInt(numStr, 10)
+  let nodeIdx: number
+  if (side === 'a') {
+    nodeIdx = num === 6 ? 12 : 14
+  } else if (side === 'b') {
+    nodeIdx = num === 6 ? 13 : 15
+  } else {
+    nodeIdx = num - 1
+  }
+  return { masteryId, treeIdx, nodeIdx }
+}
+
 export function getMasteryCategoryLabel(id: MasteryCategoryId): string {
   return t('masteryCategory', id)
 }

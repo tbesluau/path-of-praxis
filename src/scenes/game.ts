@@ -1022,6 +1022,9 @@ export function createGameScene(
     })
   }
 
+  let runesModal: { cleanup: () => void; refresh: () => void } | null = null
+  let runesModalActionId: string | null = null
+
   function applyAutoRunes(actionId: string): void {
     const r = getActionRunes(actionId)
     if (!r.autoApply) return
@@ -1040,13 +1043,23 @@ export function createGameScene(
       actionRunes[actionId] = r
       if (actionId === playerActionId) assignAction(playerEntity, actionId as ActionId)
       refreshRuneDot()
+      // Re-sync an open runes overview so auto-filled slots don't show as
+      // empty cards hiding an actually-equipped rune.
+      if (runesModal && runesModalActionId === actionId) runesModal.refresh()
       persistState()
     }
   }
 
   function assignRune(actionId: string, slotIdx: number, runeId: RuneId | null): void {
     const r = getActionRunes(actionId)
+    const previous = r.selected[slotIdx] ?? null
     r.selected[slotIdx] = runeId
+    // Explicit removal forgets the rune: otherwise the level-up auto-fill
+    // would immediately re-equip it from history, making it impossible to
+    // keep a slot empty. Re-picking it manually re-adds it to history.
+    if (runeId === null && previous !== null) {
+      r.history = r.history.filter(h => h !== previous)
+    }
     // Track newly chosen runes for future auto-fill; keep autoApply on so any
     // remaining empty slot continues to be pre-filled from history.
     if (runeId && !r.history.includes(runeId)) r.history.unshift(runeId)
@@ -1589,26 +1602,29 @@ export function createGameScene(
   // keeps the gear-button dot honest without sprinkling calls everywhere.
   const masteryDotInterval = setInterval(refreshMasteryDot, 500)
 
-  let runesModalCleanup: (() => void) | null = null
-
-  function openRunesModal(): void {
-    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
-    const level = actionProgress[playerActionId]?.level ?? 1
-    const maxLevel = actionProgress[playerActionId]?.maxLevel ?? 1
-    const r = getActionRunes(playerActionId)
+  function openRunesModalFor(actionId: string): void {
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
+    const r = getActionRunes(actionId)
     // Mount on `container` (not `el`): the .scene-game element has a transform
     // that creates a stacking context, which would clip our modal beneath
     // sibling backdrops like the trigger config. Container sits above that.
-    runesModalCleanup = mountRunesModal(
+    runesModal = mountRunesModal(
       container,
-      playerActionId,
-      getActionLabel(playerActionId),
-      level,
-      maxLevel,
+      actionId,
+      getActionLabel(actionId),
+      () => {
+        const p = actionProgress[actionId]
+        return { level: p?.level ?? 1, maxLevel: p?.maxLevel ?? 1 }
+      },
       r,
-      (slotIdx, runeId) => { assignRune(playerActionId, slotIdx, runeId) },
-      () => { runesModalCleanup = null },
+      (slotIdx, runeId) => { assignRune(actionId, slotIdx, runeId) },
+      () => { runesModal = null; runesModalActionId = null },
     )
+    runesModalActionId = actionId
+  }
+
+  function openRunesModal(): void {
+    openRunesModalFor(playerActionId)
   }
 
   const enemyCtrlEl         = el.querySelector<HTMLElement>('.enemy-level-ctrl')!
@@ -1731,17 +1747,7 @@ export function createGameScene(
           return getActionRunes(id).selected.slice(0, unlocked).some(s => s == null)
         },
         openRunesModal: () => { openRunesModal() },
-        openRunesModalForSlot: (actionId) => {
-          if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
-          const level = actionProgress[actionId]?.level ?? 1
-          const maxLevel = actionProgress[actionId]?.maxLevel ?? 1
-          const r = getActionRunes(actionId)
-          runesModalCleanup = mountRunesModal(
-            container, actionId, getActionLabel(actionId), level, maxLevel, r,
-            (slotIdx, runeId) => { assignRune(actionId, slotIdx, runeId) },
-            () => { runesModalCleanup = null },
-          )
-        },
+        openRunesModalForSlot: (actionId) => { openRunesModalFor(actionId) },
         getUnlockedTriggers: () => [...unlockedTriggers],
       },
       (id) => {
@@ -3144,7 +3150,7 @@ export function createGameScene(
 
   function rebirth(): void {
     modalCleanup = null
-    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
 
     // Rune assignments persist across rebirth: locked-slot pre-assignments stay
     // intact and reactivate as the action levels back up. Only update history so
@@ -3239,7 +3245,7 @@ export function createGameScene(
 
   function ascend(): void {
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
-    if (runesModalCleanup) { runesModalCleanup(); runesModalCleanup = null }
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
 
     ascentCount++
     // Capture enemy max level before the deep reset below wipes it.
@@ -3262,6 +3268,7 @@ export function createGameScene(
     masteryProgress = {}
     freeMasteryPointsUsed = {}
     masteryDumpPoints = {}
+    setPref('activeMasteryPlan', undefined)
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
     enemyProgress = { xp: 0, level: 1, maxLevel: 1, autoLevel: false }
@@ -3490,7 +3497,7 @@ export function createGameScene(
       const nodes = existing?.nodes ?? defaultMasteryNodes()
       const { xp, level } = existing ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
       const preview = previewMasteryGain(xp, level, xpGain, id)
-      masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes }
+      masteryProgress[id] = { xp: preview.newXp, level: preview.toLv, nodes, nodeHistory: existing ? existing.nodeHistory : [] }
     }
     // Enemy mastery level = max enemy level reached (not XP-based; no partial level)
     const existingEnemy = masteryProgress['enemy']
@@ -3500,6 +3507,7 @@ export function createGameScene(
         xp: 0,
         level: newEnemyLevel,
         nodes: existingEnemy?.nodes ?? defaultMasteryNodes(),
+        nodeHistory: existingEnemy ? existingEnemy.nodeHistory : [],
       }
     }
     refreshMasteryDot()
@@ -3534,7 +3542,7 @@ export function createGameScene(
     // may have no progress entry yet (e.g. right after an ascent wipes them).
     // Synthesize a fresh level-1 entry rather than bailing — otherwise those
     // free points are unspendable.
-    const existing = masteryProgress[id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes() }
+    const existing = masteryProgress[id] ?? { xp: 0, level: 1, nodes: defaultMasteryNodes(), nodeHistory: [] }
     if (existing.nodes[treeIdx]?.includes(nodeIdx)) return  // already assigned — nothing to charge
     const freeUsed = freeMasteryPointsUsed[id] ?? 0
     const dumped = masteryDumpPoints[id] ?? 0
@@ -3549,10 +3557,18 @@ export function createGameScene(
     }
     const nodes = existing.nodes.map(t => [...t])
     nodes[treeIdx].push(nodeIdx)
+    // Record the exact assignment order (interleaved across trees) for build
+    // plans. Recording is active only when nodeHistory already exists: legacy
+    // progress predating the field stays unrecorded — a history started
+    // mid-way would misstate the order — until the next ascent wipes all
+    // masteries and fresh entries (created with []) start recording.
+    const nodeHistory = existing.nodeHistory !== undefined
+      ? [...existing.nodeHistory, [treeIdx, nodeIdx] as [number, number]]
+      : undefined
     if (nodeType(nodeIdx) === 'key') {
       trackEvent('mastery_key_taken', { node: `${id}${treeIdx + 1}.${nodeLabel(nodeIdx)}` })
     }
-    masteryProgress[id] = { ...existing, nodes }
+    masteryProgress[id] = { ...existing, nodes, nodeHistory }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
@@ -3614,6 +3630,10 @@ export function createGameScene(
       xp: 0,
       level: existing.level > 1 ? existing.level - 1 : 1,
       nodes: defaultMasteryNodes(),
+      // Recording status is preserved, not granted: resets are per-mastery,
+      // so they don't re-enable plan saving on legacy characters — only the
+      // next ascent does. Active recording simply restarts empty.
+      nodeHistory: existing.nodeHistory !== undefined ? [] : undefined,
     }
     if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
@@ -4016,12 +4036,13 @@ export function createGameScene(
       }
     }, () => {
       if (destroyed) return
+      const bagArtifact = (): void => {
+        artifacts.push(artifact)
+        persistState()
+        refreshArtifactDot()
+      }
       mountArtifactCardModal(el, artifact, {
-        onBag: () => {
-          artifacts.push(artifact)
-          persistState()
-          refreshArtifactDot()
-        },
+        onBag: bagArtifact,
         onEquip: () => {
           const usedEq = artifacts.filter(a => a.equipped).length
           if (usedEq < maxEquippedArtifacts(ascentCount)) artifact.equipped = true
@@ -4032,6 +4053,11 @@ export function createGameScene(
           refreshArtifactDot()
         },
         onDrop: () => {},
+        // Click-away must not silently destroy the drop: bag it while there's
+        // room. Only the explicit trash button discards an artifact.
+        onDismiss: () => {
+          if (artifacts.length < balance.artifacts.maxCount) bagArtifact()
+        },
       }, () => {})
     })
   }
@@ -6620,8 +6646,19 @@ function statXpNeeded(level: number): number {
   return Math.round(balance.stat.xpPerLevel * Math.pow(balance.stat.xpGrowth, level - 1))
 }
 
+// Per-level cost multiplier for reaching `level`: base xpGrowth, softened to
+// the tier value at and after each tier's fromLevel (e.g. 1.4× from level 30).
+function enemyMaxLevelGrowthAt(level: number): number {
+  let growth: number = balance.enemyLevel.xpGrowth
+  for (const tier of balance.enemyLevel.xpGrowthTiers) {
+    if (level >= tier.fromLevel) growth = tier.growth
+  }
+  return growth
+}
+
 function enemyMaxLevelXpNeeded(maxLevel: number): number {
-  const base    = balance.enemyLevel.xpPerMaxLevel * Math.pow(balance.enemyLevel.xpGrowth, maxLevel - 1)
+  let base = balance.enemyLevel.xpPerMaxLevel
+  for (let level = 2; level <= maxLevel; level++) base *= enemyMaxLevelGrowthAt(level)
   const divider = balance.enemyLevel.xpDividerBase + balance.enemyLevel.xpDividerPerLevel * (maxLevel - 1)
   return Math.round(base / divider)
 }

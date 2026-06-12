@@ -13,6 +13,8 @@ import { notesFr } from './notes.fr'
 import { notesEs } from './notes.es'
 import { guideFr } from './guide.fr'
 import { guideEs } from './guide.es'
+import { guideZh } from './guide.zh'
+import { guideRu } from './guide.ru'
 import { tutorialsFr } from './tutorials.fr'
 import { tutorialsEs } from './tutorials.es'
 import { nodesFr } from './nodes.fr'
@@ -39,6 +41,8 @@ const NOTES_BY_LOCALE: Partial<Record<Locale, ContentMap>> = {
 const GUIDE_BY_LOCALE: Partial<Record<Locale, ContentMap>> = {
   fr: guideFr,
   es: guideEs,
+  zh: guideZh,
+  ru: guideRu,
 }
 
 const TUTORIALS_BY_LOCALE: Partial<Record<Locale, Record<string, string>>> = {

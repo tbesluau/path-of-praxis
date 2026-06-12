@@ -1,3 +1,11 @@
+### 0.2.10 — Mastery loadaouts
+
+Load, save, and auto-apply masteries for smoother ascents.
+
+- **Mastery Loadouts** — you can now save/load masteries from 3 different loadouts. Once a mastery plan is loaded you can auto-apply your points towards it in one click.
+- **Better Late Game Enemy Scaling** — shrunk the enemy level wall. Reaching enemy level 50 and beyond should now be much easier.
+- **Never done** — small bugfixes and UX improvements
+
 ### 0.2.0 — Artifacts
 
 A new late-game mechanic with pros and cons to be weighed carefully.
