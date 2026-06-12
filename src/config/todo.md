@@ -1,9 +1,9 @@
 ### Quality
 
-- Graphics update for terrain, obstacles, character diversity and animation
+- ~~Graphics update for terrain, obstacles, character diversity and animation~~
 - Better guide, better notes, more languages
 - UX improvements, shortcuts, more mobile friendly
-- Sound effects, music if popular demand
+- ~~Sound effects~~, music if popular demand
 
 ### Balance
 
@@ -17,5 +17,5 @@
 - Implement rot and cold and their afflictions
 - Add a lot more actions
 - Add additional ascent unlocks and universe points investment options
-- Add artifacts, dropped by bosses, that mostly enable additional defensive mechanics
+- ~~Add artifacts, dropped by bosses~~, that mostly enable additional defensive mechanics
 - Another, maybe seasonal, layer of prestige
