@@ -95,7 +95,9 @@ export function mountDeleteConfirmModal(
 export function mountArtifactCardModal(
   parent: HTMLElement,
   artifact: Artifact,
-  handlers: { onBag: () => void; onEquip: () => void; onDrop: () => void },
+  // onDismiss runs on backdrop click (click-away): the artifact shouldn't be
+  // silently destroyed, so the game bags it when there's room instead.
+  handlers: { onBag: () => void; onEquip: () => void; onDrop: () => void; onDismiss: () => void },
   onClose: () => void,
 ): () => void {
   const backdrop = document.createElement('div')
@@ -118,7 +120,7 @@ export function mountArtifactCardModal(
   backdrop.querySelector<HTMLButtonElement>('[data-action="bag"]')!.addEventListener('click', () => { playSound('modal.close'); handlers.onBag(); teardown() })
   backdrop.querySelector<HTMLButtonElement>('[data-action="equip"]')!.addEventListener('click', () => { playSound('modal.close'); handlers.onEquip(); teardown() })
   backdrop.querySelector<HTMLButtonElement>('[data-action="drop"]')!.addEventListener('click', () => { playSound('modal.close'); handlers.onDrop(); teardown() })
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) { playSound('modal.close'); handlers.onDrop(); teardown() } })
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) { playSound('modal.close'); handlers.onDismiss(); teardown() } })
   playSound('modal.open')
   parent.appendChild(backdrop)
   return teardown
