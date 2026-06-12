@@ -398,7 +398,7 @@ export const en: TranslationSchema = {
     triggerAfflictionDesc: 'Triggers every 10 applied afflictions. Damage is speed-balanced.',
     triggerAfflictionLock: 'Kill a boss with affliction damage',
     triggerMana: 'Mana Trigger',
-    triggerManaDesc: 'Triggers every 100 mana spent by your actions. Damage is speed-balanced.',
+    triggerManaDesc: 'Triggers every 100 mana lost — spent on actions or drained by Mana Shield. Damage is speed-balanced.',
     dpsDoubleAction: 'Double action',
     dpsBonusTarget: 'Bonus target',
     dpsExtraProjectile: 'Extra projectile',

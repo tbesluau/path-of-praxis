@@ -216,7 +216,7 @@ export const balance = {
     critTriggerDamageMult:        0.1,   // extra multiplier for crit trigger (on top of speed balance)
     afflictionTriggerDamageMult:  0.5,   // extra multiplier for affliction trigger (on top of speed balance)
     afflictionTriggerCount:        10,   // affliction applications before affliction trigger fires
-    manaTriggerSpend:             100,   // mana the player must spend before the mana trigger fires
+    manaTriggerLoss:              100,   // mana the player must lose (casts + mana shield drain) before the mana trigger fires
   },
 
   // ── Artifacts ─────────────────────────────────────────────────────────────

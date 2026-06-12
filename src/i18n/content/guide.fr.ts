@@ -79,7 +79,7 @@ La progression de l'Ascension est séparée de ta partie. Tu peux la tenter à t
     title: 'Déclencheurs d\'action',
     body: `Les déclencheurs d'action déclenchent une action automatiquement quand une condition est remplie. Le premier emplacement est toujours l'**Auto-attaque** — il se déclenche sur une minuterie continue. D'autres emplacements de déclencheur se débloquent en Ascendant.
 
-- L'**emplacement 2** se débloque à l'Ascension 3. Types de déclencheur : **Temps** (minuterie périodique), **Mana** (se déclenche tous les 100 points de mana dépensés par tes actions), **Coup critique** (se déclenche après un crit — déblocage : tuer un boss avec un crit), **Affliction** (se déclenche après avoir accumulé des stacks d'affliction — déblocage : tuer un boss avec un coup d'affliction).
+- L'**emplacement 2** se débloque à l'Ascension 3. Types de déclencheur : **Temps** (minuterie périodique), **Mana** (se déclenche tous les 100 points de mana perdus — dépensés en actions ou drainés par le Bouclier de mana), **Coup critique** (se déclenche après un crit — déblocage : tuer un boss avec un crit), **Affliction** (se déclenche après avoir accumulé des stacks d'affliction — déblocage : tuer un boss avec un coup d'affliction).
 - L'**emplacement 3** se débloque à l'Ascension 6 avec les mêmes options de déclencheur.
 
 Chaque emplacement supplémentaire applique une pénalité globale de dégâts : ×0,75 pour l'emplacement 2, ×0,50 pour l'emplacement 3. Malgré cela, une seconde action bien adaptée peut augmenter significativement la sortie de dégâts totale.

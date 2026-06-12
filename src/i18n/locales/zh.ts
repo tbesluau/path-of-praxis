@@ -55,7 +55,7 @@ export const zh: TranslationSchema = {
     triggerAfflictionDesc: '每施加10次折磨时触发。伤害以速度平衡。',
     triggerAfflictionLock: '用折磨伤害击杀Boss',
     triggerMana: '法力触发器',
-    triggerManaDesc: '你的行动每消耗100点法力时触发。伤害以速度平衡。',
+    triggerManaDesc: '每损失100点法力时触发——包括行动消耗和法力护盾吸收。伤害以速度平衡。',
     dpsDoubleAction: '双重行动',
     dpsBonusTarget: '额外目标',
     dpsExtraProjectile: '额外弹射物',

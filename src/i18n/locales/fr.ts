@@ -55,7 +55,7 @@ export const fr: TranslationSchema = {
     triggerAfflictionDesc: 'Se déclenche tous les 10 afflictions appliquées. Dégâts équilibrés par la vitesse.',
     triggerAfflictionLock: 'Tuer un boss avec des dégâts d\'affliction',
     triggerMana: 'Déclencheur de mana',
-    triggerManaDesc: 'Se déclenche tous les 100 points de mana dépensés par vos actions. Dégâts équilibrés par la vitesse.',
+    triggerManaDesc: 'Se déclenche tous les 100 points de mana perdus — dépensés en actions ou drainés par le Bouclier de mana. Dégâts équilibrés par la vitesse.',
     dpsDoubleAction: 'Double action',
     dpsBonusTarget: 'Cible bonus',
     dpsExtraProjectile: 'Projectile supplémentaire',

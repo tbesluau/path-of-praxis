@@ -662,9 +662,11 @@ export function createGameScene(
           const manaCost = absorbed * manaRate
           if (playerEntity.currentMana >= manaCost) {
             playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
+            manaLostThisTick += manaCost
             selfDmg -= absorbed
           } else {
             const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
+            manaLostThisTick += playerEntity.currentMana
             playerEntity.currentMana = 0
             selfDmg -= partialAbsorbed
           }
@@ -1301,8 +1303,8 @@ export function createGameScene(
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
-  const manaTriggerCounters = [0, 0]        // per extra slot, counts mana spent by the player
-  let manaSpentThisTick = 0                 // player mana paid this tick (any slot, any cast)
+  const manaTriggerCounters = [0, 0]        // per extra slot, counts mana lost by the player
+  let manaLostThisTick = 0                  // player mana lost this tick (casts + mana shield drain)
   let mainSlotCritTarget: Entity | null = null
   let afflictionAppliedThisTick = 0
   let afflictionLastTarget: Entity | null = null
@@ -3231,7 +3233,7 @@ export function createGameScene(
     afflictionTriggerCounters[1] = 0
     manaTriggerCounters[0] = 0
     manaTriggerCounters[1] = 0
-    manaSpentThisTick = 0
+    manaLostThisTick = 0
     mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
     afflictionLastTarget = null
@@ -3296,7 +3298,7 @@ export function createGameScene(
     afflictionTriggerCounters[1] = 0
     manaTriggerCounters[0] = 0
     manaTriggerCounters[1] = 0
-    manaSpentThisTick = 0
+    manaLostThisTick = 0
     mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
     afflictionLastTarget = null
@@ -5238,9 +5240,11 @@ export function createGameScene(
               const manaCost = absorbed * manaRate
               if (playerEntity.currentMana >= manaCost) {
                 playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
+                manaLostThisTick += manaCost
                 finalDamage -= absorbed
               } else {
                 const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
+                manaLostThisTick += playerEntity.currentMana
                 playerEntity.currentMana = 0
                 finalDamage -= partialAbsorbed
               }
@@ -5776,7 +5780,7 @@ export function createGameScene(
             if (entity.role === 'player') {
               playerManaSpent = true
               if (!replenish && paidCost > 0) {
-                manaSpentThisTick += paidCost
+                manaLostThisTick += paidCost
                 const eLevel = enemyLevels.get(target.id) ?? 1
                 const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
                 awardStatXp('mana', paidCost * balance.stat.manaXpMultiplier * xpMult)
@@ -5973,7 +5977,7 @@ export function createGameScene(
             }
 
             playerEntity.currentMana = Math.max(0, playerEntity.currentMana - slotDef.manaCost)
-            manaSpentThisTick += slotDef.manaCost
+            manaLostThisTick += slotDef.manaCost
 
             const slotLevel = actionProgress[slotActionId]?.level ?? 1
             let slotDmg = slotDef.damage
@@ -6174,18 +6178,19 @@ export function createGameScene(
             }
           }
 
-          // Mana trigger: fire once per threshold of mana spent by the player (any slot).
-          // Mana spent by the trigger's own cast lands in manaSpentThisTick and counts next tick.
+          // Mana trigger: fire once per threshold of mana lost by the player (action casts
+          // from any slot + mana shield drain). Mana spent by the trigger's own cast lands
+          // in manaLostThisTick and counts next tick.
           for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
             const slot = extraSlots[slotI]
             if (!slot?.actionId || slot.triggerType !== 'mana') continue
-            manaTriggerCounters[slotI] = (manaTriggerCounters[slotI] ?? 0) + manaSpentThisTick
-            if (manaTriggerCounters[slotI] >= balance.ascent.manaTriggerSpend) {
-              manaTriggerCounters[slotI] -= balance.ascent.manaTriggerSpend
+            manaTriggerCounters[slotI] = (manaTriggerCounters[slotI] ?? 0) + manaLostThisTick
+            if (manaTriggerCounters[slotI] >= balance.ascent.manaTriggerLoss) {
+              manaTriggerCounters[slotI] -= balance.ascent.manaTriggerLoss
               if (fireExtraSlot(slotI, 'mana')) extraManaSpent = true
             }
           }
-          manaSpentThisTick = 0
+          manaLostThisTick = 0
 
           if (extraManaSpent) updateBars()
 

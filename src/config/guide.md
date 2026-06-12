@@ -62,7 +62,7 @@ Ascent progress is separate from your run. You can attempt it at any time from t
 
 Action triggers fire an action automatically when a condition is met. The first slot is always the **Auto attack** — it fires on a continuous timer. Additional trigger slots unlock by Ascending.
 
-- **Slot 2** unlocks on Ascent 3. Trigger types: **Time** (periodic timer), **Mana** (fires every 100 mana spent by your actions), **Critical hit** (fires after landing a crit — unlock: kill a boss with a crit), **Affliction** (fires after accumulating affliction stacks — unlock: kill a boss with an affliction hit).
+- **Slot 2** unlocks on Ascent 3. Trigger types: **Time** (periodic timer), **Mana** (fires every 100 mana lost — spent on actions or drained by Mana Shield), **Critical hit** (fires after landing a crit — unlock: kill a boss with a crit), **Affliction** (fires after accumulating affliction stacks — unlock: kill a boss with an affliction hit).
 - **Slot 3** unlocks on Ascent 6 with the same trigger options.
 
 Each extra slot applies a global damage penalty: ×0.75 for slot 2, ×0.50 for slot 3. Despite this, a well-matched second action can significantly increase total damage output.

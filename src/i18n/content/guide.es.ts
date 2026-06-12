@@ -76,7 +76,7 @@ El progreso de Ascensión es independiente de tu partida. Puedes intentarlo en c
     title: 'Disparadores de acción',
     body: `Los disparadores de acción ejecutan una acción automáticamente cuando se cumple una condición. La primera ranura siempre es el **Ataque automático** — se dispara con un temporizador continuo. Otras ranuras de disparador se desbloquean al Ascender.
 
-- La **ranura 2** se desbloquea en la Ascensión 3. Tipos de disparador: **Tiempo** (temporizador periódico), **Maná** (se dispara cada 100 de maná gastado por tus acciones), **Golpe crítico** (se dispara tras un crítico — desbloqueo: matar a un jefe con un crítico), **Aflicción** (se dispara tras acumular cargas de aflicción — desbloqueo: matar a un jefe con un golpe de aflicción).
+- La **ranura 2** se desbloquea en la Ascensión 3. Tipos de disparador: **Tiempo** (temporizador periódico), **Maná** (se dispara cada 100 de maná perdido — gastado en acciones o drenado por el Escudo de maná), **Golpe crítico** (se dispara tras un crítico — desbloqueo: matar a un jefe con un crítico), **Aflicción** (se dispara tras acumular cargas de aflicción — desbloqueo: matar a un jefe con un golpe de aflicción).
 - La **ranura 3** se desbloquea en la Ascensión 6 con las mismas opciones de disparador.
 
 Cada ranura adicional aplica una penalización global de daño: ×0,75 para la ranura 2, ×0,50 para la ranura 3. A pesar de esto, una segunda acción bien combinada puede aumentar significativamente la producción total de daño.
