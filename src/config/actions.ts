@@ -34,10 +34,10 @@ export const allActions: ActionDef[] = [
   { id: 'bow',            label: 'Sniping Arrow',  icon: 'crosshair',       iconSystem: 'lucide', range: 10, damage: 2,   speed: 1.2, manaCost: 2,   tags: ['physical',  'projectile'] },
   { id: 'fireball',       label: 'Fireball',       icon: 'flame',           iconSystem: 'lucide', range: 12, damage: 1,   speed: 2.4, manaCost: 3,   tags: ['fire',      'projectile'] },
   { id: 'zap',            label: 'Zap',            icon: 'zap',             iconSystem: 'lucide', range: 1,  damage: 1.2, speed: 3.6, manaCost: 1,   tags: ['lightning', 'strike']     },
-  { id: 'fire-nova',      label: 'Fire Nova',      icon: 'flame',           iconSystem: 'lucide', range: 0,  damage: 1.2, speed: 2,   manaCost: 2,   tags: ['fire',      'area'], area: 4,   selfTargeted: true },
+  { id: 'fire-nova',      label: 'Fire Nova',      icon: 'flame',           iconSystem: 'lucide', range: 0,  damage: 0.96, speed: 2,   manaCost: 2,   tags: ['fire',      'area'], area: 4,   selfTargeted: true },
   { id: 'grenade',        label: 'Grenade',        icon: 'bomb',            iconSystem: 'lucide', range: 8,  damage: 2,   speed: 1,   manaCost: 1.5, tags: ['fire',      'area'], area: 2.5 },
   { id: 'hammer-slam',    label: 'Hammer Slam',    icon: 'hammer',          iconSystem: 'lucide', range: 0,  damage: 2,   speed: 1,   manaCost: 1,   tags: ['physical', 'area'],  area: 4,   selfTargeted: true },
-  { id: 'lightning-nova', label: 'Lightning Nova', icon: 'loader-pinwheel', iconSystem: 'lucide', range: 0,  damage: 1.2, speed: 2,   manaCost: 2,   tags: ['lightning', 'area'], area: 4,   selfTargeted: true },
+  { id: 'lightning-nova', label: 'Lightning Nova', icon: 'loader-pinwheel', iconSystem: 'lucide', range: 0,  damage: 0.96, speed: 2,   manaCost: 2,   tags: ['lightning', 'area'], area: 4,   selfTargeted: true },
   { id: 'bolt',           label: 'Bolt',           icon: 'cloud-lightning', iconSystem: 'lucide', range: 7,  damage: 0.8, speed: 4,   manaCost: 2,   tags: ['lightning', 'projectile'] },
 ]
 
