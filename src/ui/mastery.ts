@@ -639,7 +639,7 @@ const CANONICAL_MASTERY_ORDER: MasteryId[] = [
 // independent, so they're emitted in canonical letter order.
 // Returns null when any mastery with assigned nodes lacks a complete history
 // (nodes assigned before nodeHistory existed): the real order is unknowable,
-// so saving a misleading plan is blocked until an ascent or reset wipes it.
+// so saving a misleading plan is blocked until the next ascent wipes it.
 export function generateMasterySaveString(
   masteryProgress: Partial<Record<MasteryId, MasteryProgress>>,
 ): string | null {

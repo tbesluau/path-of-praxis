@@ -244,6 +244,10 @@ describe('character', () => {
       expect(character.masteryHistoryComplete(prog(nodes, [[0, 0], [1, 0], [2, 5]]))).toBe(false)         // not assigned
     })
 
+    it('masteryHistoryComplete rejects a non-empty history when no nodes are assigned', () => {
+      expect(character.masteryHistoryComplete(prog([[], [], [], [], []], [[0, 0]]))).toBe(false)
+    })
+
     it('normalize keeps a reconciling nodeHistory and drops a corrupt one', () => {
       character.importSaveData({
         currentId: 'h1',

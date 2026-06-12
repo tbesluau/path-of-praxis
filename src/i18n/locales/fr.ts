@@ -105,7 +105,7 @@ export const fr: TranslationSchema = {
     planActive: '{code}',
     planInvalid: 'Code de build invalide',
     assignAllNone: 'Aucun plan chargé',
-    saveNoHistory: 'L\'ordre d\'attribution de tes nœuds actuels n\'a pas été enregistré. La sauvegarde de plans se débloque après ta prochaine Ascension ou une réinitialisation de maîtrise.',
+    saveNoHistory: 'L\'ordre d\'attribution de tes nœuds actuels n\'a pas été enregistré. La sauvegarde de plans se débloque après ta prochaine Ascension.',
   },
   ascent: {
     title: 'Ascension',

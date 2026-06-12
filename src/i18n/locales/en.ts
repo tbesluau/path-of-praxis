@@ -446,7 +446,7 @@ export const en: TranslationSchema = {
     planActive: '{code}',
     planInvalid: 'Invalid build code',
     assignAllNone: 'No plan loaded',
-    saveNoHistory: 'The order your current nodes were assigned in was not recorded. Saving plans unlocks after your next Ascent or a mastery reset.',
+    saveNoHistory: 'The order your current nodes were assigned in was not recorded. Saving plans unlocks after your next Ascent.',
   },
   ascent: {
     title: 'Ascent',

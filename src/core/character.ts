@@ -32,8 +32,9 @@ export interface MasteryProgress {
   // Exact assignment order as [treeIdx, nodeIdx] pairs, interleaved across
   // this mastery's trees (masteries themselves are independent). Absent on
   // progress whose nodes predate this field: a history started mid-way would
-  // misstate the order, so recording only begins once the nodes are wiped
-  // (ascent or mastery reset) or for a mastery with no nodes yet.
+  // misstate the order, so legacy progress stays unrecorded until the next
+  // ascent wipes all masteries and fresh entries start recording from [].
+  // Per-mastery resets preserve recording status but never grant it.
   nodeHistory?: Array<[number, number]>
 }
 
@@ -42,8 +43,8 @@ export interface MasteryProgress {
 // Trivially true when no nodes are assigned.
 export function masteryHistoryComplete(prog: MasteryProgress): boolean {
   const total = prog.nodes.reduce((s, t) => s + t.length, 0)
-  if (total === 0) return true
   const history = prog.nodeHistory
+  if (total === 0) return !history || history.length === 0
   if (!history || history.length !== total) return false
   const seen = prog.nodes.map(() => new Set<number>())
   for (const entry of history) {
