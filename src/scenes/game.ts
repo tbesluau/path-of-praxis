@@ -4023,12 +4023,13 @@ export function createGameScene(
       }
     }, () => {
       if (destroyed) return
+      const bagArtifact = (): void => {
+        artifacts.push(artifact)
+        persistState()
+        refreshArtifactDot()
+      }
       mountArtifactCardModal(el, artifact, {
-        onBag: () => {
-          artifacts.push(artifact)
-          persistState()
-          refreshArtifactDot()
-        },
+        onBag: bagArtifact,
         onEquip: () => {
           const usedEq = artifacts.filter(a => a.equipped).length
           if (usedEq < maxEquippedArtifacts(ascentCount)) artifact.equipped = true
@@ -4039,6 +4040,11 @@ export function createGameScene(
           refreshArtifactDot()
         },
         onDrop: () => {},
+        // Click-away must not silently destroy the drop: bag it while there's
+        // room. Only the explicit trash button discards an artifact.
+        onDismiss: () => {
+          if (artifacts.length < balance.artifacts.maxCount) bagArtifact()
+        },
       }, () => {})
     })
   }
