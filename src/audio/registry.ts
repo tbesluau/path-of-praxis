@@ -1,5 +1,5 @@
 export type SfxId =
-  | 'action.physical' | 'action.fire' | 'action.lightning'
+  | 'action.physical' | 'action.fire' | 'action.lightning' | 'action.cold'
   | 'enemy.death'
   | 'player.dash'
   | 'ui.toggle'
@@ -18,6 +18,8 @@ export const SFX: Record<SfxId, SfxDef> = {
   'action.physical':  { file: 'physical.ogg',   maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
   'action.fire':      { file: 'fire.ogg',        maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
   'action.lightning': { file: 'electric.ogg',    maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
+  // No cold actions exist yet — don't preload until one ships
+  'action.cold':      { file: 'cold.ogg',        maxVoices: 7, throttleMs: 55, gain: 0.5, preload: false },
   'enemy.death':      { file: 'enemy_death.ogg', maxVoices: 10, throttleMs: 30, gain: 0.6, preload: true },
   'player.dash':      { file: 'dash.ogg',        maxVoices: 3, throttleMs: 80, gain: 0.5, preload: true },
   'ui.toggle':        { file: 'toggle.ogg',      maxVoices: 3, throttleMs: 30, gain: 0.7, preload: true },
@@ -27,11 +29,11 @@ export const SFX: Record<SfxId, SfxDef> = {
   'boss.defeat':      { file: 'boss_death.ogg',  maxVoices: 1,                 gain: 0.9, preload: false },
 }
 
-// cold → electric timbre, rot → physical timbre (no separate files)
+// rot → physical timbre (no separate file)
 export function essenceSfxId(tags: readonly string[]): SfxId {
   if (tags.includes('fire'))      return 'action.fire'
   if (tags.includes('lightning')) return 'action.lightning'
-  if (tags.includes('cold'))      return 'action.lightning'
+  if (tags.includes('cold'))      return 'action.cold'
   if (tags.includes('rot'))       return 'action.physical'
   return 'action.physical'
 }
