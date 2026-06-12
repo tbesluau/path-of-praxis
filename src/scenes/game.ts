@@ -3262,6 +3262,7 @@ export function createGameScene(
     masteryProgress = {}
     freeMasteryPointsUsed = {}
     masteryDumpPoints = {}
+    setPref('activeMasteryPlan', undefined)
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
     enemyProgress = { xp: 0, level: 1, maxLevel: 1, autoLevel: false }
