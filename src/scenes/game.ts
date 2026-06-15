@@ -5250,7 +5250,7 @@ export function createGameScene(
           }
           if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
             const cbFrost = getColdBonuses()
-            const frostSlow = balance.frost.baseMoveSlowPct + cbFrost.frostSlowIncrease
+            const frostSlow = (balance.frost.baseMoveSlowPct + cbFrost.frostSlowIncrease) * (1 + cbFrost.frostSlowMore / 100)
             ms *= Math.max(0, 1 - frostSlow / 100)
           }
           // Knockback slow debuff
@@ -5968,7 +5968,7 @@ export function createGameScene(
           }
           if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
             const cbAtkFrost = getColdBonuses()
-            const frostSlow = balance.frost.baseActionSlowPct + cbAtkFrost.frostSlowIncrease
+            const frostSlow = (balance.frost.baseActionSlowPct + cbAtkFrost.frostSlowIncrease) * (1 + cbAtkFrost.frostSlowMore / 100)
             effectiveAttackSpeed *= Math.max(0, 1 - frostSlow / 100)
           }
           if (entity.role === 'player' && frenzyCharges > 0) {

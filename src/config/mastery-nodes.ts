@@ -313,6 +313,7 @@ export interface NodeEffect {
 
   // Cold mastery effects (Frost tree)
   coldFrostSlowIncrease?: number     // additive %; bonus to both move+action slow amount
+  coldFrostSlowMore?: number         // 'more' %; multiplies the total frost slow amount
   coldFrostDurationIncrease?: number // additive %; extends frost duration
   coldFrostDurationMult?: number     // multiplicative duration; product of all such mult fields
   coldFrostedDealLess?: number       // additive %; frosted enemies deal less damage
@@ -459,6 +460,7 @@ export interface ColdBonuses {
   frostApplyChance: number               // total additive %; bonus frost apply chance
   frostedVulnerable: number              // total additive %; non-cold damage dealt to frosted enemies
   frostSlowIncrease: number              // total additive %; bonus to both move+action slow
+  frostSlowMore: number                  // total 'more' %; multiplies the total frost slow
   frostDurationIncrease: number          // total additive %; extends frost duration
   frostDurationMult: number              // total multiplicative duration factor (1.0 = no change)
   frostedDealLess: number                // total additive %; frosted enemies deal less damage
@@ -1479,8 +1481,13 @@ const COLD_EFFECTS: Partial<Record<number, TreeEffects>> = {
     8:  { coldFrostApplyChance: 15 },
     9:  { coldFrostApplyChance: 5 },
     10: { coldFrostSlowIncrease: 3 },
-    11: { coldFrostedDealLess: 15 },
-    // 12-15: key nodes — not yet defined
+    11: { coldFrostSlowMore: 15 },
+    // Key nodes (mirror electrocution tree with slow instead of damage-taken).
+    // 12-13 flank the first major (node 5); 14-15 flank the second major (node 11).
+    12: { coldFrostSlowIncrease: 5, coldFrostDurationMult: 0.9 },
+    13: { coldFrostDurationMult: 1.2 },
+    14: { coldFrostedDealLess: 10 },
+    15: { coldFrostSlowIncrease: 5 },
   },
   2: {  // Shatter (short tree — line nodes 0-5, key nodes 12-13)
     0: { coldShatterDamageIncrease: 30 },
@@ -1514,6 +1521,7 @@ export function computeColdBonuses(nodes: number[][], dumpedPoints = 0): ColdBon
     frostApplyChance: 0,
     frostedVulnerable: 0,
     frostSlowIncrease: 0,
+    frostSlowMore: 0,
     frostDurationIncrease: 0,
     frostDurationMult: 1,
     frostedDealLess: 0,
@@ -1533,6 +1541,7 @@ export function computeColdBonuses(nodes: number[][], dumpedPoints = 0): ColdBon
       b.frostApplyChance           += eff.coldFrostApplyChance ?? 0
       b.frostedVulnerable          += eff.coldFrostedVulnerable ?? 0
       b.frostSlowIncrease          += eff.coldFrostSlowIncrease ?? 0
+      b.frostSlowMore              += eff.coldFrostSlowMore ?? 0
       b.frostDurationIncrease      += eff.coldFrostDurationIncrease ?? 0
       if (eff.coldFrostDurationMult !== undefined) b.frostDurationMult *= eff.coldFrostDurationMult
       b.frostedDealLess            += eff.coldFrostedDealLess ?? 0
@@ -2316,7 +2325,11 @@ const COLD_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     8:  '+15% increased frost apply chance',
     9:  '+5% increased frost apply chance',
     10: '+3% increased frost slow',
-    11: 'Frosted enemies deal 15% less damage',
+    11: '15% more frost slowing effect',
+    12: '+5% increased frost slow · 10% less frost duration',
+    13: '20% more frost duration',
+    14: 'Frosted enemies deal 10% less damage',
+    15: '+5% increased frost slow',
   },
   2: {  // Shatter
     0: '+30% increased shatter damage',

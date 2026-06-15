@@ -523,13 +523,20 @@ Las probabilidades de múltiples fuentes se suman en una única tirada por golpe
 
 **Árbol de Daño de frío, nodo 11 — vulnerabilidad a la escarcha:** los enemigos escarchados reciben +20 % de daño aumentado de fuentes **no de frío**. La **Fractura**, al ser daño de frío, queda excluida.
 
-**Árbol de Escarcha (completo, 12 nodos de línea):**
+**Árbol de Escarcha (completo):**
 - Probabilidad de aplicar Escarcha: +5 % cada uno (nodos 0, 3, 6, 9) y +15 % (nodo 8) — aumenta la probabilidad de que un golpe de frío escarche al objetivo
 - Ralentización de Escarcha: +3 % cada uno (nodos 1, 4, 7, 10), más +5 % (nodo 2) y +8 % (nodo 5) — añadido tanto a la ralentización de movimiento como de acción
 - Duración de Escarcha: +10 % (nodo 2), +20 % (nodo 5) — prolonga la duración de la Escarcha
-- Nodo 11 (mayor): los enemigos escarchados infligen **15 % menos** de daño
+- Nodo 5 (primer mayor): +8 % de ralentización de escarcha aumentada · +20 % de duración de escarcha aumentada
+- Nodo 11 (segundo mayor): **15 % más** de efecto de ralentización de escarcha — un multiplicador sobre la ralentización total
 
-La ralentización y la reducción de daño infligido se aplican multiplicativamente junto con otros modificadores de velocidad y daño.`,
+**Nodos clave:**
+- Nodo 12: +5 % de ralentización de escarcha aumentada · 10 % menos de duración de escarcha
+- Nodo 13: 20 % más de duración de escarcha
+- Nodo 14: los enemigos escarchados infligen **10 % menos** de daño
+- Nodo 15: +5 % de ralentización de escarcha aumentada
+
+La ralentización aumentada es aditiva; el efecto de ralentización "más" (nodo 11) multiplica el total acumulado. La ralentización y la reducción de daño infligido se aplican multiplicativamente junto con otros modificadores de velocidad y daño.`,
   },
 
   shatter: {
