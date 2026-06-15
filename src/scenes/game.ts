@@ -4345,13 +4345,20 @@ export function createGameScene(
     if (action.id === 'fire-nova') {
       addVfx(preHitDuration, (g, p) => {
         g.clear()
-        const r = areaRadiusPx * p
         const pulse = 1 + 0.08 * Math.sin(p * 30)
-        // Outer expanding fire ring
-        g.circle(cx, cy, r * pulse)
-        g.stroke({ color: 0xff6600, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
-        g.circle(cx, cy, r * 0.85 * pulse)
-        g.stroke({ color: 0xffcc33, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        // Thick leading ring + a trail of fading rings behind it, so the swept area
+        // stays filled with visuals even when the nova fires quickly.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0xff6600, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0xffcc33, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
         // Inner flame body building up at the centre
         g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
         g.fill({ color: 0xff8800, alpha: 0.45 + p * 0.4 })
@@ -4368,12 +4375,19 @@ export function createGameScene(
     } else if (action.id === 'lightning-nova') {
       addVfx(preHitDuration, (g, p) => {
         g.clear()
-        const r = areaRadiusPx * p
         const pulse = 1 + 0.08 * Math.sin(p * 30)
-        g.circle(cx, cy, r * pulse)
-        g.stroke({ color: 0x9a7dff, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
-        g.circle(cx, cy, r * 0.85 * pulse)
-        g.stroke({ color: 0xc6b3ff, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        // Thick leading ring + trailing rings fill the swept area on fast casts.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0x9a7dff, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0xc6b3ff, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
         g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
         g.fill({ color: 0xb39dff, alpha: 0.45 + p * 0.4 })
         g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
@@ -4388,13 +4402,20 @@ export function createGameScene(
     } else if (action.id === 'cold-nova') {
       addVfx(preHitDuration, (g, p) => {
         g.clear()
-        const r = areaRadiusPx * p
         const pulse = 1 + 0.06 * Math.sin(p * 26)
-        // Deep-blue expanding rings
-        g.circle(cx, cy, r * pulse)
-        g.stroke({ color: 0x1f5fd6, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
-        g.circle(cx, cy, r * 0.85 * pulse)
-        g.stroke({ color: 0x3f86f5, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        // Thick leading ring + a trail of deep-blue rings behind it, so the swept
+        // area stays filled with visuals even when the nova fires quickly.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0x1f5fd6, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0x3f86f5, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
         // Frosty core building up
         g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
         g.fill({ color: 0x5a9dff, alpha: 0.45 + p * 0.4 })
@@ -4501,6 +4522,15 @@ export function createGameScene(
     const tr = target.radius
     const baseAng = Math.atan2(ty - ay, tx - ax)
 
+    // Elemental actions (fire/lightning/cold) fire constantly; halve their post-hit
+    // opacity so the enemies and their affliction auras stay readable under the
+    // stacked impact "bubbles". Non-elemental hits keep full opacity.
+    const isElementalHit = action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')
+    const addHitVfx = (maxAge: number, tick: (g: Graphics, p: number) => void): void => {
+      if (!isElementalHit) { addVfx(maxAge, tick); return }
+      addVfx(maxAge, (g, p) => { g.alpha = 0.5; tick(g, p) })
+    }
+
     if (action.id === 'sword') {
       addVfx(280, (g, p) => {
         g.clear()
@@ -4542,7 +4572,7 @@ export function createGameScene(
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.5 })
       })
     } else if (action.id === 'fireball') {
-      addVfx(310, (g, p) => {
+      addHitVfx(310, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.8 + p * 5))
         g.stroke({ color: 0xff9900, width: 5 * (1 - p), alpha: (1 - p) * 0.9 })
@@ -4562,7 +4592,7 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'fire-nova') {
-      addVfx(260, (g, p) => {
+      addHitVfx(260, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.7 + p * 1.8))
         g.fill({ color: 0xff5500, alpha: (1 - p) * 0.6 })
@@ -4578,7 +4608,7 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'zap') {
-      addVfx(240, (g, p) => {
+      addHitVfx(240, (g, p) => {
         g.clear()
         const dx = tx - ax, dy = ty - ay
         const len = Math.sqrt(dx * dx + dy * dy) || 1
@@ -4625,7 +4655,7 @@ export function createGameScene(
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.6 })
       })
     } else if (action.id === 'grenade') {
-      addVfx(310, (g, p) => {
+      addHitVfx(310, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.8 + p * 4))
         g.stroke({ color: 0xff8800, width: 5 * (1 - p), alpha: (1 - p) * 0.85 })
@@ -4669,7 +4699,7 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'lightning-nova') {
-      addVfx(260, (g, p) => {
+      addHitVfx(260, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.7 + p * 1.8))
         g.fill({ color: 0x9a7dff, alpha: (1 - p) * 0.6 })
@@ -4685,7 +4715,7 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'cold-nova') {
-      addVfx(260, (g, p) => {
+      addHitVfx(260, (g, p) => {
         g.clear()
         // Deep-blue expanding burst with icy-white core
         g.circle(tx, ty, tr * (0.7 + p * 1.8))
@@ -4709,7 +4739,7 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'bolt') {
-      addVfx(120, (g, p) => {
+      addHitVfx(120, (g, p) => {
         g.clear()
         // Quick flicker: cyan ring + white center, plus a short zigzag streak from attacker.
         const dx = tx - ax, dy = ty - ay
