@@ -578,28 +578,34 @@ Increased frost slow is additive; the "more" slowing effect (node 11) multiplies
 
 ## Shatter
 
-A **Cold mastery — Shatter** mechanic. When a **frosted** enemy dies, it shatters: a burst of cold deals **Area** damage to nearby enemies. Base damage is **5% of the dying enemy's maximum life**, dealt within **2 units** (player-radius) of the corpse.
+A **Cold mastery — Shatter** mechanic. Enemies killed while **frosted** have a **chance to shatter**: a cold explosion centered on the shattered enemy, with a range of **2 units** (player-radius). By default it deals **5% of the shattered enemy's maximum life** as cold damage in that area.
 
-Shatter damage is **cold** and is reduced by the target's elemental **Resistance** like any other cold hit. Shatter does **not** apply **Frost** and grants no **Affliction** procs — but it can kill, and a frosted enemy slain by Shatter shatters in turn, allowing chain reactions to ripple through a frosted pack.
+Shatter is **not an action** — it does **not** benefit from cold damage or **Area** damage bonuses. Its only scaling comes from the shattered enemy's maximum life and the Shatter tree itself. The damage is cold and is reduced by the target's elemental **Resistance**. Shatter does **not** apply **Frost** and grants no **Affliction** procs — but it can kill, and a frosted enemy slain by Shatter can itself roll to shatter, allowing chain reactions to ripple through a frosted pack.
+
+**Chance to shatter is 0% by default** — it is granted entirely by the Shatter tree.
 
 **Shatter tree (short, 6 nodes):**
-- Nodes 0, 1, 3, 4: +30% / +60% increased Shatter damage
-- Node 2 (strong): +90% increased Shatter damage · +25% increased Shatter radius
-- Node 5 (major): +50% **More** Shatter damage
+- Node 0: enemies killed while frosted have +5% chance to shatter
+- Node 1: Shatter damage increased by 2% of shattered enemy maximum life
+- Node 2 (strong): +8% chance to shatter · +20% increased shatter area of effect
+- Node 3: enemies killed while frosted have +5% chance to shatter
+- Node 4: Shatter damage increased by 2% of shattered enemy maximum life
+- Node 5 (major): +10% chance to shatter · Shatter damage increased by 3% of shattered enemy maximum life
 
-Increased Shatter damage from the line nodes is additive; the major node's "more" multiplier is separate and multiplicative.
+With the full tree: +28% chance to shatter, and damage = **12% of max life** (5% base + 2% + 2% + 3%).
 
 ---
 
 ## Frozen Armor
 
-A **Status** (buff) on the player, built up by applying **Frost** to enemies. Every **100 frosts** applied grants **1 Frozen Armor stack**, up to **10 stacks**. One stack decays every **2 seconds**. The current stack count is shown in the buff bar (snowflake icon).
+A **Status** (buff) on the player, built up by frosting enemies — always available whenever you apply **Frost**. Every **100 frosts** grants **1 Frozen Armor stack**, up to a maximum of **10 stacks**. Stacks expire one at a time every **2 seconds**. The current stack count is shown in the buff bar (snowflake icon).
 
-By itself Frozen Armor does **nothing** — stacks accumulate and display but grant no benefit until you invest in the Frozen Armor tree. Once at least one damage-reduction node is taken, each stack reduces incoming damage from all sources (capped at **80%** total reduction).
+By itself Frozen Armor does **nothing** — stacks accumulate and display but grant no benefit until you invest in the Frozen Armor tree. Once at least one damage-reduction node is taken, each stack reduces incoming damage taken from **hits** (capped at **80%** total reduction).
 
 **Frozen Armor tree (short, 6 nodes):**
-- Nodes 0, 1, 3, 4: +1% damage reduction per stack each
-- Node 2 (strong): +2% damage reduction per stack · +2 maximum stacks
-- Node 5 (major): gain a stack every **75 frosts** instead of 100
+- Nodes 0 and 3: Frozen Armor requires 20 fewer frosts to gain a stack each (−40 total → a stack every 60 frosts)
+- Nodes 1 and 4: 1% reduced damage taken from hits per Frozen Armor stack each (2% per stack total)
+- Node 2 (strong): 30% chance to gain 2 stacks instead of 1 · 20% slower stack depletion
+- Node 5 (major): Frozen Armor can have 5 more maximum stacks
 
 The damage reduction is applied after resistances in the player damage pipeline.
