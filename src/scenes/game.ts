@@ -330,6 +330,8 @@ export function createGameScene(
   // ── Frost affliction (cold-tagged hits) ──────────────────────────────────
   // One entry per entity: remaining duration ms. Immune while active — no refresh on re-apply.
   const frostTimers = new Map<string, number>()
+  // Per-entity frost Graphics (icy aura) attached to the entity's Container child list.
+  const frostEffectGraphics = new Map<string, Graphics>()
   let totalFrostedCount = 0   // cumulative per life; used for frozen armor threshold
   let frozenArmorStacks = 0
   let frozenArmorDecayTimer = 0
@@ -450,6 +452,62 @@ export function createGameScene(
       if (!electrocuteStacks.has(id)) {
         g.destroy()
         electrocuteGraphics.delete(id)
+      }
+    }
+  }
+
+  function tickFrostEffects(): void {
+    if (!app) return
+    const frame = Math.floor(Date.now() / 90)
+
+    for (const id of frostTimers.keys()) {
+      const entity = entities.find(e => e.id === id)
+      if (!entity) continue
+      const container = entityContainers.get(id)
+      if (!container) continue
+
+      let g = frostEffectGraphics.get(id)
+      if (!g) {
+        g = new Graphics()
+        container.addChild(g)
+        frostEffectGraphics.set(id, g)
+      }
+
+      g.clear()
+      const r = entity.radius
+
+      // Pale blue chilled glow surrounding the body
+      g.circle(0, 0, r + 3)
+      g.fill({ color: 0x88ccff, alpha: 0.16 })
+
+      // Ring of ice crystal shards pointing outward, slowly rotating
+      const shards = 8
+      for (let i = 0; i < shards; i++) {
+        const a = (i / shards) * Math.PI * 2 + frame * 0.04
+        const baseX = Math.cos(a) * (r + 1)
+        const baseY = Math.sin(a) * (r + 1)
+        const tipX = Math.cos(a) * (r + 7)
+        const tipY = Math.sin(a) * (r + 7)
+        // Perpendicular for the shard's width
+        const px = -Math.sin(a), py = Math.cos(a)
+        const w = 2.2
+        g.moveTo(baseX + px * w, baseY + py * w)
+        g.lineTo(tipX, tipY)
+        g.lineTo(baseX - px * w, baseY - py * w)
+        g.closePath()
+        g.fill({ color: i % 2 ? 0xcceeff : 0x99d6ff, alpha: 0.8 })
+      }
+
+      // Faint outer frost ring
+      g.circle(0, 0, r + 6)
+      g.stroke({ color: 0xbbe6ff, width: 1, alpha: 0.4 })
+    }
+
+    // Remove graphics for entities no longer frosted
+    for (const [id, g] of [...frostEffectGraphics]) {
+      if (!frostTimers.has(id)) {
+        g.destroy()
+        frostEffectGraphics.delete(id)
       }
     }
   }
@@ -3122,11 +3180,39 @@ export function createGameScene(
       * (1 + coldBonuses.shatterDamageIncrease / 100)
       * (1 + coldBonuses.shatterMoreDamage / 100)
     const rangePx = balance.shatter.rangeUnits * (1 + coldBonuses.shatterRangeIncrease / 100) * balance.player.radius
-    addVfx(400, (g, p) => {
+    // Icy shatter burst: a flash, an expanding shockwave ring, and shards of ice
+    // flung outward to the edge of the blast radius.
+    const shardCount = 14
+    const shardAngles = Array.from({ length: shardCount }, (_, i) => (i / shardCount) * Math.PI * 2 + (i % 3) * 0.4)
+    addVfx(450, (g, p) => {
       g.clear()
       g.position.set(srcX, srcY)
-      g.circle(0, 0, rangePx * p)
-      g.stroke({ color: 0x66ccff, alpha: (1 - p) * 0.8, width: 3 })
+      // Initial white flash
+      if (p < 0.2) {
+        const fp = p / 0.2
+        g.circle(0, 0, rangePx * (0.3 + fp * 0.4))
+        g.fill({ color: 0xeaf6ff, alpha: (1 - fp) * 0.8 })
+      }
+      // Expanding shockwave ring
+      g.circle(0, 0, rangePx * (0.2 + p * 0.9))
+      g.stroke({ color: 0x3f86f5, width: Math.max(1, 4 * (1 - p)), alpha: (1 - p) * 0.85 })
+      g.circle(0, 0, rangePx * (0.1 + p * 0.7))
+      g.stroke({ color: 0x9fd0ff, width: Math.max(0.5, 2 * (1 - p)), alpha: (1 - p) * 0.7 })
+      // Ice shards flung outward
+      const ease = 1 - Math.pow(1 - p, 2)
+      for (let i = 0; i < shardCount; i++) {
+        const a = shardAngles[i]
+        const d = rangePx * (0.15 + ease * 0.95)
+        const sx = Math.cos(a) * d, sy = Math.sin(a) * d
+        const px = -Math.sin(a), py = Math.cos(a)
+        const w = Math.max(0.5, 3 * (1 - p))
+        const len = 7 * (1 - p * 0.5)
+        g.moveTo(sx + px * w, sy + py * w)
+        g.lineTo(sx + Math.cos(a) * len, sy + Math.sin(a) * len)
+        g.lineTo(sx - px * w, sy - py * w)
+        g.closePath()
+        g.fill({ color: i % 2 ? 0xcceeff : 0x5a9dff, alpha: (1 - p) * 0.95 })
+      }
     })
     for (const enemy of [...entities]) {
       if (enemy.role !== 'enemy' || enemy.currentLife <= 0) continue
@@ -3184,6 +3270,7 @@ export function createGameScene(
     electrocuteStacks.delete(entity.id)
     electrocuteGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     frostTimers.delete(entity.id)
+    frostEffectGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     if (entity.id === playerStrongestTargetId) playerStrongestTargetId = null
     if (entity.id === playerWeakestTargetId) playerWeakestTargetId = null
@@ -4282,18 +4369,43 @@ export function createGameScene(
         const r = areaRadiusPx * p
         const pulse = 1 + 0.08 * Math.sin(p * 30)
         g.circle(cx, cy, r * pulse)
-        g.stroke({ color: 0x66ddff, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
+        g.stroke({ color: 0x9a7dff, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
         g.circle(cx, cy, r * 0.85 * pulse)
-        g.stroke({ color: 0xaaeeff, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        g.stroke({ color: 0xc6b3ff, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
         g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
-        g.fill({ color: 0x88e8ff, alpha: 0.45 + p * 0.4 })
+        g.fill({ color: 0xb39dff, alpha: 0.45 + p * 0.4 })
         g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
         g.fill({ color: 0xffffff, alpha: 0.7 + p * 0.3 })
         for (let i = 0; i < 14; i++) {
           const a = (i / 14) * Math.PI * 2 + i * 0.3
           const sd = areaRadiusPx * (0.2 + p * 0.85)
           g.circle(cx + Math.cos(a) * sd, cy + Math.sin(a) * sd, Math.max(0.5, 2.5 * (1 - p * 0.5)))
-          g.fill({ color: i % 2 ? 0x99ddff : 0xffffff, alpha: 1 - p * 0.3 })
+          g.fill({ color: i % 2 ? 0xc4b0ff : 0xffffff, alpha: 1 - p * 0.3 })
+        }
+      })
+    } else if (action.id === 'cold-nova') {
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const r = areaRadiusPx * p
+        const pulse = 1 + 0.06 * Math.sin(p * 26)
+        // Deep-blue expanding rings
+        g.circle(cx, cy, r * pulse)
+        g.stroke({ color: 0x1f5fd6, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
+        g.circle(cx, cy, r * 0.85 * pulse)
+        g.stroke({ color: 0x3f86f5, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        // Frosty core building up
+        g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
+        g.fill({ color: 0x5a9dff, alpha: 0.45 + p * 0.4 })
+        g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
+        g.fill({ color: 0xd6ecff, alpha: 0.7 + p * 0.3 })
+        // Radial ice crystal shards reaching for the ring
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + i * 0.26
+          const r0 = areaRadiusPx * 0.12
+          const r1 = areaRadiusPx * (0.2 + p * 0.9)
+          g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0)
+          g.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1)
+          g.stroke({ color: i % 2 ? 0x9fd0ff : 0x4f8ff0, width: Math.max(0.5, 2 * (1 - p * 0.5)), alpha: 1 - p * 0.4 })
         }
       })
     } else if (action.id === 'grenade') {
@@ -4558,16 +4670,40 @@ export function createGameScene(
       addVfx(260, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.7 + p * 1.8))
-        g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.6 })
+        g.fill({ color: 0x9a7dff, alpha: (1 - p) * 0.6 })
         g.circle(tx, ty, tr * (0.45 + p * 1.0))
-        g.fill({ color: 0xaaeeff, alpha: (1 - p) * 0.85 })
+        g.fill({ color: 0xc6b3ff, alpha: (1 - p) * 0.85 })
         g.circle(tx, ty, tr * (0.25 + p * 0.5))
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.95 })
         for (let i = 0; i < 8; i++) {
           const a = (i / 8) * Math.PI * 2 + i * 0.4
           const d = tr * (0.5 + p * 2.0)
           g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 2.5 * (1 - p)))
-          g.fill({ color: i % 2 ? 0x99ddff : 0xffffff, alpha: 1 - p })
+          g.fill({ color: i % 2 ? 0xc4b0ff : 0xffffff, alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'cold-nova') {
+      addVfx(260, (g, p) => {
+        g.clear()
+        // Deep-blue expanding burst with icy-white core
+        g.circle(tx, ty, tr * (0.7 + p * 1.8))
+        g.fill({ color: 0x1f5fd6, alpha: (1 - p) * 0.6 })
+        g.circle(tx, ty, tr * (0.45 + p * 1.0))
+        g.fill({ color: 0x4f8ff0, alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.25 + p * 0.5))
+        g.fill({ color: 0xd6ecff, alpha: (1 - p) * 0.95 })
+        // Flung ice shards
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + i * 0.4
+          const d = tr * (0.5 + p * 2.0)
+          const sx = tx + Math.cos(a) * d, sy = ty + Math.sin(a) * d
+          const px = -Math.sin(a), py = Math.cos(a)
+          const w = Math.max(0.5, 2.5 * (1 - p))
+          g.moveTo(sx + px * w, sy + py * w)
+          g.lineTo(sx + Math.cos(a) * tr * 0.6, sy + Math.sin(a) * tr * 0.6)
+          g.lineTo(sx - px * w, sy - py * w)
+          g.closePath()
+          g.fill({ color: i % 2 ? 0x9fd0ff : 0xeaf6ff, alpha: 1 - p })
         }
       })
     } else if (action.id === 'bolt') {
@@ -6414,6 +6550,7 @@ export function createGameScene(
         tickFrozenArmor(ticker.deltaMS)
         tickKnockbacks(ticker.deltaMS)
         tickElectrocuteEffects()
+        tickFrostEffects()
         tickBurnEffects()
         tickBleedEffects()
         tickBurnGroundEffects()
