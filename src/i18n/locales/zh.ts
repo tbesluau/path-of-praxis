@@ -351,7 +351,7 @@ export const zh: TranslationSchema = {
   actionLabel: {
     sword: '剑击', bow: '狙击箭', fireball: '火球', zap: '电击',
     'fire-nova': '火焰新星', grenade: '手榴弹', 'hammer-slam': '锤击',
-    'lightning-nova': '闪电新星', bolt: '闪电箭', 'cold-nova': '冰霜新星',
+    'lightning-nova': '闪电新星', bolt: '闪电箭', 'cold-nova': '冰霜新星', 'ice-spear': '寒冰长矛',
   },
   actionTag: {
     physical: '物理', fire: '火焰', lightning: '闪电', cold: '寒冷', rot: '腐烂',

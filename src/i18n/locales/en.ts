@@ -337,7 +337,7 @@ export interface TranslationSchema {
   }
   actionLabel: {
     sword: string; bow: string; fireball: string; zap: string; 'fire-nova': string
-    grenade: string; 'hammer-slam': string; 'lightning-nova': string; bolt: string; 'cold-nova': string
+    grenade: string; 'hammer-slam': string; 'lightning-nova': string; bolt: string; 'cold-nova': string; 'ice-spear': string
   }
   actionTag: {
     physical: string; fire: string; lightning: string; cold: string; rot: string
@@ -697,6 +697,7 @@ export const en: TranslationSchema = {
     sword: 'Sword Strike', bow: 'Sniping Arrow', fireball: 'Fireball', zap: 'Zap',
     'fire-nova': 'Fire Nova', grenade: 'Grenade', 'hammer-slam': 'Hammer Slam',
     'lightning-nova': 'Lightning Nova', bolt: 'Bolt', 'cold-nova': 'Cold Nova',
+    'ice-spear': 'Ice Spear',
   },
   actionTag: {
     physical: 'physical', fire: 'fire', lightning: 'lightning', cold: 'cold', rot: 'rot',

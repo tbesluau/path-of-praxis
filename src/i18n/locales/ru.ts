@@ -351,7 +351,7 @@ export const ru: TranslationSchema = {
   actionLabel: {
     sword: 'Удар мечом', bow: 'Снайперская стрела', fireball: 'Огненный шар', zap: 'Молния',
     'fire-nova': 'Огненная волна', grenade: 'Граната', 'hammer-slam': 'Удар молотом',
-    'lightning-nova': 'Молниевая волна', bolt: 'Болт', 'cold-nova': 'Ледяная волна',
+    'lightning-nova': 'Молниевая волна', bolt: 'Болт', 'cold-nova': 'Ледяная волна', 'ice-spear': 'Ледяное копьё',
   },
   actionTag: {
     physical: 'физический', fire: 'огонь', lightning: 'молния', cold: 'холод', rot: 'гниль',
