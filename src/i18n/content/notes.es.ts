@@ -541,7 +541,7 @@ La ralentización aumentada es aditiva; el efecto de ralentización "más" (nodo
 
   shatter: {
     title: 'Fractura',
-    body: `Una mecánica de la **maestría de Frío — Fractura**. Los enemigos abatidos mientras están **escarchados** tienen una **probabilidad de fracturarse**: una explosión de frío centrada en el enemigo fracturado, con un alcance de **2 unidades** (radio-jugador). Por defecto inflige el **5 % de la vida máxima del enemigo fracturado** como daño de frío en esa área.
+    body: `Una mecánica de la **maestría de Frío — Fractura**. Los enemigos abatidos mientras están **escarchados** tienen una **probabilidad de fracturarse**: una explosión de frío centrada en el enemigo fracturado, con un alcance de **3 unidades** (radio-jugador). Por defecto inflige el **5 % de la vida máxima del enemigo fracturado** como daño de frío en esa área.
 
 La Fractura **no es una acción** — **no** se beneficia del daño de frío ni del daño de **Área**. Su único factor de escala es la vida máxima del enemigo fracturado y el propio árbol de Fractura. El daño es de tipo frío y se reduce por la **Resistencia** elemental del objetivo. La Fractura **no** aplica **Escarcha** y no otorga ningún proc de **Aflicción** — pero puede matar, y un enemigo escarchado abatido por una Fractura puede a su vez intentar fracturarse, permitiendo reacciones en cadena a través de un grupo escarchado.
 
