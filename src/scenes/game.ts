@@ -3180,39 +3180,41 @@ export function createGameScene(
       * (1 + coldBonuses.shatterDamageIncrease / 100)
       * (1 + coldBonuses.shatterMoreDamage / 100)
     const rangePx = balance.shatter.rangeUnits * (1 + coldBonuses.shatterRangeIncrease / 100) * balance.player.radius
-    // Icy shatter burst: a flash, an expanding shockwave ring, and shards of ice
-    // flung outward to the edge of the blast radius.
-    const shardCount = 14
-    const shardAngles = Array.from({ length: shardCount }, (_, i) => (i / shardCount) * Math.PI * 2 + (i % 3) * 0.4)
+    // White star-shaped shatter burst: a central flash and an expanding 5-pointed
+    // star that grows to the edge of the blast radius.
+    const STAR_POINTS = 5
     addVfx(450, (g, p) => {
       g.clear()
       g.position.set(srcX, srcY)
-      // Initial white flash
-      if (p < 0.2) {
-        const fp = p / 0.2
-        g.circle(0, 0, rangePx * (0.3 + fp * 0.4))
-        g.fill({ color: 0xeaf6ff, alpha: (1 - fp) * 0.8 })
-      }
-      // Expanding shockwave ring
-      g.circle(0, 0, rangePx * (0.2 + p * 0.9))
-      g.stroke({ color: 0x3f86f5, width: Math.max(1, 4 * (1 - p)), alpha: (1 - p) * 0.85 })
-      g.circle(0, 0, rangePx * (0.1 + p * 0.7))
-      g.stroke({ color: 0x9fd0ff, width: Math.max(0.5, 2 * (1 - p)), alpha: (1 - p) * 0.7 })
-      // Ice shards flung outward
       const ease = 1 - Math.pow(1 - p, 2)
-      for (let i = 0; i < shardCount; i++) {
-        const a = shardAngles[i]
-        const d = rangePx * (0.15 + ease * 0.95)
-        const sx = Math.cos(a) * d, sy = Math.sin(a) * d
-        const px = -Math.sin(a), py = Math.cos(a)
-        const w = Math.max(0.5, 3 * (1 - p))
-        const len = 7 * (1 - p * 0.5)
-        g.moveTo(sx + px * w, sy + py * w)
-        g.lineTo(sx + Math.cos(a) * len, sy + Math.sin(a) * len)
-        g.lineTo(sx - px * w, sy - py * w)
-        g.closePath()
-        g.fill({ color: i % 2 ? 0xcceeff : 0x5a9dff, alpha: (1 - p) * 0.95 })
+      // Central white flash early on
+      if (p < 0.25) {
+        const fp = p / 0.25
+        g.circle(0, 0, rangePx * (0.2 + fp * 0.3))
+        g.fill({ color: 0xffffff, alpha: (1 - fp) * 0.9 })
       }
+      // Trace a star polygon of the given outer/inner radius, rotated `rot`.
+      const rot = -Math.PI / 2 + p * 0.5
+      const traceStar = (outerR: number, innerR: number): void => {
+        for (let i = 0; i < STAR_POINTS * 2; i++) {
+          const r = i % 2 === 0 ? outerR : innerR
+          const a = rot + (i / (STAR_POINTS * 2)) * Math.PI * 2
+          const x = Math.cos(a) * r, y = Math.sin(a) * r
+          if (i === 0) g.moveTo(x, y); else g.lineTo(x, y)
+        }
+        g.closePath()
+      }
+      const outerR = rangePx * (0.2 + ease * 0.95)
+      const innerR = outerR * 0.42
+      // Filled translucent white body
+      traceStar(outerR, innerR)
+      g.fill({ color: 0xffffff, alpha: (1 - p) * 0.35 })
+      // Crisp white outline
+      traceStar(outerR, innerR)
+      g.stroke({ color: 0xffffff, width: Math.max(1, 3 * (1 - p)), alpha: (1 - p) * 0.95 })
+      // Smaller inner star for depth
+      traceStar(outerR * 0.55, innerR * 0.55)
+      g.stroke({ color: 0xffffff, width: Math.max(0.5, 2 * (1 - p)), alpha: (1 - p) * 0.7 })
     })
     for (const enemy of [...entities]) {
       if (enemy.role !== 'enemy' || enemy.currentLife <= 0) continue
@@ -5661,12 +5663,15 @@ export function createGameScene(
             const lbElec = getLightningBonuses()
             if (lbElec.electrifyChance > 0 && Math.random() * 100 < lbElec.electrifyChance) applyElectrified()
           }
-          // Frost: roll on cold-tagged player hits to enemy targets (immune while active — no refresh)
+          // Frost: roll on cold-tagged player hits to enemy targets. A positive roll always
+          // counts toward the affliction trigger (even if the target is already frosted);
+          // a new frost is only applied when not already frosted (immune while active — no refresh).
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('cold') && actualDamage > 0) {
-            if (!frostTimers.has(target.id)) {
-              const cbFrostApply = getColdBonuses()
-              const frostChance = balance.frost.baseFrostChancePct + cbFrostApply.frostApplyChance + extraAfflChance
-              if (guaranteedAfflictions || Math.random() * 100 < frostChance) {
+            const cbFrostApply = getColdBonuses()
+            const frostChance = balance.frost.baseFrostChancePct + cbFrostApply.frostApplyChance + extraAfflChance
+            if (guaranteedAfflictions || Math.random() * 100 < frostChance) {
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
+              if (!frostTimers.has(target.id)) {
                 const frostDuration = balance.frost.baseDurationMs
                   * (1 + cbFrostApply.frostDurationIncrease / 100)
                   * cbFrostApply.frostDurationMult
@@ -5678,7 +5683,6 @@ export function createGameScene(
                   frozenArmorStacks++
                   renderBuffBar()
                 }
-                if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
               }
             }
           }
