@@ -547,7 +547,7 @@ Le ralentissement augmenté est additif ; l'effet de ralentissement « en plus �
 
   shatter: {
     title: 'Fracas',
-    body: `Une mécanique de la **maîtrise du Froid — Fracas**. Les ennemis tués alors qu'ils sont **givrés** ont une **chance de se fracasser** : une explosion de froid centrée sur l'ennemi fracassé, d'une portée de **2 unités** (rayon-joueur). Par défaut, elle inflige **5 % de la vie maximale de l'ennemi fracassé** en dégâts de froid dans cette zone.
+    body: `Une mécanique de la **maîtrise du Froid — Fracas**. Les ennemis tués alors qu'ils sont **givrés** ont une **chance de se fracasser** : une explosion de froid centrée sur l'ennemi fracassé, d'une portée de **3 unités** (rayon-joueur). Par défaut, elle inflige **5 % de la vie maximale de l'ennemi fracassé** en dégâts de froid dans cette zone.
 
 Le Fracas n'est **pas une action** — il ne bénéficie **pas** des bonus de dégâts de froid ni de dégâts de **Zone**. Son seul facteur d'échelle est la vie maximale de l'ennemi fracassé et l'arbre Fracas lui-même. Les dégâts sont de type froid et sont réduits par la **Résistance** élémentaire de la cible. Le Fracas n'applique **pas** de **Givre** et n'accorde aucun déclenchement d'**Affliction** — mais il peut tuer, et un ennemi givré tué par un Fracas peut à son tour tenter de se fracasser, permettant des réactions en chaîne à travers un groupe givré.
 

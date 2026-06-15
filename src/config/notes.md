@@ -578,7 +578,7 @@ Increased frost slow is additive; the "more" slowing effect (node 11) multiplies
 
 ## Shatter
 
-A **Cold mastery — Shatter** mechanic. Enemies killed while **frosted** have a **chance to shatter**: a cold explosion centered on the shattered enemy, with a range of **2 units** (player-radius). By default it deals **5% of the shattered enemy's maximum life** as cold damage in that area.
+A **Cold mastery — Shatter** mechanic. Enemies killed while **frosted** have a **chance to shatter**: a cold explosion centered on the shattered enemy, with a range of **3 units** (player-radius). By default it deals **5% of the shattered enemy's maximum life** as cold damage in that area.
 
 Shatter is **not an action** — it does **not** benefit from cold damage or **Area** damage bonuses. Its only scaling comes from the shattered enemy's maximum life and the Shatter tree itself. The damage is cold and is reduced by the target's elemental **Resistance**. Shatter does **not** apply **Frost** and grants no **Affliction** procs — but it can kill, and a frosted enemy slain by Shatter can itself roll to shatter, allowing chain reactions to ripple through a frosted pack.
 

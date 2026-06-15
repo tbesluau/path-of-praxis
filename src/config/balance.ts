@@ -230,7 +230,7 @@ export const balance = {
   // ── Shatter (on frosted-enemy death) ──────────────────────────────────────
   shatter: {
     damageBaseFraction: 0.05,  // cold damage = frosted enemy maxLife × this fraction
-    rangeUnits:         2,     // explosion radius in game units
+    rangeUnits:         3,     // explosion radius in game units
   },
 
   // ── Frozen Armor (player buff from frosting enemies) ──────────────────────
