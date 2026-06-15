@@ -4337,6 +4337,33 @@ export function createGameScene(
         g.circle(cx, cy, tr * 0.45)
         g.fill({ color: 0xffee66, alpha: 1 })
       })
+    } else if (action.id === 'ice-spear') {
+      // Ice spear in flight — an icy shard flying toward the target with a frosty trail.
+      const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+      const tr = target.radius
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const cx = ax + (tx - ax) * p
+        const cy = ay + (ty - ay) * p
+        const px = -sin, py = cos  // perpendicular to travel
+        // Frosty trail
+        for (let i = 0; i < 4; i++) {
+          const back = (i + 1) * 10
+          g.circle(cx - cos * back, cy - sin * back, Math.max(0.5, tr * 0.4 * (1 - i * 0.22)))
+          g.fill({ color: i % 2 ? 0x9fd0ff : 0x3f86f5, alpha: 0.4 - i * 0.08 })
+        }
+        // Spear shard: an elongated diamond pointing along the travel direction
+        const len = tr * 1.5, half = tr * 0.3
+        g.moveTo(cx + cos * len, cy + sin * len)
+        g.lineTo(cx + px * half, cy + py * half)
+        g.lineTo(cx - cos * len * 0.5, cy - sin * len * 0.5)
+        g.lineTo(cx - px * half, cy - py * half)
+        g.closePath()
+        g.fill({ color: 0x5a9dff, alpha: 0.9 })
+        // Icy highlight core
+        g.circle(cx, cy, tr * 0.22)
+        g.fill({ color: 0xeaf6ff, alpha: 0.95 })
+      })
     }
     // zap, bolt: no pre-hit animation (instant strike)
   }
@@ -4768,6 +4795,27 @@ export function createGameScene(
         g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.5 })
         g.circle(tx, ty, tr * (0.5 + p * 0.2))
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.9 })
+      })
+    } else if (action.id === 'ice-spear') {
+      addHitVfx(240, (g, p) => {
+        g.clear()
+        // Icy impact: expanding frost ring, cold core, and a spray of ice shards.
+        g.circle(tx, ty, tr * (0.6 + p * 1.6))
+        g.stroke({ color: 0x3f86f5, width: Math.max(0.5, 3 * (1 - p)), alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.3 + p * 0.7))
+        g.fill({ color: 0xd6ecff, alpha: (1 - p) * 0.85 })
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2 + i * 0.5
+          const d = tr * (0.4 + p * 1.8)
+          const sx = tx + Math.cos(a) * d, sy = ty + Math.sin(a) * d
+          const px = -Math.sin(a), py = Math.cos(a)
+          const w = Math.max(0.5, 2 * (1 - p))
+          g.moveTo(sx + px * w, sy + py * w)
+          g.lineTo(sx + Math.cos(a) * tr * 0.5, sy + Math.sin(a) * tr * 0.5)
+          g.lineTo(sx - px * w, sy - py * w)
+          g.closePath()
+          g.fill({ color: i % 2 ? 0x9fd0ff : 0xeaf6ff, alpha: 1 - p })
+        }
       })
     }
   }

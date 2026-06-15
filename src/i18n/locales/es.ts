@@ -351,7 +351,7 @@ export const es: TranslationSchema = {
   actionLabel: {
     sword: 'Golpe de espada', bow: 'Flecha de francotirador', fireball: 'Bola de fuego', zap: 'Descarga',
     'fire-nova': 'Nova de fuego', grenade: 'Granada', 'hammer-slam': 'Golpe de martillo',
-    'lightning-nova': 'Nova de rayo', bolt: 'Rayo', 'cold-nova': 'Nova de frío',
+    'lightning-nova': 'Nova de rayo', bolt: 'Rayo', 'cold-nova': 'Nova de frío', 'ice-spear': 'Lanza de hielo',
   },
   actionTag: {
     physical: 'físico', fire: 'fuego', lightning: 'rayo', cold: 'frío', rot: 'putrefacción',
