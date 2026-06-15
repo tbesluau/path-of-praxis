@@ -332,7 +332,7 @@ export function createGameScene(
   const frostTimers = new Map<string, number>()
   // Per-entity frost Graphics (icy aura) attached to the entity's Container child list.
   const frostEffectGraphics = new Map<string, Graphics>()
-  let totalFrostedCount = 0   // cumulative per life; used for frozen armor threshold
+  let totalFrostRolls = 0   // cumulative successful frost rolls per life; drives the frozen armor threshold
   let frozenArmorStacks = 0
   let frozenArmorDecayTimer = 0
   // Per-entity burn/bleed Graphics attached to the entity's Container child list.
@@ -3426,7 +3426,7 @@ export function createGameScene(
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
     frostTimers.clear()
-    totalFrostedCount = 0
+    totalFrostRolls = 0
     frozenArmorStacks = 0
     frozenArmorDecayTimer = 0
 
@@ -5701,18 +5701,21 @@ export function createGameScene(
             const frostChance = balance.frost.baseFrostChancePct + cbFrostApply.frostApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < frostChance) {
               if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
+              // Frozen Armor accrues on every successful frost roll, even if the target
+              // was already frosted (immune while active) so no new frost is applied.
+              totalFrostRolls++
+              const threshold = Math.max(1, balance.frozenArmor.frostsPerStack - cbFrostApply.frozenArmorFrostsReduction)
+              const maxStacks = balance.frozenArmor.maxStacks + cbFrostApply.frozenArmorMaxStacksBonus
+              if (totalFrostRolls % threshold === 0 && frozenArmorStacks < maxStacks) {
+                frozenArmorStacks++
+                renderBuffBar()
+              }
+              // Apply the frost itself only when not already frosted (no refresh).
               if (!frostTimers.has(target.id)) {
                 const frostDuration = balance.frost.baseDurationMs
                   * (1 + cbFrostApply.frostDurationIncrease / 100)
                   * cbFrostApply.frostDurationMult
                 frostTimers.set(target.id, frostDuration)
-                totalFrostedCount++
-                const threshold = Math.max(1, balance.frozenArmor.frostsPerStack - cbFrostApply.frozenArmorFrostsReduction)
-                const maxStacks = balance.frozenArmor.maxStacks + cbFrostApply.frozenArmorMaxStacksBonus
-                if (totalFrostedCount % threshold === 0 && frozenArmorStacks < maxStacks) {
-                  frozenArmorStacks++
-                  renderBuffBar()
-                }
               }
             }
           }
