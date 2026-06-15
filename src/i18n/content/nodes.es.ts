@@ -528,7 +528,11 @@ export const nodesEs: Record<string, string> = {
   'cold_1_8':  '+15% de aumento en la probabilidad de aplicar escarcha',
   'cold_1_9':  '+5% de aumento en la probabilidad de aplicar escarcha',
   'cold_1_10': '+3% de aumento en el ralentizamiento por escarcha',
-  'cold_1_11': 'Los enemigos congelados infligen 15% menos de daño',
+  'cold_1_11': '15% más de efecto de ralentización de escarcha',
+  'cold_1_12': '+5% de ralentización de escarcha aumentada · 10% menos de duración de escarcha',
+  'cold_1_13': '20% más de duración de escarcha',
+  'cold_1_14': 'Los enemigos escarchados infligen 10% menos de daño',
+  'cold_1_15': '+5% de ralentización de escarcha aumentada',
 
   'cold_2_0':  '+30% de aumento en el daño de fractura',
   'cold_2_1':  '+60% de aumento en el daño de fractura',

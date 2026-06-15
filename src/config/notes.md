@@ -559,13 +559,20 @@ An **Affliction** applied by cold-tagged hits. Base apply chance is **5%** per c
 
 **Cold Damage tree node 11 — frosted vulnerability:** frosted enemies take +20% increased damage from **non-cold** sources. **Shatter**, being cold damage, is excluded.
 
-**Frost tree (full, 12 line nodes):**
+**Frost tree (full):**
 - Frost apply chance: +5% each (nodes 0, 3, 6, 9) and +15% (node 8) — raises the chance any cold hit frosts the target
 - Frost slow: +3% each (nodes 1, 4, 7, 10), plus +5% (node 2) and +8% (node 5) — added to both the move and action slow
 - Frost duration: +10% (node 2), +20% (node 5) — extends how long Frost lasts
-- Node 11 (major): frosted enemies deal **15% less** damage
+- Node 5 (first major): +8% increased frost slow · +20% increased frost duration
+- Node 11 (second major): **15% more** frost slowing effect — a multiplier on the total slow
 
-The slow and the deal-less reduction apply multiplicatively alongside other speed and damage modifiers.
+**Key nodes:**
+- Node 12: +5% increased frost slow · 10% less frost duration
+- Node 13: 20% more frost duration
+- Node 14: frosted enemies deal **10% less** damage
+- Node 15: +5% increased frost slow
+
+Increased frost slow is additive; the "more" slowing effect (node 11) multiplies the summed total. Both the slow and the deal-less reduction apply multiplicatively alongside other speed and damage modifiers.
 
 ---
 

@@ -528,7 +528,11 @@ export const nodesFr: Record<string, string> = {
   'cold_1_8':  '+15% de chance d\'appliquer le givre augmentée',
   'cold_1_9':  '+5% de chance d\'appliquer le givre augmentée',
   'cold_1_10': '+3% de ralentissement par givre augmenté',
-  'cold_1_11': 'Les ennemis givrés infligent 15% moins de dégâts',
+  'cold_1_11': '15% d\'effet de ralentissement du givre en plus',
+  'cold_1_12': '+5% de ralentissement par givre augmenté · 10% de durée de givre en moins',
+  'cold_1_13': '20% de durée de givre en plus',
+  'cold_1_14': 'Les ennemis givrés infligent 10% moins de dégâts',
+  'cold_1_15': '+5% de ralentissement par givre augmenté',
 
   'cold_2_0':  '+30% de dégâts de fracas augmentés',
   'cold_2_1':  '+60% de dégâts de fracas augmentés',

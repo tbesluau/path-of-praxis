@@ -529,13 +529,20 @@ Les chances de plusieurs sources sont sommées en un seul tirage par coup. Un co
 
 **Arbre Dégâts de froid, nœud 11 — vulnérabilité au givre :** les ennemis givrés subissent +20 % de dégâts augmentés des sources **non-froid**. Le **Fracas**, étant des dégâts de froid, est exclu.
 
-**Arbre Givre (complet, 12 nœuds de ligne) :**
+**Arbre Givre (complet) :**
 - Chance d'application du Givre : +5 % chacun (nœuds 0, 3, 6, 9) et +15 % (nœud 8) — augmente la chance qu'un coup de froid givre la cible
 - Ralentissement du Givre : +3 % chacun (nœuds 1, 4, 7, 10), plus +5 % (nœud 2) et +8 % (nœud 5) — ajouté au ralentissement de déplacement et d'action
 - Durée du Givre : +10 % (nœud 2), +20 % (nœud 5) — prolonge la durée du Givre
-- Nœud 11 (majeur) : les ennemis givrés infligent **15 % de dégâts en moins**
+- Nœud 5 (premier majeur) : +8 % de ralentissement par givre augmenté · +20 % de durée de givre augmentée
+- Nœud 11 (second majeur) : **15 % d'effet de ralentissement du givre en plus** — un multiplicateur sur le ralentissement total
 
-Le ralentissement et la réduction des dégâts infligés s'appliquent multiplicativement aux côtés des autres modificateurs de vitesse et de dégâts.`,
+**Nœuds clés :**
+- Nœud 12 : +5 % de ralentissement par givre augmenté · 10 % de durée de givre en moins
+- Nœud 13 : 20 % de durée de givre en plus
+- Nœud 14 : les ennemis givrés infligent **10 % de dégâts en moins**
+- Nœud 15 : +5 % de ralentissement par givre augmenté
+
+Le ralentissement augmenté est additif ; l'effet de ralentissement « en plus » (nœud 11) multiplie le total cumulé. Le ralentissement et la réduction des dégâts infligés s'appliquent multiplicativement aux côtés des autres modificateurs de vitesse et de dégâts.`,
   },
 
   shatter: {
