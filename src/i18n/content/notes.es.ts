@@ -514,4 +514,49 @@ Fuentes de probabilidad de ignorar mitigación:
 
 Las probabilidades de múltiples fuentes se suman en una única tirada por golpe. Un golpe que ignora mitigación no despoja al enemigo de su resistencia — solo omite la reducción para ese único golpe.`,
   },
+
+  frost: {
+    title: 'Escarcha',
+    body: `Una **Aflicción** aplicada por golpes con etiqueta de frío. La probabilidad de aplicación base es del **5 %** por golpe de frío, con una duración base de **1 segundo**. Mientras está escarchado, el enemigo ve reducidas su velocidad de movimiento y su velocidad de acción en un **20 %** (base) cada una, aumentado por los nodos de maestría de Escarcha.
+
+**Inmune mientras está activa:** a diferencia de otras **Aflicciones**, la Escarcha **no** se refresca. Una vez que un enemigo está escarchado, los golpes de frío posteriores no pueden volver a aplicarla ni prolongarla hasta que la Escarcha actual expire.
+
+**Árbol de Daño de frío, nodo 11 — vulnerabilidad a la escarcha:** los enemigos escarchados reciben +20 % de daño aumentado de fuentes **no de frío**. La **Fractura**, al ser daño de frío, queda excluida.
+
+**Árbol de Escarcha (completo, 12 nodos de línea):**
+- Probabilidad de aplicar Escarcha: +5 % cada uno (nodos 0, 3, 6, 9) y +15 % (nodo 8) — aumenta la probabilidad de que un golpe de frío escarche al objetivo
+- Ralentización de Escarcha: +3 % cada uno (nodos 1, 4, 7, 10), más +5 % (nodo 2) y +8 % (nodo 5) — añadido tanto a la ralentización de movimiento como de acción
+- Duración de Escarcha: +10 % (nodo 2), +20 % (nodo 5) — prolonga la duración de la Escarcha
+- Nodo 11 (mayor): los enemigos escarchados infligen **15 % menos** de daño
+
+La ralentización y la reducción de daño infligido se aplican multiplicativamente junto con otros modificadores de velocidad y daño.`,
+  },
+
+  shatter: {
+    title: 'Fractura',
+    body: `Una mecánica de la **maestría de Frío — Fractura**. Cuando un enemigo **escarchado** muere, se fractura: una explosión de frío inflige daño de **Área** a los enemigos cercanos. El daño base es del **5 % de la vida máxima del enemigo que muere**, infligido dentro de **2 unidades** (radio-jugador) del cadáver.
+
+El daño de Fractura es de tipo **frío** y se reduce por la **Resistencia** elemental del objetivo como cualquier otro golpe de frío. La Fractura **no** aplica **Escarcha** y no otorga ningún proc de **Aflicción** — pero puede matar, y un enemigo escarchado abatido por una Fractura se fractura a su vez, permitiendo reacciones en cadena a través de un grupo escarchado.
+
+**Árbol de Fractura (corto, 6 nodos):**
+- Nodos 0, 1, 3, 4: +30 % / +60 % de daño de Fractura aumentado
+- Nodo 2 (fuerte): +90 % de daño de Fractura aumentado · +25 % de radio de Fractura aumentado
+- Nodo 5 (mayor): +50 % **Más** daño de Fractura
+
+El daño de Fractura aumentado de los nodos de línea es aditivo; el multiplicador "más" del nodo mayor es independiente y multiplicativo.`,
+  },
+
+  'frozen-armor': {
+    title: 'Armadura helada',
+    body: `Un **Estado** (buff) sobre el jugador, acumulado al aplicar **Escarcha** a los enemigos. Cada **100 escarchas** aplicadas otorga **1 carga de Armadura helada**, hasta **10 cargas**. Una carga decae cada **2 segundos**. El número de cargas actual se muestra en la barra de buffs (icono de copo de nieve).
+
+Por sí sola, la Armadura helada no hace **nada** — las cargas se acumulan y se muestran pero no otorgan beneficio alguno hasta que inviertas en el árbol de Armadura helada. Una vez tomado al menos un nodo de reducción de daño, cada carga reduce el daño entrante de todas las fuentes (limitado a un **80 %** de reducción total).
+
+**Árbol de Armadura helada (corto, 6 nodos):**
+- Nodos 0, 1, 3, 4: +1 % de reducción de daño por carga cada uno
+- Nodo 2 (fuerte): +2 % de reducción de daño por carga · +2 cargas máximas
+- Nodo 5 (mayor): gana una carga cada **75 escarchas** en lugar de 100
+
+La reducción de daño se aplica después de las resistencias en el pipeline de daño del jugador.`,
+  },
 }

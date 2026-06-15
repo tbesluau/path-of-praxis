@@ -548,3 +548,51 @@ Sources of ignore-mitigation chance:
 - **Critical Hit** mastery — Chance tree node 13: +10% chance for crits to ignore mitigation
 
 Chances from multiple sources are summed into a single roll per hit. An ignored-mitigation hit does not strip the enemy's resistance — it skips the reduction for that one hit only.
+
+---
+
+## Frost
+
+An **Affliction** applied by cold-tagged hits. Base apply chance is **5%** per cold hit, base duration **1 second**. While frosted, the enemy's movement speed and action speed are each reduced by **20%** (base), raised further by Frost mastery nodes.
+
+**Immune while active:** unlike other **Afflictions**, Frost does **not** refresh. Once an enemy is frosted, further cold hits cannot re-apply or extend it until the current Frost expires.
+
+**Cold Damage tree node 11 — frosted vulnerability:** frosted enemies take +20% increased damage from **non-cold** sources. **Shatter**, being cold damage, is excluded.
+
+**Frost tree (full, 12 line nodes):**
+- Frost apply chance: +5% each (nodes 0, 3, 6, 9) and +15% (node 8) — raises the chance any cold hit frosts the target
+- Frost slow: +3% each (nodes 1, 4, 7, 10), plus +5% (node 2) and +8% (node 5) — added to both the move and action slow
+- Frost duration: +10% (node 2), +20% (node 5) — extends how long Frost lasts
+- Node 11 (major): frosted enemies deal **15% less** damage
+
+The slow and the deal-less reduction apply multiplicatively alongside other speed and damage modifiers.
+
+---
+
+## Shatter
+
+A **Cold mastery — Shatter** mechanic. When a **frosted** enemy dies, it shatters: a burst of cold deals **Area** damage to nearby enemies. Base damage is **5% of the dying enemy's maximum life**, dealt within **2 units** (player-radius) of the corpse.
+
+Shatter damage is **cold** and is reduced by the target's elemental **Resistance** like any other cold hit. Shatter does **not** apply **Frost** and grants no **Affliction** procs — but it can kill, and a frosted enemy slain by Shatter shatters in turn, allowing chain reactions to ripple through a frosted pack.
+
+**Shatter tree (short, 6 nodes):**
+- Nodes 0, 1, 3, 4: +30% / +60% increased Shatter damage
+- Node 2 (strong): +90% increased Shatter damage · +25% increased Shatter radius
+- Node 5 (major): +50% **More** Shatter damage
+
+Increased Shatter damage from the line nodes is additive; the major node's "more" multiplier is separate and multiplicative.
+
+---
+
+## Frozen Armor
+
+A **Status** (buff) on the player, built up by applying **Frost** to enemies. Every **100 frosts** applied grants **1 Frozen Armor stack**, up to **10 stacks**. One stack decays every **2 seconds**. The current stack count is shown in the buff bar (snowflake icon).
+
+By itself Frozen Armor does **nothing** — stacks accumulate and display but grant no benefit until you invest in the Frozen Armor tree. Once at least one damage-reduction node is taken, each stack reduces incoming damage from all sources (capped at **80%** total reduction).
+
+**Frozen Armor tree (short, 6 nodes):**
+- Nodes 0, 1, 3, 4: +1% damage reduction per stack each
+- Node 2 (strong): +2% damage reduction per stack · +2 maximum stacks
+- Node 5 (major): gain a stack every **75 frosts** instead of 100
+
+The damage reduction is applied after resistances in the player damage pipeline.
