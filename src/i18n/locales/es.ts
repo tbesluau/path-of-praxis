@@ -298,6 +298,7 @@ export const es: TranslationSchema = {
     physical: 'Físico',
     fire: 'Fuego',
     lightning: 'Rayo',
+    cold: 'Frío',
     area: 'Área',
     projectile: 'Proyectil',
     strike: 'Golpe',
@@ -312,6 +313,7 @@ export const es: TranslationSchema = {
     physical_0: 'Daño físico', physical_1: 'Sangrado', physical_2: 'Ruptura de resistencia', physical_3: 'Sed de sangre',
     fire_0: 'Daño de fuego', fire_1: 'Quema', fire_2: 'Terreno en llamas', fire_3: 'Inmolación',
     lightning_0: 'Daño de rayo', lightning_1: 'Electrocución', lightning_2: 'Salto', lightning_3: 'Electrizante',
+    cold_0: 'Daño de frío', cold_1: 'Escarcha', cold_2: 'Fractura', cold_3: 'Armadura helada',
     area_0: 'Daño de área', area_1: 'Tamaño de área', area_2: 'Temblor', area_3: 'Retroceso',
     projectile_0: 'Daño de proyectil', projectile_1: 'Proyectiles múltiples', projectile_2: 'Alcance de proyectil', projectile_3: 'Retroceso',
     strike_0: 'Daño de golpe', strike_1: 'Frenesí', strike_2: 'Alcance de golpe', strike_3: 'Objetivo adicional',
@@ -322,7 +324,7 @@ export const es: TranslationSchema = {
   },
   masteryDump: {
     action: 'daño de acción', criticalHit: 'daño de golpe crítico', physical: 'daño físico',
-    fire: 'daño de fuego', lightning: 'daño de rayo', area: 'radio de acción de área',
+    fire: 'daño de fuego', lightning: 'daño de rayo', cold: 'daño de frío', area: 'radio de acción de área',
     projectile: 'alcance de proyectil', strike: 'velocidad de acción de golpe', life: 'vida máxima',
     mana: 'maná máximo', enemy: 'enemigos invocados', movement: 'velocidad de movimiento',
   },
@@ -349,7 +351,7 @@ export const es: TranslationSchema = {
   actionLabel: {
     sword: 'Golpe de espada', bow: 'Flecha de francotirador', fireball: 'Bola de fuego', zap: 'Descarga',
     'fire-nova': 'Nova de fuego', grenade: 'Granada', 'hammer-slam': 'Golpe de martillo',
-    'lightning-nova': 'Nova de rayo', bolt: 'Rayo',
+    'lightning-nova': 'Nova de rayo', bolt: 'Rayo', 'cold-nova': 'Nova de frío',
   },
   actionTag: {
     physical: 'físico', fire: 'fuego', lightning: 'rayo', cold: 'frío', rot: 'putrefacción',

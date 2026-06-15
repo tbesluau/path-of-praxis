@@ -18,8 +18,7 @@ export const SFX: Record<SfxId, SfxDef> = {
   'action.physical':  { file: 'physical.ogg',   maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
   'action.fire':      { file: 'fire.ogg',        maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
   'action.lightning': { file: 'electric.ogg',    maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
-  // No cold actions exist yet — don't preload until one ships
-  'action.cold':      { file: 'cold.ogg',        maxVoices: 7, throttleMs: 55, gain: 0.5, preload: false },
+  'action.cold':      { file: 'cold.ogg',        maxVoices: 7, throttleMs: 55, gain: 0.5, preload: true },
   'enemy.death':      { file: 'enemy_death.ogg', maxVoices: 10, throttleMs: 30, gain: 0.6, preload: true },
   'player.dash':      { file: 'dash.ogg',        maxVoices: 3, throttleMs: 80, gain: 0.5, preload: true },
   'ui.toggle':        { file: 'toggle.ogg',      maxVoices: 3, throttleMs: 30, gain: 0.7, preload: true },
