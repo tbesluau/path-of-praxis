@@ -319,14 +319,16 @@ export interface NodeEffect {
   coldFrostedDealLess?: number       // additive %; frosted enemies deal less damage
 
   // Cold mastery effects (Shatter tree)
-  coldShatterDamageIncrease?: number // additive %; shatter explosion damage boost
-  coldShatterMoreDamage?: number     // 'more' %; shatter explosion damage multiplier
-  coldShatterRangeIncrease?: number  // additive %; shatter explosion radius boost
+  coldShatterChance?: number         // additive %; chance for a frosted enemy to shatter on death
+  coldShatterDamagePctLife?: number  // additive %; adds % of shattered enemy max life to shatter damage
+  coldShatterRangeIncrease?: number  // additive %; shatter explosion radius (area of effect)
 
   // Cold mastery effects (Frozen Armor tree)
-  frozenArmorDmgReductionPerStack?: number // % damage reduction per Frozen Armor stack
+  frozenArmorDmgReductionPerStack?: number // % reduced damage taken from hits per Frozen Armor stack
   frozenArmorMaxStacksBonus?: number       // flat additional maximum Frozen Armor stacks
   frozenArmorFrostsReduction?: number      // flat reduction to frostsPerStack threshold
+  frozenArmorDoubleStackChance?: number    // additive %; chance to gain 2 stacks instead of 1
+  frozenArmorSlowerDepletion?: number      // additive %; slows the stack-decay interval
 
   // Critical Hit mastery effects
   critChanceBaseAdd?: number              // additive percentage points; added to the action's base crit chance
@@ -464,12 +466,14 @@ export interface ColdBonuses {
   frostDurationIncrease: number          // total additive %; extends frost duration
   frostDurationMult: number              // total multiplicative duration factor (1.0 = no change)
   frostedDealLess: number                // total additive %; frosted enemies deal less damage
-  shatterDamageIncrease: number          // total additive %; shatter explosion damage
-  shatterMoreDamage: number              // total 'more' %; shatter explosion damage
-  shatterRangeIncrease: number           // total additive %; shatter explosion radius
-  frozenArmorDmgReductionPerStack: number // % damage reduction per Frozen Armor stack
+  shatterChance: number                  // total additive %; chance for a frosted enemy to shatter on death
+  shatterDamagePctLife: number           // total additive %; % of shattered enemy max life added to shatter damage
+  shatterRangeIncrease: number           // total additive %; shatter explosion radius (area of effect)
+  frozenArmorDmgReductionPerStack: number // % reduced damage taken from hits per Frozen Armor stack
   frozenArmorMaxStacksBonus: number       // flat additional maximum Frozen Armor stacks
   frozenArmorFrostsReduction: number      // flat reduction to frostsPerStack threshold
+  frozenArmorDoubleStackChance: number    // total additive %; chance to gain 2 stacks instead of 1
+  frozenArmorSlowerDepletion: number      // total additive %; slows the stack-decay interval
 }
 
 export interface StrikeBonuses {
@@ -1490,21 +1494,21 @@ const COLD_EFFECTS: Partial<Record<number, TreeEffects>> = {
     15: { coldFrostSlowIncrease: 5 },
   },
   2: {  // Shatter (short tree — line nodes 0-5, key nodes 12-13)
-    0: { coldShatterDamageIncrease: 30 },
-    1: { coldShatterDamageIncrease: 60 },
-    2: { coldShatterDamageIncrease: 90, coldShatterRangeIncrease: 25 },
-    3: { coldShatterDamageIncrease: 30 },
-    4: { coldShatterDamageIncrease: 60 },
-    5: { coldShatterMoreDamage: 50 },
+    0: { coldShatterChance: 5 },
+    1: { coldShatterDamagePctLife: 2 },
+    2: { coldShatterChance: 8, coldShatterRangeIncrease: 20 },
+    3: { coldShatterChance: 5 },
+    4: { coldShatterDamagePctLife: 2 },
+    5: { coldShatterChance: 10, coldShatterDamagePctLife: 3 },
     // 12-13: key nodes — not yet defined
   },
   3: {  // Frozen Armor (short tree — line nodes 0-5, key nodes 12-13)
-    0: { frozenArmorDmgReductionPerStack: 1 },
+    0: { frozenArmorFrostsReduction: 20 },
     1: { frozenArmorDmgReductionPerStack: 1 },
-    2: { frozenArmorDmgReductionPerStack: 2, frozenArmorMaxStacksBonus: 2 },
-    3: { frozenArmorDmgReductionPerStack: 1 },
+    2: { frozenArmorDoubleStackChance: 30, frozenArmorSlowerDepletion: 20 },
+    3: { frozenArmorFrostsReduction: 20 },
     4: { frozenArmorDmgReductionPerStack: 1 },
-    5: { frozenArmorFrostsReduction: 25 },
+    5: { frozenArmorMaxStacksBonus: 5 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -1525,12 +1529,14 @@ export function computeColdBonuses(nodes: number[][], dumpedPoints = 0): ColdBon
     frostDurationIncrease: 0,
     frostDurationMult: 1,
     frostedDealLess: 0,
-    shatterDamageIncrease: 0,
-    shatterMoreDamage: 0,
+    shatterChance: 0,
+    shatterDamagePctLife: 0,
     shatterRangeIncrease: 0,
     frozenArmorDmgReductionPerStack: 0,
     frozenArmorMaxStacksBonus: 0,
     frozenArmorFrostsReduction: 0,
+    frozenArmorDoubleStackChance: 0,
+    frozenArmorSlowerDepletion: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -1545,12 +1551,14 @@ export function computeColdBonuses(nodes: number[][], dumpedPoints = 0): ColdBon
       b.frostDurationIncrease      += eff.coldFrostDurationIncrease ?? 0
       if (eff.coldFrostDurationMult !== undefined) b.frostDurationMult *= eff.coldFrostDurationMult
       b.frostedDealLess            += eff.coldFrostedDealLess ?? 0
-      b.shatterDamageIncrease      += eff.coldShatterDamageIncrease ?? 0
-      b.shatterMoreDamage          += eff.coldShatterMoreDamage ?? 0
+      b.shatterChance              += eff.coldShatterChance ?? 0
+      b.shatterDamagePctLife       += eff.coldShatterDamagePctLife ?? 0
       b.shatterRangeIncrease       += eff.coldShatterRangeIncrease ?? 0
       b.frozenArmorDmgReductionPerStack += eff.frozenArmorDmgReductionPerStack ?? 0
       b.frozenArmorMaxStacksBonus  += eff.frozenArmorMaxStacksBonus ?? 0
       b.frozenArmorFrostsReduction += eff.frozenArmorFrostsReduction ?? 0
+      b.frozenArmorDoubleStackChance += eff.frozenArmorDoubleStackChance ?? 0
+      b.frozenArmorSlowerDepletion += eff.frozenArmorSlowerDepletion ?? 0
     }
   }
   return b
@@ -2332,20 +2340,20 @@ const COLD_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     15: '+5% increased frost slow',
   },
   2: {  // Shatter
-    0: '+30% increased shatter damage',
-    1: '+60% increased shatter damage',
-    2: '+90% increased shatter damage · +25% increased shatter radius',
-    3: '+30% increased shatter damage',
-    4: '+60% increased shatter damage',
-    5: '50% more shatter damage',
+    0: 'Enemies killed while frosted have +5% chance to shatter',
+    1: 'Shatter damage increased by 2% of shattered enemy maximum life',
+    2: 'Enemies killed while frosted have +8% chance to shatter · +20% increased shatter area of effect',
+    3: 'Enemies killed while frosted have +5% chance to shatter',
+    4: 'Shatter damage increased by 2% of shattered enemy maximum life',
+    5: 'Enemies killed while frosted have +10% chance to shatter · Shatter damage increased by 3% of shattered enemy maximum life',
   },
   3: {  // Frozen Armor
-    0: 'Frozen Armor grants 1% damage reduction per stack',
-    1: '+1% damage reduction per Frozen Armor stack',
-    2: '+2% damage reduction per Frozen Armor stack · +2 maximum Frozen Armor stacks',
-    3: '+1% damage reduction per Frozen Armor stack',
-    4: '+1% damage reduction per Frozen Armor stack',
-    5: 'Gain a Frozen Armor stack every 75 frosts instead of 100',
+    0: 'Frozen Armor requires 20 fewer frosts to gain a stack',
+    1: '1% reduced damage taken from hits per Frozen Armor stack',
+    2: '30% chance to gain 2 Frozen Armor stacks instead of 1 · 20% slower Frozen Armor stack depletion',
+    3: 'Frozen Armor requires 20 fewer frosts to gain a stack',
+    4: '1% reduced damage taken from hits per Frozen Armor stack',
+    5: 'Frozen Armor can have 5 more maximum stacks',
   },
 }
 

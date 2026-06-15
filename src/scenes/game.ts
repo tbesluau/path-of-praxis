@@ -383,11 +383,13 @@ export function createGameScene(
 
   function tickFrozenArmor(deltaMs: number): void {
     if (frozenArmorStacks === 0) { frozenArmorDecayTimer = 0; return }
+    // Stacks deplete one at a time; the Frozen Armor tree can slow the interval.
+    const decayMs = balance.frozenArmor.stackDecayMs * (1 + getColdBonuses().frozenArmorSlowerDepletion / 100)
     frozenArmorDecayTimer += deltaMs
     let changed = false
-    while (frozenArmorDecayTimer >= balance.frozenArmor.stackDecayMs && frozenArmorStacks > 0) {
+    while (frozenArmorDecayTimer >= decayMs && frozenArmorStacks > 0) {
       frozenArmorStacks--
-      frozenArmorDecayTimer -= balance.frozenArmor.stackDecayMs
+      frozenArmorDecayTimer -= decayMs
       changed = true
     }
     if (frozenArmorStacks === 0) frozenArmorDecayTimer = 0
@@ -3176,9 +3178,10 @@ export function createGameScene(
   }
 
   function triggerShatter(srcX: number, srcY: number, srcMaxLife: number, coldBonuses: ColdBonuses): void {
-    const baseDmg = srcMaxLife * balance.shatter.damageBaseFraction
-      * (1 + coldBonuses.shatterDamageIncrease / 100)
-      * (1 + coldBonuses.shatterMoreDamage / 100)
+    // Shatter damage is purely a fraction of the shattered enemy's max life — base
+    // 5% plus the Shatter tree's "% of life" nodes. It is not an action and gets no
+    // cold-damage or area-damage bonuses (only its own mastery).
+    const baseDmg = srcMaxLife * (balance.shatter.damageBaseFraction + coldBonuses.shatterDamagePctLife / 100)
     const rangePx = balance.shatter.rangeUnits * (1 + coldBonuses.shatterRangeIncrease / 100) * balance.player.radius
     // White star-shaped shatter burst: a central flash and an expanding 5-pointed
     // star that grows to the edge of the blast radius.
@@ -3316,10 +3319,14 @@ export function createGameScene(
         pendingProliferateSpawns++
       }
     }
-    // Shatter: frosted enemy death triggers cold AoE explosion (no frost on shatter hits)
+    // Shatter: a frosted enemy that dies has a chance (from the Shatter tree) to
+    // burst into a cold AoE. Base chance is 0 — it requires Shatter mastery nodes.
     if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
       frostTimers.delete(entity.id)  // pre-clear before shatter to prevent re-triggering on this entity
-      triggerShatter(entity.x, entity.y, entity.maxLife, getColdBonuses())
+      const cbShatter = getColdBonuses()
+      if (Math.random() * 100 < cbShatter.shatterChance) {
+        triggerShatter(entity.x, entity.y, entity.maxLife, cbShatter)
+      }
     }
     spawnDeathFragments(entity)
     removeEntity(entity)
@@ -5707,7 +5714,9 @@ export function createGameScene(
               const threshold = Math.max(1, balance.frozenArmor.frostsPerStack - cbFrostApply.frozenArmorFrostsReduction)
               const maxStacks = balance.frozenArmor.maxStacks + cbFrostApply.frozenArmorMaxStacksBonus
               if (totalFrostRolls % threshold === 0 && frozenArmorStacks < maxStacks) {
-                frozenArmorStacks++
+                // Double-stack chance: gain 2 stacks instead of 1 (clamped to the max).
+                const gain = (Math.random() * 100 < cbFrostApply.frozenArmorDoubleStackChance) ? 2 : 1
+                frozenArmorStacks = Math.min(maxStacks, frozenArmorStacks + gain)
                 renderBuffBar()
               }
               // Apply the frost itself only when not already frosted (no refresh).

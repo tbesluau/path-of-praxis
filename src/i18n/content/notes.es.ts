@@ -541,28 +541,34 @@ La ralentización aumentada es aditiva; el efecto de ralentización "más" (nodo
 
   shatter: {
     title: 'Fractura',
-    body: `Una mecánica de la **maestría de Frío — Fractura**. Cuando un enemigo **escarchado** muere, se fractura: una explosión de frío inflige daño de **Área** a los enemigos cercanos. El daño base es del **5 % de la vida máxima del enemigo que muere**, infligido dentro de **2 unidades** (radio-jugador) del cadáver.
+    body: `Una mecánica de la **maestría de Frío — Fractura**. Los enemigos abatidos mientras están **escarchados** tienen una **probabilidad de fracturarse**: una explosión de frío centrada en el enemigo fracturado, con un alcance de **2 unidades** (radio-jugador). Por defecto inflige el **5 % de la vida máxima del enemigo fracturado** como daño de frío en esa área.
 
-El daño de Fractura es de tipo **frío** y se reduce por la **Resistencia** elemental del objetivo como cualquier otro golpe de frío. La Fractura **no** aplica **Escarcha** y no otorga ningún proc de **Aflicción** — pero puede matar, y un enemigo escarchado abatido por una Fractura se fractura a su vez, permitiendo reacciones en cadena a través de un grupo escarchado.
+La Fractura **no es una acción** — **no** se beneficia del daño de frío ni del daño de **Área**. Su único factor de escala es la vida máxima del enemigo fracturado y el propio árbol de Fractura. El daño es de tipo frío y se reduce por la **Resistencia** elemental del objetivo. La Fractura **no** aplica **Escarcha** y no otorga ningún proc de **Aflicción** — pero puede matar, y un enemigo escarchado abatido por una Fractura puede a su vez intentar fracturarse, permitiendo reacciones en cadena a través de un grupo escarchado.
+
+**La probabilidad de fractura es del 0 % por defecto** — la otorga enteramente el árbol de Fractura.
 
 **Árbol de Fractura (corto, 6 nodos):**
-- Nodos 0, 1, 3, 4: +30 % / +60 % de daño de Fractura aumentado
-- Nodo 2 (fuerte): +90 % de daño de Fractura aumentado · +25 % de radio de Fractura aumentado
-- Nodo 5 (mayor): +50 % **Más** daño de Fractura
+- Nodo 0: los enemigos abatidos escarchados tienen +5 % de probabilidad de fracturarse
+- Nodo 1: daño de Fractura aumentado en un 2 % de la vida máxima del enemigo fracturado
+- Nodo 2 (fuerte): +8 % de probabilidad de fracturarse · +20 % de área de efecto de Fractura aumentada
+- Nodo 3: los enemigos abatidos escarchados tienen +5 % de probabilidad de fracturarse
+- Nodo 4: daño de Fractura aumentado en un 2 % de la vida máxima del enemigo fracturado
+- Nodo 5 (mayor): +10 % de probabilidad de fracturarse · daño de Fractura aumentado en un 3 % de la vida máxima del enemigo fracturado
 
-El daño de Fractura aumentado de los nodos de línea es aditivo; el multiplicador "más" del nodo mayor es independiente y multiplicativo.`,
+Con el árbol completo: +28 % de probabilidad de fracturarse, y daño = **12 % de la vida máxima** (5 % base + 2 % + 2 % + 3 %).`,
   },
 
   'frozen-armor': {
     title: 'Armadura helada',
-    body: `Un **Estado** (buff) sobre el jugador, acumulado al aplicar **Escarcha** a los enemigos. Cada **100 escarchas** aplicadas otorga **1 carga de Armadura helada**, hasta **10 cargas**. Una carga decae cada **2 segundos**. El número de cargas actual se muestra en la barra de buffs (icono de copo de nieve).
+    body: `Un **Estado** (buff) sobre el jugador, acumulado al escarchar enemigos — siempre disponible cuando aplicas **Escarcha**. Cada **100 escarchas** otorga **1 carga de Armadura helada**, hasta un máximo de **10 cargas**. Las cargas se agotan de una en una cada **2 segundos**. El número de cargas actual se muestra en la barra de buffs (icono de copo de nieve).
 
-Por sí sola, la Armadura helada no hace **nada** — las cargas se acumulan y se muestran pero no otorgan beneficio alguno hasta que inviertas en el árbol de Armadura helada. Una vez tomado al menos un nodo de reducción de daño, cada carga reduce el daño entrante de todas las fuentes (limitado a un **80 %** de reducción total).
+Por sí sola, la Armadura helada no hace **nada** — las cargas se acumulan y se muestran pero no otorgan beneficio alguno hasta que inviertas en el árbol de Armadura helada. Una vez tomado al menos un nodo de reducción de daño, cada carga reduce el daño recibido por **golpes** (limitado a un **80 %** de reducción total).
 
 **Árbol de Armadura helada (corto, 6 nodos):**
-- Nodos 0, 1, 3, 4: +1 % de reducción de daño por carga cada uno
-- Nodo 2 (fuerte): +2 % de reducción de daño por carga · +2 cargas máximas
-- Nodo 5 (mayor): gana una carga cada **75 escarchas** en lugar de 100
+- Nodos 0 y 3: la Armadura helada requiere 20 escarchas menos por carga cada uno (−40 en total → una carga cada 60 escarchas)
+- Nodos 1 y 4: 1 % de daño recibido reducido por carga de Armadura helada cada uno (2 % por carga en total)
+- Nodo 2 (fuerte): 30 % de probabilidad de ganar 2 cargas en lugar de 1 · 20 % de agotamiento de cargas más lento
+- Nodo 5 (mayor): la Armadura helada puede tener 5 cargas máximas más
 
 La reducción de daño se aplica después de las resistencias en el pipeline de daño del jugador.`,
   },
