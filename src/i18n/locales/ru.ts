@@ -298,6 +298,7 @@ export const ru: TranslationSchema = {
     physical: 'Физический',
     fire: 'Огонь',
     lightning: 'Молния',
+    cold: 'Холод',
     area: 'Площадь',
     projectile: 'Снаряд',
     strike: 'Удар',
@@ -312,6 +313,7 @@ export const ru: TranslationSchema = {
     physical_0: 'Физический урон', physical_1: 'Кровотечение', physical_2: 'Пробитие сопротивления', physical_3: 'Жажда крови',
     fire_0: 'Урон огнём', fire_1: 'Горение', fire_2: 'Горящая земля', fire_3: 'Самосожжение',
     lightning_0: 'Урон молнией', lightning_1: 'Электрошок', lightning_2: 'Прыжок', lightning_3: 'Электризация',
+    cold_0: 'Урон холодом', cold_1: 'Мороз', cold_2: 'Разрушение', cold_3: 'Ледяной доспех',
     area_0: 'Урон по площади', area_1: 'Размер области', area_2: 'Дрожание', area_3: 'Отброс',
     projectile_0: 'Урон снарядом', projectile_1: 'Множество снарядов', projectile_2: 'Дальность снаряда', projectile_3: 'Отброс',
     strike_0: 'Урон от удара', strike_1: 'Ярость', strike_2: 'Дальность удара', strike_3: 'Доп. цель',
@@ -322,7 +324,7 @@ export const ru: TranslationSchema = {
   },
   masteryDump: {
     action: 'урона действия', criticalHit: 'урона крита', physical: 'физического урона',
-    fire: 'урона огнём', lightning: 'урона молнией', area: 'радиуса действия',
+    fire: 'урона огнём', lightning: 'урона молнией', cold: 'урона холодом', area: 'радиуса действия',
     projectile: 'дальности снаряда', strike: 'скорости удара', life: 'максимума жизни',
     mana: 'максимума маны', enemy: 'призываемых врагов', movement: 'скорости движения',
   },
@@ -349,7 +351,7 @@ export const ru: TranslationSchema = {
   actionLabel: {
     sword: 'Удар мечом', bow: 'Снайперская стрела', fireball: 'Огненный шар', zap: 'Молния',
     'fire-nova': 'Огненная волна', grenade: 'Граната', 'hammer-slam': 'Удар молотом',
-    'lightning-nova': 'Молниевая волна', bolt: 'Болт',
+    'lightning-nova': 'Молниевая волна', bolt: 'Болт', 'cold-nova': 'Ледяная волна',
   },
   actionTag: {
     physical: 'физический', fire: 'огонь', lightning: 'молния', cold: 'холод', rot: 'гниль',

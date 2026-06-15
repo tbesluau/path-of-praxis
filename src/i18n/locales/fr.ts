@@ -298,6 +298,7 @@ export const fr: TranslationSchema = {
     physical: 'Physique',
     fire: 'Feu',
     lightning: 'Foudre',
+    cold: 'Froid',
     area: 'Zone',
     projectile: 'Projectile',
     strike: 'Frappe',
@@ -312,6 +313,7 @@ export const fr: TranslationSchema = {
     physical_0: 'Dégâts physiques', physical_1: 'Saignement', physical_2: 'Bris de résistance', physical_3: 'Soif de sang',
     fire_0: 'Dégâts de feu', fire_1: 'Brûlure', fire_2: 'Terrain en feu', fire_3: 'Immolation',
     lightning_0: 'Dégâts de foudre', lightning_1: 'Électrocution', lightning_2: 'Saut', lightning_3: 'Électrisant',
+    cold_0: 'Dégâts de froid', cold_1: 'Givre', cold_2: 'Fracas', cold_3: 'Armure de glace',
     area_0: 'Dégâts de zone', area_1: 'Taille de zone', area_2: 'Tremblement', area_3: 'Recul',
     projectile_0: 'Dégâts de projectile', projectile_1: 'Projectiles multiples', projectile_2: 'Portée de projectile', projectile_3: 'Recul',
     strike_0: 'Dégâts de frappe', strike_1: 'Frénésie', strike_2: 'Portée de frappe', strike_3: 'Cible supplémentaire',
@@ -322,7 +324,7 @@ export const fr: TranslationSchema = {
   },
   masteryDump: {
     action: 'dégâts d\'action', criticalHit: 'dégâts de coup critique', physical: 'dégâts physiques',
-    fire: 'dégâts de feu', lightning: 'dégâts de foudre', area: 'rayon d\'action de zone',
+    fire: 'dégâts de feu', lightning: 'dégâts de foudre', cold: 'dégâts de froid', area: 'rayon d\'action de zone',
     projectile: 'portée de projectile', strike: 'vitesse d\'action de frappe', life: 'vie maximale',
     mana: 'mana maximum', enemy: 'ennemis invoqués', movement: 'vitesse de mouvement',
   },
@@ -349,7 +351,7 @@ export const fr: TranslationSchema = {
   actionLabel: {
     sword: 'Coup d\'épée', bow: 'Flèche de sniper', fireball: 'Boule de feu', zap: 'Choc électrique',
     'fire-nova': 'Nova de feu', grenade: 'Grenade', 'hammer-slam': 'Coup de marteau',
-    'lightning-nova': 'Nova de foudre', bolt: 'Éclair',
+    'lightning-nova': 'Nova de foudre', bolt: 'Éclair', 'cold-nova': 'Nova de froid',
   },
   actionTag: {
     physical: 'physique', fire: 'feu', lightning: 'foudre', cold: 'froid', rot: 'pourriture',

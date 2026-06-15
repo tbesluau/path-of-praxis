@@ -1,12 +1,12 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star, Snowflake } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
@@ -258,6 +258,10 @@ export function createGameScene(
     return b
   }
 
+  function getColdBonuses(): ColdBonuses {
+    return computeColdBonuses(masteryNodes('cold', 5), dumpedFor('cold'))
+  }
+
   function getAreaBonuses(): AreaBonuses {
     const b = computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
     b.moreSize += artifactMods.areaMore
@@ -322,6 +326,13 @@ export function createGameScene(
   const electrocuteStacks = new Map<string, number>()
   // Per-entity lightning Graphics attached to the entity's Container child list.
   const electrocuteGraphics = new Map<string, Graphics>()
+
+  // ── Frost affliction (cold-tagged hits) ──────────────────────────────────
+  // One entry per entity: remaining duration ms. Immune while active — no refresh on re-apply.
+  const frostTimers = new Map<string, number>()
+  let totalFrostedCount = 0   // cumulative per life; used for frozen armor threshold
+  let frozenArmorStacks = 0
+  let frozenArmorDecayTimer = 0
   // Per-entity burn/bleed Graphics attached to the entity's Container child list.
   const burnEffectGraphics  = new Map<string, Graphics>()
   const bleedEffectGraphics = new Map<string, Graphics>()
@@ -349,7 +360,7 @@ export function createGameScene(
   }
 
   function hasAnyAffliction(entity: Entity): boolean {
-    return burnStacks.has(entity.id) || bleedStacks.has(entity.id) || electrocuteStacks.has(entity.id)
+    return burnStacks.has(entity.id) || bleedStacks.has(entity.id) || electrocuteStacks.has(entity.id) || frostTimers.has(entity.id)
   }
 
   function tickElectrocutions(deltaMs: number): void {
@@ -358,6 +369,27 @@ export function createGameScene(
       if (updated <= 0) electrocuteStacks.delete(id)
       else electrocuteStacks.set(id, updated)
     }
+  }
+
+  function tickFrosts(deltaMs: number): void {
+    for (const [id, remaining] of [...frostTimers]) {
+      const updated = remaining - deltaMs
+      if (updated <= 0) frostTimers.delete(id)
+      else frostTimers.set(id, updated)
+    }
+  }
+
+  function tickFrozenArmor(deltaMs: number): void {
+    if (frozenArmorStacks === 0) { frozenArmorDecayTimer = 0; return }
+    frozenArmorDecayTimer += deltaMs
+    let changed = false
+    while (frozenArmorDecayTimer >= balance.frozenArmor.stackDecayMs && frozenArmorStacks > 0) {
+      frozenArmorStacks--
+      frozenArmorDecayTimer -= balance.frozenArmor.stackDecayMs
+      changed = true
+    }
+    if (frozenArmorStacks === 0) frozenArmorDecayTimer = 0
+    if (changed) renderBuffBar()
   }
 
   function tickElectrocuteEffects(): void {
@@ -923,6 +955,11 @@ export function createGameScene(
       const fb = getFireBonuses()
       entity.actionDamage *= (1 + fb.damageIncrease / 100) * (1 + fb.moreDamage / 100)
       entity.actionSpeed  *= (1 + fb.actionSpeedIncrease / 100)
+    }
+    if (entity.role === 'player' && def.tags.includes('cold')) {
+      const cb = getColdBonuses()
+      entity.actionDamage *= (1 + cb.damageIncrease / 100) * (1 + cb.moreDamage / 100)
+      entity.actionSpeed  *= (1 + cb.actionSpeedIncrease / 100)
     }
     if (entity.role === 'player' && def.tags.includes('physical')) {
       const pb = getPhysicalBonuses()
@@ -1940,6 +1977,7 @@ export function createGameScene(
     trance:        'trance',
     immolation:    'immolation',
     feedingFrenzy: 'feeding-frenzy',
+    frozenArmor:   'frozen-armor',
   }
 
   // Hovering a status icon shows its name; clicking it opens the matching note.
@@ -2014,7 +2052,7 @@ export function createGameScene(
       ...activeEffects.filter(e => e.kind === 'mixed'),
       ...activeEffects.filter(e => e.kind === 'debuff'),
     ]
-    buffBarEl.innerHTML = ordered.map(e => {
+    let html = ordered.map(e => {
       let badge = ''
       if (e.id === 'frenzy' && frenzyCharges > 0) {
         badge = `<span class="buff-charge">${frenzyCharges}</span>`
@@ -2031,7 +2069,12 @@ export function createGameScene(
       ].filter(Boolean).join(' ')
       return `<div ${attrs}><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
     }).join('')
-    if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap } })
+    if (frozenArmorStacks > 0) {
+      const badge = `<span class="buff-charge">${frozenArmorStacks}</span>`
+      html += `<div class="buff-icon buff-icon--buff" data-effect="frozenArmor" data-note="frozen-armor"><i data-lucide="snowflake" aria-hidden="true"></i>${badge}</div>`
+    }
+    buffBarEl.innerHTML = html
+    if (ordered.length > 0 || frozenArmorStacks > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap, Snowflake } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -2251,6 +2294,7 @@ export function createGameScene(
       const sbData  = tags.includes('strike')     ? { b: getStrikeBonuses(),     nodes: masteryNodes('strike', 5),     dumped: dumpedFor('strike') }     : null
       const libData = tags.includes('lightning')  ? { b: getLightningBonuses(),  nodes: masteryNodes('lightning', 5),  dumped: dumpedFor('lightning') }  : null
       const fbData  = tags.includes('fire')       ? { b: getFireBonuses(),       nodes: masteryNodes('fire', 5),       dumped: dumpedFor('fire') }       : null
+      const cbData  = tags.includes('cold')       ? { b: getColdBonuses(),       nodes: masteryNodes('cold', 5),       dumped: dumpedFor('cold') }       : null
       const phbData = tags.includes('physical')   ? { b: getPhysicalBonuses(),   nodes: masteryNodes('physical', 5),   dumped: dumpedFor('physical') }   : null
       const arbData = tags.includes('area')       ? { b: getAreaBonuses(),       nodes: masteryNodes('area', 5),       dumped: dumpedFor('area') }       : null
 
@@ -2326,6 +2370,14 @@ export function createGameScene(
           moreNodeLabel(fireNodes, fireDumped, MASTERY_DUMP.fire.rate,
             (t, n) => getFireNodeEffect(t, n).fireMoreDamage ?? 0, 'fire mastery'), 'fire mastery'))
         if (fb.actionSpeedIncrease !== 0) spdFactors.push(incF(fb.actionSpeedIncrease, 'fire mastery total increased', 'fire mastery'))
+      }
+      if (cbData) {
+        const { b: cb2, nodes: coldNodes, dumped: coldDumped } = cbData
+        if (cb2.damageIncrease !== 0) dmgFactors.push(incF(cb2.damageIncrease, 'cold mastery total increased', 'cold mastery'))
+        if (cb2.moreDamage !== 0) dmgFactors.push(moreF(cb2.moreDamage,
+          moreNodeLabel(coldNodes, coldDumped, MASTERY_DUMP.cold.rate,
+            (t, n) => getColdNodeEffect(t, n).coldMoreDamage ?? 0, 'cold mastery'), 'cold mastery'))
+        if (cb2.actionSpeedIncrease !== 0) spdFactors.push(incF(cb2.actionSpeedIncrease, 'cold mastery total increased', 'cold mastery'))
       }
       if (phbData) {
         const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
@@ -3065,6 +3117,41 @@ export function createGameScene(
     }
   }
 
+  function triggerShatter(srcX: number, srcY: number, srcMaxLife: number, coldBonuses: ColdBonuses): void {
+    const baseDmg = srcMaxLife * balance.shatter.damageBaseFraction
+      * (1 + coldBonuses.shatterDamageIncrease / 100)
+      * (1 + coldBonuses.shatterMoreDamage / 100)
+    const rangePx = balance.shatter.rangeUnits * (1 + coldBonuses.shatterRangeIncrease / 100) * balance.player.radius
+    addVfx(400, (g, p) => {
+      g.clear()
+      g.position.set(srcX, srcY)
+      g.circle(0, 0, rangePx * p)
+      g.stroke({ color: 0x66ccff, alpha: (1 - p) * 0.8, width: 3 })
+    })
+    for (const enemy of [...entities]) {
+      if (enemy.role !== 'enemy' || enemy.currentLife <= 0) continue
+      const dx = enemy.x - srcX
+      const dy = enemy.y - srcY
+      if (Math.sqrt(dx * dx + dy * dy) > rangePx) continue
+      let dmg = baseDmg
+      const eleR = enemy.eleResist ?? 0
+      if (eleR > 0) dmg *= 1 - Math.min(100, eleR) / 100
+      if (dmg <= 0) continue
+      const prev = enemy.currentLife
+      enemy.currentLife = Math.max(0, enemy.currentLife - dmg)
+      const actual = prev - enemy.currentLife
+      if (actual > 0) {
+        const eLevel = enemyLevels.get(enemy.id) ?? 1
+        const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(enemy.id)
+        awardXp(playerActionId, actual * xpMult)
+        if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        awardAscentXp(actual)
+        spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, actual, 0x66ccff)
+        if (enemy.currentLife <= 0) killEntity(enemy)
+      }
+    }
+  }
+
   // Removes entity from all data structures without spawning animation.
   function removeEntity(entity: Entity): void {
     const body = entityBodies.get(entity.id)
@@ -3096,6 +3183,7 @@ export function createGameScene(
     bleedAccum.delete(entity.id)
     electrocuteStacks.delete(entity.id)
     electrocuteGraphics.delete(entity.id)  // container.destroy() already destroyed the child
+    frostTimers.delete(entity.id)
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     if (entity.id === playerStrongestTargetId) playerStrongestTargetId = null
     if (entity.id === playerWeakestTargetId) playerWeakestTargetId = null
@@ -3138,6 +3226,11 @@ export function createGameScene(
       if (eb.proliferateChance > 0 && Math.random() < eb.proliferateChance / 100) {
         pendingProliferateSpawns++
       }
+    }
+    // Shatter: frosted enemy death triggers cold AoE explosion (no frost on shatter hits)
+    if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
+      frostTimers.delete(entity.id)  // pre-clear before shatter to prevent re-triggering on this entity
+      triggerShatter(entity.x, entity.y, entity.maxLife, getColdBonuses())
     }
     spawnDeathFragments(entity)
     removeEntity(entity)
@@ -3243,6 +3336,10 @@ export function createGameScene(
     extraSlotMACooldowns[1] = 0
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
+    frostTimers.clear()
+    totalFrostedCount = 0
+    frozenArmorStacks = 0
+    frozenArmorDecayTimer = 0
 
     renderSingleFrame()
     persistState()
@@ -3578,7 +3675,7 @@ export function createGameScene(
       trackEvent('mastery_key_taken', { node: `${id}${treeIdx + 1}.${nodeLabel(nodeIdx)}` })
     }
     masteryProgress[id] = { ...existing, nodes, nodeHistory }
-    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'cold', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -3612,7 +3709,7 @@ export function createGameScene(
     const fromFree = Math.max(0, take - levelAvail)
     if (fromFree > 0) freeMasteryPointsUsed[id] = freeUsed + fromFree
     masteryDumpPoints[id] = dumped + take
-    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'cold', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') playerEntity.maxLife = computePlayerMaxLife()
@@ -3644,7 +3741,7 @@ export function createGameScene(
       // next ascent does. Active recording simply restarts empty.
       nodeHistory: existing.nodeHistory !== undefined ? [] : undefined,
     }
-    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'cold', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -5015,6 +5112,11 @@ export function createGameScene(
             const breakSlow = getPhysicalBonuses().resistBreakSlowAtZero
             if (breakSlow > 0) ms *= Math.max(0, 1 - breakSlow / 100)
           }
+          if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
+            const cbFrost = getColdBonuses()
+            const frostSlow = balance.frost.baseMoveSlowPct + cbFrost.frostSlowIncrease
+            ms *= Math.max(0, 1 - frostSlow / 100)
+          }
           // Knockback slow debuff
           const kbSlow = knockbackSlowState.get(entity.id)
           if (kbSlow) ms *= Math.max(0, 1 - kbSlow.amount / 100)
@@ -5208,6 +5310,11 @@ export function createGameScene(
             const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
+          // Frost — frosted enemies take more damage from non-cold sources (Cold Damage tree node 11)
+          if (target.role === 'enemy' && frostTimers.has(target.id) && !action.tags.includes('cold')) {
+            const cbVuln = getColdBonuses()
+            if (cbVuln.frostedVulnerable > 0) finalDamage *= 1 + cbVuln.frostedVulnerable / 100
+          }
           // Apply crit damage multiplier after resistance.
           // Chance key 14: noDamageBonus means crits trigger effects but deal no extra direct damage.
           // Damage key 14: damageToAfflictions excludes tree-0 bonuses from direct hits.
@@ -5220,6 +5327,19 @@ export function createGameScene(
           if (target.role === 'player' && attacker.role === 'enemy') {
             const kbDR = knockbackDamageReductionState.get(attacker.id)
             if (kbDR) finalDamage *= Math.max(0, 1 - kbDR.amount / 100)
+          }
+          // Frost — frosted enemies deal less damage (Frost mastery node 11)
+          if (target.role === 'player' && attacker.role === 'enemy' && frostTimers.has(attacker.id)) {
+            const cbFrostDealLess = getColdBonuses()
+            if (cbFrostDealLess.frostedDealLess > 0) finalDamage *= Math.max(0, 1 - cbFrostDealLess.frostedDealLess / 100)
+          }
+          // Frozen Armor: damage reduction for the player based on stacks
+          if (target.role === 'player' && frozenArmorStacks > 0) {
+            const cbArmor = getColdBonuses()
+            const reductionPerStack = cbArmor.frozenArmorDmgReductionPerStack
+            if (reductionPerStack > 0) {
+              finalDamage *= Math.max(0, 1 - Math.min(frozenArmorStacks * reductionPerStack, 80) / 100)
+            }
           }
           // Mana Shield: intercept a fraction of player-targeted damage to mana before life
           if (target.role === 'player') {
@@ -5404,6 +5524,27 @@ export function createGameScene(
           if (attacker.role === 'player' && action.tags.includes('lightning') && actualDamage > 0) {
             const lbElec = getLightningBonuses()
             if (lbElec.electrifyChance > 0 && Math.random() * 100 < lbElec.electrifyChance) applyElectrified()
+          }
+          // Frost: roll on cold-tagged player hits to enemy targets (immune while active — no refresh)
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('cold') && actualDamage > 0) {
+            if (!frostTimers.has(target.id)) {
+              const cbFrostApply = getColdBonuses()
+              const frostChance = balance.frost.baseFrostChancePct + cbFrostApply.frostApplyChance + extraAfflChance
+              if (guaranteedAfflictions || Math.random() * 100 < frostChance) {
+                const frostDuration = balance.frost.baseDurationMs
+                  * (1 + cbFrostApply.frostDurationIncrease / 100)
+                  * cbFrostApply.frostDurationMult
+                frostTimers.set(target.id, frostDuration)
+                totalFrostedCount++
+                const threshold = Math.max(1, balance.frozenArmor.frostsPerStack - cbFrostApply.frozenArmorFrostsReduction)
+                const maxStacks = balance.frozenArmor.maxStacks + cbFrostApply.frozenArmorMaxStacksBonus
+                if (totalFrostedCount % threshold === 0 && frozenArmorStacks < maxStacks) {
+                  frozenArmorStacks++
+                  renderBuffBar()
+                }
+                if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
+              }
+            }
           }
           // Bleeding: roll on physical-tagged player hits to enemy targets. The hit-suppression
           // key can zero actualDamage; gate on whether the hit would have landed pre-suppression.
@@ -5688,6 +5829,11 @@ export function createGameScene(
           if (entity.role === 'enemy' && (entity.physRotResist ?? 0) <= 0) {
             const breakSlow = getPhysicalBonuses().resistBreakSlowAtZero
             if (breakSlow > 0) effectiveAttackSpeed *= Math.max(0, 1 - breakSlow / 100)
+          }
+          if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
+            const cbAtkFrost = getColdBonuses()
+            const frostSlow = balance.frost.baseActionSlowPct + cbAtkFrost.frostSlowIncrease
+            effectiveAttackSpeed *= Math.max(0, 1 - frostSlow / 100)
           }
           if (entity.role === 'player' && frenzyCharges > 0) {
             const sb = getStrikeBonuses()
@@ -5991,6 +6137,7 @@ export function createGameScene(
             if (slotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); effectiveSlotSpeed *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
             if (slotDef.tags.includes('lightning')) { const lb = getLightningBonuses(); effectiveSlotSpeed *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100) }
             if (slotDef.tags.includes('fire')) effectiveSlotSpeed *= (1 + getFireBonuses().actionSpeedIncrease / 100)
+            if (slotDef.tags.includes('cold')) effectiveSlotSpeed *= (1 + getColdBonuses().actionSpeedIncrease / 100)
             if (slotDef.tags.includes('physical')) effectiveSlotSpeed *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
             if (slotDef.tags.includes('area')) effectiveSlotSpeed *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
             effectiveSlotSpeed *= (1 + slotRb.speedIncrease / 100) * slotRb.speedMore
@@ -6010,6 +6157,7 @@ export function createGameScene(
             if (slotDef.tags.includes('strike')) { const b = getStrikeBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('lightning')) { const b = getLightningBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('fire')) { const b = getFireBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
+            if (slotDef.tags.includes('cold')) { const b = getColdBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('physical')) { const b = getPhysicalBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('area')) { const b = getAreaBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
@@ -6139,6 +6287,7 @@ export function createGameScene(
             if (tSlotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); tSpeedMult *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
             if (tSlotDef.tags.includes('lightning')) { const lb = getLightningBonuses(); tSpeedMult *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100) }
             if (tSlotDef.tags.includes('fire')) tSpeedMult *= (1 + getFireBonuses().actionSpeedIncrease / 100)
+            if (tSlotDef.tags.includes('cold')) tSpeedMult *= (1 + getColdBonuses().actionSpeedIncrease / 100)
             if (tSlotDef.tags.includes('physical')) tSpeedMult *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
             if (tSlotDef.tags.includes('area')) tSpeedMult *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
             tSpeedMult *= (1 + tRb.speedIncrease / 100) * tRb.speedMore
@@ -6261,6 +6410,8 @@ export function createGameScene(
         tickBleeds(ticker.deltaMS, damagedIds)
         tickBurnGrounds(ticker.deltaMS, damagedIds)
         tickElectrocutions(ticker.deltaMS)
+        tickFrosts(ticker.deltaMS)
+        tickFrozenArmor(ticker.deltaMS)
         tickKnockbacks(ticker.deltaMS)
         tickElectrocuteEffects()
         tickBurnEffects()

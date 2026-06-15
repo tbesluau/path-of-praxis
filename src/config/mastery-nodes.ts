@@ -18,6 +18,7 @@ export const MASTERY_DUMP: Record<MasteryId, MasteryDumpInfo> = {
   physical:    { rate: 1,   label: 'physical damage' },
   fire:        { rate: 1,   label: 'fire damage' },
   lightning:   { rate: 1,   label: 'lightning damage' },
+  cold:        { rate: 1,   label: 'cold damage' },
   area:        { rate: 1,   label: 'area action radius' },
   projectile:  { rate: 1,   label: 'projectile range' },
   strike:      { rate: 0.5, label: 'strike action speed' },
@@ -303,6 +304,29 @@ export interface NodeEffect {
   // Action mastery — ignore enemy damage mitigation (tree 0 final major)
   actionIgnoreMitigationChance?: number   // additive %; chance for any action hit to ignore enemy resistance
 
+  // Cold mastery effects (Cold Damage tree)
+  coldDamageIncrease?: number        // additive %; for cold-tagged actions
+  coldMoreDamage?: number            // 'more' %; for cold-tagged actions
+  coldActionSpeedIncrease?: number   // additive %; for cold-tagged actions
+  coldFrostApplyChance?: number      // additive %; bonus frost apply chance
+  coldFrostedVulnerable?: number     // additive %; non-cold damage dealt to frosted enemies
+
+  // Cold mastery effects (Frost tree)
+  coldFrostSlowIncrease?: number     // additive %; bonus to both move+action slow amount
+  coldFrostDurationIncrease?: number // additive %; extends frost duration
+  coldFrostDurationMult?: number     // multiplicative duration; product of all such mult fields
+  coldFrostedDealLess?: number       // additive %; frosted enemies deal less damage
+
+  // Cold mastery effects (Shatter tree)
+  coldShatterDamageIncrease?: number // additive %; shatter explosion damage boost
+  coldShatterMoreDamage?: number     // 'more' %; shatter explosion damage multiplier
+  coldShatterRangeIncrease?: number  // additive %; shatter explosion radius boost
+
+  // Cold mastery effects (Frozen Armor tree)
+  frozenArmorDmgReductionPerStack?: number // % damage reduction per Frozen Armor stack
+  frozenArmorMaxStacksBonus?: number       // flat additional maximum Frozen Armor stacks
+  frozenArmorFrostsReduction?: number      // flat reduction to frostsPerStack threshold
+
   // Critical Hit mastery effects
   critChanceBaseAdd?: number              // additive percentage points; added to the action's base crit chance
   critChanceIncrease?: number             // additive %; stacks before the 'more' multiplier
@@ -426,6 +450,24 @@ export interface LightningBonuses {
   electrifyActionSpeed: number         // total additive %; global action speed bonus while electrified
   electrifyDurationIncrease: number    // total additive %; extends electrified duration
   electrifyDamageReduction: number     // total additive %; less damage taken from all sources while electrified
+}
+
+export interface ColdBonuses {
+  damageIncrease: number                 // total additive %; cold-tagged actions
+  moreDamage: number                     // total 'more' %; cold-tagged actions
+  actionSpeedIncrease: number            // total additive %; cold-tagged actions
+  frostApplyChance: number               // total additive %; bonus frost apply chance
+  frostedVulnerable: number              // total additive %; non-cold damage dealt to frosted enemies
+  frostSlowIncrease: number              // total additive %; bonus to both move+action slow
+  frostDurationIncrease: number          // total additive %; extends frost duration
+  frostDurationMult: number              // total multiplicative duration factor (1.0 = no change)
+  frostedDealLess: number                // total additive %; frosted enemies deal less damage
+  shatterDamageIncrease: number          // total additive %; shatter explosion damage
+  shatterMoreDamage: number              // total 'more' %; shatter explosion damage
+  shatterRangeIncrease: number           // total additive %; shatter explosion radius
+  frozenArmorDmgReductionPerStack: number // % damage reduction per Frozen Armor stack
+  frozenArmorMaxStacksBonus: number       // flat additional maximum Frozen Armor stacks
+  frozenArmorFrostsReduction: number      // flat reduction to frostsPerStack threshold
 }
 
 export interface StrikeBonuses {
@@ -1406,6 +1448,105 @@ export function computeLightningBonuses(nodes: number[][], dumpedPoints = 0): Li
   return b
 }
 
+// ── Cold mastery node effects ─────────────────────────────────────────────
+// Tree 0: Cold Damage (full)  Tree 1: Frost (full)  Tree 2: Shatter (short)  Tree 3: Frozen Armor (short)
+
+const COLD_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Cold Damage (full — mirrors fire damage tree 0)
+    0:  { coldDamageIncrease: 5 },
+    1:  { coldActionSpeedIncrease: 3 },
+    2:  { coldDamageIncrease: 5, coldFrostApplyChance: 5 },
+    3:  { coldDamageIncrease: 5 },
+    4:  { coldActionSpeedIncrease: 3 },
+    5:  { coldMoreDamage: 10 },
+    6:  { coldDamageIncrease: 5 },
+    7:  { coldActionSpeedIncrease: 3 },
+    8:  { coldDamageIncrease: 12 },
+    9:  { coldDamageIncrease: 5 },
+    10: { coldActionSpeedIncrease: 3 },
+    11: { coldFrostedVulnerable: 20 },
+    // 12-15: key nodes — not yet defined
+  },
+  1: {  // Frost (full — mirrors electrocution tree with slow instead of damage-taken)
+    0:  { coldFrostApplyChance: 5 },
+    1:  { coldFrostSlowIncrease: 3 },
+    2:  { coldFrostSlowIncrease: 5, coldFrostDurationIncrease: 10 },
+    3:  { coldFrostApplyChance: 5 },
+    4:  { coldFrostSlowIncrease: 3 },
+    5:  { coldFrostSlowIncrease: 8, coldFrostDurationIncrease: 20 },
+    6:  { coldFrostApplyChance: 5 },
+    7:  { coldFrostSlowIncrease: 3 },
+    8:  { coldFrostApplyChance: 15 },
+    9:  { coldFrostApplyChance: 5 },
+    10: { coldFrostSlowIncrease: 3 },
+    11: { coldFrostedDealLess: 15 },
+    // 12-15: key nodes — not yet defined
+  },
+  2: {  // Shatter (short tree — line nodes 0-5, key nodes 12-13)
+    0: { coldShatterDamageIncrease: 30 },
+    1: { coldShatterDamageIncrease: 60 },
+    2: { coldShatterDamageIncrease: 90, coldShatterRangeIncrease: 25 },
+    3: { coldShatterDamageIncrease: 30 },
+    4: { coldShatterDamageIncrease: 60 },
+    5: { coldShatterMoreDamage: 50 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Frozen Armor (short tree — line nodes 0-5, key nodes 12-13)
+    0: { frozenArmorDmgReductionPerStack: 1 },
+    1: { frozenArmorDmgReductionPerStack: 1 },
+    2: { frozenArmorDmgReductionPerStack: 2, frozenArmorMaxStacksBonus: 2 },
+    3: { frozenArmorDmgReductionPerStack: 1 },
+    4: { frozenArmorDmgReductionPerStack: 1 },
+    5: { frozenArmorFrostsReduction: 25 },
+    // 12-13: key nodes — not yet defined
+  },
+}
+
+export function getColdNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return COLD_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeColdBonuses(nodes: number[][], dumpedPoints = 0): ColdBonuses {
+  const b: ColdBonuses = {
+    damageIncrease: 0,
+    moreDamage: dumpedPoints * MASTERY_DUMP.cold.rate,
+    actionSpeedIncrease: 0,
+    frostApplyChance: 0,
+    frostedVulnerable: 0,
+    frostSlowIncrease: 0,
+    frostDurationIncrease: 0,
+    frostDurationMult: 1,
+    frostedDealLess: 0,
+    shatterDamageIncrease: 0,
+    shatterMoreDamage: 0,
+    shatterRangeIncrease: 0,
+    frozenArmorDmgReductionPerStack: 0,
+    frozenArmorMaxStacksBonus: 0,
+    frozenArmorFrostsReduction: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getColdNodeEffect(treeIdx, nodeIdx)
+      b.damageIncrease             += eff.coldDamageIncrease ?? 0
+      b.moreDamage                 += eff.coldMoreDamage ?? 0
+      b.actionSpeedIncrease        += eff.coldActionSpeedIncrease ?? 0
+      b.frostApplyChance           += eff.coldFrostApplyChance ?? 0
+      b.frostedVulnerable          += eff.coldFrostedVulnerable ?? 0
+      b.frostSlowIncrease          += eff.coldFrostSlowIncrease ?? 0
+      b.frostDurationIncrease      += eff.coldFrostDurationIncrease ?? 0
+      if (eff.coldFrostDurationMult !== undefined) b.frostDurationMult *= eff.coldFrostDurationMult
+      b.frostedDealLess            += eff.coldFrostedDealLess ?? 0
+      b.shatterDamageIncrease      += eff.coldShatterDamageIncrease ?? 0
+      b.shatterMoreDamage          += eff.coldShatterMoreDamage ?? 0
+      b.shatterRangeIncrease       += eff.coldShatterRangeIncrease ?? 0
+      b.frozenArmorDmgReductionPerStack += eff.frozenArmorDmgReductionPerStack ?? 0
+      b.frozenArmorMaxStacksBonus  += eff.frozenArmorMaxStacksBonus ?? 0
+      b.frozenArmorFrostsReduction += eff.frozenArmorFrostsReduction ?? 0
+    }
+  }
+  return b
+}
+
 // ── Strike mastery node effects ───────────────────────────────────────────
 // Tree 0: Strike Damage (full)  Tree 1: Frenzy (full)  Tree 2-4: not yet implemented
 
@@ -2148,6 +2289,53 @@ const ENEMY_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>
   },
 }
 
+const COLD_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {  // Cold Damage
+    0:  '+5% increased cold damage',
+    1:  '+3% increased cold action speed',
+    2:  '+5% increased cold damage · +5% increased frost apply chance',
+    3:  '+5% increased cold damage',
+    4:  '+3% increased cold action speed',
+    5:  '10% more cold damage',
+    6:  '+5% increased cold damage',
+    7:  '+3% increased cold action speed',
+    8:  '+12% increased cold damage',
+    9:  '+5% increased cold damage',
+    10: '+3% increased cold action speed',
+    11: 'Frosted enemies take 20% increased damage from non-cold sources',
+  },
+  1: {  // Frost
+    0:  '+5% increased frost apply chance',
+    1:  '+3% increased frost slow',
+    2:  '+5% increased frost slow · +10% increased frost duration',
+    3:  '+5% increased frost apply chance',
+    4:  '+3% increased frost slow',
+    5:  '+8% increased frost slow · +20% increased frost duration',
+    6:  '+5% increased frost apply chance',
+    7:  '+3% increased frost slow',
+    8:  '+15% increased frost apply chance',
+    9:  '+5% increased frost apply chance',
+    10: '+3% increased frost slow',
+    11: 'Frosted enemies deal 15% less damage',
+  },
+  2: {  // Shatter
+    0: '+30% increased shatter damage',
+    1: '+60% increased shatter damage',
+    2: '+90% increased shatter damage · +25% increased shatter radius',
+    3: '+30% increased shatter damage',
+    4: '+60% increased shatter damage',
+    5: '50% more shatter damage',
+  },
+  3: {  // Frozen Armor
+    0: 'Frozen Armor grants 1% damage reduction per stack',
+    1: '+1% damage reduction per Frozen Armor stack',
+    2: '+2% damage reduction per Frozen Armor stack · +2 maximum Frozen Armor stacks',
+    3: '+1% damage reduction per Frozen Armor stack',
+    4: '+1% damage reduction per Frozen Armor stack',
+    5: 'Gain a Frozen Armor stack every 75 frosts instead of 100',
+  },
+}
+
 function getEnglishNodeDescription(
   masteryId: MasteryId,
   treeIdx: number,
@@ -2163,6 +2351,7 @@ function getEnglishNodeDescription(
     enemy: ENEMY_DESCRIPTIONS,
     projectile: PROJ_DESCRIPTIONS,
     lightning: LIGHTNING_DESCRIPTIONS,
+    cold: COLD_DESCRIPTIONS,
     strike: STRIKE_DESCRIPTIONS,
     physical: PHYSICAL_DESCRIPTIONS,
     area: AREA_DESCRIPTIONS,
