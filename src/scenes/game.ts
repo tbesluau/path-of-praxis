@@ -1,12 +1,12 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star, Snowflake } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
@@ -258,6 +258,10 @@ export function createGameScene(
     return b
   }
 
+  function getColdBonuses(): ColdBonuses {
+    return computeColdBonuses(masteryNodes('cold', 5), dumpedFor('cold'))
+  }
+
   function getAreaBonuses(): AreaBonuses {
     const b = computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
     b.moreSize += artifactMods.areaMore
@@ -322,6 +326,15 @@ export function createGameScene(
   const electrocuteStacks = new Map<string, number>()
   // Per-entity lightning Graphics attached to the entity's Container child list.
   const electrocuteGraphics = new Map<string, Graphics>()
+
+  // ── Frost affliction (cold-tagged hits) ──────────────────────────────────
+  // One entry per entity: remaining duration ms. Immune while active — no refresh on re-apply.
+  const frostTimers = new Map<string, number>()
+  // Per-entity frost Graphics (icy aura) attached to the entity's Container child list.
+  const frostEffectGraphics = new Map<string, Graphics>()
+  let totalFrostRolls = 0   // cumulative successful frost rolls per life; drives the frozen armor threshold
+  let frozenArmorStacks = 0
+  let frozenArmorDecayTimer = 0
   // Per-entity burn/bleed Graphics attached to the entity's Container child list.
   const burnEffectGraphics  = new Map<string, Graphics>()
   const bleedEffectGraphics = new Map<string, Graphics>()
@@ -349,7 +362,7 @@ export function createGameScene(
   }
 
   function hasAnyAffliction(entity: Entity): boolean {
-    return burnStacks.has(entity.id) || bleedStacks.has(entity.id) || electrocuteStacks.has(entity.id)
+    return burnStacks.has(entity.id) || bleedStacks.has(entity.id) || electrocuteStacks.has(entity.id) || frostTimers.has(entity.id)
   }
 
   function tickElectrocutions(deltaMs: number): void {
@@ -358,6 +371,29 @@ export function createGameScene(
       if (updated <= 0) electrocuteStacks.delete(id)
       else electrocuteStacks.set(id, updated)
     }
+  }
+
+  function tickFrosts(deltaMs: number): void {
+    for (const [id, remaining] of [...frostTimers]) {
+      const updated = remaining - deltaMs
+      if (updated <= 0) frostTimers.delete(id)
+      else frostTimers.set(id, updated)
+    }
+  }
+
+  function tickFrozenArmor(deltaMs: number): void {
+    if (frozenArmorStacks === 0) { frozenArmorDecayTimer = 0; return }
+    // Stacks deplete one at a time; the Frozen Armor tree can slow the interval.
+    const decayMs = balance.frozenArmor.stackDecayMs * (1 + getColdBonuses().frozenArmorSlowerDepletion / 100)
+    frozenArmorDecayTimer += deltaMs
+    let changed = false
+    while (frozenArmorDecayTimer >= decayMs && frozenArmorStacks > 0) {
+      frozenArmorStacks--
+      frozenArmorDecayTimer -= decayMs
+      changed = true
+    }
+    if (frozenArmorStacks === 0) frozenArmorDecayTimer = 0
+    if (changed) renderBuffBar()
   }
 
   function tickElectrocuteEffects(): void {
@@ -418,6 +454,62 @@ export function createGameScene(
       if (!electrocuteStacks.has(id)) {
         g.destroy()
         electrocuteGraphics.delete(id)
+      }
+    }
+  }
+
+  function tickFrostEffects(): void {
+    if (!app) return
+    const frame = Math.floor(Date.now() / 90)
+
+    for (const id of frostTimers.keys()) {
+      const entity = entities.find(e => e.id === id)
+      if (!entity) continue
+      const container = entityContainers.get(id)
+      if (!container) continue
+
+      let g = frostEffectGraphics.get(id)
+      if (!g) {
+        g = new Graphics()
+        container.addChild(g)
+        frostEffectGraphics.set(id, g)
+      }
+
+      g.clear()
+      const r = entity.radius
+
+      // Pale blue chilled glow surrounding the body
+      g.circle(0, 0, r + 3)
+      g.fill({ color: 0x88ccff, alpha: 0.16 })
+
+      // Ring of ice crystal shards pointing outward, slowly rotating
+      const shards = 8
+      for (let i = 0; i < shards; i++) {
+        const a = (i / shards) * Math.PI * 2 + frame * 0.04
+        const baseX = Math.cos(a) * (r + 1)
+        const baseY = Math.sin(a) * (r + 1)
+        const tipX = Math.cos(a) * (r + 7)
+        const tipY = Math.sin(a) * (r + 7)
+        // Perpendicular for the shard's width
+        const px = -Math.sin(a), py = Math.cos(a)
+        const w = 2.2
+        g.moveTo(baseX + px * w, baseY + py * w)
+        g.lineTo(tipX, tipY)
+        g.lineTo(baseX - px * w, baseY - py * w)
+        g.closePath()
+        g.fill({ color: i % 2 ? 0xcceeff : 0x99d6ff, alpha: 0.8 })
+      }
+
+      // Faint outer frost ring
+      g.circle(0, 0, r + 6)
+      g.stroke({ color: 0xbbe6ff, width: 1, alpha: 0.4 })
+    }
+
+    // Remove graphics for entities no longer frosted
+    for (const [id, g] of [...frostEffectGraphics]) {
+      if (!frostTimers.has(id)) {
+        g.destroy()
+        frostEffectGraphics.delete(id)
       }
     }
   }
@@ -924,6 +1016,11 @@ export function createGameScene(
       entity.actionDamage *= (1 + fb.damageIncrease / 100) * (1 + fb.moreDamage / 100)
       entity.actionSpeed  *= (1 + fb.actionSpeedIncrease / 100)
     }
+    if (entity.role === 'player' && def.tags.includes('cold')) {
+      const cb = getColdBonuses()
+      entity.actionDamage *= (1 + cb.damageIncrease / 100) * (1 + cb.moreDamage / 100)
+      entity.actionSpeed  *= (1 + cb.actionSpeedIncrease / 100)
+    }
     if (entity.role === 'player' && def.tags.includes('physical')) {
       const pb = getPhysicalBonuses()
       entity.actionDamage *= (1 + pb.damageIncrease / 100) * (1 + pb.moreDamage / 100)
@@ -1301,6 +1398,8 @@ export function createGameScene(
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
+  const manaTriggerCounters = [0, 0]        // per extra slot, counts mana spent by the player
+  let manaSpentThisTick = 0                 // player mana paid this tick (any slot, any cast)
   let mainSlotCritTarget: Entity | null = null
   let afflictionAppliedThisTick = 0
   let afflictionLastTarget: Entity | null = null
@@ -1938,6 +2037,7 @@ export function createGameScene(
     trance:        'trance',
     immolation:    'immolation',
     feedingFrenzy: 'feeding-frenzy',
+    frozenArmor:   'frozen-armor',
   }
 
   // Hovering a status icon shows its name; clicking it opens the matching note.
@@ -2012,7 +2112,7 @@ export function createGameScene(
       ...activeEffects.filter(e => e.kind === 'mixed'),
       ...activeEffects.filter(e => e.kind === 'debuff'),
     ]
-    buffBarEl.innerHTML = ordered.map(e => {
+    let html = ordered.map(e => {
       let badge = ''
       if (e.id === 'frenzy' && frenzyCharges > 0) {
         badge = `<span class="buff-charge">${frenzyCharges}</span>`
@@ -2029,7 +2129,12 @@ export function createGameScene(
       ].filter(Boolean).join(' ')
       return `<div ${attrs}><i data-lucide="${e.iconName}" aria-hidden="true"></i>${badge}</div>`
     }).join('')
-    if (ordered.length > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap } })
+    if (frozenArmorStacks > 0) {
+      const badge = `<span class="buff-charge">${frozenArmorStacks}</span>`
+      html += `<div class="buff-icon buff-icon--buff" data-effect="frozenArmor" data-note="frozen-armor"><i data-lucide="snowflake" aria-hidden="true"></i>${badge}</div>`
+    }
+    buffBarEl.innerHTML = html
+    if (ordered.length > 0 || frozenArmorStacks > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap, Snowflake } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -2222,7 +2327,7 @@ export function createGameScene(
       if (sid) entries.push({ id: sid as ActionId, slot: i + 1 })
     }
 
-    const TRIGGER_LABEL: Record<string, string> = { time: 'Time', crit: 'Crit', affliction: 'Affliction' }
+    const TRIGGER_LABEL: Record<string, string> = { time: 'Time', crit: 'Crit', affliction: 'Affliction', mana: 'Mana' }
     const critUnlocked = ascentCount >= 1 || getPrefs().fullMastery
 
     // Pre-compute node arrays shared across all action entries
@@ -2236,7 +2341,8 @@ export function createGameScene(
       const level = getPlayerLevel(id)
       const tags = def.tags
       const triggerType = slot > 0 ? (extraSlots[slot - 1]?.triggerType ?? null) : null
-      const isDependentTrigger = triggerType === 'crit' || triggerType === 'affliction'
+      // Fixed-frequency triggers (crit/affliction/mana): speed converts to damage, not cast rate
+      const isDependentTrigger = triggerType === 'crit' || triggerType === 'affliction' || triggerType === 'mana'
       const slotPenalty = slot === 1 ? balance.ascent.slot2DamagePenalty
         : slot === 2 ? balance.ascent.slot3DamagePenalty : 1
 
@@ -2248,6 +2354,7 @@ export function createGameScene(
       const sbData  = tags.includes('strike')     ? { b: getStrikeBonuses(),     nodes: masteryNodes('strike', 5),     dumped: dumpedFor('strike') }     : null
       const libData = tags.includes('lightning')  ? { b: getLightningBonuses(),  nodes: masteryNodes('lightning', 5),  dumped: dumpedFor('lightning') }  : null
       const fbData  = tags.includes('fire')       ? { b: getFireBonuses(),       nodes: masteryNodes('fire', 5),       dumped: dumpedFor('fire') }       : null
+      const cbData  = tags.includes('cold')       ? { b: getColdBonuses(),       nodes: masteryNodes('cold', 5),       dumped: dumpedFor('cold') }       : null
       const phbData = tags.includes('physical')   ? { b: getPhysicalBonuses(),   nodes: masteryNodes('physical', 5),   dumped: dumpedFor('physical') }   : null
       const arbData = tags.includes('area')       ? { b: getAreaBonuses(),       nodes: masteryNodes('area', 5),       dumped: dumpedFor('area') }       : null
 
@@ -2323,6 +2430,14 @@ export function createGameScene(
           moreNodeLabel(fireNodes, fireDumped, MASTERY_DUMP.fire.rate,
             (t, n) => getFireNodeEffect(t, n).fireMoreDamage ?? 0, 'fire mastery'), 'fire mastery'))
         if (fb.actionSpeedIncrease !== 0) spdFactors.push(incF(fb.actionSpeedIncrease, 'fire mastery total increased', 'fire mastery'))
+      }
+      if (cbData) {
+        const { b: cb2, nodes: coldNodes, dumped: coldDumped } = cbData
+        if (cb2.damageIncrease !== 0) dmgFactors.push(incF(cb2.damageIncrease, 'cold mastery total increased', 'cold mastery'))
+        if (cb2.moreDamage !== 0) dmgFactors.push(moreF(cb2.moreDamage,
+          moreNodeLabel(coldNodes, coldDumped, MASTERY_DUMP.cold.rate,
+            (t, n) => getColdNodeEffect(t, n).coldMoreDamage ?? 0, 'cold mastery'), 'cold mastery'))
+        if (cb2.actionSpeedIncrease !== 0) spdFactors.push(incF(cb2.actionSpeedIncrease, 'cold mastery total increased', 'cold mastery'))
       }
       if (phbData) {
         const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
@@ -3062,6 +3177,72 @@ export function createGameScene(
     }
   }
 
+  function triggerShatter(srcX: number, srcY: number, srcMaxLife: number, coldBonuses: ColdBonuses): void {
+    // Shatter damage is purely a fraction of the shattered enemy's max life — base
+    // 5% plus the Shatter tree's "% of life" nodes. It is not an action and gets no
+    // cold-damage or area-damage bonuses (only its own mastery).
+    const baseDmg = srcMaxLife * (balance.shatter.damageBaseFraction + coldBonuses.shatterDamagePctLife / 100)
+    const rangePx = balance.shatter.rangeUnits * (1 + coldBonuses.shatterRangeIncrease / 100) * balance.player.radius
+    // White star-shaped shatter burst: a central flash and an expanding 5-pointed
+    // star that grows to the edge of the blast radius.
+    const STAR_POINTS = 5
+    addVfx(450, (g, p) => {
+      g.clear()
+      g.position.set(srcX, srcY)
+      const ease = 1 - Math.pow(1 - p, 2)
+      // Central white flash early on
+      if (p < 0.25) {
+        const fp = p / 0.25
+        g.circle(0, 0, rangePx * (0.2 + fp * 0.3))
+        g.fill({ color: 0xffffff, alpha: (1 - fp) * 0.9 })
+      }
+      // Trace a star polygon of the given outer/inner radius, rotated `rot`.
+      const rot = -Math.PI / 2 + p * 0.5
+      const traceStar = (outerR: number, innerR: number): void => {
+        for (let i = 0; i < STAR_POINTS * 2; i++) {
+          const r = i % 2 === 0 ? outerR : innerR
+          const a = rot + (i / (STAR_POINTS * 2)) * Math.PI * 2
+          const x = Math.cos(a) * r, y = Math.sin(a) * r
+          if (i === 0) g.moveTo(x, y); else g.lineTo(x, y)
+        }
+        g.closePath()
+      }
+      const outerR = rangePx * (0.2 + ease * 0.95)
+      const innerR = outerR * 0.42
+      // Filled translucent white body
+      traceStar(outerR, innerR)
+      g.fill({ color: 0xffffff, alpha: (1 - p) * 0.35 })
+      // Crisp white outline
+      traceStar(outerR, innerR)
+      g.stroke({ color: 0xffffff, width: Math.max(1, 3 * (1 - p)), alpha: (1 - p) * 0.95 })
+      // Smaller inner star for depth
+      traceStar(outerR * 0.55, innerR * 0.55)
+      g.stroke({ color: 0xffffff, width: Math.max(0.5, 2 * (1 - p)), alpha: (1 - p) * 0.7 })
+    })
+    for (const enemy of [...entities]) {
+      if (enemy.role !== 'enemy' || enemy.currentLife <= 0) continue
+      const dx = enemy.x - srcX
+      const dy = enemy.y - srcY
+      if (Math.sqrt(dx * dx + dy * dy) > rangePx) continue
+      let dmg = baseDmg
+      const eleR = enemy.eleResist ?? 0
+      if (eleR > 0) dmg *= 1 - Math.min(100, eleR) / 100
+      if (dmg <= 0) continue
+      const prev = enemy.currentLife
+      enemy.currentLife = Math.max(0, enemy.currentLife - dmg)
+      const actual = prev - enemy.currentLife
+      if (actual > 0) {
+        const eLevel = enemyLevels.get(enemy.id) ?? 1
+        const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(enemy.id)
+        awardXp(playerActionId, actual * xpMult)
+        if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        awardAscentXp(actual)
+        spawnDamageNumber(enemy.x, enemy.y - enemy.radius - 8, actual, 0x66ccff)
+        if (enemy.currentLife <= 0) killEntity(enemy)
+      }
+    }
+  }
+
   // Removes entity from all data structures without spawning animation.
   function removeEntity(entity: Entity): void {
     const body = entityBodies.get(entity.id)
@@ -3093,6 +3274,8 @@ export function createGameScene(
     bleedAccum.delete(entity.id)
     electrocuteStacks.delete(entity.id)
     electrocuteGraphics.delete(entity.id)  // container.destroy() already destroyed the child
+    frostTimers.delete(entity.id)
+    frostEffectGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     if (entity.id === playerRandomTargetId) playerRandomTargetId = null
     if (entity.id === playerStrongestTargetId) playerStrongestTargetId = null
     if (entity.id === playerWeakestTargetId) playerWeakestTargetId = null
@@ -3134,6 +3317,15 @@ export function createGameScene(
       const eb = getEnemyBonuses()
       if (eb.proliferateChance > 0 && Math.random() < eb.proliferateChance / 100) {
         pendingProliferateSpawns++
+      }
+    }
+    // Shatter: a frosted enemy that dies has a chance (from the Shatter tree) to
+    // burst into a cold AoE. Base chance is 0 — it requires Shatter mastery nodes.
+    if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
+      frostTimers.delete(entity.id)  // pre-clear before shatter to prevent re-triggering on this entity
+      const cbShatter = getColdBonuses()
+      if (Math.random() * 100 < cbShatter.shatterChance) {
+        triggerShatter(entity.x, entity.y, entity.maxLife, cbShatter)
       }
     }
     spawnDeathFragments(entity)
@@ -3226,6 +3418,9 @@ export function createGameScene(
     extraSlotTimers.length = 0
     afflictionTriggerCounters[0] = 0
     afflictionTriggerCounters[1] = 0
+    manaTriggerCounters[0] = 0
+    manaTriggerCounters[1] = 0
+    manaSpentThisTick = 0
     mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
     afflictionLastTarget = null
@@ -3237,6 +3432,10 @@ export function createGameScene(
     extraSlotMACooldowns[1] = 0
     playerPrevX = playerEntity.x
     playerPrevY = playerEntity.y
+    frostTimers.clear()
+    totalFrostRolls = 0
+    frozenArmorStacks = 0
+    frozenArmorDecayTimer = 0
 
     renderSingleFrame()
     persistState()
@@ -3288,6 +3487,9 @@ export function createGameScene(
     extraSlotTimers.length = 0
     afflictionTriggerCounters[0] = 0
     afflictionTriggerCounters[1] = 0
+    manaTriggerCounters[0] = 0
+    manaTriggerCounters[1] = 0
+    manaSpentThisTick = 0
     mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
     afflictionLastTarget = null
@@ -3569,7 +3771,7 @@ export function createGameScene(
       trackEvent('mastery_key_taken', { node: `${id}${treeIdx + 1}.${nodeLabel(nodeIdx)}` })
     }
     masteryProgress[id] = { ...existing, nodes, nodeHistory }
-    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'cold', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -3603,7 +3805,7 @@ export function createGameScene(
     const fromFree = Math.max(0, take - levelAvail)
     if (fromFree > 0) freeMasteryPointsUsed[id] = freeUsed + fromFree
     masteryDumpPoints[id] = dumped + take
-    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'cold', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') playerEntity.maxLife = computePlayerMaxLife()
@@ -3635,7 +3837,7 @@ export function createGameScene(
       // next ascent does. Active recording simply restarts empty.
       nodeHistory: existing.nodeHistory !== undefined ? [] : undefined,
     }
-    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
+    if (id === 'action' || (['projectile', 'strike', 'lightning', 'fire', 'cold', 'physical'].includes(id) && getAction(playerActionId).tags.includes(id as unknown as ActionTag))) {
       assignAction(playerEntity, playerActionId)
     }
     if (id === 'life') {
@@ -4135,6 +4337,33 @@ export function createGameScene(
         g.circle(cx, cy, tr * 0.45)
         g.fill({ color: 0xffee66, alpha: 1 })
       })
+    } else if (action.id === 'ice-spear') {
+      // Ice spear in flight — an icy shard flying toward the target with a frosty trail.
+      const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+      const tr = target.radius
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const cx = ax + (tx - ax) * p
+        const cy = ay + (ty - ay) * p
+        const px = -sin, py = cos  // perpendicular to travel
+        // Frosty trail
+        for (let i = 0; i < 4; i++) {
+          const back = (i + 1) * 10
+          g.circle(cx - cos * back, cy - sin * back, Math.max(0.5, tr * 0.4 * (1 - i * 0.22)))
+          g.fill({ color: i % 2 ? 0x9fd0ff : 0x3f86f5, alpha: 0.4 - i * 0.08 })
+        }
+        // Spear shard: an elongated diamond pointing along the travel direction
+        const len = tr * 1.5, half = tr * 0.3
+        g.moveTo(cx + cos * len, cy + sin * len)
+        g.lineTo(cx + px * half, cy + py * half)
+        g.lineTo(cx - cos * len * 0.5, cy - sin * len * 0.5)
+        g.lineTo(cx - px * half, cy - py * half)
+        g.closePath()
+        g.fill({ color: 0x5a9dff, alpha: 0.9 })
+        // Icy highlight core
+        g.circle(cx, cy, tr * 0.22)
+        g.fill({ color: 0xeaf6ff, alpha: 0.95 })
+      })
     }
     // zap, bolt: no pre-hit animation (instant strike)
   }
@@ -4150,13 +4379,20 @@ export function createGameScene(
     if (action.id === 'fire-nova') {
       addVfx(preHitDuration, (g, p) => {
         g.clear()
-        const r = areaRadiusPx * p
         const pulse = 1 + 0.08 * Math.sin(p * 30)
-        // Outer expanding fire ring
-        g.circle(cx, cy, r * pulse)
-        g.stroke({ color: 0xff6600, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
-        g.circle(cx, cy, r * 0.85 * pulse)
-        g.stroke({ color: 0xffcc33, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        // Thick leading ring + a trail of fading rings behind it, so the swept area
+        // stays filled with visuals even when the nova fires quickly.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0xff6600, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0xffcc33, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
         // Inner flame body building up at the centre
         g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
         g.fill({ color: 0xff8800, alpha: 0.45 + p * 0.4 })
@@ -4173,21 +4409,60 @@ export function createGameScene(
     } else if (action.id === 'lightning-nova') {
       addVfx(preHitDuration, (g, p) => {
         g.clear()
-        const r = areaRadiusPx * p
         const pulse = 1 + 0.08 * Math.sin(p * 30)
-        g.circle(cx, cy, r * pulse)
-        g.stroke({ color: 0x66ddff, width: Math.max(1, 5 * (1 - p * 0.4)), alpha: 0.55 + p * 0.35 })
-        g.circle(cx, cy, r * 0.85 * pulse)
-        g.stroke({ color: 0xaaeeff, width: Math.max(1, 3 * (1 - p * 0.4)), alpha: 0.7 })
+        // Thick leading ring + trailing rings fill the swept area on fast casts.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0x9a7dff, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0xc6b3ff, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
         g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
-        g.fill({ color: 0x88e8ff, alpha: 0.45 + p * 0.4 })
+        g.fill({ color: 0xb39dff, alpha: 0.45 + p * 0.4 })
         g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
         g.fill({ color: 0xffffff, alpha: 0.7 + p * 0.3 })
         for (let i = 0; i < 14; i++) {
           const a = (i / 14) * Math.PI * 2 + i * 0.3
           const sd = areaRadiusPx * (0.2 + p * 0.85)
           g.circle(cx + Math.cos(a) * sd, cy + Math.sin(a) * sd, Math.max(0.5, 2.5 * (1 - p * 0.5)))
-          g.fill({ color: i % 2 ? 0x99ddff : 0xffffff, alpha: 1 - p * 0.3 })
+          g.fill({ color: i % 2 ? 0xc4b0ff : 0xffffff, alpha: 1 - p * 0.3 })
+        }
+      })
+    } else if (action.id === 'cold-nova') {
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const pulse = 1 + 0.06 * Math.sin(p * 26)
+        // Thick leading ring + a trail of deep-blue rings behind it, so the swept
+        // area stays filled with visuals even when the nova fires quickly.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0x1f5fd6, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0x3f86f5, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
+        // Frosty core building up
+        g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
+        g.fill({ color: 0x5a9dff, alpha: 0.45 + p * 0.4 })
+        g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
+        g.fill({ color: 0xd6ecff, alpha: 0.7 + p * 0.3 })
+        // Radial ice crystal shards reaching for the ring
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + i * 0.26
+          const r0 = areaRadiusPx * 0.12
+          const r1 = areaRadiusPx * (0.2 + p * 0.9)
+          g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0)
+          g.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1)
+          g.stroke({ color: i % 2 ? 0x9fd0ff : 0x4f8ff0, width: Math.max(0.5, 2 * (1 - p * 0.5)), alpha: 1 - p * 0.4 })
         }
       })
     } else if (action.id === 'grenade') {
@@ -4281,6 +4556,15 @@ export function createGameScene(
     const tr = target.radius
     const baseAng = Math.atan2(ty - ay, tx - ax)
 
+    // Elemental actions (fire/lightning/cold) fire constantly; halve their post-hit
+    // opacity so the enemies and their affliction auras stay readable under the
+    // stacked impact "bubbles". Non-elemental hits keep full opacity.
+    const isElementalHit = action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')
+    const addHitVfx = (maxAge: number, tick: (g: Graphics, p: number) => void): void => {
+      if (!isElementalHit) { addVfx(maxAge, tick); return }
+      addVfx(maxAge, (g, p) => { g.alpha = 0.5; tick(g, p) })
+    }
+
     if (action.id === 'sword') {
       addVfx(280, (g, p) => {
         g.clear()
@@ -4322,7 +4606,7 @@ export function createGameScene(
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.5 })
       })
     } else if (action.id === 'fireball') {
-      addVfx(310, (g, p) => {
+      addHitVfx(310, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.8 + p * 5))
         g.stroke({ color: 0xff9900, width: 5 * (1 - p), alpha: (1 - p) * 0.9 })
@@ -4342,7 +4626,7 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'fire-nova') {
-      addVfx(260, (g, p) => {
+      addHitVfx(260, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.7 + p * 1.8))
         g.fill({ color: 0xff5500, alpha: (1 - p) * 0.6 })
@@ -4358,7 +4642,7 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'zap') {
-      addVfx(240, (g, p) => {
+      addHitVfx(240, (g, p) => {
         g.clear()
         const dx = tx - ax, dy = ty - ay
         const len = Math.sqrt(dx * dx + dy * dy) || 1
@@ -4405,7 +4689,7 @@ export function createGameScene(
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.6 })
       })
     } else if (action.id === 'grenade') {
-      addVfx(310, (g, p) => {
+      addHitVfx(310, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.8 + p * 4))
         g.stroke({ color: 0xff8800, width: 5 * (1 - p), alpha: (1 - p) * 0.85 })
@@ -4449,23 +4733,47 @@ export function createGameScene(
         }
       })
     } else if (action.id === 'lightning-nova') {
-      addVfx(260, (g, p) => {
+      addHitVfx(260, (g, p) => {
         g.clear()
         g.circle(tx, ty, tr * (0.7 + p * 1.8))
-        g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.6 })
+        g.fill({ color: 0x9a7dff, alpha: (1 - p) * 0.6 })
         g.circle(tx, ty, tr * (0.45 + p * 1.0))
-        g.fill({ color: 0xaaeeff, alpha: (1 - p) * 0.85 })
+        g.fill({ color: 0xc6b3ff, alpha: (1 - p) * 0.85 })
         g.circle(tx, ty, tr * (0.25 + p * 0.5))
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.95 })
         for (let i = 0; i < 8; i++) {
           const a = (i / 8) * Math.PI * 2 + i * 0.4
           const d = tr * (0.5 + p * 2.0)
           g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 2.5 * (1 - p)))
-          g.fill({ color: i % 2 ? 0x99ddff : 0xffffff, alpha: 1 - p })
+          g.fill({ color: i % 2 ? 0xc4b0ff : 0xffffff, alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'cold-nova') {
+      addHitVfx(260, (g, p) => {
+        g.clear()
+        // Deep-blue expanding burst with icy-white core
+        g.circle(tx, ty, tr * (0.7 + p * 1.8))
+        g.fill({ color: 0x1f5fd6, alpha: (1 - p) * 0.6 })
+        g.circle(tx, ty, tr * (0.45 + p * 1.0))
+        g.fill({ color: 0x4f8ff0, alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.25 + p * 0.5))
+        g.fill({ color: 0xd6ecff, alpha: (1 - p) * 0.95 })
+        // Flung ice shards
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + i * 0.4
+          const d = tr * (0.5 + p * 2.0)
+          const sx = tx + Math.cos(a) * d, sy = ty + Math.sin(a) * d
+          const px = -Math.sin(a), py = Math.cos(a)
+          const w = Math.max(0.5, 2.5 * (1 - p))
+          g.moveTo(sx + px * w, sy + py * w)
+          g.lineTo(sx + Math.cos(a) * tr * 0.6, sy + Math.sin(a) * tr * 0.6)
+          g.lineTo(sx - px * w, sy - py * w)
+          g.closePath()
+          g.fill({ color: i % 2 ? 0x9fd0ff : 0xeaf6ff, alpha: 1 - p })
         }
       })
     } else if (action.id === 'bolt') {
-      addVfx(120, (g, p) => {
+      addHitVfx(120, (g, p) => {
         g.clear()
         // Quick flicker: cyan ring + white center, plus a short zigzag streak from attacker.
         const dx = tx - ax, dy = ty - ay
@@ -4487,6 +4795,27 @@ export function createGameScene(
         g.fill({ color: 0x66ddff, alpha: (1 - p) * 0.5 })
         g.circle(tx, ty, tr * (0.5 + p * 0.2))
         g.fill({ color: 0xffffff, alpha: (1 - p) * 0.9 })
+      })
+    } else if (action.id === 'ice-spear') {
+      addHitVfx(240, (g, p) => {
+        g.clear()
+        // Icy impact: expanding frost ring, cold core, and a spray of ice shards.
+        g.circle(tx, ty, tr * (0.6 + p * 1.6))
+        g.stroke({ color: 0x3f86f5, width: Math.max(0.5, 3 * (1 - p)), alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.3 + p * 0.7))
+        g.fill({ color: 0xd6ecff, alpha: (1 - p) * 0.85 })
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2 + i * 0.5
+          const d = tr * (0.4 + p * 1.8)
+          const sx = tx + Math.cos(a) * d, sy = ty + Math.sin(a) * d
+          const px = -Math.sin(a), py = Math.cos(a)
+          const w = Math.max(0.5, 2 * (1 - p))
+          g.moveTo(sx + px * w, sy + py * w)
+          g.lineTo(sx + Math.cos(a) * tr * 0.5, sy + Math.sin(a) * tr * 0.5)
+          g.lineTo(sx - px * w, sy - py * w)
+          g.closePath()
+          g.fill({ color: i % 2 ? 0x9fd0ff : 0xeaf6ff, alpha: 1 - p })
+        }
       })
     }
   }
@@ -4843,13 +5172,13 @@ export function createGameScene(
           const dist = Math.sqrt(dx * dx + dy * dy)
 
           // Movement range: minimum of all independent-trigger action ranges
-          // (auto-attack + time-trigger extra slots). Dependent triggers ignore range.
+          // (auto-attack + time/mana-trigger extra slots). Dependent triggers ignore range.
           let effectiveRange = entity.actionRange
           if (entity.role === 'player') {
             const activeSlotCt = ascentCount >= balance.ascent.slot3UnlockAscent ? 2 : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
             for (let si = 0; si < activeSlotCt; si++) {
               const sl = extraSlots[si]
-              if (!sl?.actionId || sl.triggerType !== 'time') continue
+              if (!sl?.actionId || (sl.triggerType !== 'time' && sl.triggerType !== 'mana')) continue
               const sd = getAction(sl.actionId as ActionId)
               const baseRU = sd.selfTargeted ? (sd.area ?? 0) * (2 / 3) : sd.range
               let sr = baseRU * balance.player.radius
@@ -5005,6 +5334,11 @@ export function createGameScene(
           if (entity.role === 'enemy' && (entity.physRotResist ?? 0) <= 0) {
             const breakSlow = getPhysicalBonuses().resistBreakSlowAtZero
             if (breakSlow > 0) ms *= Math.max(0, 1 - breakSlow / 100)
+          }
+          if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
+            const cbFrost = getColdBonuses()
+            const frostSlow = (balance.frost.baseMoveSlowPct + cbFrost.frostSlowIncrease) * (1 + cbFrost.frostSlowMore / 100)
+            ms *= Math.max(0, 1 - frostSlow / 100)
           }
           // Knockback slow debuff
           const kbSlow = knockbackSlowState.get(entity.id)
@@ -5199,6 +5533,11 @@ export function createGameScene(
             const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
+          // Frost — frosted enemies take more damage from non-cold sources (Cold Damage tree node 11)
+          if (target.role === 'enemy' && frostTimers.has(target.id) && !action.tags.includes('cold')) {
+            const cbVuln = getColdBonuses()
+            if (cbVuln.frostedVulnerable > 0) finalDamage *= 1 + cbVuln.frostedVulnerable / 100
+          }
           // Apply crit damage multiplier after resistance.
           // Chance key 14: noDamageBonus means crits trigger effects but deal no extra direct damage.
           // Damage key 14: damageToAfflictions excludes tree-0 bonuses from direct hits.
@@ -5211,6 +5550,19 @@ export function createGameScene(
           if (target.role === 'player' && attacker.role === 'enemy') {
             const kbDR = knockbackDamageReductionState.get(attacker.id)
             if (kbDR) finalDamage *= Math.max(0, 1 - kbDR.amount / 100)
+          }
+          // Frost — frosted enemies deal less damage (Frost mastery node 11)
+          if (target.role === 'player' && attacker.role === 'enemy' && frostTimers.has(attacker.id)) {
+            const cbFrostDealLess = getColdBonuses()
+            if (cbFrostDealLess.frostedDealLess > 0) finalDamage *= Math.max(0, 1 - cbFrostDealLess.frostedDealLess / 100)
+          }
+          // Frozen Armor: damage reduction for the player based on stacks
+          if (target.role === 'player' && frozenArmorStacks > 0) {
+            const cbArmor = getColdBonuses()
+            const reductionPerStack = cbArmor.frozenArmorDmgReductionPerStack
+            if (reductionPerStack > 0) {
+              finalDamage *= Math.max(0, 1 - Math.min(frozenArmorStacks * reductionPerStack, 80) / 100)
+            }
           }
           // Mana Shield: intercept a fraction of player-targeted damage to mana before life
           if (target.role === 'player') {
@@ -5395,6 +5747,34 @@ export function createGameScene(
           if (attacker.role === 'player' && action.tags.includes('lightning') && actualDamage > 0) {
             const lbElec = getLightningBonuses()
             if (lbElec.electrifyChance > 0 && Math.random() * 100 < lbElec.electrifyChance) applyElectrified()
+          }
+          // Frost: roll on cold-tagged player hits to enemy targets. A positive roll always
+          // counts toward the affliction trigger (even if the target is already frosted);
+          // a new frost is only applied when not already frosted (immune while active — no refresh).
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('cold') && actualDamage > 0) {
+            const cbFrostApply = getColdBonuses()
+            const frostChance = balance.frost.baseFrostChancePct + cbFrostApply.frostApplyChance + extraAfflChance
+            if (guaranteedAfflictions || Math.random() * 100 < frostChance) {
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
+              // Frozen Armor accrues on every successful frost roll, even if the target
+              // was already frosted (immune while active) so no new frost is applied.
+              totalFrostRolls++
+              const threshold = Math.max(1, balance.frozenArmor.frostsPerStack - cbFrostApply.frozenArmorFrostsReduction)
+              const maxStacks = balance.frozenArmor.maxStacks + cbFrostApply.frozenArmorMaxStacksBonus
+              if (totalFrostRolls % threshold === 0 && frozenArmorStacks < maxStacks) {
+                // Double-stack chance: gain 2 stacks instead of 1 (clamped to the max).
+                const gain = (Math.random() * 100 < cbFrostApply.frozenArmorDoubleStackChance) ? 2 : 1
+                frozenArmorStacks = Math.min(maxStacks, frozenArmorStacks + gain)
+                renderBuffBar()
+              }
+              // Apply the frost itself only when not already frosted (no refresh).
+              if (!frostTimers.has(target.id)) {
+                const frostDuration = balance.frost.baseDurationMs
+                  * (1 + cbFrostApply.frostDurationIncrease / 100)
+                  * cbFrostApply.frostDurationMult
+                frostTimers.set(target.id, frostDuration)
+              }
+            }
           }
           // Bleeding: roll on physical-tagged player hits to enemy targets. The hit-suppression
           // key can zero actualDamage; gate on whether the hit would have landed pre-suppression.
@@ -5680,6 +6060,11 @@ export function createGameScene(
             const breakSlow = getPhysicalBonuses().resistBreakSlowAtZero
             if (breakSlow > 0) effectiveAttackSpeed *= Math.max(0, 1 - breakSlow / 100)
           }
+          if (entity.role === 'enemy' && frostTimers.has(entity.id)) {
+            const cbAtkFrost = getColdBonuses()
+            const frostSlow = (balance.frost.baseActionSlowPct + cbAtkFrost.frostSlowIncrease) * (1 + cbAtkFrost.frostSlowMore / 100)
+            effectiveAttackSpeed *= Math.max(0, 1 - frostSlow / 100)
+          }
           if (entity.role === 'player' && frenzyCharges > 0) {
             const sb = getStrikeBonuses()
             const speedBonus = sb.frenzyFlatSpeed + frenzyCharges * sb.frenzySpeedPerCharge
@@ -5767,6 +6152,7 @@ export function createGameScene(
             if (entity.role === 'player') {
               playerManaSpent = true
               if (!replenish && paidCost > 0) {
+                manaSpentThisTick += paidCost
                 const eLevel = enemyLevels.get(target.id) ?? 1
                 const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
                 awardStatXp('mana', paidCost * balance.stat.manaXpMultiplier * xpMult)
@@ -5963,6 +6349,7 @@ export function createGameScene(
             }
 
             playerEntity.currentMana = Math.max(0, playerEntity.currentMana - slotDef.manaCost)
+            manaSpentThisTick += slotDef.manaCost
 
             const slotLevel = actionProgress[slotActionId]?.level ?? 1
             let slotDmg = slotDef.damage
@@ -5980,6 +6367,7 @@ export function createGameScene(
             if (slotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); effectiveSlotSpeed *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
             if (slotDef.tags.includes('lightning')) { const lb = getLightningBonuses(); effectiveSlotSpeed *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100) }
             if (slotDef.tags.includes('fire')) effectiveSlotSpeed *= (1 + getFireBonuses().actionSpeedIncrease / 100)
+            if (slotDef.tags.includes('cold')) effectiveSlotSpeed *= (1 + getColdBonuses().actionSpeedIncrease / 100)
             if (slotDef.tags.includes('physical')) effectiveSlotSpeed *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
             if (slotDef.tags.includes('area')) effectiveSlotSpeed *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
             effectiveSlotSpeed *= (1 + slotRb.speedIncrease / 100) * slotRb.speedMore
@@ -5988,7 +6376,7 @@ export function createGameScene(
 
             // Speed-balance:
             //   Independent (time): use native speed only — action speed bonus shortens the interval instead.
-            //   Dependent (crit/affliction): use full effective speed — speed bonus increases damage since frequency is fixed.
+            //   Fixed-frequency (crit/affliction/mana): use full effective speed — speed bonus increases damage since frequency is fixed.
             const speedForBalance = trigger === 'time' ? leveledSpeed : effectiveSlotSpeed
             slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * speedForBalance
             if (trigger === 'crit')       slotDmg *= balance.ascent.critTriggerDamageMult
@@ -5999,6 +6387,7 @@ export function createGameScene(
             if (slotDef.tags.includes('strike')) { const b = getStrikeBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('lightning')) { const b = getLightningBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('fire')) { const b = getFireBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
+            if (slotDef.tags.includes('cold')) { const b = getColdBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('physical')) { const b = getPhysicalBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('area')) { const b = getAreaBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
@@ -6128,6 +6517,7 @@ export function createGameScene(
             if (tSlotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); tSpeedMult *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
             if (tSlotDef.tags.includes('lightning')) { const lb = getLightningBonuses(); tSpeedMult *= (1 + lb.actionSpeedIncrease / 100) * (1 + lb.moreActionSpeed / 100) }
             if (tSlotDef.tags.includes('fire')) tSpeedMult *= (1 + getFireBonuses().actionSpeedIncrease / 100)
+            if (tSlotDef.tags.includes('cold')) tSpeedMult *= (1 + getColdBonuses().actionSpeedIncrease / 100)
             if (tSlotDef.tags.includes('physical')) tSpeedMult *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
             if (tSlotDef.tags.includes('area')) tSpeedMult *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
             tSpeedMult *= (1 + tRb.speedIncrease / 100) * tRb.speedMore
@@ -6162,6 +6552,19 @@ export function createGameScene(
               if (fireExtraSlot(slotI, 'affliction', afflictionLastTarget ?? undefined)) extraManaSpent = true
             }
           }
+
+          // Mana trigger: fire once per threshold of mana spent by the player (any slot).
+          // Mana spent by the trigger's own cast lands in manaSpentThisTick and counts next tick.
+          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+            const slot = extraSlots[slotI]
+            if (!slot?.actionId || slot.triggerType !== 'mana') continue
+            manaTriggerCounters[slotI] = (manaTriggerCounters[slotI] ?? 0) + manaSpentThisTick
+            if (manaTriggerCounters[slotI] >= balance.ascent.manaTriggerSpend) {
+              manaTriggerCounters[slotI] -= balance.ascent.manaTriggerSpend
+              if (fireExtraSlot(slotI, 'mana')) extraManaSpent = true
+            }
+          }
+          manaSpentThisTick = 0
 
           if (extraManaSpent) updateBars()
 
@@ -6237,8 +6640,11 @@ export function createGameScene(
         tickBleeds(ticker.deltaMS, damagedIds)
         tickBurnGrounds(ticker.deltaMS, damagedIds)
         tickElectrocutions(ticker.deltaMS)
+        tickFrosts(ticker.deltaMS)
+        tickFrozenArmor(ticker.deltaMS)
         tickKnockbacks(ticker.deltaMS)
         tickElectrocuteEffects()
+        tickFrostEffects()
         tickBurnEffects()
         tickBleedEffects()
         tickBurnGroundEffects()
@@ -6327,6 +6733,12 @@ function getTriggerDefs(): TriggerDef[] {
       description: t('game', 'triggerAfflictionDesc'),
       unlockHint: t('game', 'triggerAfflictionLock'),
     },
+    {
+      type: 'mana',
+      label: t('game', 'triggerMana'),
+      description: t('game', 'triggerManaDesc'),
+      unlockHint: '',
+    },
   ]
 }
 
@@ -6384,7 +6796,7 @@ function mountTriggerPickerModal(
 
   const optionsEl = panel.querySelector<HTMLElement>('.trigger-picker-options')!
   for (const def of getTriggerDefs()) {
-    const isUnlocked = def.type === 'time' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')
+    const isUnlocked = def.type === 'time' || def.type === 'mana' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')
     const isActive = def.type === currentType
     const btn = document.createElement('button')
     btn.className = 'trigger-picker-opt'
@@ -6506,6 +6918,7 @@ function mountBattleConfigModal(
       time:       t('game', 'triggerTime'),
       crit:       t('game', 'triggerCrit'),
       affliction: t('game', 'triggerAffliction'),
+      mana:       t('game', 'triggerMana'),
     }
 
     function openTriggerPicker(slotIdx: number): void {

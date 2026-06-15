@@ -514,4 +514,62 @@ Fuentes de probabilidad de ignorar mitigación:
 
 Las probabilidades de múltiples fuentes se suman en una única tirada por golpe. Un golpe que ignora mitigación no despoja al enemigo de su resistencia — solo omite la reducción para ese único golpe.`,
   },
+
+  frost: {
+    title: 'Escarcha',
+    body: `Una **Aflicción** aplicada por golpes con etiqueta de frío. La probabilidad de aplicación base es del **5 %** por golpe de frío, con una duración base de **1 segundo**. Mientras está escarchado, el enemigo ve reducidas su velocidad de movimiento y su velocidad de acción en un **20 %** (base) cada una, aumentado por los nodos de maestría de Escarcha.
+
+**Inmune mientras está activa:** a diferencia de otras **Aflicciones**, la Escarcha **no** se refresca. Una vez que un enemigo está escarchado, los golpes de frío posteriores no pueden volver a aplicarla ni prolongarla hasta que la Escarcha actual expire.
+
+**Árbol de Daño de frío, nodo 11 — vulnerabilidad a la escarcha:** los enemigos escarchados reciben +20 % de daño aumentado de fuentes **no de frío**. La **Fractura**, al ser daño de frío, queda excluida.
+
+**Árbol de Escarcha (completo):**
+- Probabilidad de aplicar Escarcha: +5 % cada uno (nodos 0, 3, 6, 9) y +15 % (nodo 8) — aumenta la probabilidad de que un golpe de frío escarche al objetivo
+- Ralentización de Escarcha: +3 % cada uno (nodos 1, 4, 7, 10), más +5 % (nodo 2) y +8 % (nodo 5) — añadido tanto a la ralentización de movimiento como de acción
+- Duración de Escarcha: +10 % (nodo 2), +20 % (nodo 5) — prolonga la duración de la Escarcha
+- Nodo 5 (primer mayor): +8 % de ralentización de escarcha aumentada · +20 % de duración de escarcha aumentada
+- Nodo 11 (segundo mayor): **15 % más** de efecto de ralentización de escarcha — un multiplicador sobre la ralentización total
+
+**Nodos clave:**
+- Nodo 12: +5 % de ralentización de escarcha aumentada · 10 % menos de duración de escarcha
+- Nodo 13: 20 % más de duración de escarcha
+- Nodo 14: los enemigos escarchados infligen **10 % menos** de daño
+- Nodo 15: +5 % de ralentización de escarcha aumentada
+
+La ralentización aumentada es aditiva; el efecto de ralentización "más" (nodo 11) multiplica el total acumulado. La ralentización y la reducción de daño infligido se aplican multiplicativamente junto con otros modificadores de velocidad y daño.`,
+  },
+
+  shatter: {
+    title: 'Fractura',
+    body: `Una mecánica de la **maestría de Frío — Fractura**. Los enemigos abatidos mientras están **escarchados** tienen una **probabilidad de fracturarse**: una explosión de frío centrada en el enemigo fracturado, con un alcance de **3 unidades** (radio-jugador). Por defecto inflige el **5 % de la vida máxima del enemigo fracturado** como daño de frío en esa área.
+
+La Fractura **no es una acción** — **no** se beneficia del daño de frío ni del daño de **Área**. Su único factor de escala es la vida máxima del enemigo fracturado y el propio árbol de Fractura. El daño es de tipo frío y se reduce por la **Resistencia** elemental del objetivo. La Fractura **no** aplica **Escarcha** y no otorga ningún proc de **Aflicción** — pero puede matar, y un enemigo escarchado abatido por una Fractura puede a su vez intentar fracturarse, permitiendo reacciones en cadena a través de un grupo escarchado.
+
+**La probabilidad de fractura es del 0 % por defecto** — la otorga enteramente el árbol de Fractura.
+
+**Árbol de Fractura (corto, 6 nodos):**
+- Nodo 0: los enemigos abatidos escarchados tienen +5 % de probabilidad de fracturarse
+- Nodo 1: daño de Fractura aumentado en un 2 % de la vida máxima del enemigo fracturado
+- Nodo 2 (fuerte): +8 % de probabilidad de fracturarse · +20 % de área de efecto de Fractura aumentada
+- Nodo 3: los enemigos abatidos escarchados tienen +5 % de probabilidad de fracturarse
+- Nodo 4: daño de Fractura aumentado en un 2 % de la vida máxima del enemigo fracturado
+- Nodo 5 (mayor): +10 % de probabilidad de fracturarse · daño de Fractura aumentado en un 3 % de la vida máxima del enemigo fracturado
+
+Con el árbol completo: +28 % de probabilidad de fracturarse, y daño = **12 % de la vida máxima** (5 % base + 2 % + 2 % + 3 %).`,
+  },
+
+  'frozen-armor': {
+    title: 'Armadura helada',
+    body: `Un **Estado** (buff) sobre el jugador, acumulado al escarchar enemigos — siempre disponible cuando aplicas **Escarcha**. Cada **100 escarchas** otorga **1 carga de Armadura helada**, hasta un máximo de **10 cargas**. Las cargas se agotan de una en una cada **2 segundos**. El número de cargas actual se muestra en la barra de buffs (icono de copo de nieve).
+
+Por sí sola, la Armadura helada no hace **nada** — las cargas se acumulan y se muestran pero no otorgan beneficio alguno hasta que inviertas en el árbol de Armadura helada. Una vez tomado al menos un nodo de reducción de daño, cada carga reduce el daño recibido por **golpes** (limitado a un **80 %** de reducción total).
+
+**Árbol de Armadura helada (corto, 6 nodos):**
+- Nodos 0 y 3: la Armadura helada requiere 20 escarchas menos por carga cada uno (−40 en total → una carga cada 60 escarchas)
+- Nodos 1 y 4: 1 % de daño recibido reducido por carga de Armadura helada cada uno (2 % por carga en total)
+- Nodo 2 (fuerte): 30 % de probabilidad de ganar 2 cargas en lugar de 1 · 20 % de agotamiento de cargas más lento
+- Nodo 5 (mayor): la Armadura helada puede tener 5 cargas máximas más
+
+La reducción de daño se aplica después de las resistencias en el pipeline de daño del jugador.`,
+  },
 }

@@ -114,7 +114,7 @@ export interface UniversePointAllocations {
   placeholderB: number
 }
 
-export type TriggerType = 'time' | 'crit' | 'affliction'
+export type TriggerType = 'time' | 'crit' | 'affliction' | 'mana'
 
 export interface ExtraActionSlot {
   actionId: string | null
@@ -236,7 +236,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       const raw = s.triggerType as string | null | undefined
       const triggerType: TriggerType | null =
         raw === 'timeBased' ? 'time'
-        : raw === 'time' || raw === 'crit' || raw === 'affliction' ? raw as TriggerType
+        : raw === 'time' || raw === 'crit' || raw === 'affliction' || raw === 'mana' ? raw as TriggerType
         : null
       return { actionId: s.actionId ?? null, triggerType }
     }),

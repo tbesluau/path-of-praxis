@@ -8,7 +8,7 @@ export type ActionTag = DamageEssenceTag | DamageTypeTag
 
 export type MasteryId =
   | 'action' | 'criticalHit'
-  | 'physical' | 'fire' | 'lightning'
+  | 'physical' | 'fire' | 'lightning' | 'cold'
   | 'area' | 'projectile' | 'strike'
   | 'life' | 'mana'
   | 'enemy' | 'movement'
@@ -99,6 +99,12 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 3, label: 'Electrifying', short: true },
         { index: 2, label: 'Jump',        short: true },
       ] },
+      { id: 'cold', label: 'Cold', tag: 'cold', trees: [
+        { index: 0, label: 'Cold Damage' },
+        { index: 1, label: 'Frost' },
+        { index: 2, label: 'Shatter',      short: true },
+        { index: 3, label: 'Frozen Armor', short: true },
+      ] },
     ],
   },
   {
@@ -169,7 +175,7 @@ export const allMasteries = masteryCategories.flatMap(c => c.masteries)
 // Examples: FD6a = Fire/Damage tree, first major key (top); HM1 = Life/MaxLife, node 1.
 
 export const MASTERY_LETTER: Record<MasteryId, string> = {
-  action: 'A', criticalHit: 'C', physical: 'P', fire: 'F', lightning: 'L',
+  action: 'A', criticalHit: 'C', physical: 'P', fire: 'F', lightning: 'L', cold: 'K',
   area: 'R', projectile: 'J', strike: 'S', life: 'H', mana: 'M', enemy: 'E', movement: 'V',
 }
 
@@ -180,6 +186,7 @@ export const TREE_LETTER: Record<MasteryId, Record<number, string>> = {
   physical:    { 0: 'D', 1: 'B', 2: 'R', 3: 'L' },
   fire:        { 0: 'D', 1: 'B', 2: 'G', 3: 'I' },
   lightning:   { 0: 'D', 1: 'E', 2: 'J', 3: 'T' },
+  cold:        { 0: 'D', 1: 'F', 2: 'S', 3: 'A' },
   area:        { 0: 'D', 1: 'S', 2: 'T', 3: 'K' },
   projectile:  { 0: 'D', 1: 'M', 2: 'R', 3: 'K' },
   strike:      { 0: 'D', 1: 'F', 2: 'R', 3: 'T' },

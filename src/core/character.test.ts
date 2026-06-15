@@ -41,6 +41,32 @@ describe('character', () => {
     expect(restored.actionId).toBe('zap')
   })
 
+  it('persists extra-slot trigger types, including mana', () => {
+    const c = character.createCharacter('Triggers', 'sword')
+    character.saveCharacterState(c.id, 100, 100, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, [
+        { actionId: 'zap', triggerType: 'mana' },
+        { actionId: 'bow', triggerType: 'affliction' },
+      ])
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.extraSlots).toEqual([
+      { actionId: 'zap', triggerType: 'mana' },
+      { actionId: 'bow', triggerType: 'affliction' },
+    ])
+  })
+
+  it('normalizes unknown trigger types to null', () => {
+    const c = character.createCharacter('BadTrigger', 'sword')
+    character.saveCharacterState(c.id, 100, 100, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, [
+        { actionId: 'zap', triggerType: 'bogus' as never },
+      ])
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.extraSlots).toEqual([{ actionId: 'zap', triggerType: null }])
+  })
+
   it('trims whitespace from name', () => {
     const c = character.createCharacter('  Bob  ', 'sword')
     expect(c.name).toBe('Bob')

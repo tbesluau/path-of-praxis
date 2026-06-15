@@ -1,3 +1,12 @@
+### 0.2.25 — More content
+
+Cold damage source, 2 new actions, a new Mana-spent action trigger
+
+- **Cold** — a new elemental damage source along with fire and lightning. Cold slows enemies and can protect you in several ways but alos has some cool clear capabilities for late game.
+- **Cold nova, ice spear** — 2 new skills to try. Standard nova with cold, and fast short range projectile ice spear.
+- **Mana trigger** — High damage efficiency trigger based on mana lost (spent, damage absorbed). Find new ways to lose mana for peak DPS. 
+- **Never done** — small bugfixes and UX improvements
+
 ### 0.2.10 — Mastery loadaouts
 
 Load, save, and auto-apply masteries for smoother ascents.

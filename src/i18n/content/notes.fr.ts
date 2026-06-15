@@ -520,4 +520,62 @@ Sources de chance d'ignorer la mitigation :
 
 Les chances de plusieurs sources sont sommées en un seul tirage par coup. Un coup d'Ignorer la mitigation ne dépouille pas la résistance de l'ennemi — il saute la réduction pour ce seul coup uniquement.`,
   },
+
+  frost: {
+    title: 'Givre',
+    body: `Une **Affliction** appliquée par les coups taggés froid. La chance d'application de base est de **5 %** par coup de froid, la durée de base de **1 seconde**. Tant qu'il est givré, l'ennemi voit sa vitesse de déplacement et sa vitesse d'action réduites chacune de **20 %** (base), augmentées par les nœuds de maîtrise Givre.
+
+**Immunisé tant qu'actif :** contrairement aux autres **Afflictions**, le Givre ne se rafraîchit **pas**. Une fois un ennemi givré, les coups de froid suivants ne peuvent ni le ré-appliquer ni le prolonger jusqu'à ce que le Givre en cours expire.
+
+**Arbre Dégâts de froid, nœud 11 — vulnérabilité au givre :** les ennemis givrés subissent +20 % de dégâts augmentés des sources **non-froid**. Le **Fracas**, étant des dégâts de froid, est exclu.
+
+**Arbre Givre (complet) :**
+- Chance d'application du Givre : +5 % chacun (nœuds 0, 3, 6, 9) et +15 % (nœud 8) — augmente la chance qu'un coup de froid givre la cible
+- Ralentissement du Givre : +3 % chacun (nœuds 1, 4, 7, 10), plus +5 % (nœud 2) et +8 % (nœud 5) — ajouté au ralentissement de déplacement et d'action
+- Durée du Givre : +10 % (nœud 2), +20 % (nœud 5) — prolonge la durée du Givre
+- Nœud 5 (premier majeur) : +8 % de ralentissement par givre augmenté · +20 % de durée de givre augmentée
+- Nœud 11 (second majeur) : **15 % d'effet de ralentissement du givre en plus** — un multiplicateur sur le ralentissement total
+
+**Nœuds clés :**
+- Nœud 12 : +5 % de ralentissement par givre augmenté · 10 % de durée de givre en moins
+- Nœud 13 : 20 % de durée de givre en plus
+- Nœud 14 : les ennemis givrés infligent **10 % de dégâts en moins**
+- Nœud 15 : +5 % de ralentissement par givre augmenté
+
+Le ralentissement augmenté est additif ; l'effet de ralentissement « en plus » (nœud 11) multiplie le total cumulé. Le ralentissement et la réduction des dégâts infligés s'appliquent multiplicativement aux côtés des autres modificateurs de vitesse et de dégâts.`,
+  },
+
+  shatter: {
+    title: 'Fracas',
+    body: `Une mécanique de la **maîtrise du Froid — Fracas**. Les ennemis tués alors qu'ils sont **givrés** ont une **chance de se fracasser** : une explosion de froid centrée sur l'ennemi fracassé, d'une portée de **3 unités** (rayon-joueur). Par défaut, elle inflige **5 % de la vie maximale de l'ennemi fracassé** en dégâts de froid dans cette zone.
+
+Le Fracas n'est **pas une action** — il ne bénéficie **pas** des bonus de dégâts de froid ni de dégâts de **Zone**. Son seul facteur d'échelle est la vie maximale de l'ennemi fracassé et l'arbre Fracas lui-même. Les dégâts sont de type froid et sont réduits par la **Résistance** élémentaire de la cible. Le Fracas n'applique **pas** de **Givre** et n'accorde aucun déclenchement d'**Affliction** — mais il peut tuer, et un ennemi givré tué par un Fracas peut à son tour tenter de se fracasser, permettant des réactions en chaîne à travers un groupe givré.
+
+**La chance de fracas est de 0 % par défaut** — elle est entièrement accordée par l'arbre Fracas.
+
+**Arbre Fracas (court, 6 nœuds) :**
+- Nœud 0 : les ennemis tués givrés ont +5 % de chance de se fracasser
+- Nœud 1 : dégâts de Fracas augmentés de 2 % de la vie maximale de l'ennemi fracassé
+- Nœud 2 (robuste) : +8 % de chance de se fracasser · +20 % de zone d'effet de Fracas augmentée
+- Nœud 3 : les ennemis tués givrés ont +5 % de chance de se fracasser
+- Nœud 4 : dégâts de Fracas augmentés de 2 % de la vie maximale de l'ennemi fracassé
+- Nœud 5 (majeur) : +10 % de chance de se fracasser · dégâts de Fracas augmentés de 3 % de la vie maximale de l'ennemi fracassé
+
+Avec l'arbre complet : +28 % de chance de se fracasser, et dégâts = **12 % de la vie maximale** (5 % de base + 2 % + 2 % + 3 %).`,
+  },
+
+  'frozen-armor': {
+    title: 'Armure de glace',
+    body: `Un **Statut** (buff) sur le joueur, accumulé en givrant les ennemis — toujours disponible dès que tu appliques du **Givre**. Chaque tranche de **100 givres** accorde **1 charge d'Armure de glace**, jusqu'à un maximum de **10 charges**. Les charges se dissipent une à une toutes les **2 secondes**. Le nombre de charges actuel est affiché dans la barre de buffs (icône de flocon).
+
+En soi, l'Armure de glace ne fait **rien** — les charges s'accumulent et s'affichent mais n'accordent aucun bénéfice tant que tu n'investis pas dans l'arbre Armure de glace. Une fois au moins un nœud de réduction de dégâts pris, chaque charge réduit les dégâts subis par les **coups** (plafonné à **80 %** de réduction totale).
+
+**Arbre Armure de glace (court, 6 nœuds) :**
+- Nœuds 0 et 3 : l'Armure de glace nécessite 20 givres de moins par charge chacun (−40 au total → une charge tous les 60 givres)
+- Nœuds 1 et 4 : 1 % de dégâts subis réduits par charge d'Armure de glace chacun (2 % par charge au total)
+- Nœud 2 (robuste) : 30 % de chance de gagner 2 charges au lieu d'1 · 20 % de dissipation des charges plus lente
+- Nœud 5 (majeur) : l'Armure de glace peut avoir 5 charges maximum de plus
+
+La réduction de dégâts est appliquée après les résistances dans le pipeline de dégâts du joueur.`,
+  },
 }

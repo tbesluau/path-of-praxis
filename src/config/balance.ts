@@ -216,6 +216,28 @@ export const balance = {
     critTriggerDamageMult:        0.1,   // extra multiplier for crit trigger (on top of speed balance)
     afflictionTriggerDamageMult:  0.5,   // extra multiplier for affliction trigger (on top of speed balance)
     afflictionTriggerCount:        10,   // affliction applications before affliction trigger fires
+    manaTriggerSpend:             100,   // mana the player must spend before the mana trigger fires
+  },
+
+  // ── Frost affliction ──────────────────────────────────────────────────────
+  frost: {
+    baseDurationMs:     1000,  // frost lasts 1 s; no refresh while active (immune)
+    baseMoveSlowPct:    20,    // enemy move speed reduction while frosted
+    baseActionSlowPct:  20,    // enemy action speed reduction while frosted
+    baseFrostChancePct: 5,     // base frost apply chance before mastery bonuses
+  },
+
+  // ── Shatter (on frosted-enemy death) ──────────────────────────────────────
+  shatter: {
+    damageBaseFraction: 0.05,  // cold damage = frosted enemy maxLife × this fraction
+    rangeUnits:         3,     // explosion radius in game units
+  },
+
+  // ── Frozen Armor (player buff from frosting enemies) ──────────────────────
+  frozenArmor: {
+    stackDecayMs:    2000,  // one stack expires every 2 s
+    maxStacks:       10,
+    frostsPerStack:  100,   // frosts needed to gain 1 stack
   },
 
   // ── Artifacts ─────────────────────────────────────────────────────────────
