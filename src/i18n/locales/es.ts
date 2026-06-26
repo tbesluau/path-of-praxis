@@ -111,6 +111,7 @@ export const es: TranslationSchema = {
     planInvalid: 'Código de build inválido',
     assignAllNone: 'No hay plan cargado',
     saveNoHistory: 'El orden en que se asignaron tus nodos actuales no fue registrado. Guardar planes se desbloquea tras tu próxima Ascensión.',
+    pendingGainsNote: 'El progreso mostrado en verde solo se obtendrá después de morir y renacer',
   },
   ascent: {
     title: 'Ascensión',
@@ -288,8 +289,8 @@ export const es: TranslationSchema = {
   },
   refillAd: {
     title:   'Reserva vacía',
-    body:    'Tu reserva de velocidad ×2 acaba de agotarse. Mira un breve anuncio para conseguir 30 minutos.',
-    watchAd: 'Ver anuncio — ganar 30 min',
+    body:    'Tu reserva de velocidad ×2 acaba de agotarse. Mira un breve anuncio para conseguir 15 minutos.',
+    watchAd: 'Ver anuncio — ganar 15 min',
     skip:    'No, gracias',
     refill:  'recargar',
   },

@@ -1,5 +1,5 @@
 import { t } from '../i18n'
-import { showRewardedAd } from '../ads'
+import { showRewardedAd, type AdLifecycle } from '../ads'
 import { playSound } from '../audio'
 import { trackEvent } from '../core/analytics'
 
@@ -8,7 +8,7 @@ let currentTeardown: (() => void) | null = null
 /**
  * Offered when the ×2-speed stockpile drains to zero. If the user opts to
  * watch the rewarded ad, `onRefill(addedMs)` is invoked with the bonus
- * duration to credit (30 min by default in the caller).
+ * duration to credit (15 min by default in the caller).
  */
 export function mountRefillAdModal(
   parent: HTMLElement,
@@ -16,6 +16,8 @@ export function mountRefillAdModal(
   ascentCount: number,
   onRefill: (addedMs: number) => void,
   onClose: () => void,
+  // Pause/resume hooks forwarded to the ad SDK around playback.
+  adLifecycle?: AdLifecycle,
 ): () => void {
   currentTeardown?.()
   currentTeardown = null
@@ -45,7 +47,7 @@ export function mountRefillAdModal(
   watchBtn.addEventListener('click', async () => {
     watchBtn.disabled = true
     watchBtn.classList.add('away-bonus-watch-ad-btn--loading')
-    const watched = await showRewardedAd()
+    const watched = await showRewardedAd(adLifecycle)
     teardown()
     trackEvent('x2_speed_refill', { outcome: watched ? 'ad_watched' : 'ad_skipped', ascent: String(ascentCount) })
     if (watched) onRefill(rewardMs)

@@ -14,7 +14,7 @@ export interface ActionDef {
   id: string
   label: string
   icon: string
-  iconSystem: 'lucide' | 'game'
+  iconSystem: 'lucide' | 'game' | 'custom'
   range: number
   damage: number
   speed: number

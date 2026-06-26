@@ -111,6 +111,7 @@ export const fr: TranslationSchema = {
     planInvalid: 'Code de build invalide',
     assignAllNone: 'Aucun plan chargé',
     saveNoHistory: 'L\'ordre d\'attribution de tes nœuds actuels n\'a pas été enregistré. La sauvegarde de plans se débloque après ta prochaine Ascension.',
+    pendingGainsNote: 'La progression affichée en vert ne sera obtenue qu\'après être mort et renaître',
   },
   ascent: {
     title: 'Ascension',
@@ -288,8 +289,8 @@ export const fr: TranslationSchema = {
   },
   refillAd: {
     title:   'Stock épuisé',
-    body:    'Votre stock de vitesse ×2 vient de s\'épuiser. Regardez une courte pub pour gagner 30 minutes.',
-    watchAd: 'Regarder une pub — gagner 30 min',
+    body:    'Votre stock de vitesse ×2 vient de s\'épuiser. Regardez une courte pub pour gagner 15 minutes.',
+    watchAd: 'Regarder une pub — gagner 15 min',
     skip:    'Non merci',
     refill:  'remplir',
   },

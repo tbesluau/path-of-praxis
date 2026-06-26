@@ -219,13 +219,13 @@ describe('character', () => {
       expect(character.computeAward(60 * 60 * 1000, 0)).toBe(6 * 60 * 1000)
     })
 
-    it('caps total stockpile at 1 hour', () => {
-      // 10h away → /10 = 1h. Cap at 1h.
-      expect(character.computeAward(10 * 60 * 60 * 1000, 0)).toBe(60 * 60 * 1000)
+    it('caps total stockpile at the 30-minute non-doubled cap', () => {
+      // 10h away → /10 = 1h. Cap at 30m (the non-doubled ceiling).
+      expect(character.computeAward(10 * 60 * 60 * 1000, 0)).toBe(30 * 60 * 1000)
     })
 
     it('returns 0 when already at the cap', () => {
-      expect(character.computeAward(60 * 60 * 1000, 60 * 60 * 1000)).toBe(0)
+      expect(character.computeAward(60 * 60 * 1000, 30 * 60 * 1000)).toBe(0)
     })
 
     it('rounds the earned amount down to whole seconds', () => {
@@ -237,7 +237,7 @@ describe('character', () => {
 
     it('respects remaining room under the cap', () => {
       // 1h away normally awards 6m. If current is cap - 1m, room = 1m, award clamped.
-      const current = 60 * 60 * 1000 - 60_000
+      const current = 30 * 60 * 1000 - 60_000
       expect(character.computeAward(60 * 60 * 1000, current)).toBe(60_000)
     })
 

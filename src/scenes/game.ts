@@ -4,7 +4,7 @@ import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star, Snowflake, Skull } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, STOCKPILE_DOUBLED_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
@@ -14,7 +14,7 @@ import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtif
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
-import { adsAvailable } from '../ads'
+import { adsAvailable, type AdLifecycle } from '../ads'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -2350,7 +2350,7 @@ export function createGameScene(
   }
 
   function offerRefillAd(): void {
-    const addedMs = 30 * 60 * 1000
+    const addedMs = 15 * 60 * 1000
     if (isPaid() || !adsAvailable()) {
       trackEvent('x2_speed_refill', { outcome: 'auto_granted', ascent: String(ascentCount) })
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
@@ -2362,7 +2362,7 @@ export function createGameScene(
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + granted)
       updateSpeedUI()
       persistState()
-    }, () => {})
+    }, () => {}, makeAdLifecycle())
   }
 
   function setSpeed(speed: number): void {
@@ -2391,6 +2391,17 @@ export function createGameScene(
       updateSpeedUI()
     } else {
       setSpeed(gameSpeed)
+    }
+  }
+
+  // Pause the game while a rewarded ad plays, then resume only if we paused it
+  // (don't un-pause a player who had paused manually). Each ad gets a fresh one
+  // so its captured pre-ad state can't leak across requests.
+  function makeAdLifecycle(): AdLifecycle {
+    let wasPaused = false
+    return {
+      onAdStart: () => { wasPaused = paused; if (!paused) togglePause() },
+      onAdEnd:   () => { if (!wasPaused && paused) togglePause() },
     }
   }
 
@@ -3018,6 +3029,14 @@ export function createGameScene(
         freeMasteryPointsUsed,
         masteryDumpPoints,
         (id: MasteryId) => remainingFreeMasteryPointsFor(id),
+        () => {
+          const doDie = (): void => {
+            playerEntity.currentLife = 0
+            killEntity(playerEntity)
+          }
+          if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+          else doDie()
+        },
       )
     })
 
@@ -5398,14 +5417,15 @@ export function createGameScene(
             trackEvent('x2_speed_earned', { ascent: String(ascentCount) })
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
             if (isPaid() || !adsAvailable()) {
-              fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
+              // No-ad mode: grant the post-ad (doubled) value directly, up to the doubled cap.
+              fastForwardMs = Math.min(STOCKPILE_DOUBLED_MAX_MS, fastForwardMs + earned)
               persistState()
             } else {
               mountAwayBonusModal(el, gap, earned, ascentCount, () => {}, (bonusMs) => {
-                fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
+                fastForwardMs = Math.min(STOCKPILE_DOUBLED_MAX_MS, fastForwardMs + bonusMs)
                 updateSpeedUI()
                 persistState()
-              })
+              }, makeAdLifecycle())
             }
             updateSpeedUI()
           }
