@@ -6,6 +6,7 @@
 // resolves we can hand back a plain StorageBackend.
 
 import type { StorageBackend } from '../core/storage'
+import { setExternalMute } from '../audio'
 
 const SDK_SRC = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
 
@@ -16,9 +17,19 @@ interface CrazyData {
   clear(): void
 }
 
+interface CrazySettings {
+  muteAudio?: boolean
+}
+
+interface CrazyGame {
+  addSettingsChangeListener(listener: (settings: CrazySettings) => void): void
+  removeSettingsChangeListener(listener: (settings: CrazySettings) => void): void
+}
+
 interface CrazySDK {
   init(): Promise<void>
   data: CrazyData
+  game: CrazyGame
 }
 
 declare global {
@@ -50,6 +61,19 @@ export async function initCrazyGames(): Promise<StorageBackend | null> {
     const sdk = window.CrazyGames?.SDK
     if (!sdk) return null
     await sdk.init()
+
+    // Mirror the portal's mute setting onto the game audio. CrazyGames toggles
+    // `muteAudio` (e.g. its own mute button, or when the tab is backgrounded);
+    // we route it through the transient external-mute layer so it never
+    // overwrites the user's own sound preference.
+    try {
+      sdk.game.addSettingsChangeListener((settings) => {
+        setExternalMute(settings.muteAudio === true)
+      })
+    } catch (err) {
+      console.warn('[crazygames] could not register settings listener:', err)
+    }
+
     const data = sdk.data
     return {
       getItem(key) {

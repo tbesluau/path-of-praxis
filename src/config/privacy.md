@@ -4,7 +4,9 @@ This privacy policy describes how **Path of Praxis** (the "game") handles your d
 
 ### Local data
 
-Your character saves, game preferences, and chosen language are stored only on your device in browser `localStorage` (web) or the equivalent native key-value store (iOS/Android). This data is never transmitted to a server controlled by Path of Praxis. Clearing your browser storage or uninstalling the app deletes this data.
+Your character saves, game preferences, and chosen language are stored on your device in browser `localStorage` (web) or the equivalent native key-value store (iOS/Android). This data is never transmitted to a server controlled by Path of Praxis. Clearing your browser storage or uninstalling the app deletes this data.
+
+When you play on a third-party games portal that embeds Path of Praxis (currently **CrazyGames**), that same save, preference, and language data is stored through the portal's own cloud save feature instead of your local browser storage, so that your progress can sync across the devices where you are signed in to that portal. In that case the data is held by the portal under its own privacy policy; it is still never sent to a server controlled by Path of Praxis.
 
 ### Analytics
 
@@ -35,7 +37,7 @@ Path of Praxis is not directed at users under the age of 13 (or the equivalent a
 
 ### Your rights
 
-You may request that we delete any analytics data tied to your device identifier by contacting us via the Discord linked in the in-game Settings. Because save data lives only on your device, you can delete it yourself at any time by clearing the game's storage.
+You may request that we delete any analytics data tied to your device identifier by contacting us via the Discord linked in the in-game Settings. Because save data lives on your device, you can delete it yourself at any time by clearing the game's storage. When playing through a games portal that stores your save in its own cloud (such as CrazyGames), you can manage or delete that copy through the portal's account settings.
 
 ### Contact
 

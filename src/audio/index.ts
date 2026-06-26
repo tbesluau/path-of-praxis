@@ -14,15 +14,30 @@ const lastPlayedAt = new Map<SfxId, number>()
 
 let _volume = 0.7
 let _muted = false
+// Transient mute requested by the embedding portal (e.g. CrazyGames' mute
+// setting). Kept separate from `_muted` so it never persists to the user's
+// own sound preference — it only gates the master gain while active.
+let _externalMuted = false
 let _initialized = false
 // Gain override flag — set by context integrity checks.
 let _gx = false
+
+// Effective master gain: silent if the user muted, the portal muted, or the
+// integrity override is active; otherwise the user's chosen volume.
+function effectiveGain(): number {
+  return (_muted || _externalMuted) ? 0 : _volume
+}
+
+function applyGain(): void {
+  if (!masterGain || !ctx) return
+  masterGain.gain.setTargetAtTime(effectiveGain(), ctx.currentTime, 0.02)
+}
 
 function getCtx(): AudioContext {
   if (!ctx) {
     ctx = new AudioContext()
     masterGain = ctx.createGain()
-    masterGain.gain.value = _muted ? 0 : _volume
+    masterGain.gain.value = effectiveGain()
     masterGain.connect(ctx.destination)
   }
   return ctx
@@ -91,7 +106,7 @@ export function preloadSounds(ids: SfxId[]): Promise<void> {
 }
 
 export function playSound(id: SfxId): void {
-  if (_muted || !ctx) return
+  if (_muted || _externalMuted || !ctx) return
 
   const def = SFX[id]
   const now = performance.now()
@@ -131,19 +146,31 @@ export function playSound(id: SfxId): void {
 
 export function setVolume(v: number): void {
   _volume = Math.max(0, Math.min(1, v))
-  if (masterGain && !_muted) masterGain.gain.setTargetAtTime(_volume, getCtx().currentTime, 0.02)
+  applyGain()
   setPref('soundVolume', _volume)
 }
 
 export function setMuted(m: boolean): void {
   if (_gx && !m) return  // gain override active; cannot unmute
   _muted = m
-  if (masterGain) masterGain.gain.setTargetAtTime(m ? 0 : _volume, getCtx().currentTime, 0.02)
+  applyGain()
   setPref('soundMuted', m)
+}
+
+/**
+ * Mute/unmute requested by the embedding portal (CrazyGames). Transient — it
+ * does NOT touch the user's saved sound preference, so unmuting restores
+ * whatever the user had chosen. Safe to call before initAudio(): the flag is
+ * picked up when the AudioContext is later created.
+ */
+export function setExternalMute(m: boolean): void {
+  _externalMuted = m
+  applyGain()
 }
 
 export function getVolume(): number { return _volume }
 export function isMuted(): boolean  { return _muted }
+export function isExternalMuted(): boolean { return _externalMuted }
 
 export function suspendAudio(): void { ctx?.suspend().catch(() => undefined) }
 export function resumeAudio(): void  { ctx?.resume().catch(() => undefined) }
