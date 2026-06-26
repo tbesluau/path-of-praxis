@@ -344,6 +344,7 @@ export interface TranslationSchema {
     sword: string; bow: string; fireball: string; zap: string; 'fire-nova': string
     grenade: string; 'hammer-slam': string; 'lightning-nova': string; bolt: string; 'cold-nova': string; 'ice-spear': string
     'putrid-nova': string
+    'rotten-dagger': string; 'poisonous-arrow': string
   }
   actionTag: {
     physical: string; fire: string; lightning: string; cold: string; rot: string
@@ -710,6 +711,8 @@ export const en: TranslationSchema = {
     'lightning-nova': 'Lightning Nova', bolt: 'Bolt', 'cold-nova': 'Cold Nova',
     'ice-spear': 'Ice Spear',
     'putrid-nova': 'Putrid Nova',
+    'rotten-dagger': 'Rotten Dagger',
+    'poisonous-arrow': 'Poisonous Arrow',
   },
   actionTag: {
     physical: 'physical', fire: 'fire', lightning: 'lightning', cold: 'cold', rot: 'rot',

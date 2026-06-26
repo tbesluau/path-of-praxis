@@ -358,6 +358,8 @@ export const ru: TranslationSchema = {
     'fire-nova': 'Огненная волна', grenade: 'Граната', 'hammer-slam': 'Удар молотом',
     'lightning-nova': 'Молниевая волна', bolt: 'Болт', 'cold-nova': 'Ледяная волна', 'ice-spear': 'Ледяное копьё',
     'putrid-nova': 'Гнилостная волна',
+    'rotten-dagger': 'Гнилой кинжал',
+    'poisonous-arrow': 'Ядовитая стрела',
   },
   actionTag: {
     physical: 'физический', fire: 'огонь', lightning: 'молния', cold: 'холод', rot: 'гниль',
