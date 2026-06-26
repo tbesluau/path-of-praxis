@@ -9,10 +9,11 @@ const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
 
 // ×2-speed stockpile balance
-export const STOCKPILE_MAX_MS    = 60 * 60 * 1000   // 1h cap
-export const STOCKPILE_RATIO     = 10               // award = floor(away / RATIO), in seconds
-export const STOCKPILE_MIN_AWARD = 10 * 1000        // single awards < 10s are discarded
-export const AWAY_DETECT_MS      = 2_000            // game-loop gaps above this count as absence
+export const STOCKPILE_MAX_MS         = 30 * 60 * 1000   // 30m cap without an ad (non-doubled)
+export const STOCKPILE_DOUBLED_MAX_MS = 60 * 60 * 1000   // 1h cap once the ad doubles the reward
+export const STOCKPILE_RATIO          = 10               // award = floor(away / RATIO), in seconds
+export const STOCKPILE_MIN_AWARD      = 10 * 1000        // single awards < 10s are discarded
+export const AWAY_DETECT_MS           = 2_000            // game-loop gaps above this count as absence
 
 // Compute the ×2-speed stockpile award (ms) for an absence of `awayMs`,
 // given the current `currentStockpileMs` (cap-aware). Pure.

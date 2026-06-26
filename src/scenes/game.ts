@@ -4,7 +4,7 @@ import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star, Snowflake, Skull } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, STOCKPILE_DOUBLED_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
@@ -2350,7 +2350,7 @@ export function createGameScene(
   }
 
   function offerRefillAd(): void {
-    const addedMs = 30 * 60 * 1000
+    const addedMs = 15 * 60 * 1000
     if (isPaid() || !adsAvailable()) {
       trackEvent('x2_speed_refill', { outcome: 'auto_granted', ascent: String(ascentCount) })
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + addedMs)
@@ -5406,11 +5406,12 @@ export function createGameScene(
             trackEvent('x2_speed_earned', { ascent: String(ascentCount) })
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
             if (isPaid() || !adsAvailable()) {
-              fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
+              // No-ad mode: grant the post-ad (doubled) value directly, up to the doubled cap.
+              fastForwardMs = Math.min(STOCKPILE_DOUBLED_MAX_MS, fastForwardMs + earned)
               persistState()
             } else {
               mountAwayBonusModal(el, gap, earned, ascentCount, () => {}, (bonusMs) => {
-                fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + bonusMs)
+                fastForwardMs = Math.min(STOCKPILE_DOUBLED_MAX_MS, fastForwardMs + bonusMs)
                 updateSpeedUI()
                 persistState()
               })
