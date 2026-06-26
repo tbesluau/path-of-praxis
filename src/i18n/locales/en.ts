@@ -63,6 +63,7 @@ export interface TranslationSchema {
     dpsAfflictionBurn: string
     dpsAfflictionBleed: string
     dpsAfflictionGroundFire: string
+    dpsAfflictionPoison: string
     selectAnAction: string
     critLabel: string
   }
@@ -299,6 +300,7 @@ export interface TranslationSchema {
     fire: string
     lightning: string
     cold: string
+    rot: string
     area: string
     projectile: string
     strike: string
@@ -314,6 +316,7 @@ export interface TranslationSchema {
     fire_0: string; fire_1: string; fire_2: string; fire_3: string
     lightning_0: string; lightning_1: string; lightning_2: string; lightning_3: string
     cold_0: string; cold_1: string; cold_2: string; cold_3: string
+    rot_0: string; rot_1: string; rot_2: string; rot_3: string
     area_0: string; area_1: string; area_2: string; area_3: string
     projectile_0: string; projectile_1: string; projectile_2: string; projectile_3: string
     strike_0: string; strike_1: string; strike_2: string; strike_3: string
@@ -324,7 +327,7 @@ export interface TranslationSchema {
   }
   masteryDump: {
     action: string; criticalHit: string; physical: string; fire: string
-    lightning: string; cold: string; area: string; projectile: string; strike: string
+    lightning: string; cold: string; rot: string; area: string; projectile: string; strike: string
     life: string; mana: string; enemy: string; movement: string
   }
   runeLabel: {
@@ -340,6 +343,7 @@ export interface TranslationSchema {
   actionLabel: {
     sword: string; bow: string; fireball: string; zap: string; 'fire-nova': string
     grenade: string; 'hammer-slam': string; 'lightning-nova': string; bolt: string; 'cold-nova': string; 'ice-spear': string
+    'putrid-nova': string
   }
   actionTag: {
     physical: string; fire: string; lightning: string; cold: string; rot: string
@@ -412,6 +416,7 @@ export const en: TranslationSchema = {
     dpsAfflictionBurn: 'Burn',
     dpsAfflictionBleed: 'Bleed',
     dpsAfflictionGroundFire: 'Ground fire',
+    dpsAfflictionPoison: 'Poison',
     selectAnAction: 'Select an action',
     critLabel: 'Crit',
   },
@@ -648,6 +653,7 @@ export const en: TranslationSchema = {
     fire: 'Fire',
     lightning: 'Lightning',
     cold: 'Cold',
+    rot: 'Rot',
     area: 'Area',
     projectile: 'Projectile',
     strike: 'Strike',
@@ -663,6 +669,7 @@ export const en: TranslationSchema = {
     fire_0: 'Fire Damage', fire_1: 'Burning', fire_2: 'Burning Ground', fire_3: 'Immolation',
     lightning_0: 'Lightning Damage', lightning_1: 'Electrocution', lightning_2: 'Jump', lightning_3: 'Electrifying',
     cold_0: 'Cold Damage', cold_1: 'Frost', cold_2: 'Shatter', cold_3: 'Frozen Armor',
+    rot_0: 'Rot Damage', rot_1: 'Poison', rot_2: 'Weakening', rot_3: 'Green Veins',
     area_0: 'Area Damage', area_1: 'Area Size', area_2: 'Tremor', area_3: 'Knockback',
     projectile_0: 'Projectile Damage', projectile_1: 'Multiple Projectiles', projectile_2: 'Projectile Range', projectile_3: 'Knockback',
     strike_0: 'Strike Damage', strike_1: 'Frenzy', strike_2: 'Strike Range', strike_3: 'Additional Target',
@@ -673,7 +680,7 @@ export const en: TranslationSchema = {
   },
   masteryDump: {
     action: 'action damage', criticalHit: 'critical hit damage', physical: 'physical damage',
-    fire: 'fire damage', lightning: 'lightning damage', cold: 'cold damage', area: 'area action radius',
+    fire: 'fire damage', lightning: 'lightning damage', cold: 'cold damage', rot: 'rot damage', area: 'area action radius',
     projectile: 'projectile range', strike: 'strike action speed', life: 'maximum life',
     mana: 'maximum mana', enemy: 'enemies spawned', movement: 'movement speed',
   },
@@ -702,6 +709,7 @@ export const en: TranslationSchema = {
     'fire-nova': 'Fire Nova', grenade: 'Grenade', 'hammer-slam': 'Hammer Slam',
     'lightning-nova': 'Lightning Nova', bolt: 'Bolt', 'cold-nova': 'Cold Nova',
     'ice-spear': 'Ice Spear',
+    'putrid-nova': 'Putrid Nova',
   },
   actionTag: {
     physical: 'physical', fire: 'fire', lightning: 'lightning', cold: 'cold', rot: 'rot',
