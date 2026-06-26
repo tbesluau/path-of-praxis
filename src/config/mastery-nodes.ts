@@ -2850,6 +2850,7 @@ export function nodeHasAnyEffect(masteryId: MasteryId, treeIdx: number, nodeIdx:
     case 'lightning':   effect = getLightningNodeEffect(treeIdx, nodeIdx); break
     case 'strike':      effect = getStrikeNodeEffect(treeIdx, nodeIdx); break
     case 'physical':    effect = getPhysicalNodeEffect(treeIdx, nodeIdx); break
+    case 'cold':        effect = getColdNodeEffect(treeIdx, nodeIdx); break
     case 'rot':         effect = getRotNodeEffect(treeIdx, nodeIdx); break
     case 'area':        effect = getAreaNodeEffect(treeIdx, nodeIdx); break
     case 'movement':    effect = getMovementNodeEffect(treeIdx, nodeIdx); break
