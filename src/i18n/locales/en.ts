@@ -63,6 +63,7 @@ export interface TranslationSchema {
     dpsAfflictionBurn: string
     dpsAfflictionBleed: string
     dpsAfflictionGroundFire: string
+    dpsAfflictionPoison: string
     selectAnAction: string
     critLabel: string
   }
@@ -98,6 +99,8 @@ export interface TranslationSchema {
     savePlan: string               // "Save plan"
     loadPlan: string               // "Load plan"
     assignAll: string              // "Assign all"
+    assignAllDump: string          // "Dump extra points" — checkbox toggling auto-dump of leftover points
+    assignAllDumpTooltip: string   // tooltip explaining the dump-extras checkbox
     slot: string                   // template: "Slot {n}"
     slotEmpty: string              // "(empty)"
     copyClipboard: string          // "Copy to clipboard"
@@ -122,13 +125,18 @@ export interface TranslationSchema {
     threshold4: string
     threshold5: string
     threshold6: string
+    threshold7: string
+    threshold8: string
+    threshold9: string
     artifactsBtn: string
     upSlotA: string
     upSlotB: string
+    upSlotC: string
+    upSlotD: string
   }
   artifacts: {
     title: string
-    countLabel: string       // template: "{n}/20 artifacts"
+    countLabel: string       // template: "{n}/{max} artifacts"
     equippedLabel: string    // template: "Equipped: {used}/{max}"
     full: string             // warning when at 20/20
     equip: string
@@ -297,6 +305,7 @@ export interface TranslationSchema {
     fire: string
     lightning: string
     cold: string
+    rot: string
     area: string
     projectile: string
     strike: string
@@ -312,6 +321,7 @@ export interface TranslationSchema {
     fire_0: string; fire_1: string; fire_2: string; fire_3: string
     lightning_0: string; lightning_1: string; lightning_2: string; lightning_3: string
     cold_0: string; cold_1: string; cold_2: string; cold_3: string
+    rot_0: string; rot_1: string; rot_2: string; rot_3: string
     area_0: string; area_1: string; area_2: string; area_3: string
     projectile_0: string; projectile_1: string; projectile_2: string; projectile_3: string
     strike_0: string; strike_1: string; strike_2: string; strike_3: string
@@ -322,7 +332,7 @@ export interface TranslationSchema {
   }
   masteryDump: {
     action: string; criticalHit: string; physical: string; fire: string
-    lightning: string; cold: string; area: string; projectile: string; strike: string
+    lightning: string; cold: string; rot: string; area: string; projectile: string; strike: string
     life: string; mana: string; enemy: string; movement: string
   }
   runeLabel: {
@@ -338,6 +348,8 @@ export interface TranslationSchema {
   actionLabel: {
     sword: string; bow: string; fireball: string; zap: string; 'fire-nova': string
     grenade: string; 'hammer-slam': string; 'lightning-nova': string; bolt: string; 'cold-nova': string; 'ice-spear': string
+    'putrid-nova': string
+    'rotten-dagger': string; 'poisonous-arrow': string
   }
   actionTag: {
     physical: string; fire: string; lightning: string; cold: string; rot: string
@@ -410,6 +422,7 @@ export const en: TranslationSchema = {
     dpsAfflictionBurn: 'Burn',
     dpsAfflictionBleed: 'Bleed',
     dpsAfflictionGroundFire: 'Ground fire',
+    dpsAfflictionPoison: 'Poison',
     selectAnAction: 'Select an action',
     critLabel: 'Crit',
   },
@@ -445,6 +458,8 @@ export const en: TranslationSchema = {
     savePlan: 'Save plan',
     loadPlan: 'Load plan',
     assignAll: 'Assign all',
+    assignAllDump: 'Dump extra points',
+    assignAllDumpTooltip: 'Assign all will assign remaining points to dump once the loadout has been fulfilled',
     slot: 'Slot {n}',
     slotEmpty: '(empty)',
     copyClipboard: 'Copy to clipboard',
@@ -469,13 +484,18 @@ export const en: TranslationSchema = {
     threshold4: '+1 free mastery point per ascent for each mastery',
     threshold5: 'Artifacts — risk/reward modifiers',
     threshold6: '+1 action trigger slot',
+    threshold7: 'Each ascent grants 3 universe points instead of 2',
+    threshold8: '20% more enemies and 20% more enemy level experience',
+    threshold9: 'Equip a second artifact and carry up to 30 in your bag',
     artifactsBtn: 'Artifacts',
     upSlotA: '10% increased multi-action speed',
     upSlotB: '+1% base action critical hit chance',
+    upSlotC: '7% more damage',
+    upSlotD: '4% more action speed',
   },
   artifacts: {
     title: 'Artifacts',
-    countLabel: '{n}/20 artifacts',
+    countLabel: '{n}/{max} artifacts',
     equippedLabel: 'Equipped: {used}/{max}',
     full: 'Inventory full — drop an artifact to receive new ones from bosses',
     equip: 'Equip',
@@ -644,6 +664,7 @@ export const en: TranslationSchema = {
     fire: 'Fire',
     lightning: 'Lightning',
     cold: 'Cold',
+    rot: 'Rot',
     area: 'Area',
     projectile: 'Projectile',
     strike: 'Strike',
@@ -659,6 +680,7 @@ export const en: TranslationSchema = {
     fire_0: 'Fire Damage', fire_1: 'Burning', fire_2: 'Burning Ground', fire_3: 'Immolation',
     lightning_0: 'Lightning Damage', lightning_1: 'Electrocution', lightning_2: 'Jump', lightning_3: 'Electrifying',
     cold_0: 'Cold Damage', cold_1: 'Frost', cold_2: 'Shatter', cold_3: 'Frozen Armor',
+    rot_0: 'Rot Damage', rot_1: 'Poison', rot_2: 'Weakening', rot_3: 'Green Veins',
     area_0: 'Area Damage', area_1: 'Area Size', area_2: 'Tremor', area_3: 'Knockback',
     projectile_0: 'Projectile Damage', projectile_1: 'Multiple Projectiles', projectile_2: 'Projectile Range', projectile_3: 'Knockback',
     strike_0: 'Strike Damage', strike_1: 'Frenzy', strike_2: 'Strike Range', strike_3: 'Additional Target',
@@ -669,7 +691,7 @@ export const en: TranslationSchema = {
   },
   masteryDump: {
     action: 'action damage', criticalHit: 'critical hit damage', physical: 'physical damage',
-    fire: 'fire damage', lightning: 'lightning damage', cold: 'cold damage', area: 'area action radius',
+    fire: 'fire damage', lightning: 'lightning damage', cold: 'cold damage', rot: 'rot damage', area: 'area action radius',
     projectile: 'projectile range', strike: 'strike action speed', life: 'maximum life',
     mana: 'maximum mana', enemy: 'enemies spawned', movement: 'movement speed',
   },
@@ -698,6 +720,9 @@ export const en: TranslationSchema = {
     'fire-nova': 'Fire Nova', grenade: 'Grenade', 'hammer-slam': 'Hammer Slam',
     'lightning-nova': 'Lightning Nova', bolt: 'Bolt', 'cold-nova': 'Cold Nova',
     'ice-spear': 'Ice Spear',
+    'putrid-nova': 'Putrid Nova',
+    'rotten-dagger': 'Rotten Dagger',
+    'poisonous-arrow': 'Poisonous Arrow',
   },
   actionTag: {
     physical: 'physical', fire: 'fire', lightning: 'lightning', cold: 'cold', rot: 'rot',

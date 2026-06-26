@@ -157,7 +157,7 @@ export function mountArtifactsModal(
         <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
         <h2 class="modal-title" id="artifacts-title">${t('artifacts', 'title')}</h2>
         <div class="artifacts-header-info">
-          <span class="artifact-count">${t('artifacts', 'countLabel').replace('{n}', String(artifacts.length))}</span>
+          <span class="artifact-count">${t('artifacts', 'countLabel').replace('{n}', String(artifacts.length)).replace('{max}', String(max))}</span>
           <span class="artifact-equipped-label">${t('artifacts', 'equippedLabel').replace('{used}', String(used)).replace('{max}', String(maxEquipped))}</span>
         </div>
         ${isFull ? `<p class="artifact-warning">${t('artifacts', 'full')}</p>` : ''}

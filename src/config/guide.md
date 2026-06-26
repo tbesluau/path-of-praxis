@@ -75,11 +75,11 @@ Artifacts are rare items dropped by bosses once you have reached Ascension 5. Ea
 
 When a boss is defeated, a drop card flies to the center of the screen. You can **Bag** it (keep it for later), **Equip** it immediately, or **Drop** it entirely.
 
-Your inventory holds up to 20 artifacts. Once full, bosses stop dropping new ones until you make room.
+Your inventory holds up to 20 artifacts (30 from Ascent 9 onward). Once full, bosses stop dropping new ones until you make room.
 
 **Equip slots** unlock with Ascent progress:
 - **Ascent 5** — 1 equip slot unlocks
-- **Ascent 10** — a 2nd equip slot unlocks
+- **Ascent 9** — a 2nd equip slot unlocks
 
 Only equipped artifacts apply their modifiers. All equipped artifacts' modifiers stack together.
 

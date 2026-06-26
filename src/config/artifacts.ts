@@ -1,3 +1,5 @@
+import { balance } from './balance'
+
 export type Source = 'fire' | 'lightning' | 'physical'
 export type PositiveType =
   | 'sourceMoreDamage' | 'sourceActionSpeed' | 'sourceAffliction'
@@ -202,9 +204,16 @@ export function computeArtifactMods(artifacts: Artifact[]): ArtifactMods {
 }
 
 export function maxEquippedArtifacts(ascentCount: number): number {
-  if (ascentCount >= 10) return 2
-  if (ascentCount >= 5) return 1
+  if (ascentCount >= balance.ascent.artifactSlot2UnlockAscent) return 2
+  if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent) return 1
   return 0
+}
+
+// Bag capacity grows once the bag-boost ascent threshold is reached.
+export function maxBaggedArtifacts(ascentCount: number): number {
+  return ascentCount >= balance.artifacts.bagBoostUnlockAscent
+    ? balance.artifacts.maxCountBoosted
+    : balance.artifacts.maxCount
 }
 
 export function describePositive(m: PositiveModifier): { key: string; value: number; source?: Source } {

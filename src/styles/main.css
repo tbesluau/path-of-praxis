@@ -3173,6 +3173,25 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   min-height: 36px;
 }
 
+.mastery-dump-toggle {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: #5a3010;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mastery-dump-toggle-input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #5a3010;
+}
+
 .mastery-plan-active {
   flex: 1 1 100%;
   font-family: var(--font-mono, monospace);

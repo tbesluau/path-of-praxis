@@ -19,6 +19,7 @@ export const MASTERY_DUMP: Record<MasteryId, MasteryDumpInfo> = {
   fire:        { rate: 1,   label: 'fire damage' },
   lightning:   { rate: 1,   label: 'lightning damage' },
   cold:        { rate: 1,   label: 'cold damage' },
+  rot:         { rate: 1,   label: 'rot damage' },
   area:        { rate: 1,   label: 'area action radius' },
   projectile:  { rate: 1,   label: 'projectile range' },
   strike:      { rate: 0.5, label: 'strike action speed' },
@@ -304,6 +305,32 @@ export interface NodeEffect {
   // Action mastery — ignore enemy damage mitigation (tree 0 final major)
   actionIgnoreMitigationChance?: number   // additive %; chance for any action hit to ignore enemy resistance
 
+  // Rot mastery effects (Rot Damage tree)
+  rotDamageIncrease?: number         // additive %; for rot-tagged actions
+  rotMoreDamage?: number             // 'more' %; for rot-tagged actions
+  rotActionSpeedIncrease?: number    // additive %; for rot-tagged actions
+  rotPoisonApplyChance?: number      // additive %; bonus chance to apply poison on rot hits
+  rotPoisonedTakeMore?: number       // 'more' %; rot damage multiplier vs poisoned enemies
+  // Rot mastery effects (Poison tree)
+  rotPoisonDamageIncrease?: number   // additive %; stacks before 'more' multiplier
+  rotPoisonDurationIncrease?: number // additive %; extends poison duration
+  rotPoisonMoreDamage?: number       // 'more' %; multiplies poison dps after increased
+  rotPoisonDurationMult?: number     // multiplicative duration; product of all such mult fields
+  rotPoisonLessDamage?: number       // additive %; × (1 - sum/100) on poison dps
+  rotPoisonDamageMult?: number       // multiplicative; product of all such mult fields
+  rotSuppressHitDamage?: boolean     // rot-tagged player hits deal no direct damage; afflictions still apply
+  // Rot mastery effects (Weakening tree)
+  rotWeakeningRotDamageTaken?: number   // 'more' %; rot damage multiplier vs poisoned enemies (Weakening tree contribution)
+  rotWeakeningDealLess?: number         // additive %; poisoned enemies deal less damage
+  rotWeakeningSpeedReduction?: number   // additive %; poisoned enemy move+action speed reduction
+  rotWeakeningResistPerStack?: number   // flat %; physRotResist reduction per poison stack on enemy
+  // Rot mastery effects (Green Veins tree)
+  rotGreenVeinsChanceOnPoison?: number  // additive %; bonus chance to gain extra Green Vein stack on trigger
+  rotGreenVeinsDamagePerStack?: number  // additive %; rot damage increase per Green Vein stack
+  rotGreenVeinsDurationIncrease?: number // additive %; extends Green Veins buff duration
+  rotGreenVeinsTriggerReduction?: number // additive %; reduces poison-application trigger threshold
+  rotGreenVeinsMaxStacksBonus?: number   // flat additional maximum Green Vein stacks
+
   // Cold mastery effects (Cold Damage tree)
   coldDamageIncrease?: number        // additive %; for cold-tagged actions
   coldMoreDamage?: number            // 'more' %; for cold-tagged actions
@@ -474,6 +501,30 @@ export interface ColdBonuses {
   frozenArmorFrostsReduction: number      // flat reduction to frostsPerStack threshold
   frozenArmorDoubleStackChance: number    // total additive %; chance to gain 2 stacks instead of 1
   frozenArmorSlowerDepletion: number      // total additive %; slows the stack-decay interval
+}
+
+export interface RotBonuses {
+  damageIncrease: number         // total additive %; rot-tagged actions
+  moreDamage: number             // total 'more' %; rot-tagged actions
+  actionSpeedIncrease: number    // total additive %; rot-tagged actions
+  poisonApplyChance: number      // total additive %; bonus poison apply chance
+  poisonedTakeMore: number       // total 'more' %; rot damage vs poisoned enemies (Rot Damage tree)
+  poisonDamageIncrease: number   // total additive %
+  poisonDurationIncrease: number // total additive %
+  poisonMoreDamage: number       // total 'more' %
+  poisonDurationMult: number     // total multiplicative duration factor (1.0 = no change)
+  poisonLessDamage: number       // total additive %; × (1 - sum/100) on poison dps
+  poisonDamageMult: number       // total multiplicative dps factor (1.0 = no change)
+  suppressRotHitDamage: boolean  // when true, rot-tagged player hits deal no direct damage
+  weakeningRotDamageTaken: number   // total 'more' %; rot damage vs poisoned enemies (Weakening tree)
+  weakeningDealLess: number         // total additive %; poisoned enemies deal less damage
+  weakeningSpeedReduction: number   // total additive %; poisoned enemy move+action speed reduction
+  weakeningResistPerStack: number   // flat %; physRotResist reduction per poison stack on enemy
+  greenVeinsChanceOnPoison: number  // total additive %; extra stack chance on trigger
+  greenVeinsDamagePerStack: number  // additive %; rot damage increase per Green Vein stack
+  greenVeinsDurationIncrease: number // total additive %; extends Green Veins buff duration
+  greenVeinsTriggerReduction: number // total additive %; reduces poison-application trigger threshold
+  greenVeinsMaxStacksBonus: number   // flat additional maximum Green Vein stacks
 }
 
 export interface StrikeBonuses {
@@ -1812,6 +1863,109 @@ export function getPhysicalNodeEffect(treeIdx: number, nodeIdx: number): NodeEff
   return PHYSICAL_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
 }
 
+// ── Rot mastery node effects ───────────────────────────────────────────────
+// Tree 0: Rot Damage (full)  Tree 1: Poison (full)
+// Tree 2: Weakening (short)  Tree 3: Green Veins (short)
+
+const ROT_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Rot Damage (full tree — clone of Physical Damage tree 0)
+    0:  { rotDamageIncrease: 5 },
+    1:  { rotActionSpeedIncrease: 3 },
+    2:  { rotDamageIncrease: 5, rotPoisonApplyChance: 5 },
+    3:  { rotDamageIncrease: 5 },
+    4:  { rotActionSpeedIncrease: 3 },
+    5:  { rotMoreDamage: 10 },
+    6:  { rotDamageIncrease: 5 },
+    7:  { rotActionSpeedIncrease: 3 },
+    8:  { rotDamageIncrease: 12 },
+    9:  { rotDamageIncrease: 5 },
+    10: { rotActionSpeedIncrease: 3 },
+    11: { rotPoisonedTakeMore: 10 },
+    // 12-15: key nodes — not yet defined
+  },
+  1: {  // Poison (full tree — clone of Bleed tree 1; node 11 differs)
+    0:  { rotPoisonApplyChance: 5 },
+    1:  { rotPoisonDamageIncrease: 15 },
+    2:  { rotPoisonDamageIncrease: 30, rotPoisonDurationIncrease: 10 },
+    3:  { rotPoisonApplyChance: 5 },
+    4:  { rotPoisonDamageIncrease: 15 },
+    5:  { rotPoisonMoreDamage: 30 },
+    6:  { rotPoisonApplyChance: 5 },
+    7:  { rotPoisonDamageIncrease: 15 },
+    8:  { rotPoisonDamageIncrease: 60 },
+    9:  { rotPoisonApplyChance: 5 },
+    10: { rotPoisonDamageIncrease: 15 },
+    11: { rotPoisonApplyChance: 15 },  // differs: "+15% chance to apply poison" (not ignore-resistance)
+    12: { rotPoisonMoreDamage: 30, rotPoisonDurationMult: 0.5 },
+    13: { rotPoisonDurationMult: 2, rotPoisonLessDamage: 30 },
+    14: { rotPoisonDamageMult: 2, rotSuppressHitDamage: true },
+    15: { rotPoisonMoreDamage: 10 },
+  },
+  2: {  // Weakening (short tree — line nodes 0-5, key nodes 12-13)
+    0: { rotWeakeningRotDamageTaken: 5 },
+    1: { rotWeakeningDealLess: 5 },
+    2: { rotWeakeningSpeedReduction: 20 },
+    3: { rotWeakeningRotDamageTaken: 5 },
+    4: { rotWeakeningDealLess: 5 },
+    5: { rotWeakeningResistPerStack: 1 },
+    // 12-13: key nodes — not yet defined
+  },
+  3: {  // Green Veins (short tree — line nodes 0-5, key nodes 12-13)
+    0: { rotGreenVeinsChanceOnPoison: 20 },
+    1: { rotGreenVeinsDamagePerStack: 1 },
+    2: { rotGreenVeinsDurationIncrease: 50, rotGreenVeinsTriggerReduction: 50 },
+    3: { rotGreenVeinsChanceOnPoison: 20 },
+    4: { rotGreenVeinsDamagePerStack: 1 },
+    5: { rotGreenVeinsMaxStacksBonus: 25, rotGreenVeinsChanceOnPoison: 30 },
+    // 12-13: key nodes — not yet defined
+  },
+}
+
+export function getRotNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return ROT_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export function computeRotBonuses(nodes: number[][], dumpedPoints = 0): RotBonuses {
+  const b: RotBonuses = {
+    damageIncrease: 0, moreDamage: dumpedPoints * MASTERY_DUMP.rot.rate,
+    actionSpeedIncrease: 0, poisonApplyChance: 0, poisonedTakeMore: 0,
+    poisonDamageIncrease: 0, poisonDurationIncrease: 0, poisonMoreDamage: 0,
+    poisonDurationMult: 1, poisonLessDamage: 0, poisonDamageMult: 1,
+    suppressRotHitDamage: false,
+    weakeningRotDamageTaken: 0, weakeningDealLess: 0, weakeningSpeedReduction: 0,
+    weakeningResistPerStack: 0,
+    greenVeinsChanceOnPoison: 0, greenVeinsDamagePerStack: 0,
+    greenVeinsDurationIncrease: 0, greenVeinsTriggerReduction: 0, greenVeinsMaxStacksBonus: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getRotNodeEffect(treeIdx, nodeIdx)
+      b.damageIncrease              += eff.rotDamageIncrease ?? 0
+      b.moreDamage                  += eff.rotMoreDamage ?? 0
+      b.actionSpeedIncrease         += eff.rotActionSpeedIncrease ?? 0
+      b.poisonApplyChance           += eff.rotPoisonApplyChance ?? 0
+      b.poisonedTakeMore            += eff.rotPoisonedTakeMore ?? 0
+      b.poisonDamageIncrease        += eff.rotPoisonDamageIncrease ?? 0
+      b.poisonDurationIncrease      += eff.rotPoisonDurationIncrease ?? 0
+      b.poisonMoreDamage            += eff.rotPoisonMoreDamage ?? 0
+      if (eff.rotPoisonDurationMult !== undefined) b.poisonDurationMult *= eff.rotPoisonDurationMult
+      b.poisonLessDamage            += eff.rotPoisonLessDamage ?? 0
+      if (eff.rotPoisonDamageMult !== undefined) b.poisonDamageMult *= eff.rotPoisonDamageMult
+      if (eff.rotSuppressHitDamage) b.suppressRotHitDamage = true
+      b.weakeningRotDamageTaken     += eff.rotWeakeningRotDamageTaken ?? 0
+      b.weakeningDealLess           += eff.rotWeakeningDealLess ?? 0
+      b.weakeningSpeedReduction     += eff.rotWeakeningSpeedReduction ?? 0
+      b.weakeningResistPerStack     += eff.rotWeakeningResistPerStack ?? 0
+      b.greenVeinsChanceOnPoison    += eff.rotGreenVeinsChanceOnPoison ?? 0
+      b.greenVeinsDamagePerStack    += eff.rotGreenVeinsDamagePerStack ?? 0
+      b.greenVeinsDurationIncrease  += eff.rotGreenVeinsDurationIncrease ?? 0
+      b.greenVeinsTriggerReduction  += eff.rotGreenVeinsTriggerReduction ?? 0
+      b.greenVeinsMaxStacksBonus    += eff.rotGreenVeinsMaxStacksBonus ?? 0
+    }
+  }
+  return b
+}
+
 export function computePhysicalBonuses(nodes: number[][], dumpedPoints = 0): PhysicalBonuses {
   const b: PhysicalBonuses = {
     damageIncrease: 0, moreDamage: dumpedPoints * MASTERY_DUMP.physical.rate,
@@ -2208,6 +2362,57 @@ const FIRE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
   },
 }
 
+const ROT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {  // Rot Damage
+    0:  '+5% increased rot damage',
+    1:  '+3% increased rot action speed',
+    2:  '+5% increased rot damage · Rot actions have +5% chance to apply poison',
+    3:  '+5% increased rot damage',
+    4:  '+3% increased rot action speed',
+    5:  '+10% more rot damage',
+    6:  '+5% increased rot damage',
+    7:  '+3% increased rot action speed',
+    8:  '+12% increased rot damage',
+    9:  '+5% increased rot damage',
+    10: '+3% increased rot action speed',
+    11: 'Poisoned enemies take +10% more rot damage',
+  },
+  1: {  // Poison
+    0:  'Rot actions have +5% chance to apply poison',
+    1:  '+15% increased poison damage',
+    2:  '+30% increased poison damage · +10% increased poison duration',
+    3:  'Rot actions have +5% chance to apply poison',
+    4:  '+15% increased poison damage',
+    5:  '+30% more poison damage',
+    6:  'Rot actions have +5% chance to apply poison',
+    7:  '+15% increased poison damage',
+    8:  '+60% increased poison damage',
+    9:  'Rot actions have +5% chance to apply poison',
+    10: '+15% increased poison damage',
+    11: 'Rot actions have +15% chance to apply poison',
+    12: '+30% more poison damage · Half poison duration',
+    13: 'Double poison duration · 30% less poison damage',
+    14: 'Double poison damage · You deal no damage with hits',
+    15: '+10% more poison damage',
+  },
+  2: {  // Weakening
+    0: 'Poisoned enemies take 5% more rot damage',
+    1: 'Poisoned enemies deal 5% less damage',
+    2: 'Poisoned enemies have 20% reduced movement and action speed',
+    3: 'Poisoned enemies take 5% more rot damage',
+    4: 'Poisoned enemies deal 5% less damage',
+    5: 'Enemy physical and rot resistance is reduced by 1% per poison stack on them',
+  },
+  3: {  // Green Veins
+    0: '+20% chance to gain a Green Vein stack when applying poison',
+    1: '+1% increased rot damage per Green Vein stack',
+    2: 'Green Veins duration +50% · Green Veins trigger requirement −50%',
+    3: '+20% chance to gain a Green Vein stack when applying poison',
+    4: '+1% increased rot damage per Green Vein stack',
+    5: 'Green Veins can have 25 more maximum stacks · +30% chance to gain a Green Vein stack when applying poison',
+  },
+}
+
 const PHYSICAL_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
   0: {
     0:  '+5% increased physical damage',
@@ -2375,6 +2580,7 @@ function getEnglishNodeDescription(
     cold: COLD_DESCRIPTIONS,
     strike: STRIKE_DESCRIPTIONS,
     physical: PHYSICAL_DESCRIPTIONS,
+    rot: ROT_DESCRIPTIONS,
     area: AREA_DESCRIPTIONS,
     movement: MOVEMENT_DESCRIPTIONS,
   }
@@ -2644,6 +2850,8 @@ export function nodeHasAnyEffect(masteryId: MasteryId, treeIdx: number, nodeIdx:
     case 'lightning':   effect = getLightningNodeEffect(treeIdx, nodeIdx); break
     case 'strike':      effect = getStrikeNodeEffect(treeIdx, nodeIdx); break
     case 'physical':    effect = getPhysicalNodeEffect(treeIdx, nodeIdx); break
+    case 'cold':        effect = getColdNodeEffect(treeIdx, nodeIdx); break
+    case 'rot':         effect = getRotNodeEffect(treeIdx, nodeIdx); break
     case 'area':        effect = getAreaNodeEffect(treeIdx, nodeIdx); break
     case 'movement':    effect = getMovementNodeEffect(treeIdx, nodeIdx); break
     default: return false

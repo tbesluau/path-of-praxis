@@ -112,6 +112,18 @@ export function defaultRunProgress(): RunProgress {
 export interface UniversePointAllocations {
   placeholderA: number
   placeholderB: number
+  placeholderC: number
+  placeholderD: number
+}
+
+// Total universe points granted across all ascents. Each ascent grants a base
+// amount, raised once the boost threshold is reached — applied retroactively
+// (total = rate × ascentCount), not just to ascents past the threshold.
+export function universePointsForAscent(ascentCount: number): number {
+  const rate = ascentCount >= balance.ascent.universePointsBoostUnlockAscent
+    ? balance.ascent.universePointsPerAscentBoosted
+    : balance.ascent.universePointsPerAscent
+  return ascentCount * rate
 }
 
 export type TriggerType = 'time' | 'crit' | 'affliction' | 'mana'
@@ -231,7 +243,8 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
     actionRunes: c.actionRunes ?? {},
     ascentCount: c.ascentCount ?? 0,
     ascentXp: c.ascentXp ?? 0,
-    universePointAllocations: c.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 },
+    // Spread defaults first so saves predating slots C/D normalize to 0 (not undefined → NaN).
+    universePointAllocations: { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0, ...c.universePointAllocations },
     extraSlots: (c.extraSlots ?? []).map(s => {
       const raw = s.triggerType as string | null | undefined
       const triggerType: TriggerType | null =
@@ -344,7 +357,7 @@ export function createCharacter(name: string, actionId: string): Character {
     actionRunes: {},
     ascentCount: 0,
     ascentXp: 0,
-    universePointAllocations: { placeholderA: 0, placeholderB: 0 },
+    universePointAllocations: { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0 },
     extraSlots: [],
     freeMasteryPointsUsed: {},
     masteryDumpPoints: {},

@@ -1,3 +1,12 @@
+### 0.2.34 — Pushing the late game
+
+Added new ascent unlocks, more universe points and investment options, smoother late game XP. Rot damage source, 3 new actions.
+
+- **Late game** — more unlocks, more universe points, second artifact slots, incentives to push well into the 10+ ascents. 2 new investment options for universe points.
+- **Rot** - rot and its affliction: poison. Designed to stack many layers of affliction, alternating power boosts, and melting enemy defenses.
+- **Green nova, rotten dagger, poisonous arrow** — 3 new skills to try.
+- **Never done** — small bugfixes and UX improvements including better mastery loadouts handling and options.
+
 ### 0.2.25 — More content
 
 Cold damage source, 2 new actions, a new Mana-spent action trigger

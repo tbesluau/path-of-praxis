@@ -205,18 +205,35 @@ export const balance = {
     moveSpeedPerAscent:     0.05, // +5% move speed per ascent count
     universePointMaxA:      10,
     universePointMaxB:      10,
+    universePointMaxC:      10,
+    universePointMaxD:      10,
+    universePointDamagePerPoint:      0.07, // +7% more damage per point in slot C
+    universePointActionSpeedPerPoint: 0.04, // +4% more action speed per point in slot D
+    universePointsPerAscent:         2,  // base universe points granted per ascent
+    universePointsBoostUnlockAscent: 7,  // ascentCount where points/ascent rises (retroactive)
+    universePointsPerAscentBoosted:  3,  // points/ascent once the boost is unlocked
+    enemyBoostUnlockAscent:    8,    // ascentCount unlocking +enemies and +enemy-level XP
+    enemyBoostMoreEnemies:     0.20, // +20% enemy spawn count from the ascent-8 unlock
+    enemyBoostMoreLevelXp:     0.20, // +20% enemy level XP from the ascent-8 unlock
+    endgameTutorialAscent:     10,   // ascentCount that shows the end-game tutorial screen
     freeMasteryPointsUnlockAscent: 4,  // ascentCount at which free mastery points are earned (1 per ascent)
     slot2UnlockAscent:       3,    // ascentCount required for 2nd action trigger slot
     slot3UnlockAscent:       6,    // ascentCount required for 3rd action trigger slot
     slot2DamagePenalty:      0.75,  // global damage multiplier for slot 2
     slot3DamagePenalty:      0.50,  // global damage multiplier for slot 3
     artifactSlot1UnlockAscent: 5,   // ascentCount required for 1st artifact equip slot
-    artifactSlot2UnlockAscent: 10,  // ascentCount required for 2nd artifact equip slot
+    artifactSlot2UnlockAscent: 9,   // ascentCount required for 2nd artifact equip slot
     timeTriggerIntervalMs:  2000,   // fire period (ms) for the time trigger type
     critTriggerDamageMult:        0.1,   // extra multiplier for crit trigger (on top of speed balance)
     afflictionTriggerDamageMult:  0.5,   // extra multiplier for affliction trigger (on top of speed balance)
     afflictionTriggerCount:        10,   // affliction applications before affliction trigger fires
     manaTriggerSpend:             100,   // mana the player must spend before the mana trigger fires
+    poisonBaseDurationMs:         10000, // base poison duration (10 s)
+    poisonBaseDamagePct:          20,    // poison dps = hit damage × 0.20 (half of burn)
+    poisonDisplayIntervalMs:      500,   // ms between accumulated poison-damage number emissions
+    greenVeinsBaseDurationMs:     10000, // how long Green Veins buff lasts after each trigger (10 s)
+    greenVeinsMaxStacks:          25,    // default maximum Green Vein stacks (major node adds 25 more → 50 total)
+    greenVeinsPoisonsPerStack:    100,   // poison applications needed to gain 1 Green Vein stack
   },
 
   // ── Frost affliction ──────────────────────────────────────────────────────
@@ -243,6 +260,8 @@ export const balance = {
   // ── Artifacts ─────────────────────────────────────────────────────────────
   artifacts: {
     maxCount: 20,
+    bagBoostUnlockAscent: 9,   // ascentCount where the bag capacity grows
+    maxCountBoosted:      30,   // bag capacity once the boost is unlocked
     dropChances: {
       one:   0.25,   // 1-line artifact
       two:   0.10,   // 2-line artifact

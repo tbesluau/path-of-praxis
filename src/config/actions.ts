@@ -29,6 +29,8 @@ export type ActionId =
   | 'sword' | 'bow' | 'fireball' | 'zap' | 'fire-nova'
   | 'grenade' | 'hammer-slam' | 'lightning-nova' | 'bolt' | 'cold-nova'
   | 'ice-spear'
+  | 'putrid-nova'
+  | 'rotten-dagger' | 'poisonous-arrow'
 
 export const allActions: ActionDef[] = [
   { id: 'sword',          label: 'Sword Strike',   icon: 'sword',           iconSystem: 'lucide', range: 1,  damage: 2,   speed: 2,   manaCost: 1,   tags: ['physical',  'strike']     },
@@ -42,6 +44,9 @@ export const allActions: ActionDef[] = [
   { id: 'bolt',           label: 'Bolt',           icon: 'cloud-lightning', iconSystem: 'lucide', range: 7,  damage: 0.8, speed: 4,   manaCost: 2,   tags: ['lightning', 'projectile'] },
   { id: 'cold-nova',      label: 'Cold Nova',      icon: 'snowflake',       iconSystem: 'lucide', range: 0,  damage: 1,   speed: 2,   manaCost: 2,   tags: ['cold',      'area'], area: 4,   selfTargeted: true },
   { id: 'ice-spear',      label: 'Ice Spear',      icon: 'navigation-2',    iconSystem: 'lucide', range: 5,  damage: 1,   speed: 3,   manaCost: 2,   tags: ['cold',      'projectile'] },
+  { id: 'putrid-nova',   label: 'Putrid Nova',    icon: 'skull',           iconSystem: 'lucide', range: 0,  damage: 1,   speed: 2,   manaCost: 2,   tags: ['rot',       'area'], area: 4,   selfTargeted: true },
+  { id: 'rotten-dagger', label: 'Rotten Dagger',  icon: 'syringe',         iconSystem: 'lucide', range: 1,  damage: 1.2, speed: 3.8, manaCost: 1.2, tags: ['rot',       'strike']     },
+  { id: 'poisonous-arrow',label: 'Poisonous Arrow',icon: 'biohazard',      iconSystem: 'lucide', range: 8,  damage: 1.2, speed: 2,   manaCost: 1.5, tags: ['rot',       'projectile'] },
 ]
 
 export function getAction(id: ActionId): ActionDef {

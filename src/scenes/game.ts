@@ -1,16 +1,16 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js'
 import * as Matter from 'matter-js'
 import * as PF from 'pathfinding'
-import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star, Snowflake } from 'lucide'
+import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star, Snowflake, Skull } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
-import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
+import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
@@ -208,6 +208,16 @@ export function createGameScene(
     return getCriticalHitBonuses().chanceBaseAdd + universePointAllocations.placeholderB
   }
 
+  // Universe point C: +7% more damage per point (global multiplier on all player damage).
+  function universeDamageMult(): number {
+    return 1 + universePointAllocations.placeholderC * balance.ascent.universePointDamagePerPoint
+  }
+
+  // Universe point D: +4% more action speed per point (global multiplier on all player action speed).
+  function universeActionSpeedMult(): number {
+    return 1 + universePointAllocations.placeholderD * balance.ascent.universePointActionSpeedPerPoint
+  }
+
   function getLifeBonuses(): LifeBonuses {
     return computeLifeBonuses(masteryNodes('life', 5), dumpedFor('life'))
   }
@@ -262,6 +272,10 @@ export function createGameScene(
     return computeColdBonuses(masteryNodes('cold', 5), dumpedFor('cold'))
   }
 
+  function getRotBonuses(): RotBonuses {
+    return computeRotBonuses(masteryNodes('rot', 5), dumpedFor('rot'))
+  }
+
   function getAreaBonuses(): AreaBonuses {
     const b = computeAreaBonuses(masteryNodes('area', 5), dumpedFor('area'))
     b.moreSize += artifactMods.areaMore
@@ -297,6 +311,20 @@ export function createGameScene(
   interface BleedStack { baseDps: number; stackedIncrease: number; remainingMs: number; sourceActionId: ActionId }
   const bleedStacks = new Map<string, BleedStack>()
   const bleedAccum = new Map<string, { damage: number; timeMs: number }>()
+
+  // ── Poison affliction (rot-tagged hits) ─────────────────────────────────
+  // Multi-stack system (same as burn): all stacks tick simultaneously, damage summed.
+  // Base dps = hitDamage × poisonBaseDamagePct/100 (mastery bonuses applied at tick time).
+  interface PoisonStack { dps: number; remainingMs: number; sourceActionId: ActionId }
+  const poisonStacks = new Map<string, PoisonStack[]>()
+  const poisonAccum  = new Map<string, { damage: number; timeMs: number }>()
+
+  // ── Green Veins player buff (rot mastery — Green Veins tree) ────────────
+  // Charges on poison applications; on threshold fires, gain 1 Green Vein stack and
+  // restart the 10-second buff window. Stacks clear when the timer expires.
+  let greenVeinsStacks      = 0
+  let greenVeinsTimer       = 0   // ms remaining on the buff (0 = no buff)
+  let totalPoisonApplications = 0 // poison applications since last threshold reset
 
   // ── Knockback debuffs ─────────────────────────────────────────────────────
   // knockbackState: velocity impulse applied to entity movement each frame for the duration.
@@ -335,9 +363,10 @@ export function createGameScene(
   let totalFrostRolls = 0   // cumulative successful frost rolls per life; drives the frozen armor threshold
   let frozenArmorStacks = 0
   let frozenArmorDecayTimer = 0
-  // Per-entity burn/bleed Graphics attached to the entity's Container child list.
-  const burnEffectGraphics  = new Map<string, Graphics>()
-  const bleedEffectGraphics = new Map<string, Graphics>()
+  // Per-entity burn/bleed/poison Graphics attached to the entity's Container child list.
+  const burnEffectGraphics   = new Map<string, Graphics>()
+  const bleedEffectGraphics  = new Map<string, Graphics>()
+  const poisonEffectGraphics = new Map<string, Graphics>()
 
   // ── Burning ground (Fire mastery — Burning Ground tree) ─────────────────
   // Per-tile state: tileKey "tx,ty" → dps, remainingMs, sourceActionId.
@@ -362,7 +391,12 @@ export function createGameScene(
   }
 
   function hasAnyAffliction(entity: Entity): boolean {
-    return burnStacks.has(entity.id) || bleedStacks.has(entity.id) || electrocuteStacks.has(entity.id) || frostTimers.has(entity.id)
+    return burnStacks.has(entity.id) || bleedStacks.has(entity.id) || electrocuteStacks.has(entity.id) || frostTimers.has(entity.id) || poisonStacks.has(entity.id)
+  }
+
+  function isPoisoned(entity: Entity): boolean {
+    const stacks = poisonStacks.get(entity.id)
+    return stacks !== undefined && stacks.length > 0
   }
 
   function tickElectrocutions(deltaMs: number): void {
@@ -629,6 +663,41 @@ export function createGameScene(
     }
   }
 
+  function tickPoisonEffects(): void {
+    if (!app) return
+    const now = Date.now()
+    const pulse = 0.5 + 0.5 * Math.sin(now / 250)
+
+    for (const id of poisonStacks.keys()) {
+      const entity = entities.find(e => e.id === id)
+      if (!entity) continue
+      const container = entityContainers.get(id)
+      if (!container) continue
+
+      let g = poisonEffectGraphics.get(id)
+      if (!g) {
+        g = new Graphics()
+        container.addChild(g)
+        poisonEffectGraphics.set(id, g)
+      }
+
+      g.clear()
+      const r = entity.radius
+
+      // Pulsing outer ring
+      g.circle(0, 0, r + 2 + pulse * 5)
+      g.stroke({ color: 0x44cc44, width: 2, alpha: 0.35 + pulse * 0.5 })
+
+      // Green inner tint
+      g.circle(0, 0, r)
+      g.fill({ color: 0x228822, alpha: 0.07 + pulse * 0.11 })
+    }
+
+    for (const [id, g] of [...poisonEffectGraphics]) {
+      if (!poisonStacks.has(id)) { g.destroy(); poisonEffectGraphics.delete(id) }
+    }
+  }
+
   function isBurning(entity: Entity): boolean {
     const s = burnStacks.get(entity.id)
     return !!s && s.length > 0
@@ -853,6 +922,108 @@ export function createGameScene(
         acc.timeMs = 0
       }
       if (!bleedStacks.has(entityId) && acc.damage === 0) bleedAccum.delete(entityId)
+    }
+  }
+
+  // Tick poison: all stacks deal damage simultaneously (burn model).
+  // Mastery bonuses applied at tick time; resist and weakening multipliers applied per entity.
+  function tickPoisons(deltaMs: number, damagedIds: Set<string>): void {
+    if (poisonStacks.size === 0 && poisonAccum.size === 0) return
+    const dts = deltaMs / 1000
+    const rb = getRotBonuses()
+
+    for (const [entityId, stacks] of poisonStacks) {
+      const entity = entities.find(e => e.id === entityId)
+      if (!entity) continue
+      let maxStack = stacks[0]
+      for (const s of stacks) if (s.dps > maxStack.dps) maxStack = s
+      const totalDps = stacks.reduce((sum, s) => sum + s.dps, 0)
+      let tickDmg = totalDps * dts
+      if (tickDmg <= 0) continue
+
+      if (entity.role === 'player') {
+        const physRotRes = Math.max(0, Math.min(100, getLifeBonuses().physRotResistance))
+        tickDmg *= 1 - physRotRes / 100
+        if (tickDmg <= 0) continue
+        const prev = entity.currentLife
+        entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
+        const actual = prev - entity.currentLife
+        if (actual > 0) {
+          const acc = poisonAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
+          acc.damage += actual
+          poisonAccum.set(entityId, acc)
+          damagedIds.add(entityId)
+        }
+        continue
+      }
+
+      // Apply mastery bonuses to tick damage
+      tickDmg *= (1 + rb.poisonDamageIncrease / 100)
+      tickDmg *= (1 + rb.poisonMoreDamage / 100)
+      tickDmg *= Math.max(0, 1 - rb.poisonLessDamage / 100)
+      tickDmg *= rb.poisonDamageMult
+      // poisonedTakeMore (Rot Damage tree node 11) and Weakening rot-damage-taken: both apply since entity is in poisonStacks
+      if (rb.poisonedTakeMore > 0)        tickDmg *= 1 + rb.poisonedTakeMore / 100
+      if (rb.weakeningRotDamageTaken > 0) tickDmg *= 1 + rb.weakeningRotDamageTaken / 100
+      // Green Veins: +1% rot damage per stack
+      if (greenVeinsStacks > 0 && rb.greenVeinsDamagePerStack > 0) {
+        tickDmg *= 1 + greenVeinsStacks * rb.greenVeinsDamagePerStack / 100
+      }
+      // Enemy physRot resistance, reduced by Weakening node 5 per stack
+      const stackCount = stacks.length
+      const effectiveResist = Math.max(0, (entity.physRotResist ?? 0) - stackCount * rb.weakeningResistPerStack)
+      if (effectiveResist > 0) tickDmg *= Math.max(0, 1 - effectiveResist / 100)
+
+      const prev = entity.currentLife
+      entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
+      const actual = prev - entity.currentLife
+      if (actual > 0) {
+        const eLevel = enemyLevels.get(entity.id) ?? 1
+        const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(entity.id)
+        awardXp(maxStack.sourceActionId, actual * xpMult)
+        if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actual)
+        awardAscentXp(actual)
+        recordDps(maxStack.sourceActionId, actual, 'affliction:poison')
+        if (getLifeBonuses().stealFromAfflictions) { applyLifeSteal(actual); applyManaSteal(actual) }
+        const acc = poisonAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
+        acc.damage += actual
+        poisonAccum.set(entityId, acc)
+        damagedIds.add(entityId)
+        if (bossEntities.has(entityId)) { bossLastHitWasAffl.set(entityId, true); bossLastHitWasCrit.set(entityId, false) }
+      }
+    }
+
+    // Decrement timers; drop expired stacks
+    for (const [entityId, stacks] of [...poisonStacks]) {
+      for (const s of stacks) s.remainingMs -= deltaMs
+      const live = stacks.filter(s => s.remainingMs > 0)
+      if (live.length === 0) poisonStacks.delete(entityId)
+      else poisonStacks.set(entityId, live)
+    }
+
+    // Display pass — green damage numbers
+    for (const [entityId, acc] of [...poisonAccum]) {
+      const entity = entities.find(e => e.id === entityId)
+      if (!entity) { poisonAccum.delete(entityId); continue }
+      acc.timeMs += deltaMs
+      if (acc.timeMs >= balance.ascent.poisonDisplayIntervalMs && acc.damage > 0) {
+        spawnDamageNumber(entity.x, entity.y - entity.radius - 8, acc.damage, 0x44cc44)
+        acc.damage = 0
+        acc.timeMs = 0
+      }
+      if (!poisonStacks.has(entityId) && acc.damage === 0) poisonAccum.delete(entityId)
+    }
+  }
+
+  // Tick Green Veins: decrement buff timer; clear stacks on expiry.
+  function tickGreenVeins(deltaMs: number): void {
+    if (greenVeinsStacks === 0) { greenVeinsTimer = 0; return }
+    greenVeinsTimer -= deltaMs
+    if (greenVeinsTimer <= 0) {
+      greenVeinsStacks = 0
+      greenVeinsTimer = 0
+      totalPoisonApplications = 0
+      renderBuffBar()
     }
   }
 
@@ -1392,7 +1563,7 @@ export function createGameScene(
   // Ascension state — persists through rebirths and across sessions
   let ascentCount = char?.ascentCount ?? 0
   let ascentXp    = char?.ascentXp ?? 0
-  let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
+  let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
@@ -1564,7 +1735,7 @@ export function createGameScene(
     splitAction: t('game', 'dpsSplitCast'), jump: t('game', 'dpsChainJump'), tremor: t('game', 'dpsTremor'),
   }
   const DPS_AFFLICTION_LABELS: Record<string, string> = {
-    'affliction:burn': t('game', 'dpsAfflictionBurn'), 'affliction:bleed': t('game', 'dpsAfflictionBleed'), 'affliction:groundFire': t('game', 'dpsAfflictionGroundFire'),
+    'affliction:burn': t('game', 'dpsAfflictionBurn'), 'affliction:bleed': t('game', 'dpsAfflictionBleed'), 'affliction:groundFire': t('game', 'dpsAfflictionGroundFire'), 'affliction:poison': t('game', 'dpsAfflictionPoison'),
   }
   const DPS_MULTI_TYPES = Object.keys(DPS_MULTI_LABELS) as MultiActionType[]
   const DPS_AFFLICTION_KEYS = Object.keys(DPS_AFFLICTION_LABELS)
@@ -1805,6 +1976,8 @@ export function createGameScene(
 
   function awardEnemyXp(amount: number): void {
     amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
+    // Ascent-8 unlock: extra flat boost to enemy-level XP.
+    if (ascentCount >= balance.ascent.enemyBoostUnlockAscent) amount *= 1 + balance.ascent.enemyBoostMoreLevelXp
     runEnemyXp += amount
     enemyProgress.xp += amount
     const prevMaxLevel = enemyProgress.maxLevel
@@ -2133,8 +2306,12 @@ export function createGameScene(
       const badge = `<span class="buff-charge">${frozenArmorStacks}</span>`
       html += `<div class="buff-icon buff-icon--buff" data-effect="frozenArmor" data-note="frozen-armor"><i data-lucide="snowflake" aria-hidden="true"></i>${badge}</div>`
     }
+    if (greenVeinsStacks > 0) {
+      const badge = `<span class="buff-charge">${greenVeinsStacks}</span>`
+      html += `<div class="buff-icon buff-icon--buff" data-effect="greenVeins"><i data-lucide="skull" aria-hidden="true"></i>${badge}</div>`
+    }
     buffBarEl.innerHTML = html
-    if (ordered.length > 0 || frozenArmorStacks > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap, Snowflake } })
+    if (ordered.length > 0 || frozenArmorStacks > 0 || greenVeinsStacks > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap, Snowflake, Skull } })
   }
 
   // ── Play / Pause / Speed ─────────────────────────────────────────────────
@@ -2355,6 +2532,7 @@ export function createGameScene(
       const libData = tags.includes('lightning')  ? { b: getLightningBonuses(),  nodes: masteryNodes('lightning', 5),  dumped: dumpedFor('lightning') }  : null
       const fbData  = tags.includes('fire')       ? { b: getFireBonuses(),       nodes: masteryNodes('fire', 5),       dumped: dumpedFor('fire') }       : null
       const cbData  = tags.includes('cold')       ? { b: getColdBonuses(),       nodes: masteryNodes('cold', 5),       dumped: dumpedFor('cold') }       : null
+      const rotData = tags.includes('rot')        ? { b: getRotBonuses(),        nodes: masteryNodes('rot', 5),        dumped: dumpedFor('rot') }        : null
       const phbData = tags.includes('physical')   ? { b: getPhysicalBonuses(),   nodes: masteryNodes('physical', 5),   dumped: dumpedFor('physical') }   : null
       const arbData = tags.includes('area')       ? { b: getAreaBonuses(),       nodes: masteryNodes('area', 5),       dumped: dumpedFor('area') }       : null
 
@@ -2438,6 +2616,14 @@ export function createGameScene(
           moreNodeLabel(coldNodes, coldDumped, MASTERY_DUMP.cold.rate,
             (t, n) => getColdNodeEffect(t, n).coldMoreDamage ?? 0, 'cold mastery'), 'cold mastery'))
         if (cb2.actionSpeedIncrease !== 0) spdFactors.push(incF(cb2.actionSpeedIncrease, 'cold mastery total increased', 'cold mastery'))
+      }
+      if (rotData) {
+        const { b: rotb, nodes: rotNodes, dumped: rotDumped } = rotData
+        if (rotb.damageIncrease !== 0) dmgFactors.push(incF(rotb.damageIncrease, 'rot mastery total increased', 'rot mastery'))
+        if (rotb.moreDamage !== 0) dmgFactors.push(moreF(rotb.moreDamage,
+          moreNodeLabel(rotNodes, rotDumped, MASTERY_DUMP.rot.rate,
+            (t, n) => getRotNodeEffect(t, n).rotMoreDamage ?? 0, 'rot mastery'), 'rot mastery'))
+        if (rotb.actionSpeedIncrease !== 0) spdFactors.push(incF(rotb.actionSpeedIncrease, 'rot mastery total increased', 'rot mastery'))
       }
       if (phbData) {
         const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
@@ -2555,6 +2741,24 @@ export function createGameScene(
         const { b: lib } = libData
         const chance = baseAffl + lib.electrocuteApplyChance + strikeAffl
         afflictionChance = { label: 'Electrocute chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + lightning mastery${strikeAffl ? ' + strike' : ''}`, note: `electrocuted enemies take +${pct(balance.effects.electrocutionBaseDamageTakenPct + lib.electrocuteDamageTakenIncrease)} damage` }
+      } else if (rotData) {
+        const { b: rotb, nodes: rotNodes, dumped: rotDumped } = rotData
+        const chance = baseAffl + rotb.poisonApplyChance + strikeAffl
+        afflictionChance = { label: 'Poison chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + rot mastery${strikeAffl ? ' + strike' : ''}` }
+        const dps = slotHitDmg * (balance.ascent.poisonBaseDamagePct / 100) * (1 + rotb.poisonDamageIncrease / 100) * (1 + rotb.poisonMoreDamage / 100) * Math.max(0, 1 - rotb.poisonLessDamage / 100) * rotb.poisonDamageMult
+        const df: StatFactor[] = [
+          { text: fmt(slotHitDmg, 2), origin: 'hit damage', kind: 'base' },
+          { text: mul(balance.ascent.poisonBaseDamagePct / 100), origin: 'poison fraction', kind: 'mul' },
+        ]
+        if (rotb.poisonDamageIncrease !== 0) df.push(incF(rotb.poisonDamageIncrease, 'rot mastery total increased', 'rot mastery'))
+        if (rotb.poisonMoreDamage !== 0) df.push(moreF(rotb.poisonMoreDamage,
+          moreNodeLabel(rotNodes, rotDumped, 0,
+            (t, n) => getRotNodeEffect(t, n).rotPoisonMoreDamage ?? 0, 'rot mastery'), 'rot mastery'))
+        afflictionDamage = { label: 'Poison DPS', total: fmt(dps, 2), factors: df }
+      } else if (cbData) {
+        const { b: cb2 } = cbData
+        const chance = balance.frost.baseFrostChancePct + cb2.frostApplyChance + strikeAffl
+        afflictionChance = { label: 'Frost chance', odds: pct(chance), origin: `base ${pct(balance.frost.baseFrostChancePct)} + cold mastery${strikeAffl ? ' + strike' : ''}`, note: 'frosted enemies are slowed and take more damage from non-cold sources' }
       }
 
       // ── Critical hit ──────────────────────────────────────────────────────
@@ -2741,7 +2945,7 @@ export function createGameScene(
   let hitSeq = 0
 
   const DPS_WINDOW_MS = 20_000
-  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire'
+  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire' | 'affliction:poison'
   interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
   const dpsLog: DpsEvent[] = []
   const dpsActionOrder: ActionId[] = []  // stable first-fire order for display
@@ -2828,11 +3032,15 @@ export function createGameScene(
       () => ({ ...universePointAllocations }),
       (slot, delta) => {
         const alloc = universePointAllocations[slot] + delta
-        const maxForSlot = slot === 'placeholderA'
-          ? balance.ascent.universePointMaxA
-          : balance.ascent.universePointMaxB
+        const SLOT_MAX: Record<keyof UniversePointAllocations, number> = {
+          placeholderA: balance.ascent.universePointMaxA,
+          placeholderB: balance.ascent.universePointMaxB,
+          placeholderC: balance.ascent.universePointMaxC,
+          placeholderD: balance.ascent.universePointMaxD,
+        }
+        const maxForSlot = SLOT_MAX[slot]
         const totalSpent = (Object.values(universePointAllocations) as number[]).reduce((s, v) => s + v, 0)
-        const available = ascentCount - totalSpent
+        const available = universePointsForAscent(ascentCount) - totalSpent
         if (delta > 0 && (available <= 0 || alloc > maxForSlot)) return
         if (delta < 0 && alloc < 0) return
         universePointAllocations = { ...universePointAllocations, [slot]: alloc }
@@ -2855,7 +3063,7 @@ export function createGameScene(
       {
         getArtifacts: () => [...artifacts],
         getMaxEquipped: () => maxEquippedArtifacts(ascentCount),
-        getMax: () => balance.artifacts.maxCount,
+        getMax: () => maxBaggedArtifacts(ascentCount),
       },
       {
         onEquip: (id) => {
@@ -2898,7 +3106,7 @@ export function createGameScene(
   function refreshArtifactDot(): void {
     const dot = el.querySelector<HTMLElement>('.artifact-notif-dot')
     if (!dot) return
-    dot.hidden = artifacts.length < balance.artifacts.maxCount
+    dot.hidden = artifacts.length < maxBaggedArtifacts(ascentCount)
   }
 
   el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
@@ -3272,6 +3480,9 @@ export function createGameScene(
     burnAccum.delete(entity.id)
     bleedStacks.delete(entity.id)
     bleedAccum.delete(entity.id)
+    poisonStacks.delete(entity.id)
+    poisonAccum.delete(entity.id)
+    poisonEffectGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     electrocuteStacks.delete(entity.id)
     electrocuteGraphics.delete(entity.id)  // container.destroy() already destroyed the child
     frostTimers.delete(entity.id)
@@ -3301,7 +3512,7 @@ export function createGameScene(
       bossLastHitWasAffl.delete(entity.id)
       playSound('boss.defeat')
       if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent
-          && artifacts.length < balance.artifacts.maxCount) {
+          && artifacts.length < maxBaggedArtifacts(ascentCount)) {
         const bossX = entity.x, bossY = entity.y
         // Boss level gates how many lines an artifact may roll; below the
         // threshold that tier's chance folds into the no-drop pool.
@@ -3436,6 +3647,11 @@ export function createGameScene(
     totalFrostRolls = 0
     frozenArmorStacks = 0
     frozenArmorDecayTimer = 0
+    poisonStacks.clear()
+    poisonAccum.clear()
+    greenVeinsStacks = 0
+    greenVeinsTimer = 0
+    totalPoisonApplications = 0
 
     renderSingleFrame()
     persistState()
@@ -3553,10 +3769,10 @@ export function createGameScene(
       }
     }
 
-    if (ascentCount === 7 && !isTutorialSeen('ascent-7') && !getPrefs().tutorialDisabled) {
+    if (ascentCount === balance.ascent.endgameTutorialAscent && !isTutorialSeen('ascent-10') && !getPrefs().tutorialDisabled) {
       showTutorial({
-        id: 'ascent-7',
-        steps: [{ message: getTutorialMessage('ascent-7', 0) }],
+        id: 'ascent-10',
+        steps: [{ message: getTutorialMessage('ascent-10', 0) }],
         parent: container,
         openGuide,
         onDone: () => {},
@@ -3959,6 +4175,8 @@ export function createGameScene(
     count += pendingProliferateSpawns
     pendingProliferateSpawns = 0
     if (eb.moreSpawned > 0) count = Math.ceil(count * (1 + eb.moreSpawned / 100))
+    // Ascent-8 unlock: extra flat boost to enemy spawn count.
+    if (ascentCount >= balance.ascent.enemyBoostUnlockAscent) count = Math.ceil(count * (1 + balance.ascent.enemyBoostMoreEnemies))
 
     // Determine tier per spawn (random rolls), then enforce minimum guarantees
     type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss'
@@ -4258,7 +4476,7 @@ export function createGameScene(
         // Click-away must not silently destroy the drop: bag it while there's
         // room. Only the explicit trash button discards an artifact.
         onDismiss: () => {
-          if (artifacts.length < balance.artifacts.maxCount) bagArtifact()
+          if (artifacts.length < maxBaggedArtifacts(ascentCount)) bagArtifact()
         },
       }, () => {})
     })
@@ -4364,8 +4582,31 @@ export function createGameScene(
         g.circle(cx, cy, tr * 0.22)
         g.fill({ color: 0xeaf6ff, alpha: 0.95 })
       })
+    } else if (action.id === 'poisonous-arrow') {
+      // Toxic arrow in flight — fills the full pre-hit window, trailing green vapour.
+      const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const cx = ax + (tx - ax) * p
+        const cy = ay + (ty - ay) * p
+        const trailLen = 60
+        g.moveTo(cx - cos * trailLen, cy - sin * trailLen)
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0x77cc55, width: 6, alpha: 0.35 })
+        g.moveTo(cx - cos * (trailLen * 0.6), cy - sin * (trailLen * 0.6))
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0x55cc44, width: 3, alpha: 0.7 })
+        g.moveTo(cx - cos * 14, cy - sin * 14)
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0xbff080, width: 2.5 })
+        g.moveTo(cx, cy)
+        g.lineTo(cx - cos * 6 + sin * 4, cy - sin * 6 - cos * 4)
+        g.lineTo(cx - cos * 6 - sin * 4, cy - sin * 6 + cos * 4)
+        g.closePath()
+        g.fill({ color: 0xbff080 })
+      })
     }
-    // zap, bolt: no pre-hit animation (instant strike)
+    // zap, bolt, rotten-dagger: no pre-hit animation (instant strike)
   }
 
   // Pre-hit VFX for area actions: an expanding ring at the area centre.
@@ -4463,6 +4704,37 @@ export function createGameScene(
           g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0)
           g.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1)
           g.stroke({ color: i % 2 ? 0x9fd0ff : 0x4f8ff0, width: Math.max(0.5, 2 * (1 - p * 0.5)), alpha: 1 - p * 0.4 })
+        }
+      })
+    } else if (action.id === 'putrid-nova') {
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const pulse = 1 + 0.07 * Math.sin(p * 24)
+        // Thick leading ring + a trail of toxic-green rings behind it, so the swept
+        // area stays filled with visuals even when the nova fires quickly.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0x2a8f2a, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0x55cc44, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
+        // Festering core building up at the centre
+        g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
+        g.fill({ color: 0x44aa33, alpha: 0.45 + p * 0.4 })
+        g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
+        g.fill({ color: 0xbff080, alpha: 0.7 + p * 0.3 })
+        // Drifting toxic bubbles fanning out toward the ring
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + i * 0.27
+          const sd = areaRadiusPx * (0.2 + p * 0.85)
+          const wob = Math.sin(p * 12 + i) * areaRadiusPx * 0.04
+          g.circle(cx + Math.cos(a) * sd, cy + Math.sin(a) * sd + wob, Math.max(0.5, 3 * (1 - p * 0.5)))
+          g.fill({ color: i % 2 ? 0x77cc55 : 0xbff080, alpha: 1 - p * 0.3 })
         }
       })
     } else if (action.id === 'grenade') {
@@ -4771,6 +5043,66 @@ export function createGameScene(
           g.closePath()
           g.fill({ color: i % 2 ? 0x9fd0ff : 0xeaf6ff, alpha: 1 - p })
         }
+      })
+    } else if (action.id === 'putrid-nova') {
+      addHitVfx(260, (g, p) => {
+        g.clear()
+        // Toxic-green expanding burst with sickly pale core
+        g.circle(tx, ty, tr * (0.7 + p * 1.8))
+        g.fill({ color: 0x2a8f2a, alpha: (1 - p) * 0.6 })
+        g.circle(tx, ty, tr * (0.45 + p * 1.0))
+        g.fill({ color: 0x55cc44, alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.25 + p * 0.5))
+        g.fill({ color: 0xbff080, alpha: (1 - p) * 0.95 })
+        // Spattered toxic globs flung outward
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + i * 0.4
+          const d = tr * (0.5 + p * 2.0)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3 * (1 - p)))
+          g.fill({ color: i % 2 ? 0x77cc55 : 0xbff080, alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'rotten-dagger') {
+      // Quick green slash with toxic spatter (mirrors the sword slash, rot-tinted).
+      addHitVfx(280, (g, p) => {
+        g.clear()
+        for (let i = -1; i <= 1; i++) {
+          const ang = baseAng + Math.PI / 2 + i * 0.35
+          const len = tr * (1.8 - Math.abs(i) * 0.3)
+          const dx = Math.cos(ang) * len
+          const dy = Math.sin(ang) * len
+          g.moveTo(tx - dx, ty - dy); g.lineTo(tx + dx, ty + dy)
+          g.stroke({ color: 0xbff080, width: Math.max(0.5, 5 * (1 - p)), alpha: 1 - p })
+        }
+        const sp = Math.min(1, p * 1.4)
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + i * 0.7
+          const d = tr * (0.3 + sp * 2.4)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3.5 * (1 - sp)))
+          g.fill({ color: i % 2 ? 0x77cc55 : 0xbff080, alpha: 1 - sp })
+        }
+        if (p < 0.35) {
+          const fp = p / 0.35
+          g.circle(tx, ty, tr * (0.6 + fp * 2.4))
+          g.fill({ color: 0x55cc44, alpha: (1 - fp) * 0.6 })
+        }
+      })
+    } else if (action.id === 'poisonous-arrow') {
+      // Toxic impact burst: green rings, radiating spokes, and a sickly core.
+      addHitVfx(180, (g, p) => {
+        g.clear()
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2
+          const r0 = tr * 0.4
+          const r1 = tr * (0.9 + p * 2)
+          g.moveTo(tx + Math.cos(a) * r0, ty + Math.sin(a) * r0)
+          g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
+          g.stroke({ color: 0x77cc55, width: 2.5 * (1 - p), alpha: 1 - p })
+        }
+        g.circle(tx, ty, tr * (0.8 + p * 2))
+        g.stroke({ color: 0x55cc44, width: 3 * (1 - p), alpha: (1 - p) * 0.9 })
+        g.circle(tx, ty, tr * (1 - p * 0.5))
+        g.fill({ color: 0xbff080, alpha: (1 - p) * 0.55 })
       })
     } else if (action.id === 'bolt') {
       addHitVfx(120, (g, p) => {
@@ -5340,6 +5672,11 @@ export function createGameScene(
             const frostSlow = (balance.frost.baseMoveSlowPct + cbFrost.frostSlowIncrease) * (1 + cbFrost.frostSlowMore / 100)
             ms *= Math.max(0, 1 - frostSlow / 100)
           }
+          // Weakening — poisoned enemies move slower (Rot mastery, Weakening tree node 2)
+          if (entity.role === 'enemy' && isPoisoned(entity)) {
+            const rbSlow = getRotBonuses()
+            if (rbSlow.weakeningSpeedReduction > 0) ms *= Math.max(0, 1 - rbSlow.weakeningSpeedReduction / 100)
+          }
           // Knockback slow debuff
           const kbSlow = knockbackSlowState.get(entity.id)
           if (kbSlow) ms *= Math.max(0, 1 - kbSlow.amount / 100)
@@ -5530,6 +5867,14 @@ export function createGameScene(
               const fbResist = getFireBonuses()
               if (fbResist.burnEnemyResistReduction > 0) eleR = Math.max(0, eleR - fbResist.burnEnemyResistReduction)
             }
+            // Weakening node 5: poison stacks reduce enemy physRot resistance on direct physical/rot hits
+            if ((action.tags.includes('physical') || action.tags.includes('rot')) && isPoisoned(target)) {
+              const rbResist = getRotBonuses()
+              if (rbResist.weakeningResistPerStack > 0) {
+                const stackCount = poisonStacks.get(target.id)?.length ?? 0
+                physRotR = Math.max(0, physRotR - stackCount * rbResist.weakeningResistPerStack)
+              }
+            }
             const enemyResist = physRotR + eleR
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
@@ -5537,6 +5882,12 @@ export function createGameScene(
           if (target.role === 'enemy' && frostTimers.has(target.id) && !action.tags.includes('cold')) {
             const cbVuln = getColdBonuses()
             if (cbVuln.frostedVulnerable > 0) finalDamage *= 1 + cbVuln.frostedVulnerable / 100
+          }
+          // Rot: poisoned enemies take more rot damage (Rot Damage tree node 11 + Weakening tree nodes 0 & 3)
+          if (target.role === 'enemy' && action.tags.includes('rot') && isPoisoned(target)) {
+            const rbVuln = getRotBonuses()
+            if (rbVuln.poisonedTakeMore > 0)        finalDamage *= 1 + rbVuln.poisonedTakeMore / 100
+            if (rbVuln.weakeningRotDamageTaken > 0) finalDamage *= 1 + rbVuln.weakeningRotDamageTaken / 100
           }
           // Apply crit damage multiplier after resistance.
           // Chance key 14: noDamageBonus means crits trigger effects but deal no extra direct damage.
@@ -5555,6 +5906,11 @@ export function createGameScene(
           if (target.role === 'player' && attacker.role === 'enemy' && frostTimers.has(attacker.id)) {
             const cbFrostDealLess = getColdBonuses()
             if (cbFrostDealLess.frostedDealLess > 0) finalDamage *= Math.max(0, 1 - cbFrostDealLess.frostedDealLess / 100)
+          }
+          // Weakening — poisoned enemies deal less damage (Rot mastery, Weakening tree node 1 & 4)
+          if (target.role === 'player' && attacker.role === 'enemy' && isPoisoned(attacker)) {
+            const rbWeak = getRotBonuses()
+            if (rbWeak.weakeningDealLess > 0) finalDamage *= Math.max(0, 1 - rbWeak.weakeningDealLess / 100)
           }
           // Frozen Armor: damage reduction for the player based on stacks
           if (target.role === 'player' && frozenArmorStacks > 0) {
@@ -5596,6 +5952,7 @@ export function createGameScene(
           if (attacker.role === 'player' && target.role === 'enemy') {
             if (action.tags.includes('physical') && getPhysicalBonuses().suppressPhysicalHitDamage) finalDamage = 0
             if (action.tags.includes('fire')     && getFireBonuses().suppressFireHitDamage)         finalDamage = 0
+            if (action.tags.includes('rot')      && getRotBonuses().suppressRotHitDamage)           finalDamage = 0
           }
           const prevLife = target.currentLife
           if (!_gi && target.role === 'enemy') {
@@ -5817,6 +6174,38 @@ export function createGameScene(
           if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('strike') && actualDamage > 0) {
             if (sbHit && sbHit.frenzyChance > 0 && Math.random() * 100 < sbHit.frenzyChance) applyFrenzy()
           }
+          // Poison: roll on rot-tagged player hits to enemy targets (burn model: always push new stack)
+          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('rot') && (actualDamage > 0 || wouldHaveLanded)) {
+            const rb = getRotBonuses()
+            const chance = balance.effects.baseApplyChance + rb.poisonApplyChance + extraAfflChance
+            if (guaranteedAfflictions || Math.random() * 100 < chance) {
+              const newDps  = damage * (balance.ascent.poisonBaseDamagePct / 100) * critAfflMult
+              const duration = balance.ascent.poisonBaseDurationMs
+                * (1 + rb.poisonDurationIncrease / 100)
+                * rb.poisonDurationMult
+              const list = poisonStacks.get(target.id) ?? []
+              list.push({ dps: newDps, remainingMs: duration, sourceActionId: actionId })
+              poisonStacks.set(target.id, list)
+              totalPoisonApplications++
+              // Green Veins threshold: gain a stack every N poison applications
+              const threshold = Math.max(1, Math.round(balance.ascent.greenVeinsPoisonsPerStack * (1 - rb.greenVeinsTriggerReduction / 100)))
+              if (totalPoisonApplications >= threshold) {
+                totalPoisonApplications = 0
+                const maxStacks = balance.ascent.greenVeinsMaxStacks + rb.greenVeinsMaxStacksBonus
+                const extra = Math.random() * 100 < rb.greenVeinsChanceOnPoison ? 1 : 0
+                // The buff window has a fixed lifetime: the timer starts only when the
+                // window opens (0 → first stack) and is NOT refreshed by later stacks.
+                // Stacks keep building during the window; when it expires they all clear
+                // together and the application counter restarts from scratch.
+                if (greenVeinsStacks === 0) {
+                  greenVeinsTimer = balance.ascent.greenVeinsBaseDurationMs * (1 + rb.greenVeinsDurationIncrease / 100)
+                }
+                greenVeinsStacks = Math.min(maxStacks, greenVeinsStacks + 1 + extra)
+                renderBuffBar()
+              }
+              if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
+            }
+          }
 
           // Enemy → player affliction rolls: baseline 5% chance × 0.5, duration × 0.5.
           // No mastery bonuses on the enemy side (those are player-attacker buffs).
@@ -5847,6 +6236,13 @@ export function createGameScene(
                 existing.remainingMs    = duration
                 existing.sourceActionId = actionId
               }
+            }
+            if (action.tags.includes('rot') && Math.random() * 100 < enemyChance) {
+              const newDps = damage * (balance.ascent.poisonBaseDamagePct / 100)
+              const duration = balance.ascent.poisonBaseDurationMs * durMult
+              const list = poisonStacks.get(target.id) ?? []
+              list.push({ dps: newDps, remainingMs: duration, sourceActionId: actionId })
+              poisonStacks.set(target.id, list)
             }
           }
           return isCrit
@@ -6035,9 +6431,9 @@ export function createGameScene(
             }
             playerMovedSinceLastAction = false
           }
-          // Ascent: independent damage multiplier per ascension
+          // Ascent: independent damage multiplier per ascension, plus universe point C (more damage)
           if (entity.role === 'player' && ascentCount > 0) {
-            effectiveDamage *= 1 + ascentCount * balance.ascent.damagePerAscent
+            effectiveDamage *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult()
           }
 
           // ── Cycle duration ────────────────────────────────────────────────
@@ -6065,6 +6461,11 @@ export function createGameScene(
             const frostSlow = (balance.frost.baseActionSlowPct + cbAtkFrost.frostSlowIncrease) * (1 + cbAtkFrost.frostSlowMore / 100)
             effectiveAttackSpeed *= Math.max(0, 1 - frostSlow / 100)
           }
+          // Weakening — poisoned enemies act slower (Rot mastery, Weakening tree node 2)
+          if (entity.role === 'enemy' && isPoisoned(entity)) {
+            const rbAtkSlow = getRotBonuses()
+            if (rbAtkSlow.weakeningSpeedReduction > 0) effectiveAttackSpeed *= Math.max(0, 1 - rbAtkSlow.weakeningSpeedReduction / 100)
+          }
           if (entity.role === 'player' && frenzyCharges > 0) {
             const sb = getStrikeBonuses()
             const speedBonus = sb.frenzyFlatSpeed + frenzyCharges * sb.frenzySpeedPerCharge
@@ -6083,9 +6484,9 @@ export function createGameScene(
             const movBSpd = getMovementBonuses()
             if (movBSpd.kiteMoreActionSpeed > 0) effectiveAttackSpeed *= 1 + movBSpd.kiteMoreActionSpeed / 100
           }
-          // Ascent: independent action speed multiplier per ascension
+          // Ascent: independent action speed multiplier per ascension, plus universe point D (more action speed)
           if (entity.role === 'player' && ascentCount > 0) {
-            effectiveAttackSpeed *= 1 + ascentCount * balance.ascent.actionSpeedPerAscent
+            effectiveAttackSpeed *= (1 + ascentCount * balance.ascent.actionSpeedPerAscent) * universeActionSpeedMult()
           }
           const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
@@ -6361,7 +6762,7 @@ export function createGameScene(
             const leveledSpeed = slotDef.speed * (1 + (slotLevel - 1) * balance.action.speedBonusPerLevel)
             const slotAb = getActionBonuses()
             const slotRb = getRuneBonuses(slotActionId)
-            let effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
+            let effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent) * universeActionSpeedMult()
               * (1 + slotAb.actionSpeedIncrease / 100) * (1 + slotAb.moreActionSpeed / 100)
             if (slotDef.tags.includes('projectile')) effectiveSlotSpeed *= (1 + getProjectileBonuses().actionSpeedIncrease / 100)
             if (slotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); effectiveSlotSpeed *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
@@ -6392,7 +6793,7 @@ export function createGameScene(
             if (slotDef.tags.includes('area')) { const b = getAreaBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
             if (slotRb.slowHeavy) slotDmg *= 2
-            if (ascentCount > 0) slotDmg *= 1 + ascentCount * balance.ascent.damagePerAscent
+            if (ascentCount > 0) slotDmg *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult()
 
             const slotPreHitDuration = (1000 / effectiveSlotSpeed) / 3
 
@@ -6511,7 +6912,7 @@ export function createGameScene(
             const tSlotDef = getAction(slot.actionId as ActionId)
             const tAb = getActionBonuses()
             const tRb = getRuneBonuses(slot.actionId as ActionId)
-            let tSpeedMult = (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
+            let tSpeedMult = (1 + ascentCount * balance.ascent.actionSpeedPerAscent) * universeActionSpeedMult()
               * (1 + tAb.actionSpeedIncrease / 100) * (1 + tAb.moreActionSpeed / 100)
             if (tSlotDef.tags.includes('projectile')) tSpeedMult *= (1 + getProjectileBonuses().actionSpeedIncrease / 100)
             if (tSlotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); tSpeedMult *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
@@ -6647,7 +7048,10 @@ export function createGameScene(
         tickFrostEffects()
         tickBurnEffects()
         tickBleedEffects()
+        tickPoisonEffects()
         tickBurnGroundEffects()
+        tickPoisons(ticker.deltaMS, damagedIds)
+        tickGreenVeins(ticker.deltaMS)
 
         // ── Death checks and life bar updates ───────────────────────────────
         for (const id of damagedIds) {
