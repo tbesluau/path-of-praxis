@@ -35,11 +35,26 @@ export interface ContextInputs {
 export function classifyContext(i: ContextInputs): GameContext {
   if (i.native) return i.platform === 'ios' ? 'iphone' : 'android'
   if (i.dev || i.hostname === 'tbesluau.github.io' || i.hostname === 'localhost') return 'test'
+  // CrazyGames serves/embeds the game across many domains, so match the
+  // 'crazygames' label rather than a fixed host list — on the game's own host
+  // (served directly) or on the embedding parent frame.
+  if (matchesCrazyGamesHost(i.hostname)) return 'crazygames'
   if (i.inIframe && i.parentHost) {
-    if (i.parentHost === 'crazygames.com' || i.parentHost.endsWith('.crazygames.com')) return 'crazygames'
+    if (matchesCrazyGamesHost(i.parentHost)) return 'crazygames'
     if (i.parentHost === 'galaxy.click' || i.parentHost.endsWith('.galaxy.click')) return 'galaxy'
   }
   return 'web'
+}
+
+/**
+ * True when `hostname` belongs to CrazyGames. They use a number of domains, so
+ * we match the `crazygames` domain label appearing within the registrable part
+ * of the host (one of the last three labels) rather than a fixed list.
+ */
+export function matchesCrazyGamesHost(hostname: string): boolean {
+  const parts = hostname.split('.')
+  const idx = parts.indexOf('crazygames')
+  return idx !== -1 && idx >= parts.length - 3
 }
 
 function inIframe(): boolean {

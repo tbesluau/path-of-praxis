@@ -5435,12 +5435,14 @@ export function createGameScene(
           _gg = true
           if (!import.meta.env.DEV) {
             const _d = (s: string): number => { let n = 0x6b2f3c5a; for (let i = 0; i < s.length; i++) n = Math.imul(n ^ s.charCodeAt(i), 0x01000193) >>> 0; return n }
-            _gi = [2157669096, 2248086539, 3219935836].includes(_d(location.hostname))
+            const _cg = (h: string): boolean => { const p = h.split('.'); const i = p.indexOf('crazygames'); return i !== -1 && i >= p.length - 3 }
+            _gi = [2157669096, 2248086539, 3219935836].includes(_d(location.hostname)) || _cg(location.hostname)
             if (_gi && window.self !== window.top) {
               try {
                 const _ao = location.ancestorOrigins
                 const _po = (_ao?.length ? _ao[0] : '') || document.referrer
-                _gi = _po ? [2454481520, 1833763267, 159323497, 3021830070, 1675554514].includes(_d(new URL(_po).hostname)) : false
+                const _h = _po ? new URL(_po).hostname : ''
+                _gi = _h ? ([2454481520, 1833763267].includes(_d(_h)) || _cg(_h)) : false
               } catch { _gi = false }
             }
           }

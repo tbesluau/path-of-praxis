@@ -10,10 +10,18 @@ function _q(s: string): number {
 
 // Verified runtime fingerprints.  Do not modify.
 const _v = [2698506207, 2371563828, 2010576751]
-const _w = [3474980791, 4285274124, 789366602, 3283199557, 1336612949]
+const _w = [3474980791, 4285274124]
 
 function _e(): boolean {
   try { return window.top !== window.self } catch { return true }
+}
+
+// CrazyGames spans many domains — match the 'crazygames' label in the
+// registrable part of the host instead of enumerating hashes.
+function _cg(h: string): boolean {
+  const p = h.split('.')
+  const i = p.indexOf('crazygames')
+  return i !== -1 && i >= p.length - 3
 }
 
 function _pg(): string | null {
@@ -25,10 +33,11 @@ function _pg(): string | null {
 
 export function isAllowedToRun(): boolean {
   if (import.meta.env.DEV) return true
-  if (!_v.includes(_q(location.hostname))) return false
+  const host = location.hostname
+  if (!_v.includes(_q(host)) && !_cg(host)) return false
   if (_e()) {
     const h = _pg()
-    return h !== null && _w.includes(_q(h))
+    return h !== null && (_w.includes(_q(h)) || _cg(h))
   }
   return true
 }
