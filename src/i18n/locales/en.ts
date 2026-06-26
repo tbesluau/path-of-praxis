@@ -98,6 +98,7 @@ export interface TranslationSchema {
     savePlan: string               // "Save plan"
     loadPlan: string               // "Load plan"
     assignAll: string              // "Assign all"
+    assignAllDump: string          // "Dump extra points" — checkbox toggling auto-dump of leftover points
     slot: string                   // template: "Slot {n}"
     slotEmpty: string              // "(empty)"
     copyClipboard: string          // "Copy to clipboard"
@@ -445,6 +446,7 @@ export const en: TranslationSchema = {
     savePlan: 'Save plan',
     loadPlan: 'Load plan',
     assignAll: 'Assign all',
+    assignAllDump: 'Dump extra points',
     slot: 'Slot {n}',
     slotEmpty: '(empty)',
     copyClipboard: 'Copy to clipboard',

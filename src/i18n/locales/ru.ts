@@ -100,6 +100,7 @@ export const ru: TranslationSchema = {
     savePlan: 'Сохранить план',
     loadPlan: 'Загрузить план',
     assignAll: 'Назначить всё',
+    assignAllDump: 'Сбросить лишние очки',
     slot: 'Слот {n}',
     slotEmpty: '(пусто)',
     copyClipboard: 'Копировать в буфер',

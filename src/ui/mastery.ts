@@ -842,6 +842,10 @@ export function mountMasteryModal(
         <button class="modal-btn modal-btn--ghost mastery-plan-btn" data-action="save-plan" data-sfx="modal">${t('mastery', 'savePlan')}</button>
         <button class="modal-btn modal-btn--ghost mastery-plan-btn" data-action="load-plan" data-sfx="modal">${t('mastery', 'loadPlan')}</button>
         <button class="modal-btn modal-btn--primary mastery-plan-btn" data-action="assign-all" data-sfx="modal">${t('mastery', 'assignAll')}</button>
+        <label class="mastery-dump-toggle">
+          <input type="checkbox" class="mastery-dump-toggle-input" data-action="assign-all-dump">
+          <span>${t('mastery', 'assignAllDump')}</span>
+        </label>
         <span class="mastery-plan-active" hidden></span>
       </div>
       <div class="mastery-categories"></div>
@@ -1025,10 +1029,15 @@ export function mountMasteryModal(
     }, () => { subCleanup = null })
   })
 
+  const dumpExtrasToggle = backdrop.querySelector<HTMLInputElement>('[data-action="assign-all-dump"]')!
+
   assignAllBtn.addEventListener('click', () => {
     if (!activePlan) return
     const plan = parseMasterySaveString(activePlan)
     if (!plan) return
+    // When checked, leftover points beyond the plan are dumped (legacy behavior);
+    // when unchecked (default), they remain unassigned.
+    const dumpExtras = dumpExtrasToggle.checked
     for (const [masteryId, entries] of plan) {
       const masteryDef = allMasteries.find(m => m.id === masteryId)
       if (!masteryDef) continue
@@ -1057,10 +1066,13 @@ export function mountMasteryModal(
         }
         // else: can't afford — stop for this mastery
       }
-      // Dump remaining free points for this mastery after plan is done
-      const freshP = prog(masteryProgress, masteryId)
-      const remaining = masteryPointsAvailable(freshP, freeMasteryPointsUsed[masteryId] ?? 0, masteryDumpPoints[masteryId] ?? 0) + getRemainingFreePoints(masteryId)
-      if (remaining > 0) onDump(masteryId, remaining)
+      // Dump remaining free points for this mastery after plan is done — only when
+      // the toggle is checked. Otherwise leftover points stay unassigned.
+      if (dumpExtras) {
+        const freshP = prog(masteryProgress, masteryId)
+        const remaining = masteryPointsAvailable(freshP, freeMasteryPointsUsed[masteryId] ?? 0, masteryDumpPoints[masteryId] ?? 0) + getRemainingFreePoints(masteryId)
+        if (remaining > 0) onDump(masteryId, remaining)
+      }
     }
     buildRows()
   })
