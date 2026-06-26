@@ -25,14 +25,16 @@ describe('showCrazyGamesRewardedAd', () => {
     expect(await showCrazyGamesRewardedAd()).toBe(true)
   })
 
-  it('grants when the error looks like a disabled/unsupported feature', async () => {
-    setSdk({ environment: 'crazygames', ad: { requestAd: (_t: string, c: Cbs) => c.adError?.({ code: 'unsupported' }) } })
+  it('grants on the Basic Launch ads-disabled error code', async () => {
+    setSdk({ environment: 'crazygames', ad: { requestAd: (_t: string, c: Cbs) => c.adError?.({ code: 'adsDisabledBasicLaunch', message: 'Ads disabled' }) } })
     expect(await showCrazyGamesRewardedAd()).toBe(true)
   })
 
-  it('denies on a genuine no-fill / generic error', async () => {
-    setSdk({ environment: 'crazygames', ad: { requestAd: (_t: string, c: Cbs) => c.adError?.('unfilled') } })
-    expect(await showCrazyGamesRewardedAd()).toBe(false)
+  it('denies on no-fill, adblock, cooldown, and other errors', async () => {
+    for (const code of ['unfilled', 'adblock', 'adCooldown', 'other']) {
+      setSdk({ environment: 'crazygames', ad: { requestAd: (_t: string, c: Cbs) => c.adError?.({ code, message: 'x' }) } })
+      expect(await showCrazyGamesRewardedAd(), code).toBe(false)
+    }
   })
 
   it('grants when requestAd throws synchronously', async () => {
@@ -43,5 +45,26 @@ describe('showCrazyGamesRewardedAd', () => {
   it('ignores callbacks after the first settles', async () => {
     setSdk({ environment: 'crazygames', ad: { requestAd: (_t: string, c: Cbs) => { c.adFinished?.(); c.adError?.('unfilled') } } })
     expect(await showCrazyGamesRewardedAd()).toBe(true)
+  })
+
+  it('runs the pause lifecycle around a started ad', async () => {
+    const events: string[] = []
+    setSdk({ environment: 'crazygames', ad: { requestAd: (_t: string, c: Cbs) => { c.adStarted?.(); c.adFinished?.() } } })
+    const granted = await showCrazyGamesRewardedAd({
+      onAdStart: () => events.push('start'),
+      onAdEnd: () => events.push('end'),
+    })
+    expect(granted).toBe(true)
+    expect(events).toEqual(['start', 'end'])
+  })
+
+  it('does not fire onAdEnd when the ad never started (no-fill)', async () => {
+    const events: string[] = []
+    setSdk({ environment: 'crazygames', ad: { requestAd: (_t: string, c: Cbs) => c.adError?.({ code: 'unfilled' }) } })
+    await showCrazyGamesRewardedAd({
+      onAdStart: () => events.push('start'),
+      onAdEnd: () => events.push('end'),
+    })
+    expect(events).toEqual([])
   })
 })

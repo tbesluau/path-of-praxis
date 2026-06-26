@@ -7,6 +7,16 @@
 
 import { isNativeApp, isCrazyGames } from '../core/context'
 
+/**
+ * Lifecycle hooks invoked around the actual ad playback so the caller can pause
+ * the game while the ad is on screen and resume it afterwards. `onAdStart` fires
+ * when the ad begins, `onAdEnd` when it finishes or fails (only if it started).
+ */
+export interface AdLifecycle {
+  onAdStart?: () => void
+  onAdEnd?: () => void
+}
+
 export function isNative(): boolean {
   return isNativeApp()
 }
@@ -22,13 +32,16 @@ export function adsAvailable(): boolean {
  * early or the ad fails to load. In a context without an ad SDK it resolves
  * false (callers in that case use the no-ad path and never reach here).
  *
- * On CrazyGames, if rewarded ads are disabled/unsupported (e.g. the initial
- * limited release), this resolves true — there is no ad to watch but the player
- * has opted in, so the reward is still granted.
+ * On CrazyGames, if rewarded ads are disabled (the Basic Launch / limited
+ * release), this resolves true — there is no ad to watch but the player has
+ * opted in, so the reward is still granted. The optional `lifecycle` hooks are
+ * called around CrazyGames ad playback so the caller can pause/resume the game.
  */
-export async function showRewardedAd(): Promise<boolean> {
+export async function showRewardedAd(lifecycle?: AdLifecycle): Promise<boolean> {
   if (isNativeApp()) {
     try {
+      // Native AdMob ads are fullscreen and pause the app at the OS level, so
+      // they don't use the lifecycle hooks.
       const { showNativeRewardedAd } = await import('./admob')
       return await showNativeRewardedAd()
     } catch (err) {
@@ -39,7 +52,7 @@ export async function showRewardedAd(): Promise<boolean> {
   if (isCrazyGames()) {
     try {
       const { showCrazyGamesRewardedAd } = await import('./crazygames')
-      return await showCrazyGamesRewardedAd()
+      return await showCrazyGamesRewardedAd(lifecycle)
     } catch (err) {
       console.warn('[ads] showRewardedAd (crazygames) failed:', err)
       return false
