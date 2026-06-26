@@ -4638,6 +4638,37 @@ export function createGameScene(
           g.stroke({ color: i % 2 ? 0x9fd0ff : 0x4f8ff0, width: Math.max(0.5, 2 * (1 - p * 0.5)), alpha: 1 - p * 0.4 })
         }
       })
+    } else if (action.id === 'putrid-nova') {
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const pulse = 1 + 0.07 * Math.sin(p * 24)
+        // Thick leading ring + a trail of toxic-green rings behind it, so the swept
+        // area stays filled with visuals even when the nova fires quickly.
+        const TRAIL = 5
+        for (let k = 0; k < TRAIL; k++) {
+          const tp = p - k * 0.18
+          if (tp <= 0) continue
+          const rr = areaRadiusPx * tp * pulse
+          const fade = 1 - k / TRAIL
+          g.circle(cx, cy, rr)
+          g.stroke({ color: 0x2a8f2a, width: Math.max(1.5, 9 * fade), alpha: 0.6 * fade })
+          g.circle(cx, cy, rr * 0.88)
+          g.stroke({ color: 0x55cc44, width: Math.max(1, 5 * fade), alpha: 0.7 * fade })
+        }
+        // Festering core building up at the centre
+        g.circle(cx, cy, areaRadiusPx * 0.22 * (0.5 + p * 0.7) * pulse)
+        g.fill({ color: 0x44aa33, alpha: 0.45 + p * 0.4 })
+        g.circle(cx, cy, areaRadiusPx * 0.12 * (0.6 + p * 0.6))
+        g.fill({ color: 0xbff080, alpha: 0.7 + p * 0.3 })
+        // Drifting toxic bubbles fanning out toward the ring
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 + i * 0.27
+          const sd = areaRadiusPx * (0.2 + p * 0.85)
+          const wob = Math.sin(p * 12 + i) * areaRadiusPx * 0.04
+          g.circle(cx + Math.cos(a) * sd, cy + Math.sin(a) * sd + wob, Math.max(0.5, 3 * (1 - p * 0.5)))
+          g.fill({ color: i % 2 ? 0x77cc55 : 0xbff080, alpha: 1 - p * 0.3 })
+        }
+      })
     } else if (action.id === 'grenade') {
       // Lobbed projectile flying from attacker to impact centre over the full windup.
       const ax = attacker.x, ay = attacker.y
@@ -4943,6 +4974,24 @@ export function createGameScene(
           g.lineTo(sx - px * w, sy - py * w)
           g.closePath()
           g.fill({ color: i % 2 ? 0x9fd0ff : 0xeaf6ff, alpha: 1 - p })
+        }
+      })
+    } else if (action.id === 'putrid-nova') {
+      addHitVfx(260, (g, p) => {
+        g.clear()
+        // Toxic-green expanding burst with sickly pale core
+        g.circle(tx, ty, tr * (0.7 + p * 1.8))
+        g.fill({ color: 0x2a8f2a, alpha: (1 - p) * 0.6 })
+        g.circle(tx, ty, tr * (0.45 + p * 1.0))
+        g.fill({ color: 0x55cc44, alpha: (1 - p) * 0.85 })
+        g.circle(tx, ty, tr * (0.25 + p * 0.5))
+        g.fill({ color: 0xbff080, alpha: (1 - p) * 0.95 })
+        // Spattered toxic globs flung outward
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + i * 0.4
+          const d = tr * (0.5 + p * 2.0)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3 * (1 - p)))
+          g.fill({ color: i % 2 ? 0x77cc55 : 0xbff080, alpha: 1 - p })
         }
       })
     } else if (action.id === 'bolt') {
