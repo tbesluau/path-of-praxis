@@ -125,13 +125,19 @@ export interface TranslationSchema {
     threshold4: string
     threshold5: string
     threshold6: string
+    threshold7: string
+    threshold8: string
+    threshold9: string
+    threshold10: string
     artifactsBtn: string
     upSlotA: string
     upSlotB: string
+    upSlotC: string
+    upSlotD: string
   }
   artifacts: {
     title: string
-    countLabel: string       // template: "{n}/20 artifacts"
+    countLabel: string       // template: "{n}/{max} artifacts"
     equippedLabel: string    // template: "Equipped: {used}/{max}"
     full: string             // warning when at 20/20
     equip: string
@@ -479,13 +485,19 @@ export const en: TranslationSchema = {
     threshold4: '+1 free mastery point per ascent for each mastery',
     threshold5: 'Artifacts — risk/reward modifiers',
     threshold6: '+1 action trigger slot',
+    threshold7: 'Each ascent grants 3 universe points instead of 2',
+    threshold8: '20% more enemies and 20% more enemy level experience',
+    threshold9: 'Equip a second artifact and carry up to 30 in your bag',
+    threshold10: 'Endgame reached — more content coming',
     artifactsBtn: 'Artifacts',
     upSlotA: '10% increased multi-action speed',
     upSlotB: '+1% base action critical hit chance',
+    upSlotC: '7% more damage',
+    upSlotD: '4% more action speed',
   },
   artifacts: {
     title: 'Artifacts',
-    countLabel: '{n}/20 artifacts',
+    countLabel: '{n}/{max} artifacts',
     equippedLabel: 'Equipped: {used}/{max}',
     full: 'Inventory full — drop an artifact to receive new ones from bosses',
     equip: 'Equip',

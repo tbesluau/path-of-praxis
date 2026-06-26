@@ -4,13 +4,13 @@ import * as PF from 'pathfinding'
 import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Zap, User, Book, Drumstick, Swords, Droplets, ArrowUp, Star, Snowflake, Skull } from 'lucide'
 import { tokens } from '../theme'
 import { t } from '../i18n'
-import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
+import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
-import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
+import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
@@ -206,6 +206,16 @@ export function createGameScene(
   // Critical Chance major node and the universe point B allocation (+1% each).
   function critBaseAddTotal(): number {
     return getCriticalHitBonuses().chanceBaseAdd + universePointAllocations.placeholderB
+  }
+
+  // Universe point C: +7% more damage per point (global multiplier on all player damage).
+  function universeDamageMult(): number {
+    return 1 + universePointAllocations.placeholderC * balance.ascent.universePointDamagePerPoint
+  }
+
+  // Universe point D: +4% more action speed per point (global multiplier on all player action speed).
+  function universeActionSpeedMult(): number {
+    return 1 + universePointAllocations.placeholderD * balance.ascent.universePointActionSpeedPerPoint
   }
 
   function getLifeBonuses(): LifeBonuses {
@@ -1553,7 +1563,7 @@ export function createGameScene(
   // Ascension state — persists through rebirths and across sessions
   let ascentCount = char?.ascentCount ?? 0
   let ascentXp    = char?.ascentXp ?? 0
-  let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0 }
+  let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
@@ -1966,6 +1976,8 @@ export function createGameScene(
 
   function awardEnemyXp(amount: number): void {
     amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
+    // Ascent-8 unlock: extra flat boost to enemy-level XP.
+    if (ascentCount >= balance.ascent.enemyBoostUnlockAscent) amount *= 1 + balance.ascent.enemyBoostMoreLevelXp
     runEnemyXp += amount
     enemyProgress.xp += amount
     const prevMaxLevel = enemyProgress.maxLevel
@@ -3020,11 +3032,15 @@ export function createGameScene(
       () => ({ ...universePointAllocations }),
       (slot, delta) => {
         const alloc = universePointAllocations[slot] + delta
-        const maxForSlot = slot === 'placeholderA'
-          ? balance.ascent.universePointMaxA
-          : balance.ascent.universePointMaxB
+        const SLOT_MAX: Record<keyof UniversePointAllocations, number> = {
+          placeholderA: balance.ascent.universePointMaxA,
+          placeholderB: balance.ascent.universePointMaxB,
+          placeholderC: balance.ascent.universePointMaxC,
+          placeholderD: balance.ascent.universePointMaxD,
+        }
+        const maxForSlot = SLOT_MAX[slot]
         const totalSpent = (Object.values(universePointAllocations) as number[]).reduce((s, v) => s + v, 0)
-        const available = ascentCount - totalSpent
+        const available = universePointsForAscent(ascentCount) - totalSpent
         if (delta > 0 && (available <= 0 || alloc > maxForSlot)) return
         if (delta < 0 && alloc < 0) return
         universePointAllocations = { ...universePointAllocations, [slot]: alloc }
@@ -3047,7 +3063,7 @@ export function createGameScene(
       {
         getArtifacts: () => [...artifacts],
         getMaxEquipped: () => maxEquippedArtifacts(ascentCount),
-        getMax: () => balance.artifacts.maxCount,
+        getMax: () => maxBaggedArtifacts(ascentCount),
       },
       {
         onEquip: (id) => {
@@ -3090,7 +3106,7 @@ export function createGameScene(
   function refreshArtifactDot(): void {
     const dot = el.querySelector<HTMLElement>('.artifact-notif-dot')
     if (!dot) return
-    dot.hidden = artifacts.length < balance.artifacts.maxCount
+    dot.hidden = artifacts.length < maxBaggedArtifacts(ascentCount)
   }
 
   el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
@@ -3496,7 +3512,7 @@ export function createGameScene(
       bossLastHitWasAffl.delete(entity.id)
       playSound('boss.defeat')
       if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent
-          && artifacts.length < balance.artifacts.maxCount) {
+          && artifacts.length < maxBaggedArtifacts(ascentCount)) {
         const bossX = entity.x, bossY = entity.y
         // Boss level gates how many lines an artifact may roll; below the
         // threshold that tier's chance folds into the no-drop pool.
@@ -3753,10 +3769,10 @@ export function createGameScene(
       }
     }
 
-    if (ascentCount === 7 && !isTutorialSeen('ascent-7') && !getPrefs().tutorialDisabled) {
+    if (ascentCount === balance.ascent.endgameTutorialAscent && !isTutorialSeen('ascent-10') && !getPrefs().tutorialDisabled) {
       showTutorial({
-        id: 'ascent-7',
-        steps: [{ message: getTutorialMessage('ascent-7', 0) }],
+        id: 'ascent-10',
+        steps: [{ message: getTutorialMessage('ascent-10', 0) }],
         parent: container,
         openGuide,
         onDone: () => {},
@@ -4159,6 +4175,8 @@ export function createGameScene(
     count += pendingProliferateSpawns
     pendingProliferateSpawns = 0
     if (eb.moreSpawned > 0) count = Math.ceil(count * (1 + eb.moreSpawned / 100))
+    // Ascent-8 unlock: extra flat boost to enemy spawn count.
+    if (ascentCount >= balance.ascent.enemyBoostUnlockAscent) count = Math.ceil(count * (1 + balance.ascent.enemyBoostMoreEnemies))
 
     // Determine tier per spawn (random rolls), then enforce minimum guarantees
     type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss'
@@ -4458,7 +4476,7 @@ export function createGameScene(
         // Click-away must not silently destroy the drop: bag it while there's
         // room. Only the explicit trash button discards an artifact.
         onDismiss: () => {
-          if (artifacts.length < balance.artifacts.maxCount) bagArtifact()
+          if (artifacts.length < maxBaggedArtifacts(ascentCount)) bagArtifact()
         },
       }, () => {})
     })
@@ -6413,9 +6431,9 @@ export function createGameScene(
             }
             playerMovedSinceLastAction = false
           }
-          // Ascent: independent damage multiplier per ascension
+          // Ascent: independent damage multiplier per ascension, plus universe point C (more damage)
           if (entity.role === 'player' && ascentCount > 0) {
-            effectiveDamage *= 1 + ascentCount * balance.ascent.damagePerAscent
+            effectiveDamage *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult()
           }
 
           // ── Cycle duration ────────────────────────────────────────────────
@@ -6466,9 +6484,9 @@ export function createGameScene(
             const movBSpd = getMovementBonuses()
             if (movBSpd.kiteMoreActionSpeed > 0) effectiveAttackSpeed *= 1 + movBSpd.kiteMoreActionSpeed / 100
           }
-          // Ascent: independent action speed multiplier per ascension
+          // Ascent: independent action speed multiplier per ascension, plus universe point D (more action speed)
           if (entity.role === 'player' && ascentCount > 0) {
-            effectiveAttackSpeed *= 1 + ascentCount * balance.ascent.actionSpeedPerAscent
+            effectiveAttackSpeed *= (1 + ascentCount * balance.ascent.actionSpeedPerAscent) * universeActionSpeedMult()
           }
           const baseCooldown = (1000 / effectiveAttackSpeed) / tranceSpeedMult
           const preHitDuration = baseCooldown / 3
@@ -6744,7 +6762,7 @@ export function createGameScene(
             const leveledSpeed = slotDef.speed * (1 + (slotLevel - 1) * balance.action.speedBonusPerLevel)
             const slotAb = getActionBonuses()
             const slotRb = getRuneBonuses(slotActionId)
-            let effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
+            let effectiveSlotSpeed = leveledSpeed * (1 + ascentCount * balance.ascent.actionSpeedPerAscent) * universeActionSpeedMult()
               * (1 + slotAb.actionSpeedIncrease / 100) * (1 + slotAb.moreActionSpeed / 100)
             if (slotDef.tags.includes('projectile')) effectiveSlotSpeed *= (1 + getProjectileBonuses().actionSpeedIncrease / 100)
             if (slotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); effectiveSlotSpeed *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
@@ -6775,7 +6793,7 @@ export function createGameScene(
             if (slotDef.tags.includes('area')) { const b = getAreaBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
             if (slotRb.slowHeavy) slotDmg *= 2
-            if (ascentCount > 0) slotDmg *= 1 + ascentCount * balance.ascent.damagePerAscent
+            if (ascentCount > 0) slotDmg *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult()
 
             const slotPreHitDuration = (1000 / effectiveSlotSpeed) / 3
 
@@ -6894,7 +6912,7 @@ export function createGameScene(
             const tSlotDef = getAction(slot.actionId as ActionId)
             const tAb = getActionBonuses()
             const tRb = getRuneBonuses(slot.actionId as ActionId)
-            let tSpeedMult = (1 + ascentCount * balance.ascent.actionSpeedPerAscent)
+            let tSpeedMult = (1 + ascentCount * balance.ascent.actionSpeedPerAscent) * universeActionSpeedMult()
               * (1 + tAb.actionSpeedIncrease / 100) * (1 + tAb.moreActionSpeed / 100)
             if (tSlotDef.tags.includes('projectile')) tSpeedMult *= (1 + getProjectileBonuses().actionSpeedIncrease / 100)
             if (tSlotDef.tags.includes('strike')) { const sb = getStrikeBonuses(); tSpeedMult *= (1 + sb.actionSpeedIncrease / 100) * (1 + sb.moreActionSpeed / 100) }
