@@ -14,7 +14,7 @@ import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtif
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
-import { adsAvailable } from '../ads'
+import { adsAvailable, type AdLifecycle } from '../ads'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -2362,7 +2362,7 @@ export function createGameScene(
       fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + granted)
       updateSpeedUI()
       persistState()
-    }, () => {})
+    }, () => {}, makeAdLifecycle())
   }
 
   function setSpeed(speed: number): void {
@@ -2391,6 +2391,17 @@ export function createGameScene(
       updateSpeedUI()
     } else {
       setSpeed(gameSpeed)
+    }
+  }
+
+  // Pause the game while a rewarded ad plays, then resume only if we paused it
+  // (don't un-pause a player who had paused manually). Each ad gets a fresh one
+  // so its captured pre-ad state can't leak across requests.
+  function makeAdLifecycle(): AdLifecycle {
+    let wasPaused = false
+    return {
+      onAdStart: () => { wasPaused = paused; if (!paused) togglePause() },
+      onAdEnd:   () => { if (!wasPaused && paused) togglePause() },
     }
   }
 
@@ -5414,7 +5425,7 @@ export function createGameScene(
                 fastForwardMs = Math.min(STOCKPILE_DOUBLED_MAX_MS, fastForwardMs + bonusMs)
                 updateSpeedUI()
                 persistState()
-              })
+              }, makeAdLifecycle())
             }
             updateSpeedUI()
           }

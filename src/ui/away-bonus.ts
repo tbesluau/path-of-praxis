@@ -1,5 +1,5 @@
 import { t } from '../i18n'
-import { showRewardedAd } from '../ads'
+import { showRewardedAd, type AdLifecycle } from '../ads'
 import { playSound } from '../audio'
 import { trackEvent } from '../core/analytics'
 
@@ -24,6 +24,8 @@ export function mountAwayBonusModal(
   // Called if the user watches the rewarded ad — adds `bonusMs` (= earnedMs)
   // on top of the amount already credited before this modal opened.
   onDoubled?: (bonusMs: number) => void,
+  // Pause/resume hooks forwarded to the ad SDK around playback.
+  adLifecycle?: AdLifecycle,
 ): () => void {
   currentTeardown?.()
   currentTeardown = null
@@ -56,7 +58,7 @@ export function mountAwayBonusModal(
   watchBtn.addEventListener('click', async () => {
     watchBtn.disabled = true
     watchBtn.classList.add('away-bonus-watch-ad-btn--loading')
-    const watched = await showRewardedAd()
+    const watched = await showRewardedAd(adLifecycle)
     teardown()
     trackEvent('away_bonus', { outcome: watched ? 'ad_watched' : 'ad_skipped', ascent: String(ascentCount) })
     if (watched && onDoubled) onDoubled(earnedMs)
