@@ -198,12 +198,12 @@ describe('maxEquippedArtifacts', () => {
     expect(maxEquippedArtifacts(0)).toBe(0)
     expect(maxEquippedArtifacts(4)).toBe(0)
   })
-  it('returns 1 at ascent 5-9', () => {
+  it('returns 1 at ascent 5-8', () => {
     expect(maxEquippedArtifacts(5)).toBe(1)
-    expect(maxEquippedArtifacts(9)).toBe(1)
+    expect(maxEquippedArtifacts(8)).toBe(1)
   })
-  it('returns 2 at ascent 10+', () => {
-    expect(maxEquippedArtifacts(10)).toBe(2)
+  it('returns 2 at ascent 9+', () => {
+    expect(maxEquippedArtifacts(9)).toBe(2)
     expect(maxEquippedArtifacts(15)).toBe(2)
   })
 })
