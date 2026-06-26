@@ -3,7 +3,7 @@ import { universePointsForAscent, type UniversePointAllocations } from '../core/
 import { t } from '../i18n'
 import { playSound } from '../audio'
 
-const THRESHOLDS: { count: number; labelKey: 'threshold1' | 'threshold2' | 'threshold3' | 'threshold4' | 'threshold5' | 'threshold6' | 'threshold7' | 'threshold8' | 'threshold9' | 'threshold10' }[] = [
+const THRESHOLDS: { count: number; labelKey: 'threshold1' | 'threshold2' | 'threshold3' | 'threshold4' | 'threshold5' | 'threshold6' | 'threshold7' | 'threshold8' | 'threshold9' }[] = [
   { count: 1, labelKey: 'threshold1' },
   { count: 2, labelKey: 'threshold2' },
   { count: 3, labelKey: 'threshold3' },
@@ -13,7 +13,6 @@ const THRESHOLDS: { count: number; labelKey: 'threshold1' | 'threshold2' | 'thre
   { count: 7, labelKey: 'threshold7' },
   { count: 8, labelKey: 'threshold8' },
   { count: 9, labelKey: 'threshold9' },
-  { count: 10, labelKey: 'threshold10' },
 ]
 
 const UP_SLOTS: { key: keyof UniversePointAllocations; labelKey: 'upSlotA' | 'upSlotB' | 'upSlotC' | 'upSlotD'; max: number }[] = [
