@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { classifyContext, type ContextInputs } from './context'
+import { classifyContext, matchesCrazyGamesHost, type ContextInputs } from './context'
 
 const base: ContextInputs = {
   native: false,
@@ -31,10 +31,14 @@ describe('classifyContext', () => {
     expect(classifyContext({ ...base, hostname: 'localhost' })).toBe('test')
   })
 
-  it('detects CrazyGames from the parent frame origin', () => {
-    expect(classifyContext({ ...base, inIframe: true, parentHost: 'crazygames.com' })).toBe('crazygames')
-    expect(classifyContext({ ...base, inIframe: true, parentHost: 'www.crazygames.com' })).toBe('crazygames')
-    expect(classifyContext({ ...base, inIframe: true, parentHost: 'games.crazygames.com' })).toBe('crazygames')
+  it('detects CrazyGames from the parent frame origin across its many domains', () => {
+    for (const host of ['crazygames.com', 'www.crazygames.com', 'games.crazygames.com', 'crazygames.io', 'a.b.crazygames.com', 'qa.crazygames.games']) {
+      expect(classifyContext({ ...base, inIframe: true, parentHost: host }), host).toBe('crazygames')
+    }
+  })
+
+  it('detects CrazyGames when the game is served directly on a CrazyGames host', () => {
+    expect(classifyContext({ ...base, hostname: 'games.crazygames.com' })).toBe('crazygames')
   })
 
   it('detects galaxy.click from the parent frame origin', () => {
@@ -61,5 +65,18 @@ describe('classifyContext', () => {
 
   it('prioritises native over hostname/iframe signals', () => {
     expect(classifyContext({ ...base, native: true, platform: 'ios', dev: true, inIframe: true, parentHost: 'crazygames.com' })).toBe('iphone')
+  })
+})
+
+describe('matchesCrazyGamesHost', () => {
+  it('matches the crazygames label within the registrable part of the host', () => {
+    for (const h of ['crazygames.com', 'www.crazygames.com', 'games.crazygames.com', 'crazygames.io', 'a.b.crazygames.com', 'crazygames.games']) {
+      expect(matchesCrazyGamesHost(h), h).toBe(true)
+    }
+  })
+  it('rejects hosts where crazygames is not a registrable label', () => {
+    for (const h of ['notcrazygames.com', 'crazygames.com.evil.com', 'evil.crazygames.attacker.example.com', 'pathofpraxis.com', 'galaxy.click']) {
+      expect(matchesCrazyGamesHost(h), h).toBe(false)
+    }
   })
 })

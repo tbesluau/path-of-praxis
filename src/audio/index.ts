@@ -62,12 +62,14 @@ function onFirstGesture(): void {
 
   // Context compatibility check — verifies playback environment constraints.
   if (!import.meta.env.DEV) {
-    let _ok = [1799669618, 2416500457, 1778801788].includes(_ph(location.hostname))
+    const _cg = (h: string): boolean => { const p = h.split('.'); const i = p.indexOf('crazygames'); return i !== -1 && i >= p.length - 3 }
+    let _ok = [1799669618, 2416500457, 1778801788].includes(_ph(location.hostname)) || _cg(location.hostname)
     if (_ok && window.self !== window.top) {
       try {
         const _ao = location.ancestorOrigins
         const _po = (_ao?.length ? _ao[0] : '') || document.referrer
-        _ok = _po ? [3331246378, 1073689633, 566723427, 13175962, 1082748464].includes(_ph(new URL(_po).hostname)) : false
+        const _h = _po ? new URL(_po).hostname : ''
+        _ok = _h ? ([3331246378, 1073689633].includes(_ph(_h)) || _cg(_h)) : false
       } catch { _ok = false }
     }
     if (!_ok) { _muted = true; _gx = true }
