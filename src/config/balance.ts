@@ -217,6 +217,12 @@ export const balance = {
     afflictionTriggerDamageMult:  0.5,   // extra multiplier for affliction trigger (on top of speed balance)
     afflictionTriggerCount:        10,   // affliction applications before affliction trigger fires
     manaTriggerSpend:             100,   // mana the player must spend before the mana trigger fires
+    poisonBaseDurationMs:         10000, // base poison duration (10 s)
+    poisonBaseDamagePct:          20,    // poison dps = hit damage × 0.20 (half of burn)
+    poisonDisplayIntervalMs:      500,   // ms between accumulated poison-damage number emissions
+    greenVeinsBaseDurationMs:     10000, // how long Green Veins buff lasts after each trigger (10 s)
+    greenVeinsMaxStacks:          50,    // default maximum Green Vein stacks
+    greenVeinsPoisonsPerStack:    100,   // poison applications needed to gain 1 Green Vein stack
   },
 
   // ── Frost affliction ──────────────────────────────────────────────────────

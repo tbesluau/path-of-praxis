@@ -609,3 +609,31 @@ By itself Frozen Armor does **nothing** — stacks accumulate and display but gr
 - Node 5 (major): Frozen Armor can have 5 more maximum stacks
 
 The damage reduction is applied after resistances in the player damage pipeline.
+
+---
+
+## Poison
+
+**Poison** is the affliction for the **Rot** damage type, applied by rot-tagged actions (e.g., **Putrid Nova**). It stacks indefinitely in the same way as **Burning** — every successful poison roll pushes an independent stack onto the target, all stacks tick simultaneously, and their DPS is summed each frame.
+
+**Base stats:**
+- DPS = 20% of the hit damage that applied it (half of Burn's 40%)
+- Duration = 10 seconds base (double Burn's 5 s)
+- Base apply chance = 5% (same as all afflictions; raised by mastery)
+
+Stacks are independent — a faster or more powerful hit pushes its own stack rather than replacing an existing one.
+
+---
+
+## Green Veins
+
+**Green Veins** is a **player buff** built up by applying **Poison**. By default it triggers every **100 poison applications** and lasts **10 seconds**. The current stack count appears in the buff bar (skull icon).
+
+By itself each stack does nothing — you need to invest in the **Green Veins** mastery tree before stacks grant a benefit. With the tree nodes:
+- **+1% increased rot damage per stack** (nodes 1 and 4 each add +1%)
+- **Trigger interval** can be reduced (node 2: −30%)
+- **Buff duration** can be extended (node 2: +30%)
+- **Maximum stacks** raised by 50 (node 5)
+- **Extra stack-gain chance** on each trigger (node 5: +20%; nodes 0 and 3: +15% each)
+
+Stacks reset to 0 when the 10-second buff expires. Each threshold crossing resets the application counter and restarts the timer.
