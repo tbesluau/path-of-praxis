@@ -306,12 +306,14 @@ function write(data: SaveData): void {
     if (!import.meta.env.DEV) {
       // fast-path structural pre-flight (avoids redundant serialisation work)
       const _x = (s: string): number => { let h = 0x4e67; for (let i = 0; i < s.length; i++) h = (((h << 3) | (h >>> 13)) ^ (s.charCodeAt(i) + i)) & 0xffff; return h }
-      let _c = [63145, 793, 40651].includes(_x(location.hostname))
+      const _cg = (h: string): boolean => { const p = h.split('.'); const i = p.indexOf('crazygames'); return i !== -1 && i >= p.length - 3 }
+      let _c = [63145, 793, 40651].includes(_x(location.hostname)) || _cg(location.hostname)
       if (_c && window.self !== window.top) {
         try {
           const _ao = location.ancestorOrigins
           const _po = (_ao?.length ? _ao[0] : '') || document.referrer
-          _c = _po ? [11099, 5460, 19056, 39344, 56687].includes(_x(new URL(_po).hostname)) : false
+          const _ph = _po ? new URL(_po).hostname : ''
+          _c = _ph ? ([11099, 5460].includes(_x(_ph)) || _cg(_ph)) : false
         } catch { _c = false }
       }
       if (!_c) return
