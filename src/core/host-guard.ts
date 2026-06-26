@@ -10,7 +10,7 @@ function _q(s: string): number {
 
 // Verified runtime fingerprints.  Do not modify.
 const _v = [2698506207, 2371563828, 2010576751]
-const _w = [3474980791, 4285274124]
+const _w = [3474980791, 4285274124, 789366602, 3283199557, 1336612949]
 
 function _e(): boolean {
   try { return window.top !== window.self } catch { return true }

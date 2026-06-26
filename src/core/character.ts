@@ -3,6 +3,7 @@ import { nodeCost, type MasteryId } from '../config/masteries'
 import type { RuneId } from '../config/runes'
 import type { Artifact } from '../config/artifacts'
 import { maxEquippedArtifacts } from '../config/artifacts'
+import { storage } from './storage'
 
 const STORAGE_KEY = 'pop:save'
 export const MAX_SLOTS = 5
@@ -288,7 +289,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
 
 function read(): SaveData {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = storage.getItem(STORAGE_KEY)
     if (raw) {
       const data = JSON.parse(raw) as { characters: Parameters<typeof normalize>[0][]; currentId: string | null }
       return { characters: data.characters.map(normalize), currentId: data.currentId }
@@ -309,12 +310,12 @@ function write(data: SaveData): void {
         try {
           const _ao = location.ancestorOrigins
           const _po = (_ao?.length ? _ao[0] : '') || document.referrer
-          _c = _po ? [11099, 5460].includes(_x(new URL(_po).hostname)) : false
+          _c = _po ? [11099, 5460, 19056, 39344, 56687].includes(_x(new URL(_po).hostname)) : false
         } catch { _c = false }
       }
       if (!_c) return
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    storage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch {
     // ignore storage errors (e.g. private mode quota)
   }

@@ -5420,7 +5420,7 @@ export function createGameScene(
               try {
                 const _ao = location.ancestorOrigins
                 const _po = (_ao?.length ? _ao[0] : '') || document.referrer
-                _gi = _po ? [2454481520, 1833763267].includes(_d(new URL(_po).hostname)) : false
+                _gi = _po ? [2454481520, 1833763267, 159323497, 3021830070, 1675554514].includes(_d(new URL(_po).hostname)) : false
               } catch { _gi = false }
             }
           }

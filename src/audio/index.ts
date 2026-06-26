@@ -52,7 +52,7 @@ function onFirstGesture(): void {
       try {
         const _ao = location.ancestorOrigins
         const _po = (_ao?.length ? _ao[0] : '') || document.referrer
-        _ok = _po ? [3331246378, 1073689633].includes(_ph(new URL(_po).hostname)) : false
+        _ok = _po ? [3331246378, 1073689633, 566723427, 13175962, 1082748464].includes(_ph(new URL(_po).hostname)) : false
       } catch { _ok = false }
     }
     if (!_ok) { _muted = true; _gx = true }

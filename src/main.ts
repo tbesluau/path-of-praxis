@@ -4,20 +4,26 @@ import { initI18n } from './i18n'
 import { initRouter, navigate, registerScenes } from './core/router'
 import { createMenuScene } from './scenes/menu'
 import { createGameScene } from './scenes/game'
-import { initAds, isNative } from './ads'
+import { initAds } from './ads'
 import { initEntitlement } from './core/entitlement'
 import { isAllowedToRun } from './core/host-guard'
+import { isNativeApp } from './core/context'
+import { initStorage } from './core/storage'
 import { getPrefs, setPref } from './core/prefs'
 import { mountTermsAcceptanceModal } from './ui/terms'
 import { initAudio, playSound, suspendAudio, resumeAudio } from './audio'
 
-function bootstrap(): void {
+async function bootstrap(): Promise<void> {
   if (!isAllowedToRun()) {
     renderBlockedNotice()
     return
   }
 
-  if (isNative()) document.body.classList.add('native-platform')
+  // Select the storage backend before any persisted data is read (the
+  // CrazyGames data store needs an async SDK init; localStorage is synchronous).
+  await initStorage()
+
+  if (isNativeApp()) document.body.classList.add('native-platform')
 
   applyTheme()
   initI18n()
@@ -56,7 +62,7 @@ function bootstrap(): void {
     void initEntitlement()
   }
 
-  if (getPrefs().acceptedTermsV1 || !isNative()) {
+  if (getPrefs().acceptedTermsV1 || !isNativeApp()) {
     start()
   } else {
     mountTermsAcceptanceModal(app, () => {
@@ -77,4 +83,4 @@ function renderBlockedNotice(): void {
   `
 }
 
-bootstrap()
+void bootstrap()

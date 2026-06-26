@@ -4,10 +4,10 @@
 // Callers should branch on `adsAvailable()` and grant the reward directly
 // when it returns false.
 
-import { Capacitor } from '@capacitor/core'
+import { isNativeApp } from '../core/context'
 
 export function isNative(): boolean {
-  return Capacitor.isNativePlatform()
+  return isNativeApp()
 }
 
 /** True when the current platform has a rewarded-ad SDK wired up. */

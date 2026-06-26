@@ -1,3 +1,5 @@
+import { storage } from './storage'
+
 const STORAGE_KEY = 'pop:prefs'
 
 export interface Prefs {
@@ -42,7 +44,7 @@ let cache: Prefs | null = null
 function load(): Prefs {
   if (cache) return cache
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = storage.getItem(STORAGE_KEY)
     cache = raw ? { ...defaults, ...JSON.parse(raw) as Partial<Prefs> } : { ...defaults }
   } catch {
     cache = { ...defaults }
@@ -57,7 +59,7 @@ export function getPrefs(): Prefs {
 export function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void {
   const p = load()
   p[key] = value
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)) } catch { /* storage disabled */ }
+  storage.setItem(STORAGE_KEY, JSON.stringify(p))
 }
 
 function generateClientId(): string {
@@ -78,7 +80,7 @@ export function getClientId(): string {
   const p = load()
   if (!p.clientId) {
     p.clientId = generateClientId()
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)) } catch { /* storage disabled */ }
+    storage.setItem(STORAGE_KEY, JSON.stringify(p))
   }
   return p.clientId
 }
