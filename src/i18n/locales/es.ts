@@ -111,6 +111,7 @@ export const es: TranslationSchema = {
     planInvalid: 'Código de build inválido',
     assignAllNone: 'No hay plan cargado',
     saveNoHistory: 'El orden en que se asignaron tus nodos actuales no fue registrado. Guardar planes se desbloquea tras tu próxima Ascensión.',
+    pendingGainsNote: 'El progreso mostrado en verde solo se obtendrá después de morir y renacer',
   },
   ascent: {
     title: 'Ascensión',

@@ -109,6 +109,7 @@ export interface TranslationSchema {
     planInvalid: string            // "Invalid build code"
     assignAllNone: string          // "No plan loaded"
     saveNoHistory: string          // shown when assignment order is unknown (legacy nodes)
+    pendingGainsNote: string       // note above the die-and-rebirth button: green progress applies on rebirth
   }
   ascent: {
     title: string
@@ -468,6 +469,7 @@ export const en: TranslationSchema = {
     planInvalid: 'Invalid build code',
     assignAllNone: 'No plan loaded',
     saveNoHistory: 'The order your current nodes were assigned in was not recorded. Saving plans unlocks after your next Ascent.',
+    pendingGainsNote: 'Progress shown in green will only be obtained after you die and rebirth',
   },
   ascent: {
     title: 'Ascent',
