@@ -358,6 +358,8 @@ export const zh: TranslationSchema = {
     'fire-nova': '火焰新星', grenade: '手榴弹', 'hammer-slam': '锤击',
     'lightning-nova': '闪电新星', bolt: '闪电箭', 'cold-nova': '冰霜新星', 'ice-spear': '寒冰长矛',
     'putrid-nova': '腐烂新星',
+    'rotten-dagger': '腐烂匕首',
+    'poisonous-arrow': '毒箭',
   },
   actionTag: {
     physical: '物理', fire: '火焰', lightning: '闪电', cold: '寒冷', rot: '腐烂',

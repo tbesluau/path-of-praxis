@@ -358,6 +358,8 @@ export const fr: TranslationSchema = {
     'fire-nova': 'Nova de feu', grenade: 'Grenade', 'hammer-slam': 'Coup de marteau',
     'lightning-nova': 'Nova de foudre', bolt: 'Éclair', 'cold-nova': 'Nova de froid', 'ice-spear': 'Lance de glace',
     'putrid-nova': 'Nova putride',
+    'rotten-dagger': 'Dague pourrie',
+    'poisonous-arrow': 'Flèche empoisonnée',
   },
   actionTag: {
     physical: 'physique', fire: 'feu', lightning: 'foudre', cold: 'froid', rot: 'pourriture',

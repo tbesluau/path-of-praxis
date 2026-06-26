@@ -4537,8 +4537,31 @@ export function createGameScene(
         g.circle(cx, cy, tr * 0.22)
         g.fill({ color: 0xeaf6ff, alpha: 0.95 })
       })
+    } else if (action.id === 'poisonous-arrow') {
+      // Toxic arrow in flight — fills the full pre-hit window, trailing green vapour.
+      const cos = Math.cos(baseAng), sin = Math.sin(baseAng)
+      addVfx(preHitDuration, (g, p) => {
+        g.clear()
+        const cx = ax + (tx - ax) * p
+        const cy = ay + (ty - ay) * p
+        const trailLen = 60
+        g.moveTo(cx - cos * trailLen, cy - sin * trailLen)
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0x77cc55, width: 6, alpha: 0.35 })
+        g.moveTo(cx - cos * (trailLen * 0.6), cy - sin * (trailLen * 0.6))
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0x55cc44, width: 3, alpha: 0.7 })
+        g.moveTo(cx - cos * 14, cy - sin * 14)
+        g.lineTo(cx, cy)
+        g.stroke({ color: 0xbff080, width: 2.5 })
+        g.moveTo(cx, cy)
+        g.lineTo(cx - cos * 6 + sin * 4, cy - sin * 6 - cos * 4)
+        g.lineTo(cx - cos * 6 - sin * 4, cy - sin * 6 + cos * 4)
+        g.closePath()
+        g.fill({ color: 0xbff080 })
+      })
     }
-    // zap, bolt: no pre-hit animation (instant strike)
+    // zap, bolt, rotten-dagger: no pre-hit animation (instant strike)
   }
 
   // Pre-hit VFX for area actions: an expanding ring at the area centre.
@@ -4993,6 +5016,48 @@ export function createGameScene(
           g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3 * (1 - p)))
           g.fill({ color: i % 2 ? 0x77cc55 : 0xbff080, alpha: 1 - p })
         }
+      })
+    } else if (action.id === 'rotten-dagger') {
+      // Quick green slash with toxic spatter (mirrors the sword slash, rot-tinted).
+      addHitVfx(280, (g, p) => {
+        g.clear()
+        for (let i = -1; i <= 1; i++) {
+          const ang = baseAng + Math.PI / 2 + i * 0.35
+          const len = tr * (1.8 - Math.abs(i) * 0.3)
+          const dx = Math.cos(ang) * len
+          const dy = Math.sin(ang) * len
+          g.moveTo(tx - dx, ty - dy); g.lineTo(tx + dx, ty + dy)
+          g.stroke({ color: 0xbff080, width: Math.max(0.5, 5 * (1 - p)), alpha: 1 - p })
+        }
+        const sp = Math.min(1, p * 1.4)
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2 + i * 0.7
+          const d = tr * (0.3 + sp * 2.4)
+          g.circle(tx + Math.cos(a) * d, ty + Math.sin(a) * d, Math.max(0.5, 3.5 * (1 - sp)))
+          g.fill({ color: i % 2 ? 0x77cc55 : 0xbff080, alpha: 1 - sp })
+        }
+        if (p < 0.35) {
+          const fp = p / 0.35
+          g.circle(tx, ty, tr * (0.6 + fp * 2.4))
+          g.fill({ color: 0x55cc44, alpha: (1 - fp) * 0.6 })
+        }
+      })
+    } else if (action.id === 'poisonous-arrow') {
+      // Toxic impact burst: green rings, radiating spokes, and a sickly core.
+      addHitVfx(180, (g, p) => {
+        g.clear()
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2
+          const r0 = tr * 0.4
+          const r1 = tr * (0.9 + p * 2)
+          g.moveTo(tx + Math.cos(a) * r0, ty + Math.sin(a) * r0)
+          g.lineTo(tx + Math.cos(a) * r1, ty + Math.sin(a) * r1)
+          g.stroke({ color: 0x77cc55, width: 2.5 * (1 - p), alpha: 1 - p })
+        }
+        g.circle(tx, ty, tr * (0.8 + p * 2))
+        g.stroke({ color: 0x55cc44, width: 3 * (1 - p), alpha: (1 - p) * 0.9 })
+        g.circle(tx, ty, tr * (1 - p * 0.5))
+        g.fill({ color: 0xbff080, alpha: (1 - p) * 0.55 })
       })
     } else if (action.id === 'bolt') {
       addHitVfx(120, (g, p) => {

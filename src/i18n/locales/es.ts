@@ -358,6 +358,8 @@ export const es: TranslationSchema = {
     'fire-nova': 'Nova de fuego', grenade: 'Granada', 'hammer-slam': 'Golpe de martillo',
     'lightning-nova': 'Nova de rayo', bolt: 'Rayo', 'cold-nova': 'Nova de frío', 'ice-spear': 'Lanza de hielo',
     'putrid-nova': 'Nova pútrida',
+    'rotten-dagger': 'Daga putrefacta',
+    'poisonous-arrow': 'Flecha venenosa',
   },
   actionTag: {
     physical: 'físico', fire: 'fuego', lightning: 'rayo', cold: 'frío', rot: 'putrefacción',
