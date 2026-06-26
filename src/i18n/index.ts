@@ -3,6 +3,7 @@ import { fr } from './locales/fr'
 import { es } from './locales/es'
 import { zh } from './locales/zh'
 import { ru } from './locales/ru'
+import { storage } from '../core/storage'
 
 export type Locale = 'en' | 'fr' | 'es' | 'zh' | 'ru'
 
@@ -16,7 +17,7 @@ let activeLocale: Locale = 'en'
 
 function loadStoredLocale(): Locale | null {
   try {
-    const raw = localStorage.getItem(LOCALE_STORAGE_KEY)
+    const raw = storage.getItem(LOCALE_STORAGE_KEY)
     return raw && raw in locales ? (raw as Locale) : null
   } catch { return null }
 }
@@ -35,7 +36,7 @@ export function initI18n(): void {
 export function setLocale(locale: Locale): void {
   activeLocale = locale
   active = locales[locale]
-  try { localStorage.setItem(LOCALE_STORAGE_KEY, locale) } catch { /* storage disabled */ }
+  storage.setItem(LOCALE_STORAGE_KEY, locale)
 }
 
 export function getLocale(): Locale {
