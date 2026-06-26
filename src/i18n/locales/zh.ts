@@ -101,6 +101,7 @@ export const zh: TranslationSchema = {
     loadPlan: '加载方案',
     assignAll: '全部分配',
     assignAllDump: '倾倒多余点数',
+    assignAllDumpTooltip: '完成配置方案后，"全部分配"会将剩余点数倾倒到转换中',
     slot: '槽位 {n}',
     slotEmpty: '（空）',
     copyClipboard: '复制到剪贴板',

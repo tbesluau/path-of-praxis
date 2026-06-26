@@ -101,6 +101,7 @@ export const fr: TranslationSchema = {
     loadPlan: 'Charger le plan',
     assignAll: 'Tout assigner',
     assignAllDump: 'Verser les points en trop',
+    assignAllDumpTooltip: 'Tout assigner versera les points restants dans la conversion une fois le plan rempli',
     slot: 'Emplacement {n}',
     slotEmpty: '(vide)',
     copyClipboard: 'Copier dans le presse-papiers',

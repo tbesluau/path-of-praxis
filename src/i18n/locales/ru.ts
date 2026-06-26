@@ -101,6 +101,7 @@ export const ru: TranslationSchema = {
     loadPlan: 'Загрузить план',
     assignAll: 'Назначить всё',
     assignAllDump: 'Сбросить лишние очки',
+    assignAllDumpTooltip: 'После выполнения плана «Назначить всё» сбросит оставшиеся очки в конверсию',
     slot: 'Слот {n}',
     slotEmpty: '(пусто)',
     copyClipboard: 'Копировать в буфер',
