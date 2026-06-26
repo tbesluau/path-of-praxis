@@ -42,6 +42,7 @@ export interface EntityPalette {
 
 export interface Weapon {
   type:    'sword' | 'bow' | 'hammer' | 'staff' | 'wand' | 'bomb' | 'branch_staff' | 'lightning_bolt'
+         | 'twisted_staff' | 'green_bow' | 'rot_dagger'
   element?: 'fire' | 'lightning' | 'cold'
 }
 
@@ -304,6 +305,47 @@ function weaponSvg(w: Weapon): string {
   <path d="M5.5,1.5 L8.5,8 L6.5,8 L8,13" fill="none" stroke="white" stroke-width="0.8" opacity="0.5"/>
 </svg>`
 
+  // ── Rot weapons (Putrid Nova / Poisonous Arrow / Rotten Dagger) ───────────────
+
+  // Twisted wooden staff crowned with a poison orb — Putrid Nova.
+  if (w.type === 'twisted_staff') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 46" width="14" height="46">
+  <path d="M7,15 Q3.5,25 8,33 Q10.5,39 6,46" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>
+  <path d="M7,15 Q3.5,25 8,33 Q10.5,39 6,46" fill="none" stroke="#6a4820" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M7,17 Q11,15 12.5,11" fill="none" stroke="#000" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M7,17 Q11,15 12.5,11" fill="none" stroke="#6a4820" stroke-width="1.9" stroke-linecap="round"/>
+  <circle cx="5.2" cy="27" r="1.4" fill="#5a3c18" ${OLs}/>
+  <circle cx="9" cy="35" r="1.2" fill="#5a3c18" ${OLs}/>
+  <rect x="4.6" y="38" width="4" height="1.5" rx="0.7" fill="#3a2410"/>
+  <rect x="4.9" y="41" width="4" height="1.5" rx="0.7" fill="#3a2410"/>
+  <circle cx="6.5" cy="9" r="6" fill="#5fbf36" opacity="0.22"/>
+  <circle cx="6.5" cy="9" r="4.3" fill="#5fbf36" ${OLb}/>
+  <circle cx="5" cy="7.4" r="1.7" fill="#c7f49a" opacity="0.9"/>
+</svg>`
+
+  // Green recurve bow — Poisonous Arrow.
+  if (w.type === 'green_bow') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 36" width="16" height="36">
+  <path d="M8,0 Q14,4 14,18 Q14,32 8,36" fill="none" stroke="#000" stroke-width="6" stroke-linecap="round"/>
+  <path d="M8,0 Q14,4 14,18 Q14,32 8,36" fill="none" stroke="#3a9d3a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M8,3 Q11,6 11,18 Q11,30 8,33" fill="none" stroke="#7fce5a" stroke-width="1" opacity="0.7"/>
+  <line x1="8" y1="0" x2="8" y2="36" stroke="#d7ecbb" stroke-width="1" opacity="0.85"/>
+  <rect x="6" y="15" width="4" height="6" rx="1" fill="#2f6d1f" ${OL}/>
+  <circle cx="8" cy="2" r="2.2" fill="#7fce5a" ${OL}/>
+  <circle cx="8" cy="34" r="2.2" fill="#7fce5a" ${OL}/>
+</svg>`
+
+  // Corroded, sickly-green dagger — Rotten Dagger.
+  if (w.type === 'rot_dagger') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 30" width="10" height="30">
+  <path d="M5,0 L7,3 L7,17 L5,19 L3,17 L3,3 Z" fill="#9cc06a" ${OLb}/>
+  <line x1="5" y1="3" x2="5" y2="16" stroke="#d4eaa8" stroke-width="0.9" opacity="0.8"/>
+  <circle cx="5.7" cy="8" r="0.8" fill="#6f9a3f" opacity="0.85"/>
+  <circle cx="4.2" cy="12.5" r="0.7" fill="#6f9a3f" opacity="0.85"/>
+  <rect x="0" y="17" width="10" height="3" rx="1" fill="#6b4f2a" ${OL}/>
+  <rect x="3" y="20" width="4" height="7" rx="1.5" fill="#5a3a1c" ${OL}/>
+  <line x1="3.5" y1="22.5" x2="6.5" y2="22.5" stroke="#321d0a" stroke-width="1"/>
+  <line x1="3.5" y1="24.5" x2="6.5" y2="24.5" stroke="#321d0a" stroke-width="1"/>
+  <ellipse cx="5" cy="28.5" rx="2.8" ry="1.9" fill="#8a6a3a" ${OL}/>
+</svg>`
+
   return '' // unreachable
 }
 
@@ -314,6 +356,9 @@ export function weaponForAction(action: ActionDef): Weapon {
   if (action.id === 'fireball') return { type: 'branch_staff' }
   if (action.id === 'bolt')     return { type: 'lightning_bolt' }
   if (action.id === 'grenade')  return { type: 'bomb' }
+  if (action.id === 'putrid-nova')    return { type: 'twisted_staff' }
+  if (action.id === 'poisonous-arrow') return { type: 'green_bow' }
+  if (action.id === 'rotten-dagger')   return { type: 'rot_dagger' }
 
   const isElemental = action.tags.some(t => t === 'fire' || t === 'lightning' || t === 'cold')
   const element = action.tags.find(t => t === 'fire' || t === 'lightning' || t === 'cold') as
@@ -371,6 +416,9 @@ export async function preloadEntityArt(): Promise<void> {
   tasks.push(loadSvgTex('weapon_bomb',          weaponSvg({ type: 'bomb' })))
   tasks.push(loadSvgTex('weapon_branch_staff',  weaponSvg({ type: 'branch_staff' })))
   tasks.push(loadSvgTex('weapon_lightning_bolt', weaponSvg({ type: 'lightning_bolt' })))
+  tasks.push(loadSvgTex('weapon_twisted_staff', weaponSvg({ type: 'twisted_staff' })))
+  tasks.push(loadSvgTex('weapon_green_bow',     weaponSvg({ type: 'green_bow' })))
+  tasks.push(loadSvgTex('weapon_rot_dagger',    weaponSvg({ type: 'rot_dagger' })))
   // Elemental staff/wand (orb color varies by element)
   for (const el of ['fire', 'lightning', 'cold'] as const) {
     tasks.push(loadSvgTex(`weapon_staff_${el}`, weaponSvg({ type: 'staff', element: el })))
