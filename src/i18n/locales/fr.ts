@@ -100,6 +100,7 @@ export const fr: TranslationSchema = {
     savePlan: 'Sauvegarder le plan',
     loadPlan: 'Charger le plan',
     assignAll: 'Tout assigner',
+    assignAllDump: 'Verser les points en trop',
     slot: 'Emplacement {n}',
     slotEmpty: '(vide)',
     copyClipboard: 'Copier dans le presse-papiers',

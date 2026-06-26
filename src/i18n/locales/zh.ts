@@ -100,6 +100,7 @@ export const zh: TranslationSchema = {
     savePlan: '保存方案',
     loadPlan: '加载方案',
     assignAll: '全部分配',
+    assignAllDump: '倾倒多余点数',
     slot: '槽位 {n}',
     slotEmpty: '（空）',
     copyClipboard: '复制到剪贴板',
