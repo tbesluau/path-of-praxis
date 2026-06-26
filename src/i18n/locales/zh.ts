@@ -130,7 +130,6 @@ export const zh: TranslationSchema = {
     threshold7: '每次飞升获得3个宇宙点数（而非2个）',
     threshold8: '敌人数量增加20%，敌人等级经验增加20%',
     threshold9: '可装备第二件神器，背包最多可携带30件',
-    threshold10: '已达成终局——更多内容即将到来',
     artifactsBtn: '神器',
     upSlotA: '多重行动速度提升10%',
     upSlotB: '+1% 基础行动暴击率',

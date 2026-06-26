@@ -130,7 +130,6 @@ export const fr: TranslationSchema = {
     threshold7: 'Chaque ascension accorde 3 points d\'univers au lieu de 2',
     threshold8: '20 % d\'ennemis en plus et 20 % d\'expérience de niveau d\'ennemi en plus',
     threshold9: 'Équipez un second artefact et transportez-en jusqu\'à 30 dans votre sac',
-    threshold10: 'Fin de partie atteinte — plus de contenu à venir',
     artifactsBtn: 'Artefacts',
     upSlotA: 'Vitesse de multi-action augmentée de 10 %',
     upSlotB: '+1 % de chance de coup critique d\'action de base',

@@ -130,7 +130,6 @@ export const es: TranslationSchema = {
     threshold7: 'Cada ascensión otorga 3 puntos de universo en vez de 2',
     threshold8: '20% más de enemigos y 20% más de experiencia de nivel de enemigo',
     threshold9: 'Equipa un segundo artefacto y lleva hasta 30 en tu bolsa',
-    threshold10: 'Final del juego alcanzado — más contenido en camino',
     artifactsBtn: 'Artefactos',
     upSlotA: '10% de velocidad de multi-acción aumentada',
     upSlotB: '+1% de probabilidad base de golpe crítico de acción',

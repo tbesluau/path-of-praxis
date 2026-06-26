@@ -128,7 +128,6 @@ export interface TranslationSchema {
     threshold7: string
     threshold8: string
     threshold9: string
-    threshold10: string
     artifactsBtn: string
     upSlotA: string
     upSlotB: string
@@ -488,7 +487,6 @@ export const en: TranslationSchema = {
     threshold7: 'Each ascent grants 3 universe points instead of 2',
     threshold8: '20% more enemies and 20% more enemy level experience',
     threshold9: 'Equip a second artifact and carry up to 30 in your bag',
-    threshold10: 'Endgame reached — more content coming',
     artifactsBtn: 'Artifacts',
     upSlotA: '10% increased multi-action speed',
     upSlotB: '+1% base action critical hit chance',
