@@ -631,9 +631,9 @@ Stacks are independent — a faster or more powerful hit pushes its own stack ra
 
 The buff has a **fixed window**: the **10-second** timer starts when the buff opens (the first stack, 0 → 1) and is **never refreshed** by subsequent stacks. While the window is open you keep gaining a stack every 100 poison applications; when the timer runs out **all stacks clear at once** and the application counter restarts from scratch to build the next window.
 
-By itself each stack does nothing — you need to invest in the **Green Veins** mastery tree before stacks grant a benefit. With the tree nodes:
+By itself each stack does nothing — you need to invest in the **Green Veins** mastery tree before stacks grant a benefit. Default maximum is **25 stacks**. With the tree nodes:
 - **+1% increased rot damage per stack** (nodes 1 and 4 each add +1%)
-- **Trigger interval** can be reduced (node 2: −30%)
-- **Buff duration** can be extended (node 2: +30% → 13 s)
-- **Maximum stacks** raised by 50 (node 5)
-- **Extra stack-gain chance** on each trigger (node 5: +20%; nodes 0 and 3: +15% each)
+- **Trigger interval** can be reduced (node 2: −50%)
+- **Buff duration** can be extended (node 2: +50% → 15 s)
+- **Maximum stacks** raised by 25 → 50 total (node 5)
+- **Extra stack-gain chance** on each trigger (node 5: +30%; nodes 0 and 3: +20% each)

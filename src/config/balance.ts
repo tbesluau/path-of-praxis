@@ -221,7 +221,7 @@ export const balance = {
     poisonBaseDamagePct:          20,    // poison dps = hit damage × 0.20 (half of burn)
     poisonDisplayIntervalMs:      500,   // ms between accumulated poison-damage number emissions
     greenVeinsBaseDurationMs:     10000, // how long Green Veins buff lasts after each trigger (10 s)
-    greenVeinsMaxStacks:          50,    // default maximum Green Vein stacks
+    greenVeinsMaxStacks:          25,    // default maximum Green Vein stacks (major node adds 25 more → 50 total)
     greenVeinsPoisonsPerStack:    100,   // poison applications needed to gain 1 Green Vein stack
   },
 
