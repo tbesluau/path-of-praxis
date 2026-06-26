@@ -828,6 +828,7 @@ export function mountMasteryModal(
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>,
   masteryDumpPoints: Partial<Record<MasteryId, number>>,
   getRemainingFreePoints: (id: MasteryId) => number,
+  onDie: () => void,
 ): () => void {
   // Active plan: persisted in prefs, reset on ascent.
   let activePlan: string | null = getPrefs().activeMasteryPlan ?? null
@@ -849,6 +850,10 @@ export function mountMasteryModal(
         <span class="mastery-plan-active" hidden></span>
       </div>
       <div class="mastery-categories"></div>
+      <div class="mastery-die-footer">
+        <p class="mastery-die-note">${t('mastery', 'pendingGainsNote')}</p>
+        <button class="modal-btn modal-btn--danger mastery-die-btn" data-action="die">${t('game', 'dieRebirth')}</button>
+      </div>
     </div>
   `
   playSound('modal.open')
@@ -1080,6 +1085,9 @@ export function mountMasteryModal(
   const dismiss = (): void => { playSound('modal.close'); window.clearInterval(refreshTimer); closeSub(); backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
   backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+
+  backdrop.querySelector<HTMLButtonElement>('[data-action="die"]')!
+    .addEventListener('click', () => { dismiss(); onDie() })
 
   return () => { window.clearInterval(refreshTimer); closeSub(); backdrop.remove() }
 }

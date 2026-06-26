@@ -111,6 +111,7 @@ export const zh: TranslationSchema = {
     planInvalid: '无效的构建代码',
     assignAllNone: '未加载方案',
     saveNoHistory: '当前节点的分配顺序未被记录。下次升华后即可保存方案。',
+    pendingGainsNote: '以绿色显示的进度只有在死亡并重生后才能获得',
   },
   ascent: {
     title: '升华',

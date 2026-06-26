@@ -111,6 +111,7 @@ export const fr: TranslationSchema = {
     planInvalid: 'Code de build invalide',
     assignAllNone: 'Aucun plan chargé',
     saveNoHistory: 'L\'ordre d\'attribution de tes nœuds actuels n\'a pas été enregistré. La sauvegarde de plans se débloque après ta prochaine Ascension.',
+    pendingGainsNote: 'La progression affichée en vert ne sera obtenue qu\'après être mort et renaître',
   },
   ascent: {
     title: 'Ascension',

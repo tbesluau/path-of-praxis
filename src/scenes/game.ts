@@ -3018,6 +3018,14 @@ export function createGameScene(
         freeMasteryPointsUsed,
         masteryDumpPoints,
         (id: MasteryId) => remainingFreeMasteryPointsFor(id),
+        () => {
+          const doDie = (): void => {
+            playerEntity.currentLife = 0
+            killEntity(playerEntity)
+          }
+          if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+          else doDie()
+        },
       )
     })
 
