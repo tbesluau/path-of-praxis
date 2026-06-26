@@ -1911,12 +1911,12 @@ const ROT_EFFECTS: Partial<Record<number, TreeEffects>> = {
     // 12-13: key nodes — not yet defined
   },
   3: {  // Green Veins (short tree — line nodes 0-5, key nodes 12-13)
-    0: { rotGreenVeinsChanceOnPoison: 15 },
+    0: { rotGreenVeinsChanceOnPoison: 20 },
     1: { rotGreenVeinsDamagePerStack: 1 },
-    2: { rotGreenVeinsDurationIncrease: 30, rotGreenVeinsTriggerReduction: 30 },
-    3: { rotGreenVeinsChanceOnPoison: 15 },
+    2: { rotGreenVeinsDurationIncrease: 50, rotGreenVeinsTriggerReduction: 50 },
+    3: { rotGreenVeinsChanceOnPoison: 20 },
     4: { rotGreenVeinsDamagePerStack: 1 },
-    5: { rotGreenVeinsMaxStacksBonus: 50, rotGreenVeinsChanceOnPoison: 20 },
+    5: { rotGreenVeinsMaxStacksBonus: 25, rotGreenVeinsChanceOnPoison: 30 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -2404,12 +2404,12 @@ const ROT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>>
     5: 'Enemy physical and rot resistance is reduced by 1% per poison stack on them',
   },
   3: {  // Green Veins
-    0: '+15% chance to gain a Green Vein stack when applying poison',
+    0: '+20% chance to gain a Green Vein stack when applying poison',
     1: '+1% increased rot damage per Green Vein stack',
-    2: 'Green Veins duration +30% · Green Veins trigger requirement −30%',
-    3: '+15% chance to gain a Green Vein stack when applying poison',
+    2: 'Green Veins duration +50% · Green Veins trigger requirement −50%',
+    3: '+20% chance to gain a Green Vein stack when applying poison',
     4: '+1% increased rot damage per Green Vein stack',
-    5: 'Green Veins can have 50 more maximum stacks · +20% chance to gain a Green Vein stack when applying poison',
+    5: 'Green Veins can have 25 more maximum stacks · +30% chance to gain a Green Vein stack when applying poison',
   },
 }
 
