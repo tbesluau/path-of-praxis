@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, STOCKPILE_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
@@ -2520,6 +2520,7 @@ export function createGameScene(
       const libData = tags.includes('lightning')  ? { b: getLightningBonuses(),  nodes: masteryNodes('lightning', 5),  dumped: dumpedFor('lightning') }  : null
       const fbData  = tags.includes('fire')       ? { b: getFireBonuses(),       nodes: masteryNodes('fire', 5),       dumped: dumpedFor('fire') }       : null
       const cbData  = tags.includes('cold')       ? { b: getColdBonuses(),       nodes: masteryNodes('cold', 5),       dumped: dumpedFor('cold') }       : null
+      const rotData = tags.includes('rot')        ? { b: getRotBonuses(),        nodes: masteryNodes('rot', 5),        dumped: dumpedFor('rot') }        : null
       const phbData = tags.includes('physical')   ? { b: getPhysicalBonuses(),   nodes: masteryNodes('physical', 5),   dumped: dumpedFor('physical') }   : null
       const arbData = tags.includes('area')       ? { b: getAreaBonuses(),       nodes: masteryNodes('area', 5),       dumped: dumpedFor('area') }       : null
 
@@ -2603,6 +2604,14 @@ export function createGameScene(
           moreNodeLabel(coldNodes, coldDumped, MASTERY_DUMP.cold.rate,
             (t, n) => getColdNodeEffect(t, n).coldMoreDamage ?? 0, 'cold mastery'), 'cold mastery'))
         if (cb2.actionSpeedIncrease !== 0) spdFactors.push(incF(cb2.actionSpeedIncrease, 'cold mastery total increased', 'cold mastery'))
+      }
+      if (rotData) {
+        const { b: rotb, nodes: rotNodes, dumped: rotDumped } = rotData
+        if (rotb.damageIncrease !== 0) dmgFactors.push(incF(rotb.damageIncrease, 'rot mastery total increased', 'rot mastery'))
+        if (rotb.moreDamage !== 0) dmgFactors.push(moreF(rotb.moreDamage,
+          moreNodeLabel(rotNodes, rotDumped, MASTERY_DUMP.rot.rate,
+            (t, n) => getRotNodeEffect(t, n).rotMoreDamage ?? 0, 'rot mastery'), 'rot mastery'))
+        if (rotb.actionSpeedIncrease !== 0) spdFactors.push(incF(rotb.actionSpeedIncrease, 'rot mastery total increased', 'rot mastery'))
       }
       if (phbData) {
         const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
@@ -2720,6 +2729,24 @@ export function createGameScene(
         const { b: lib } = libData
         const chance = baseAffl + lib.electrocuteApplyChance + strikeAffl
         afflictionChance = { label: 'Electrocute chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + lightning mastery${strikeAffl ? ' + strike' : ''}`, note: `electrocuted enemies take +${pct(balance.effects.electrocutionBaseDamageTakenPct + lib.electrocuteDamageTakenIncrease)} damage` }
+      } else if (rotData) {
+        const { b: rotb, nodes: rotNodes, dumped: rotDumped } = rotData
+        const chance = baseAffl + rotb.poisonApplyChance + strikeAffl
+        afflictionChance = { label: 'Poison chance', odds: pct(chance), origin: `base ${pct(baseAffl)} + rot mastery${strikeAffl ? ' + strike' : ''}` }
+        const dps = slotHitDmg * (balance.ascent.poisonBaseDamagePct / 100) * (1 + rotb.poisonDamageIncrease / 100) * (1 + rotb.poisonMoreDamage / 100) * Math.max(0, 1 - rotb.poisonLessDamage / 100) * rotb.poisonDamageMult
+        const df: StatFactor[] = [
+          { text: fmt(slotHitDmg, 2), origin: 'hit damage', kind: 'base' },
+          { text: mul(balance.ascent.poisonBaseDamagePct / 100), origin: 'poison fraction', kind: 'mul' },
+        ]
+        if (rotb.poisonDamageIncrease !== 0) df.push(incF(rotb.poisonDamageIncrease, 'rot mastery total increased', 'rot mastery'))
+        if (rotb.poisonMoreDamage !== 0) df.push(moreF(rotb.poisonMoreDamage,
+          moreNodeLabel(rotNodes, rotDumped, 0,
+            (t, n) => getRotNodeEffect(t, n).rotPoisonMoreDamage ?? 0, 'rot mastery'), 'rot mastery'))
+        afflictionDamage = { label: 'Poison DPS', total: fmt(dps, 2), factors: df }
+      } else if (cbData) {
+        const { b: cb2 } = cbData
+        const chance = balance.frost.baseFrostChancePct + cb2.frostApplyChance + strikeAffl
+        afflictionChance = { label: 'Frost chance', odds: pct(chance), origin: `base ${pct(balance.frost.baseFrostChancePct)} + cold mastery${strikeAffl ? ' + strike' : ''}`, note: 'frosted enemies are slowed and take more damage from non-cold sources' }
       }
 
       // ── Critical hit ──────────────────────────────────────────────────────

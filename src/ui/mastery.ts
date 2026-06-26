@@ -627,11 +627,11 @@ function mountMasteryTreeModal(
 
 // ── Build plan helpers ─────────────────────────────────────────────────────
 
-// Canonical mastery order for save-string generation.
-const CANONICAL_MASTERY_ORDER: MasteryId[] = [
-  'action', 'criticalHit', 'physical', 'fire', 'lightning',
-  'area', 'projectile', 'strike', 'life', 'mana', 'enemy', 'movement',
-]
+// Canonical mastery order for save-string generation. Derived from allMasteries
+// (category/display order) so every mastery — including ones added later, like
+// cold and rot — is always emitted. A hardcoded list here silently dropped any
+// mastery it forgot to mention.
+const CANONICAL_MASTERY_ORDER: MasteryId[] = allMasteries.map(m => m.id)
 
 // Generates a save string from the current mastery state, replaying each
 // mastery's nodeHistory so the exact assignment order — interleaved across
