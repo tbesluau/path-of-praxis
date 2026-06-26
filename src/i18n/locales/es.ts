@@ -101,6 +101,7 @@ export const es: TranslationSchema = {
     loadPlan: 'Cargar plan',
     assignAll: 'Asignar todo',
     assignAllDump: 'Verter puntos sobrantes',
+    assignAllDumpTooltip: 'Asignar todo verterá los puntos restantes en la conversión una vez completado el plan',
     slot: 'Ranura {n}',
     slotEmpty: '(vacío)',
     copyClipboard: 'Copiar al portapapeles',

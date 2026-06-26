@@ -99,6 +99,7 @@ export interface TranslationSchema {
     loadPlan: string               // "Load plan"
     assignAll: string              // "Assign all"
     assignAllDump: string          // "Dump extra points" — checkbox toggling auto-dump of leftover points
+    assignAllDumpTooltip: string   // tooltip explaining the dump-extras checkbox
     slot: string                   // template: "Slot {n}"
     slotEmpty: string              // "(empty)"
     copyClipboard: string          // "Copy to clipboard"
@@ -447,6 +448,7 @@ export const en: TranslationSchema = {
     loadPlan: 'Load plan',
     assignAll: 'Assign all',
     assignAllDump: 'Dump extra points',
+    assignAllDumpTooltip: 'Assign all will assign remaining points to dump once the loadout has been fulfilled',
     slot: 'Slot {n}',
     slotEmpty: '(empty)',
     copyClipboard: 'Copy to clipboard',

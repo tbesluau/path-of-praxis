@@ -842,7 +842,7 @@ export function mountMasteryModal(
         <button class="modal-btn modal-btn--ghost mastery-plan-btn" data-action="save-plan" data-sfx="modal">${t('mastery', 'savePlan')}</button>
         <button class="modal-btn modal-btn--ghost mastery-plan-btn" data-action="load-plan" data-sfx="modal">${t('mastery', 'loadPlan')}</button>
         <button class="modal-btn modal-btn--primary mastery-plan-btn" data-action="assign-all" data-sfx="modal">${t('mastery', 'assignAll')}</button>
-        <label class="mastery-dump-toggle">
+        <label class="mastery-dump-toggle" title="${t('mastery', 'assignAllDumpTooltip')}">
           <input type="checkbox" class="mastery-dump-toggle-input" data-action="assign-all-dump">
           <span>${t('mastery', 'assignAllDump')}</span>
         </label>
