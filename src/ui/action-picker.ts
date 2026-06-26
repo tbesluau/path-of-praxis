@@ -1,6 +1,7 @@
-import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star, Sparkles, Navigation2, Syringe, Biohazard } from 'lucide'
+import { createIcons, Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star, Sparkles, Navigation2 } from 'lucide'
 import type { ActionDef } from '../config/actions'
 import { getActionLabel, getActionTagLabel } from '../config/actions'
+import { WEAPON_ICONS, isWeaponIcon } from '../assets/weapon-icons'
 import type { DamageEssenceTag, DamageTypeTag } from '../config/masteries'
 import { balance } from '../config/balance'
 import { playSound } from '../audio'
@@ -45,6 +46,15 @@ function critChancePct(tags: ActionDef['tags']): number | null {
   if (tags.includes('area')) return balance.criticalHit.chanceArea * 100
   if (tags.includes('projectile')) return balance.criticalHit.chanceProjectile * 100
   return null
+}
+
+// Custom-art weapons (e.g. the rot skills) render their inline coloured SVG;
+// every other action uses a monochrome Lucide glyph swapped in by createIcons().
+function renderActionIconMarkup(action: ActionDef): string {
+  if (action.iconSystem === 'custom' && isWeaponIcon(action.icon)) {
+    return WEAPON_ICONS[action.icon]
+  }
+  return `<i data-lucide="${action.icon}" aria-hidden="true"></i>`
 }
 
 export interface ActionThumbXp {
@@ -120,7 +130,7 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
 
   wrap.innerHTML = `
     <div class="action-thumb-header">
-      <div class="action-thumb-icon"><i data-lucide="${action.icon}" aria-hidden="true"></i></div>
+      <div class="action-thumb-icon">${renderActionIconMarkup(action)}</div>
       <span class="action-thumb-name">${getActionLabel(action.id)}</span>
     </div>
     <div class="action-thumb-stats">
@@ -137,7 +147,7 @@ export function buildActionThumbnail(action: ActionDef | null, legend = false, s
   return wrap
 }
 
-const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star, Sparkles, Navigation2, Syringe, Biohazard }
+const PICKER_ICONS = { Sword, Flame, Zap, Snowflake, Skull, Timer, Crosshair, Radius, Swords, MoveRight, TestTube, Bomb, Hammer, LoaderPinwheel, CloudLightning, Star, Sparkles, Navigation2 }
 
 export function refreshActionThumbnailIcons(): void {
   createIcons({ icons: PICKER_ICONS })
