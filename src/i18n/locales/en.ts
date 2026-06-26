@@ -647,8 +647,8 @@ export const en: TranslationSchema = {
   },
   refillAd: {
     title:   'Stockpile empty',
-    body:    'Your ×2 speed stockpile just ran out. Watch a short ad to bank 30 minutes.',
-    watchAd: 'Watch ad — earn 30 min',
+    body:    'Your ×2 speed stockpile just ran out. Watch a short ad to bank 15 minutes.',
+    watchAd: 'Watch ad — earn 15 min',
     skip:    'No thanks',
     refill:  'refill',
   },

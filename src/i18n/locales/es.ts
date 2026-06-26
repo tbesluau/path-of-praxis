@@ -289,8 +289,8 @@ export const es: TranslationSchema = {
   },
   refillAd: {
     title:   'Reserva vacía',
-    body:    'Tu reserva de velocidad ×2 acaba de agotarse. Mira un breve anuncio para conseguir 30 minutos.',
-    watchAd: 'Ver anuncio — ganar 30 min',
+    body:    'Tu reserva de velocidad ×2 acaba de agotarse. Mira un breve anuncio para conseguir 15 minutos.',
+    watchAd: 'Ver anuncio — ganar 15 min',
     skip:    'No, gracias',
     refill:  'recargar',
   },

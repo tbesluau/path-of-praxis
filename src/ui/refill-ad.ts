@@ -8,7 +8,7 @@ let currentTeardown: (() => void) | null = null
 /**
  * Offered when the ×2-speed stockpile drains to zero. If the user opts to
  * watch the rewarded ad, `onRefill(addedMs)` is invoked with the bonus
- * duration to credit (30 min by default in the caller).
+ * duration to credit (15 min by default in the caller).
  */
 export function mountRefillAdModal(
   parent: HTMLElement,

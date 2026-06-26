@@ -289,8 +289,8 @@ export const zh: TranslationSchema = {
   },
   refillAd: {
     title:   '储备耗尽',
-    body:    '你的 ×2 速度储备刚刚耗尽。观看简短广告以获得30分钟。',
-    watchAd: '观看广告 — 获得30分钟',
+    body:    '你的 ×2 速度储备刚刚耗尽。观看简短广告以获得15分钟。',
+    watchAd: '观看广告 — 获得15分钟',
     skip:    '不，谢谢',
     refill:  '补充',
   },

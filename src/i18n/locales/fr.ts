@@ -289,8 +289,8 @@ export const fr: TranslationSchema = {
   },
   refillAd: {
     title:   'Stock épuisé',
-    body:    'Votre stock de vitesse ×2 vient de s\'épuiser. Regardez une courte pub pour gagner 30 minutes.',
-    watchAd: 'Regarder une pub — gagner 30 min',
+    body:    'Votre stock de vitesse ×2 vient de s\'épuiser. Regardez une courte pub pour gagner 15 minutes.',
+    watchAd: 'Regarder une pub — gagner 15 min',
     skip:    'Non merci',
     refill:  'remplir',
   },

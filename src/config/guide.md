@@ -48,7 +48,7 @@ Every multi-action is a proper new cast: it can trigger afflictions, proc status
 
 ## Speed Stockpile
 
-**×2 speed** runs on a stockpile earned while you are away. For every 10 real seconds the game is not running (tab inactive, window closed, or paused), you earn 1 second of ×2 time, up to a maximum of 1 hour. Awards under 10 seconds are discarded.
+**×2 speed** runs on a stockpile earned while you are away. For every 10 real seconds the game is not running (tab inactive, window closed, or paused), you earn 1 second of ×2 time, up to a maximum of 30 minutes — or 1 hour if you double your returning reward by watching an ad. Awards under 10 seconds are discarded.
 
 When you return, a notification shows what you earned. While running at ×2 the stockpile drains in real time; at zero the game returns to ×1 and ×2 is locked until more is earned.
 
