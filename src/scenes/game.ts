@@ -6083,8 +6083,14 @@ export function createGameScene(
                 totalPoisonApplications = 0
                 const maxStacks = balance.ascent.greenVeinsMaxStacks + rb.greenVeinsMaxStacksBonus
                 const extra = Math.random() * 100 < rb.greenVeinsChanceOnPoison ? 1 : 0
+                // The buff window has a fixed lifetime: the timer starts only when the
+                // window opens (0 → first stack) and is NOT refreshed by later stacks.
+                // Stacks keep building during the window; when it expires they all clear
+                // together and the application counter restarts from scratch.
+                if (greenVeinsStacks === 0) {
+                  greenVeinsTimer = balance.ascent.greenVeinsBaseDurationMs * (1 + rb.greenVeinsDurationIncrease / 100)
+                }
                 greenVeinsStacks = Math.min(maxStacks, greenVeinsStacks + 1 + extra)
-                greenVeinsTimer = balance.ascent.greenVeinsBaseDurationMs * (1 + rb.greenVeinsDurationIncrease / 100)
                 renderBuffBar()
               }
               if (currentHitIsMainSlot) { afflictionAppliedThisTick++; afflictionLastTarget = target }
