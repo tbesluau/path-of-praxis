@@ -11,6 +11,7 @@ import { isNativeApp } from './core/context'
 import { initStorage } from './core/storage'
 import { getPrefs, setPref } from './core/prefs'
 import { mountTermsAcceptanceModal } from './ui/terms'
+import { initCursor } from './ui/cursor'
 import { initAudio, playSound, suspendAudio, resumeAudio } from './audio'
 
 async function bootstrap(): Promise<void> {
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
   if (isNativeApp()) document.body.classList.add('native-platform')
 
   applyTheme()
+  initCursor()
   initI18n()
   initAudio()
 
