@@ -284,6 +284,7 @@ export interface TranslationSchema {
     body:    string      // contains "{away}" and "{earned}" placeholders
     close:   string
     watchAd: string      // doubles the earned ×2 time
+    continue: string     // close button when there's no ad to offer (info only)
   }
   refillAd: {
     title:   string
@@ -644,6 +645,7 @@ export const en: TranslationSchema = {
     body:    'You were away for {away} and earned {earned} of ×2 speed time.',
     close:   'Close',
     watchAd: 'Watch ad — double reward',
+    continue: 'Continue',
   },
   refillAd: {
     title:   'Stockpile empty',

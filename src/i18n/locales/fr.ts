@@ -286,6 +286,7 @@ export const fr: TranslationSchema = {
     body:    'Vous étiez absent pendant {away} et avez gagné {earned} de temps en vitesse ×2.',
     close:   'Fermer',
     watchAd: 'Regarder une pub — doubler le gain',
+    continue: 'Continuer',
   },
   refillAd: {
     title:   'Stock épuisé',

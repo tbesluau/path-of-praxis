@@ -286,6 +286,7 @@ export const ru: TranslationSchema = {
     body:    'Вы отсутствовали {away} и заработали {earned} времени на скорости ×2.',
     close:   'Закрыть',
     watchAd: 'Смотреть рекламу — удвоить награду',
+    continue: 'Продолжить',
   },
   refillAd: {
     title:   'Запас пуст',
