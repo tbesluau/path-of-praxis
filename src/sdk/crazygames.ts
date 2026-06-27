@@ -7,6 +7,7 @@
 
 import type { StorageBackend } from '../core/storage'
 import { setExternalMute } from '../audio'
+import { flashGameplay } from './crazygames-gameplay'
 
 const SDK_SRC = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
 
@@ -73,6 +74,9 @@ export async function initCrazyGames(): Promise<StorageBackend | null> {
     } catch (err) {
       console.warn('[crazygames] could not register settings listener:', err)
     }
+
+    // Flash a gameplay start/stop right after the SDK loads.
+    flashGameplay()
 
     const data = sdk.data
     return {

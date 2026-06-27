@@ -40,3 +40,20 @@ export function setGameplayActive(next: boolean): void {
     console.warn('[crazygames] gameplay signal failed:', err)
   }
 }
+
+/**
+ * Emit a paired gameplayStart()/gameplayStop() back-to-back. Called once the
+ * SDK has loaded so CrazyGames sees an immediate gameplay cycle. Independent of
+ * the run/pause tracking above — it does not touch the `active` state.
+ */
+export function flashGameplay(): void {
+  if (!isCrazyGames()) return
+  const game = gameApi()
+  if (!game) return
+  try {
+    game.gameplayStart?.()
+    game.gameplayStop?.()
+  } catch (err) {
+    console.warn('[crazygames] gameplay flash failed:', err)
+  }
+}
