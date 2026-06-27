@@ -15,6 +15,7 @@ import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
 import { adsAvailable, type AdLifecycle } from '../ads'
+import { setGameplayActive } from '../sdk/crazygames-gameplay'
 import { createPlayerEntity, createEnemyEntity, nearestTarget } from '../core/entity'
 import type { Entity } from '../core/entity'
 import { balance } from '../config/balance'
@@ -2368,6 +2369,7 @@ export function createGameScene(
   function setSpeed(speed: number): void {
     if (speed === 2 && fastForwardMs <= 0) { offerRefillAd(); return }
     gameSpeed = speed
+    setGameplayActive(true)  // running (covers unpause and live speed changes)
     if (paused) {
       paused = false
       startRegen()
@@ -2386,6 +2388,7 @@ export function createGameScene(
   function togglePause(): void {
     if (!paused) {
       paused = true
+      setGameplayActive(false)  // paused
       stopRegen()
       app?.ticker.stop()
       updateSpeedUI()
@@ -5234,6 +5237,7 @@ export function createGameScene(
   // Start immediately — paused=false so regen and wave timer kick off now
   startRegen()
   scheduleWave(balance.wave.spawnDelay)
+  setGameplayActive(true)  // entered the game scene → gameplay is running
 
   function startFirstGameTutorial(): void {
     if (isTutorialSeen('first-game') || getPrefs().tutorialDisabled) return
@@ -7098,6 +7102,7 @@ export function createGameScene(
 
   return () => {
     destroyed = true
+    setGameplayActive(false)  // leaving the game scene → gameplay stopped
     stopRegen()
     if (!playerDead) persistState()
     clearInterval(saveInterval)
