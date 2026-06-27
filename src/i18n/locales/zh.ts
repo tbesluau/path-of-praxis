@@ -286,6 +286,7 @@ export const zh: TranslationSchema = {
     body:    '你离开了 {away}，获得了 {earned} 的 ×2 速度时间。',
     close:   '关闭',
     watchAd: '观看广告 — 双倍奖励',
+    continue: '继续',
   },
   refillAd: {
     title:   '储备耗尽',

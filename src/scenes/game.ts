@@ -5419,11 +5419,14 @@ export function createGameScene(
           if (earned > 0) {
             // Pre-ad: ×2 time granted for being away, before the away-bonus ad is offered.
             trackEvent('x2_speed_earned', { ascent: String(ascentCount) })
+            const beforeAward = fastForwardMs
             fastForwardMs = Math.min(STOCKPILE_MAX_MS, fastForwardMs + earned)
             if (isPaid() || !adsAvailable()) {
-              // No-ad mode: grant the post-ad (doubled) value directly, up to the doubled cap.
+              // No-ad mode: grant the post-ad (doubled) value directly, up to the
+              // doubled cap, then show an informational welcome-back modal.
               fastForwardMs = Math.min(STOCKPILE_DOUBLED_MAX_MS, fastForwardMs + earned)
               persistState()
+              mountAwayBonusModal(el, gap, fastForwardMs - beforeAward, ascentCount, () => {})
             } else {
               mountAwayBonusModal(el, gap, earned, ascentCount, () => {}, (bonusMs) => {
                 fastForwardMs = Math.min(STOCKPILE_DOUBLED_MAX_MS, fastForwardMs + bonusMs)
