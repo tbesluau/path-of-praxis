@@ -2309,7 +2309,7 @@ export function createGameScene(
     }
     if (greenVeinsStacks > 0) {
       const badge = `<span class="buff-charge">${greenVeinsStacks}</span>`
-      html += `<div class="buff-icon buff-icon--buff" data-effect="greenVeins"><i data-lucide="skull" aria-hidden="true"></i>${badge}</div>`
+      html += `<div class="buff-icon buff-icon--buff" data-effect="greenVeins" data-note="green-veins"><i data-lucide="skull" aria-hidden="true"></i>${badge}</div>`
     }
     buffBarEl.innerHTML = html
     if (ordered.length > 0 || frozenArmorStacks > 0 || greenVeinsStacks > 0) createIcons({ icons: { Book, Flame, Drumstick, Swords, Droplets, Zap, Snowflake, Skull } })
