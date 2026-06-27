@@ -1,11 +1,12 @@
-import { isNative } from '../ads'
-
 let _paid = false
 
 async function checkPaidStatus(): Promise<boolean> {
-  // Web has no ads or IAP — treat as ad-free.
-  // On native (iOS/Android), default to free until a real store entitlement check is wired up.
-  return !isNative()
+  // No "remove ads" store entitlement is wired up yet, so nobody is paid.
+  // Whether ads run is decided by the caller via `adsAvailable()`: ad contexts
+  // (native AdMob, CrazyGames) show rewarded ads; ad-free contexts (direct web,
+  // galaxy, staging) take the no-ad path. `isPaid()` is reserved for a future
+  // IAP that suppresses ads even where they're available.
+  return false
 }
 
 export async function initEntitlement(): Promise<void> {

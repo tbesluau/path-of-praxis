@@ -286,6 +286,7 @@ export const es: TranslationSchema = {
     body:    'Estuviste ausente {away} y ganaste {earned} de tiempo a velocidad ×2.',
     close:   'Cerrar',
     watchAd: 'Ver anuncio — doblar la recompensa',
+    continue: 'Continuar',
   },
   refillAd: {
     title:   'Reserva vacía',

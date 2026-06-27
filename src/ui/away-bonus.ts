@@ -30,6 +30,11 @@ export function mountAwayBonusModal(
   currentTeardown?.()
   currentTeardown = null
 
+  // Ad mode (onDoubled provided) shows a "watch ad to double" button; otherwise
+  // the modal is informational and the reward (already at its full value) is
+  // simply acknowledged.
+  const canDouble = onDoubled !== undefined
+
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop away-bonus-backdrop'
 
@@ -43,19 +48,21 @@ export function mountAwayBonusModal(
       <h2 class="modal-title" id="away-bonus-title">${t('awayBonus', 'title')}</h2>
       <p class="away-bonus-body">${body}</p>
       <div class="away-bonus-actions">
-        <button class="away-bonus-watch-ad-btn" data-action="watch-ad">${t('awayBonus', 'watchAd')}</button>
-        <button class="away-bonus-close-btn"    data-action="close">${t('awayBonus', 'close')}</button>
+        ${canDouble ? `<button class="away-bonus-watch-ad-btn" data-action="watch-ad">${t('awayBonus', 'watchAd')}</button>` : ''}
+        <button class="away-bonus-close-btn" data-action="close">${t('awayBonus', canDouble ? 'close' : 'continue')}</button>
       </div>
     </div>
   `
 
   const teardown = (): void => { backdrop.remove(); currentTeardown = null }
-  const dismiss  = (): void => { trackEvent('away_bonus', { outcome: 'ad_skipped', ascent: String(ascentCount) }); playSound('modal.close'); teardown(); onClose() }
+  // Without an ad on offer this is a purely informational "welcome back" — the
+  // reward is already credited, so closing isn't a skip.
+  const dismiss  = (): void => { trackEvent('away_bonus', { outcome: canDouble ? 'ad_skipped' : 'auto_granted', ascent: String(ascentCount) }); playSound('modal.close'); teardown(); onClose() }
   backdrop.querySelectorAll<HTMLButtonElement>('[data-action="close"]').forEach(btn => {
     btn.addEventListener('click', dismiss)
   })
-  const watchBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="watch-ad"]')!
-  watchBtn.addEventListener('click', async () => {
+  const watchBtn = backdrop.querySelector<HTMLButtonElement>('[data-action="watch-ad"]')
+  watchBtn?.addEventListener('click', async () => {
     watchBtn.disabled = true
     watchBtn.classList.add('away-bonus-watch-ad-btn--loading')
     const watched = await showRewardedAd(adLifecycle)
