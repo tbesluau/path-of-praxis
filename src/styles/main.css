@@ -4492,3 +4492,49 @@ body.privacy-page {
   width: 100%;
   min-height: 44px;
 }
+
+/* ── Custom "arcane" cursor + ember trail ────────────────────────────────────
+   Gated entirely behind the `custom-cursor` body class, which src/ui/cursor.ts
+   adds only on fine-pointer (mouse) devices. The --cursor-default/--cursor-charged
+   custom properties (inline SVG data URIs) are set there too. Placed last so the
+   forced `*` rule wins over the scattered `cursor: pointer` declarations above. */
+.custom-cursor,
+.custom-cursor * {
+  cursor: var(--cursor-default), auto;
+}
+
+.custom-cursor :is(button, a, [role="button"], [data-action], .lang-option, .targeting-opt, select, label, summary, input[type="checkbox"], input[type="radio"]):not(:disabled):not([aria-disabled="true"]) {
+  cursor: var(--cursor-charged), pointer;
+}
+
+.custom-cursor :is(button, [role="button"]):disabled,
+.custom-cursor [aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.custom-cursor :is(input[type="text"], input[type="search"], input:not([type]), textarea) {
+  cursor: text;
+}
+
+.cursor-trail-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.cursor-spark {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 236, 170, 0.95) 0%, rgba(222, 168, 60, 0.7) 42%, rgba(200, 146, 42, 0) 72%);
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+  transform: translate(-50%, -50%);
+  animation: cursor-ember 620ms ease-out forwards;
+}
+
+@keyframes cursor-ember {
+  from { transform: translate(-50%, -50%) scale(1);   opacity: 0.9; }
+  to   { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.1); opacity: 0; }
+}
