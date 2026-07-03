@@ -25,6 +25,7 @@ export interface TranslationSchema {
     targetRandomDesc: string
     backToMenu: string
     dieRebirth: string
+    freeRebirth: string            // die-button label while the freeRebirth relic is armed
     dieConfirmTitle: string
     dieConfirmBody: string
     dieConfirmYes: string
@@ -412,6 +413,7 @@ export const en: TranslationSchema = {
     targetRandomDesc: 'Pick random target',
     backToMenu: 'Back to menu',
     dieRebirth: 'Die and rebirth',
+    freeRebirth: 'Free Rebirth',
     dieConfirmTitle: 'Die and rebirth?',
     dieConfirmBody: 'Your current run will end and your masteries will be applied. Continue?',
     dieConfirmYes: 'Die and rebirth',

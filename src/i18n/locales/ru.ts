@@ -27,6 +27,7 @@ export const ru: TranslationSchema = {
     targetRandomDesc: 'Выбрать случайную цель',
     backToMenu: 'Вернуться в меню',
     dieRebirth: 'Умереть и возродиться',
+    freeRebirth: 'Свободное возрождение',
     dieConfirmTitle: 'Умереть и возродиться?',
     dieConfirmBody: 'Текущий забег завершится, и ваши мастерства будут применены. Продолжить?',
     dieConfirmYes: 'Умереть и возродиться',

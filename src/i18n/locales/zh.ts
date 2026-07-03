@@ -27,6 +27,7 @@ export const zh: TranslationSchema = {
     targetRandomDesc: '随机选择目标',
     backToMenu: '返回菜单',
     dieRebirth: '死亡并重生',
+    freeRebirth: '免费重生',
     dieConfirmTitle: '死亡并重生？',
     dieConfirmBody: '当前的战斗将结束，你的精通将被应用。是否继续？',
     dieConfirmYes: '死亡并重生',

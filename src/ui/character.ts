@@ -10,6 +10,10 @@ const RELIC_NAME_KEY: Record<RelicId, 'relicFreeRebirth' | 'relicMultiAscend' | 
   onslaught:    'relicOnslaught',
 }
 
+function relicDescKey(id: RelicId): 'relicFreeRebirthDesc' {
+  return `${RELIC_NAME_KEY[id]}Desc` as 'relicFreeRebirthDesc'
+}
+
 export function mountCharacterModal(
   parent: HTMLElement,
   opts: {
@@ -41,7 +45,13 @@ export function mountCharacterModal(
         ${opts.relics.length > 0 ? `
           <div class="char-transcend-relics">
             <span class="char-transcend-relics-label">${t('transcend', 'relicsLabel')}</span>
-            ${opts.relics.map(r => `<span class="char-transcend-relic">${t('transcend', RELIC_NAME_KEY[r])}</span>`).join('')}
+            <div class="char-relic-cards">
+              ${opts.relics.map(r => `
+                <div class="char-relic-card">
+                  <span class="char-relic-name">${t('transcend', RELIC_NAME_KEY[r])}</span>
+                  <span class="char-relic-desc">${t('transcend', relicDescKey(r))}</span>
+                </div>`).join('')}
+            </div>
           </div>` : ''}
       </div>` : ''
 

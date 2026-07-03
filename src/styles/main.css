@@ -4602,9 +4602,8 @@ body.privacy-page {
 
 .char-transcend-relics {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-xs);
-  align-items: center;
 }
 
 .char-transcend-relics-label {
@@ -4612,10 +4611,32 @@ body.privacy-page {
   font-weight: 600;
 }
 
-.char-transcend-relic {
-  padding: 2px 8px;
-  border: 1px solid rgba(200, 146, 42, 0.4);
-  border-radius: var(--radius-full, 9999px);
+.char-relic-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* Owned-relic thumbnails — same look as the relic-picker options, minus interactivity. */
+.char-relic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
+  background-clip: padding-box;
+  text-align: left;
+}
+
+.char-relic-name {
   color: #dea83c;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.char-relic-desc {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
