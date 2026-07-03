@@ -10,7 +10,7 @@ import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFi
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
-import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
+import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, scrapsForArtifact, upgradeCost, upgradeArtifact, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
@@ -110,6 +110,7 @@ export function createGameScene(
   // setup-time recomputeArtifactMods() call) to avoid a temporal-dead-zone access.
   let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
   let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
+  let scraps = char?.scraps ?? 0
 
   const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
     JSON.stringify(char?.actionRunes ?? {}),
@@ -270,11 +271,19 @@ export function createGameScene(
   }
 
   function getColdBonuses(): ColdBonuses {
-    return computeColdBonuses(masteryNodes('cold', 5), dumpedFor('cold'))
+    const b = computeColdBonuses(masteryNodes('cold', 5), dumpedFor('cold'))
+    b.moreDamage += artifactMods.coldMoreDamage
+    b.actionSpeedIncrease += artifactMods.coldActionSpeedAdd
+    b.frostSlowIncrease += artifactMods.frostEffectAdd
+    return b
   }
 
   function getRotBonuses(): RotBonuses {
-    return computeRotBonuses(masteryNodes('rot', 5), dumpedFor('rot'))
+    const b = computeRotBonuses(masteryNodes('rot', 5), dumpedFor('rot'))
+    b.moreDamage += artifactMods.rotMoreDamage
+    b.actionSpeedIncrease += artifactMods.rotActionSpeedAdd
+    b.poisonMoreDamage += artifactMods.poisonMoreDamage
+    return b
   }
 
   function getAreaBonuses(): AreaBonuses {
@@ -1624,6 +1633,7 @@ export function createGameScene(
       fastForwardMs,
       masteryDumpPoints,
       artifacts,
+      scraps,
     )
   }
   let playerPrevX = 0
@@ -3086,6 +3096,7 @@ export function createGameScene(
         getArtifacts: () => [...artifacts],
         getMaxEquipped: () => maxEquippedArtifacts(ascentCount),
         getMax: () => maxBaggedArtifacts(ascentCount),
+        getScraps: () => scraps,
       },
       {
         onEquip: (id) => {
@@ -3112,6 +3123,7 @@ export function createGameScene(
           const idx = artifacts.findIndex(a => a.id === id)
           if (idx === -1) return
           const wasEquipped = artifacts[idx].equipped
+          scraps += scrapsForArtifact(artifacts[idx])
           artifacts.splice(idx, 1)
           if (wasEquipped) {
             recomputeArtifactMods()
@@ -3119,6 +3131,22 @@ export function createGameScene(
           }
           persistState()
           refreshArtifactDot()
+        },
+        onUpgrade: (id) => {
+          const art = artifacts.find(a => a.id === id)
+          if (!art) return null
+          const cost = upgradeCost(art)
+          if (scraps < cost) return null
+          const res = upgradeArtifact(art)
+          if (res.kind === 'upgraded') {
+            scraps -= cost
+            if (art.equipped) {
+              recomputeArtifactMods()
+              assignAction(playerEntity, playerActionId)
+            }
+            persistState()
+          }
+          return res
         },
       },
       () => { modalCleanup = null },
@@ -4494,7 +4522,11 @@ export function createGameScene(
           persistState()
           refreshArtifactDot()
         },
-        onDrop: () => {},
+        // Explicitly discarding a fresh drop scraps it, same as deleting from the bag.
+        onDrop: () => {
+          scraps += scrapsForArtifact(artifact)
+          persistState()
+        },
         // Click-away must not silently destroy the drop: bag it while there's
         // room. Only the explicit trash button discards an artifact.
         onDismiss: () => {

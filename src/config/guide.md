@@ -30,15 +30,15 @@ Once a mastery's trees are fully purchased, excess points can be **dumped** for 
 
 ## Action Tags
 
-Every action carries a **damage-type tag**: Area, Projectile, or Strike, and a **damage-source tag** : Fire, Lightning, or Physical.
+Every action carries a **damage-type tag**: Area, Projectile, or Strike, and a **damage-source tag**: Fire, Lightning, Physical, Cold, or Rot.
 
 The tags controls which mastery bonuses apply and how the action behaves — area hits a radius, projectiles track a single target, strikes close to melee range. The element tag controls which afflictions the action can apply and which elemental mastery bonuses it benefits from.
 
 ## Afflictions
 
-Afflictions are byproducts of damage sources (e.g. physical, fire, lightning). They are applied to enemies by hits with a small base chance, modified by mastery nodes.
+Afflictions are byproducts of damage sources (e.g. physical, fire, lightning, cold, rot). They are applied to enemies by hits with a small base chance, modified by mastery nodes.
 
-Current afflictions: **Burn** (fire), **Bleed** (physical), **Electrocution** (lightning debuff). Affliction ticks are not hits — they do not trigger life steal, double damage, or status procs unless explicitely stated.
+Current afflictions: **Burn** (fire), **Bleed** (physical), **Electrocution** (lightning debuff), **Frost** (cold slow), **Poison** (rot). Affliction ticks are not hits — they do not trigger life steal, double damage, or status procs unless explicitely stated.
 
 ## Multi-Action
 
@@ -87,4 +87,8 @@ Only equipped artifacts apply their modifiers. All equipped artifacts' modifiers
 - **Boss level 30+** — Medium Artifacts (2 lines) can drop
 - **Boss level 50+** — Heavy Artifacts (3 lines) can drop
 
-To manage your collection, open the Artifacts panel from the Ascent menu (available from Ascent 5 onward). From there you can equip, unequip, or permanently delete artifacts.
+Source-specific modifiers can roll any of the five damage sources: fire, lightning, physical, cold, or rot.
+
+To manage your collection, open the Artifacts panel from the Ascent menu (available from Ascent 5 onward). From there you can equip, unequip, upgrade, or permanently delete artifacts.
+
+**Scraps & upgrades** — deleting an artifact (or dropping a fresh boss drop) grants **Scraps**: 1 for a Light, 2 for a Medium, 3 for a Heavy artifact. Scraps pay for **upgrades**: each upgrade improves one random unmaxed line on the artifact by one point — positives increase, negatives shrink (7% more damage taken becomes 6%). A line can never pass the best value it could have rolled, so a perfect-roll artifact cannot be upgraded. The first upgrade on an artifact costs 1 scrap, and the cost doubles with each upgrade after that (2, 4, 8, …) without limit.

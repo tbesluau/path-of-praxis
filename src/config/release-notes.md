@@ -1,3 +1,7 @@
+### 0.2.52 — Artifacts min-maxing
+
+Gain scraps when deleting or dropping an artifact, the bigger the artifact the more scraps. Use those scraps to upgrade existing artifacts - upgrades are exponentially more expensive so spend the scraps wisely!
+
 ### 0.2.34 — Pushing the late game
 
 Added new ascent unlocks, more universe points and investment options, smoother late game XP. Rot damage source, 3 new actions.

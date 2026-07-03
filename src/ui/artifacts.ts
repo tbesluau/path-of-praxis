@@ -1,7 +1,7 @@
 import { t } from '../i18n'
 import { playSound } from '../audio'
-import type { Artifact, ArtifactLine } from '../config/artifacts'
-import { describePositive, describeNegative } from '../config/artifacts'
+import type { Artifact, ArtifactLine, UpgradeResult } from '../config/artifacts'
+import { describePositive, describeNegative, upgradeCost } from '../config/artifacts'
 
 // Matches the Lucide `trash-2` glyph used for character deletion in the menu.
 const TRASH_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`
@@ -43,6 +43,7 @@ function renderArtifactThumb(
   artifact: Artifact,
   used: number,
   max: number,
+  scraps: number,
 ): string {
   const rc = rarityClass(artifact.lines.length)
   const equippedClass = artifact.equipped ? ' artifact-thumb--equipped' : ''
@@ -50,6 +51,11 @@ function renderArtifactThumb(
   const equipBtn = artifact.equipped
     ? `<button class="artifact-thumb-equip-btn" data-artifact-id="${artifact.id}" data-action="unequip">${t('artifacts', 'unequip')}</button>`
     : `<button class="artifact-thumb-equip-btn" data-artifact-id="${artifact.id}" data-action="equip" ${canEquip ? '' : 'disabled'} title="${canEquip ? '' : t('artifacts', 'lockedHint')}">${t('artifacts', 'equip')}</button>`
+  const cost = upgradeCost(artifact)
+  const upgradeLabel = t('artifacts', 'upgradeBtn')
+    .replace('{scraps}', String(scraps))
+    .replace('{cost}', String(cost))
+  const upgradeBtn = `<button class="artifact-thumb-upgrade-btn" data-artifact-id="${artifact.id}" data-action="upgrade" ${scraps >= cost ? '' : 'disabled'}>${upgradeLabel}</button>`
   return `
     <div class="artifact-thumb-row">
       <div class="artifact-thumb ${rc}${equippedClass}" data-artifact-id="${artifact.id}">
@@ -57,7 +63,10 @@ function renderArtifactThumb(
           <span class="artifact-rarity-label">${weightLabel(artifact.lines.length)}</span>
         </div>
         <div class="artifact-thumb-lines">${allLinesHtml(artifact)}</div>
-        ${equipBtn}
+        <div class="artifact-thumb-btn-row">
+          ${equipBtn}
+          ${upgradeBtn}
+        </div>
       </div>
       <button class="artifact-thumb-trash" data-artifact-id="${artifact.id}" data-action="delete" aria-label="${t('artifacts', 'deleteBtn')}">${TRASH_ICON}</button>
     </div>
@@ -86,6 +95,45 @@ export function mountDeleteConfirmModal(
   const teardown = (): void => { backdrop.remove(); onClose() }
   backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', () => { playSound('modal.close'); teardown() })
   backdrop.querySelector<HTMLButtonElement>('[data-action="confirm"]')!.addEventListener('click', () => { playSound('modal.close'); onConfirm(); teardown() })
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) { playSound('modal.close'); teardown() } })
+  playSound('modal.open')
+  parent.appendChild(backdrop)
+  return teardown
+}
+
+// Renders the affected modifier's line text at an arbitrary value (for the
+// before → after display in the upgrade result modal).
+function modifierHtmlAt(artifact: Artifact, res: Extract<UpgradeResult, { kind: 'upgraded' }>, value: number): string {
+  const line = artifact.lines[res.lineIndex]
+  if (res.target === 'positive') {
+    return positiveLineHtml({ ...line, positive: { ...line.positive, value } })
+  }
+  return negativeLineHtml({ ...line, negative: { ...line.negative, value } })
+}
+
+export function mountUpgradeResultModal(
+  parent: HTMLElement,
+  artifact: Artifact,
+  result: UpgradeResult,
+  onClose: () => void,
+): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop'
+  const isUpgraded = result.kind === 'upgraded'
+  const bodyHtml = isUpgraded
+    ? `<p class="modal-body artifact-upgrade-diff">${modifierHtmlAt(artifact, result, result.before)} → ${modifierHtmlAt(artifact, result, result.after)}</p>`
+    : `<p class="modal-body">${t('artifacts', 'upgradeMaxedBody')}</p>`
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <h2 class="modal-title">${t('artifacts', isUpgraded ? 'upgradeResultTitle' : 'upgradeMaxedTitle')}</h2>
+      ${bodyHtml}
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn--primary" data-action="ok">${t('settings', 'close')}</button>
+      </div>
+    </div>
+  `
+  const teardown = (): void => { backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="ok"]')!.addEventListener('click', () => { playSound('modal.close'); teardown() })
   backdrop.addEventListener('click', e => { if (e.target === backdrop) { playSound('modal.close'); teardown() } })
   playSound('modal.open')
   parent.appendChild(backdrop)
@@ -132,11 +180,13 @@ export function mountArtifactsModal(
     getArtifacts: () => Artifact[]
     getMaxEquipped: () => number
     getMax: () => number
+    getScraps: () => number
   },
   actions: {
     onEquip: (id: string) => void
     onUnequip: (id: string) => void
     onDelete: (id: string) => void
+    onUpgrade: (id: string) => UpgradeResult | null
   },
   onClose: () => void,
 ): () => void {
@@ -147,10 +197,15 @@ export function mountArtifactsModal(
     const artifacts = state.getArtifacts()
     const maxEquipped = state.getMaxEquipped()
     const max = state.getMax()
+    const scraps = state.getScraps()
     const used = artifacts.filter(a => a.equipped).length
     const isFull = artifacts.length >= max
 
-    const thumbsHtml = artifacts.map(a => renderArtifactThumb(a, used, maxEquipped)).join('')
+    // Equipped artifacts always list first (display order only — the stored
+    // order is untouched). Array.prototype.sort is stable, so bag order is
+    // preserved within each group.
+    const ordered = [...artifacts].sort((a, b) => Number(b.equipped) - Number(a.equipped))
+    const thumbsHtml = ordered.map(a => renderArtifactThumb(a, used, maxEquipped, scraps)).join('')
 
     backdrop.innerHTML = `
       <div class="modal-panel artifacts-panel" role="dialog" aria-modal="true" aria-labelledby="artifacts-title">
@@ -159,6 +214,7 @@ export function mountArtifactsModal(
         <div class="artifacts-header-info">
           <span class="artifact-count">${t('artifacts', 'countLabel').replace('{n}', String(artifacts.length)).replace('{max}', String(max))}</span>
           <span class="artifact-equipped-label">${t('artifacts', 'equippedLabel').replace('{used}', String(used)).replace('{max}', String(maxEquipped))}</span>
+          <span class="artifact-scraps">${t('artifacts', 'scrapsLabel').replace('{n}', String(scraps))}</span>
         </div>
         ${isFull ? `<p class="artifact-warning">${t('artifacts', 'full')}</p>` : ''}
         <div class="artifact-grid">${thumbsHtml.length ? thumbsHtml : '<p class="artifact-empty">—</p>'}</div>
@@ -178,6 +234,17 @@ export function mountArtifactsModal(
     backdrop.querySelectorAll<HTMLButtonElement>('[data-artifact-id][data-action="unequip"]').forEach(btn => {
       btn.addEventListener('click', () => {
         actions.onUnequip(btn.dataset.artifactId!)
+        buildPanel()
+      })
+    })
+    backdrop.querySelectorAll<HTMLButtonElement>('[data-artifact-id][data-action="upgrade"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.artifactId!
+        const result = actions.onUpgrade(id)
+        if (result) {
+          const art = state.getArtifacts().find(a => a.id === id)
+          if (art) mountUpgradeResultModal(parent, art, result, () => {})
+        }
         buildPanel()
       })
     })

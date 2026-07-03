@@ -162,6 +162,7 @@ export interface Character {
   lastSeenAt: number       // Date.now() at last save/frame; basis for the ×2-speed away bonus
   fastForwardMs: number    // remaining ×2-speed stockpile in ms (≤ 3_600_000)
   artifacts: Artifact[]
+  scraps: number           // artifact-upgrade currency, earned by deleting/dropping artifacts
 }
 
 interface SaveData {
@@ -285,6 +286,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
         return a
       })
     })(),
+    scraps: typeof c.scraps === 'number' && c.scraps >= 0 ? Math.floor(c.scraps) : 0,
   }
 }
 
@@ -369,6 +371,7 @@ export function createCharacter(name: string, actionId: string): Character {
     lastSeenAt: Date.now(),
     fastForwardMs: 0,
     artifacts: [],
+    scraps: 0,
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -440,6 +443,7 @@ export function saveCharacterState(
   fastForwardMs?: number,
   masteryDumpPoints?: Partial<Record<MasteryId, number>>,
   artifacts?: Artifact[],
+  scraps?: number,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -465,5 +469,6 @@ export function saveCharacterState(
   if (fastForwardMs !== undefined) char.fastForwardMs = fastForwardMs
   if (masteryDumpPoints !== undefined) char.masteryDumpPoints = masteryDumpPoints
   if (artifacts !== undefined) char.artifacts = artifacts
+  if (scraps !== undefined) char.scraps = scraps
   write(data)
 }

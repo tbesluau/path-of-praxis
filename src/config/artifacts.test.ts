@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   rollValue, rollLineCount, drawPositives, drawNegatives,
   rollArtifact, computeArtifactMods, maxEquippedArtifacts,
-  ZERO_ARTIFACT_MODS, type Artifact,
+  scrapsForArtifact, upgradeCost, upgradeArtifact,
+  ZERO_ARTIFACT_MODS, type Artifact, type ArtifactLine,
 } from './artifacts'
 
 // Deterministic LCG RNG for seeded tests
@@ -205,5 +206,149 @@ describe('maxEquippedArtifacts', () => {
   it('returns 2 at ascent 9+', () => {
     expect(maxEquippedArtifacts(9)).toBe(2)
     expect(maxEquippedArtifacts(15)).toBe(2)
+  })
+})
+
+// ── Cold / rot sources ────────────────────────────────────────────────────────
+
+describe('cold and rot artifact sources', () => {
+  it('cold and rot mods can roll (all five sources reachable)', () => {
+    const rng = makeLcg(2024)
+    const seen = new Set<string>()
+    for (let i = 0; i < 500; i++) {
+      for (const p of drawPositives(3, rng)) {
+        if (p.source) seen.add(p.source)
+      }
+    }
+    expect([...seen].sort()).toEqual(['cold', 'fire', 'lightning', 'physical', 'rot'])
+  })
+
+  it('source-lock still holds with five sources', () => {
+    const rng = makeLcg(42)
+    for (let trial = 0; trial < 300; trial++) {
+      const sources = drawPositives(3, rng).filter(p => p.source).map(p => p.source)
+      expect(new Set(sources).size).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('computeArtifactMods maps the cold and rot fields', () => {
+    const line = (type: 'sourceMoreDamage' | 'sourceActionSpeed' | 'sourceAffliction', source: 'cold' | 'rot', value: number): ArtifactLine => ({
+      positive: { kind: 'positive', type, source, value },
+      negative: { kind: 'negative', type: 'damageTaken', value: 1 },
+    })
+    const art: Artifact = {
+      id: 'cr', equipped: true, createdAt: 0,
+      lines: [line('sourceMoreDamage', 'cold', 11), line('sourceActionSpeed', 'cold', 6), line('sourceAffliction', 'cold', 7)],
+    }
+    const art2: Artifact = {
+      id: 'cr2', equipped: true, createdAt: 0,
+      lines: [line('sourceMoreDamage', 'rot', 12), line('sourceActionSpeed', 'rot', 8), line('sourceAffliction', 'rot', 25)],
+    }
+    const mods = computeArtifactMods([art, art2])
+    expect(mods.coldMoreDamage).toBe(11)
+    expect(mods.coldActionSpeedAdd).toBe(6)
+    expect(mods.frostEffectAdd).toBe(7)
+    expect(mods.rotMoreDamage).toBe(12)
+    expect(mods.rotActionSpeedAdd).toBe(8)
+    expect(mods.poisonMoreDamage).toBe(25)
+  })
+})
+
+// ── Scraps & upgrades ─────────────────────────────────────────────────────────
+
+function mkArtifact(lines: ArtifactLine[], upgradeCount?: number): Artifact {
+  return { id: 'u', lines, equipped: false, createdAt: 0, ...(upgradeCount !== undefined ? { upgradeCount } : {}) }
+}
+
+const posLine = (value: number): ArtifactLine => ({
+  positive: { kind: 'positive', type: 'globalMoreDamage', value },       // spec 6-12
+  negative: { kind: 'negative', type: 'damageTaken', value: 5 },          // spec 5-10, 5 = perfect
+})
+
+describe('scrapsForArtifact', () => {
+  it('grants 1/2/3 scraps for light/medium/heavy', () => {
+    expect(scrapsForArtifact(mkArtifact([posLine(8)]))).toBe(1)
+    expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8)]))).toBe(2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8), posLine(8)]))).toBe(3)
+  })
+})
+
+describe('upgradeCost', () => {
+  it('doubles per upgrade: 1, 2, 4, 8', () => {
+    expect(upgradeCost(mkArtifact([posLine(8)], 0))).toBe(1)
+    expect(upgradeCost(mkArtifact([posLine(8)], 1))).toBe(2)
+    expect(upgradeCost(mkArtifact([posLine(8)], 2))).toBe(4)
+    expect(upgradeCost(mkArtifact([posLine(8)], 3))).toBe(8)
+  })
+  it('legacy artifact without upgradeCount costs 1', () => {
+    expect(upgradeCost(mkArtifact([posLine(8)]))).toBe(1)
+  })
+})
+
+describe('upgradeArtifact', () => {
+  it('improves a positive by +1', () => {
+    // globalMoreDamage 8 (max 12) unmaxed; negative at 5 (min) is maxed → only candidate is the positive.
+    const art = mkArtifact([posLine(8)])
+    const res = upgradeArtifact(art, () => 0)
+    expect(res).toEqual({ kind: 'upgraded', target: 'positive', lineIndex: 0, before: 8, after: 9 })
+    expect(art.lines[0].positive.value).toBe(9)
+    expect(art.upgradeCount).toBe(1)
+  })
+
+  it('reduces a negative by 1', () => {
+    const art = mkArtifact([{
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 },  // maxed
+      negative: { kind: 'negative', type: 'damageTaken', value: 7 },        // unmaxed
+    }])
+    const res = upgradeArtifact(art, () => 0)
+    expect(res).toEqual({ kind: 'upgraded', target: 'negative', lineIndex: 0, before: 7, after: 6 })
+    expect(art.lines[0].negative.value).toBe(6)
+  })
+
+  it('clamps at the spec bound (19.5 → 20 on a 10-20 mod)', () => {
+    const art = mkArtifact([{
+      positive: { kind: 'positive', type: 'sourceMoreDamage', source: 'fire', value: 19.5 },  // spec 10-20
+      negative: { kind: 'negative', type: 'damageTaken', value: 5 },                          // maxed
+    }])
+    const res = upgradeArtifact(art, () => 0)
+    expect(res.kind).toBe('upgraded')
+    expect(art.lines[0].positive.value).toBe(20)
+  })
+
+  it('only picks unmaxed modifiers', () => {
+    // One fully-maxed line pair + one unmaxed positive: any rng must pick the unmaxed one.
+    const art = mkArtifact([
+      {
+        positive: { kind: 'positive', type: 'sourceMoreDamage', source: 'fire', value: 20 },  // maxed
+        negative: { kind: 'negative', type: 'damageTaken', value: 5 },                        // maxed
+      },
+      posLine(8),
+    ])
+    for (const r of [0, 0.5, 0.99]) {
+      const clone: Artifact = JSON.parse(JSON.stringify(art))
+      const res = upgradeArtifact(clone, () => r)
+      expect(res).toMatchObject({ kind: 'upgraded', target: 'positive', lineIndex: 1 })
+    }
+  })
+
+  it('returns maxed for a perfect-roll artifact without mutating it', () => {
+    const art = mkArtifact([{
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 },
+      negative: { kind: 'negative', type: 'damageTaken', value: 5 },
+    }], 3)
+    const snapshot = JSON.stringify(art)
+    const res = upgradeArtifact(art, () => 0)
+    expect(res).toEqual({ kind: 'maxed' })
+    expect(JSON.stringify(art)).toBe(snapshot)
+    expect(art.upgradeCount).toBe(3)
+  })
+
+  it('increments upgradeCount on each success', () => {
+    const art = mkArtifact([posLine(6)])
+    upgradeArtifact(art, () => 0)
+    upgradeArtifact(art, () => 0)
+    expect(art.upgradeCount).toBe(2)
+    expect(art.lines[0].positive.value).toBe(8)
+    expect(upgradeCost(art)).toBe(4)
   })
 })
