@@ -1892,6 +1892,13 @@ export function createGameScene(
       updateSpeedUI()
     } : undefined,
     onSpawnBoss: isCheatMode() ? () => spawnBossWave() : undefined,
+    // Readies the Transcend button exactly like a lvl-100+ boss kill would —
+    // does NOT transcend; the player still clicks the gold button themselves.
+    onForceTranscendReady: isCheatMode() ? () => {
+      transcendReady = true
+      persistState()
+      updateTranscendButton()
+    } : undefined,
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!

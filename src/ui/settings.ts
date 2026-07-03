@@ -76,6 +76,8 @@ export interface SettingsButtonOptions {
   onAddFastForwardTime?: () => void
   /** Cheat mode only: despawns the current wave and forces a boss wave. */
   onSpawnBoss?: () => void
+  /** Cheat mode only: readies the Transcend button as if a lvl-100+ boss was killed (does NOT transcend). */
+  onForceTranscendReady?: () => void
 }
 
 export function mountSettingsButton(
@@ -246,6 +248,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           <button class="settings-section-btn settings-section-btn--cheat" data-action="spawn-boss">
             <span>Spawn boss wave</span>
           </button>
+        </div>` : ''}
+        ${opts.onForceTranscendReady ? `
+        <div class="modal-field">
+          <button class="settings-section-btn settings-section-btn--cheat" data-action="force-transcend-ready">
+            <span>Force Transcend unlock</span>
+          </button>
         </div>` : ''}` : ''}
       </div>
     `
@@ -326,6 +334,11 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLButtonElement>('[data-action="spawn-boss"]')
       ?.addEventListener('click', () => {
         opts.onSpawnBoss!()
+      })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="force-transcend-ready"]')
+      ?.addEventListener('click', () => {
+        opts.onForceTranscendReady!()
       })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="reset-tutorials"]')
