@@ -113,6 +113,14 @@ export function createGameScene(
   let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
   let scraps = char?.scraps ?? 0
 
+  // Transcendence — also declared early: computePlayerMaxLife() (and the
+  // transcend power multipliers) run during scene construction, well before
+  // the mid-file state block executes.
+  let transcendCount = char?.transcendCount ?? 0
+  let relics: RelicId[] = [...(char?.relics ?? [])]
+  let transcendReady = char?.transcendReady ?? false
+  let freeRebirthUsed = char?.runProgress?.freeRebirthUsed ?? false
+
   const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
     JSON.stringify(char?.actionRunes ?? {}),
   ) as Partial<Record<string, ActionRunes>>
@@ -1603,9 +1611,6 @@ export function createGameScene(
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
-  let transcendCount = char?.transcendCount ?? 0
-  let relics: RelicId[] = [...(char?.relics ?? [])]
-  let transcendReady = char?.transcendReady ?? false
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   // Per-extra-slot state sized for the maximum of 3 slots (3rd via the extraTrigger relic).
   const afflictionTriggerCounters = [0, 0, 0]  // per extra slot, counts applied afflictions
@@ -1626,7 +1631,6 @@ export function createGameScene(
   let runEnemyXp = char?.runProgress?.enemyXp ?? 0
   let runDistancePx = char?.runProgress?.distancePx ?? 0
   let runCritXp = char?.runProgress?.critXp ?? 0
-  let freeRebirthUsed = char?.runProgress?.freeRebirthUsed ?? false
 
   function currentRunProgress(): RunProgress {
     return {
