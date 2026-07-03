@@ -27,6 +27,7 @@ export const es: TranslationSchema = {
     targetRandomDesc: 'Elegir objetivo al azar',
     backToMenu: 'Volver al menú',
     dieRebirth: 'Morir y renacer',
+    freeRebirth: 'Renacer gratuito',
     dieConfirmTitle: '¿Morir y renacer?',
     dieConfirmBody: 'Tu partida actual terminará y se aplicarán tus maestrías. ¿Continuar?',
     dieConfirmYes: 'Morir y renacer',

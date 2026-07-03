@@ -1686,8 +1686,9 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}" data-tooltip="${t('game', 'backToMenu')}">
           <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-character" data-sfx="modal" aria-label="Main Character" data-tooltip="Main Character">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-character" data-sfx="modal" aria-label="Main Character" data-tooltip="Main Character" style="position:relative">
           <i data-lucide="user" aria-hidden="true"></i>
+          <span class="notif-dot char-notif-dot" hidden></span>
         </button>
       </div>
       <div class="game-top-center">
@@ -1987,7 +1988,8 @@ export function createGameScene(
     const notifDot = el.querySelector<HTMLElement>('.enemy-notif-dot')!
     if (!isAscentUnlocked()) {
       section.hidden = true
-      notifDot.hidden = true
+      // The dot also announces a ready Transcend, independent of ascent state.
+      notifDot.hidden = !transcendReady
       return
     }
     section.hidden = false
@@ -1998,7 +2000,7 @@ export function createGameScene(
     const btn = section.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
     bar.hidden = isFull
     btn.hidden = !isFull
-    notifDot.hidden = !isFull
+    notifDot.hidden = !isFull && !transcendReady
     // multiAscend relic: the button announces multi-count jumps ("Ascend (+x)").
     const gain = pendingAscentGain()
     btn.textContent = gain > 1
@@ -2019,6 +2021,19 @@ export function createGameScene(
   function updateTranscendButton(): void {
     const btn = el.querySelector<HTMLButtonElement>('[data-action="transcend"]')
     if (btn) btn.hidden = !transcendReady
+    // Ready Transcend lights the red dot on the enemy toggle (union with the
+    // ascent-full condition handled in updateAscentBar).
+    if (transcendReady) {
+      const dot = el.querySelector<HTMLElement>('.enemy-notif-dot')
+      if (dot) dot.hidden = false
+    }
+  }
+
+  // Character-button dot: signals the freeRebirth relic is armed again (a free
+  // mastery bank is waiting behind the "Free Rebirth" button).
+  function refreshCharNotifDot(): void {
+    const dot = el.querySelector<HTMLElement>('.char-notif-dot')
+    if (dot) dot.hidden = !freeRebirthActive()
   }
   function awardAscentXp(amount: number): void {
     if (!isAscentUnlocked()) return
@@ -2065,6 +2080,7 @@ export function createGameScene(
   updateEnemyLevelUI()
   updateAscentButtonVisibility()
   updateTranscendButton()
+  refreshCharNotifDot()
 
   const speedPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
   const speedOptBtns = el.querySelectorAll<HTMLButtonElement>('.speed-opt')
@@ -3749,6 +3765,7 @@ export function createGameScene(
     runDistancePx = 0
     runCritXp = 0
     freeRebirthUsed = false
+    refreshCharNotifDot()
     dpsLog.length = 0
     dpsActionOrder.length = 0
     pendingProliferateSpawns = 0
@@ -4171,7 +4188,7 @@ export function createGameScene(
   }
 
   function dieButtonLabel(): string {
-    return freeRebirthActive() ? t('game', 'deathRebirth') : t('game', 'dieRebirth')
+    return freeRebirthActive() ? t('game', 'freeRebirth') : t('game', 'dieRebirth')
   }
 
   function grantMasteryWithoutDeath(): void {
@@ -4185,6 +4202,7 @@ export function createGameScene(
     runDistancePx = 0
     runCritXp = 0
     freeRebirthUsed = true
+    refreshCharNotifDot()
     persistState()
   }
 
