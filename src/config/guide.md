@@ -58,6 +58,21 @@ Ascent is a one-time escalating challenge unlocked after several Rebirths. It pr
 
 Ascent progress is separate from your run. You can attempt it at any time from the menu; failing an Ascent stage costs nothing.
 
+## Transcendence
+
+Transcendence is the prestige layer above Ascension. Killing a boss at **enemy level 100 or above** readies the gold **Transcend** button at the bottom of the enemy-level panel — no bar to fill, but each Transcendence must be re-earned with a fresh level-100+ boss kill.
+
+Transcending resets **everything** an Ascension resets, **plus** your ascent count, universe points, and all unequipped artifacts. Your **equipped artifacts** and **relics** survive — and once you have transcended, both artifact equip slots stay permanently unlocked.
+
+Before transcending you choose one **Relic** — a permanent boon that survives every reset. Each of the four relics can be owned once:
+
+- **Echo of Rebirth** — once per rebirth, gain your unearned mastery progress without dying (the die-and-rebirth button reads just "Rebirth" while available).
+- **Chainbreaker** — Ascending can grant multiple ascensions at once, up to your max enemy level −5 (the button reads "Ascend (+x)").
+- **Third Hand** — a permanent additional action trigger slot.
+- **Onslaught** — 30% more enemies, 10% more all XP, 10% more all damage.
+
+Every Transcendence also grants a permanent power stack: **+10% increased all XP, +10% increased damage, and +10% increased maximum life** (additive with themselves, multiplicative with everything else). Your transcendence power and relics are shown at the bottom of the character panel.
+
 ## Action Triggers
 
 Action triggers fire an action automatically when a condition is met. The first slot is always the **Auto attack** — it fires on a continuous timer. Additional trigger slots unlock by Ascending.

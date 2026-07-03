@@ -829,6 +829,8 @@ export function mountMasteryModal(
   masteryDumpPoints: Partial<Record<MasteryId, number>>,
   getRemainingFreePoints: (id: MasteryId) => number,
   onDie: () => void,
+  // "Rebirth" while the freeRebirth relic is armed, else "Die and rebirth".
+  dieLabel: string = t('game', 'dieRebirth'),
 ): () => void {
   // Active plan: persisted in prefs, reset on ascent.
   let activePlan: string | null = getPrefs().activeMasteryPlan ?? null
@@ -852,7 +854,7 @@ export function mountMasteryModal(
       <div class="mastery-categories"></div>
       <div class="mastery-die-footer">
         <p class="mastery-die-note">${t('mastery', 'pendingGainsNote')}</p>
-        <button class="modal-btn modal-btn--danger mastery-die-btn" data-action="die">${t('game', 'dieRebirth')}</button>
+        <button class="modal-btn modal-btn--danger mastery-die-btn" data-action="die">${dieLabel}</button>
       </div>
     </div>
   `

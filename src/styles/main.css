@@ -4561,3 +4561,61 @@ body.privacy-page {
   from { transform: translate(-50%, -50%) scale(1);   opacity: 0.9; }
   to   { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.1); opacity: 0; }
 }
+
+/* ── Transcendence ───────────────────────────────────────────────────────────
+   Gold-lettered Transcend button at the bottom of the enemy-level dropdown,
+   plus the transcendence power/relics section in the character modal. */
+.transcend-btn {
+  color: #dea83c;
+  text-shadow: 0 0 8px rgba(200, 146, 42, 0.55);
+  margin-top: var(--space-xs);
+}
+
+.relic-picker-opt .trigger-picker-opt-name {
+  color: #dea83c;
+}
+
+.char-transcend-section {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  font-size: 0.85rem;
+}
+
+.char-transcend-power {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.char-transcend-title {
+  color: #dea83c;
+  font-weight: 700;
+}
+
+.char-transcend-summary {
+  color: var(--color-text-muted);
+}
+
+.char-transcend-relics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.char-transcend-relics-label {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.char-transcend-relic {
+  padding: 2px 8px;
+  border: 1px solid rgba(200, 146, 42, 0.4);
+  border-radius: var(--radius-full, 9999px);
+  color: #dea83c;
+  font-weight: 600;
+}
