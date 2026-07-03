@@ -166,6 +166,48 @@ describe('character', () => {
     expect(restored.scraps).toBe(7)
   })
 
+  it('transcendence fields default safely on legacy saves and persist', () => {
+    const legacy = { characters: [{ id: 'x', name: 'Old', createdAt: 0 }], currentId: 'x' }
+    localStorage.setItem('pop:save', JSON.stringify(legacy))
+    const c0 = character.getCharacters()[0]
+    expect(c0.transcendCount).toBe(0)
+    expect(c0.relics).toEqual([])
+    expect(c0.transcendReady).toBe(false)
+
+    const c = character.createCharacter('Transcender', 'sword')
+    character.saveCharacterState(
+      c.id, 80, 60, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      2, ['freeRebirth', 'onslaught'], true,
+    )
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.transcendCount).toBe(2)
+    expect(restored.relics).toEqual(['freeRebirth', 'onslaught'])
+    expect(restored.transcendReady).toBe(true)
+  })
+
+  it('normalize drops unknown relic ids and keeps equipped artifacts once transcended', () => {
+    const art = (id: string, equipped: boolean) => ({
+      id, equipped, createdAt: 0,
+      lines: [{ positive: { kind: 'positive', type: 'globalMoreDamage', value: 10 }, negative: { kind: 'negative', type: 'damageTaken', value: 5 } }],
+    })
+    const data = {
+      characters: [{
+        id: 'x', name: 'T', createdAt: 0,
+        transcendCount: 1, relics: ['freeRebirth', 'bogus', 42],
+        ascentCount: 0,
+        artifacts: [art('a', true), art('b', true)],
+      }],
+      currentId: 'x',
+    }
+    localStorage.setItem('pop:save', JSON.stringify(data))
+    const c0 = character.getCharacters()[0]
+    expect(c0.relics).toEqual(['freeRebirth'])
+    // transcended → both equip slots grandfathered even at ascent 0
+    expect(c0.artifacts.filter(a => a.equipped).length).toBe(2)
+  })
+
   it('saveCharacterState persists actionProgress', () => {
     const c = character.createCharacter('Hero', 'sword')
     character.saveCharacterState(c.id, 80, 60, 'sword', { sword: { xp: 150, level: 2, maxLevel: 2 } })

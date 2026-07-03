@@ -75,6 +75,22 @@ Chaque multi-action est un nouveau cast à part entière : elle peut déclencher
 La progression de l'Ascension est séparée de ta partie. Tu peux la tenter à tout moment depuis le menu ; échouer à une étape d'Ascension ne coûte rien.`,
   },
 
+  'Transcendence': {
+    title: 'Transcendance',
+    body: `La Transcendance est la couche de prestige au-dessus de l'Ascension. Tuer un boss au **niveau ennemi 100 ou plus** active le bouton doré **Transcender** en bas du panneau de niveau ennemi — pas de barre à remplir, mais chaque Transcendance doit être regagnée avec un nouveau boss de niveau 100+.
+
+Transcender réinitialise **tout** ce qu'une Ascension réinitialise, **plus** ton compteur d'ascensions, tes points d'univers et tous les artéfacts non équipés. Tes **artéfacts équipés** et tes **reliques** survivent — et une fois que tu as transcendé, les deux emplacements d'artéfact restent débloqués en permanence.
+
+Avant de transcender, tu choisis une **Relique** — un atout permanent qui survit à toutes les réinitialisations. Chacune des quatre reliques ne peut être possédée qu'une fois :
+
+- **Écho de renaissance** — une fois par renaissance, gagne ta progression de maîtrise non acquise sans mourir (le bouton indique simplement « Renaissance » quand c'est disponible).
+- **Brise-chaînes** — Ascendre peut accorder plusieurs ascensions à la fois, jusqu'à ton niveau ennemi max −5 (le bouton indique « Ascendre (+x) »).
+- **Troisième main** — un emplacement de déclencheur d'action supplémentaire permanent.
+- **Déferlement** — 30 % d'ennemis en plus, 10 % d'XP en plus, 10 % de dégâts en plus.
+
+Chaque Transcendance accorde aussi un palier de puissance permanent : **+10 % d'XP, +10 % de dégâts et +10 % de vie maximale** (additifs entre eux, multiplicatifs avec le reste). Ta puissance de transcendance et tes reliques s'affichent en bas du panneau de personnage.`,
+  },
+
   'Action Triggers': {
     title: 'Déclencheurs d\'action',
     body: `Les déclencheurs d'action déclenchent une action automatiquement quand une condition est remplie. Le premier emplacement est toujours l'**Auto-attaque** — il se déclenche sur une minuterie continue. D'autres emplacements de déclencheur se débloquent en Ascendant.

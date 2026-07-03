@@ -72,6 +72,22 @@ Cuando vuelves, una notificación muestra lo que has ganado. Mientras corres a �
 El progreso de Ascensión es independiente de tu partida. Puedes intentarlo en cualquier momento desde el menú; fallar una etapa de Ascensión no cuesta nada.`,
   },
 
+  'Transcendence': {
+    title: 'Trascendencia',
+    body: `La Trascendencia es la capa de prestigio por encima de la Ascensión. Matar a un jefe de **nivel de enemigo 100 o superior** activa el botón dorado **Trascender** en la parte inferior del panel de nivel de enemigo — sin barra que llenar, pero cada Trascendencia debe ganarse de nuevo con otro jefe de nivel 100+.
+
+Trascender reinicia **todo** lo que reinicia una Ascensión, **más** tu contador de ascensiones, tus puntos de universo y todos los artefactos no equipados. Tus **artefactos equipados** y tus **reliquias** sobreviven — y una vez que has trascendido, ambas ranuras de artefacto permanecen desbloqueadas para siempre.
+
+Antes de trascender eliges una **Reliquia** — una bendición permanente que sobrevive a todos los reinicios. Cada una de las cuatro reliquias solo puede poseerse una vez:
+
+- **Eco de renacimiento** — una vez por renacimiento, obtén tu progreso de maestría pendiente sin morir (el botón dice solo «Renacer» mientras está disponible).
+- **Rompecadenas** — Ascender puede otorgar varias ascensiones a la vez, hasta tu nivel máximo de enemigo −5 (el botón dice «Ascender (+x)»).
+- **Tercera mano** — una ranura de disparador de acción adicional permanente.
+- **Embestida** — 30% más enemigos, 10% más XP, 10% más daño.
+
+Cada Trascendencia también otorga un nivel de poder permanente: **+10% XP, +10% daño y +10% vida máxima** (aditivos entre sí, multiplicativos con lo demás). Tu poder de trascendencia y tus reliquias se muestran en la parte inferior del panel de personaje.`,
+  },
+
   'Action Triggers': {
     title: 'Disparadores de acción',
     body: `Los disparadores de acción ejecutan una acción automáticamente cuando se cumple una condición. La primera ranura siempre es el **Ataque automático** — se dispara con un temporizador continuo. Otras ranuras de disparador se desbloquean al Ascender.

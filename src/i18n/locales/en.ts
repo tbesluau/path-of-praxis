@@ -135,6 +135,25 @@ export interface TranslationSchema {
     upSlotC: string
     upSlotD: string
   }
+  transcend: {
+    btn: string                    // gold button in the enemy-level dropdown
+    pickerTitle: string            // relic selection modal title
+    pickerHint: string             // warning above the relic list (what resets)
+    confirmTitle: string           // confirm modal when all relics are owned
+    confirmBody: string
+    relicFreeRebirth: string
+    relicFreeRebirthDesc: string
+    relicMultiAscend: string
+    relicMultiAscendDesc: string
+    relicExtraTrigger: string
+    relicExtraTriggerDesc: string
+    relicOnslaught: string
+    relicOnslaughtDesc: string
+    powerLabel: string             // template: "Transcendence: {n}"
+    powerSummary: string           // template: "+{xp}% XP · +{dmg}% damage · +{life}% max life"
+    relicsLabel: string
+    ascendPlus: string             // template: "{label} (+{n})" — multiAscend button
+  }
   artifacts: {
     title: string
     countLabel: string       // template: "{n}/{max} artifacts"
@@ -502,6 +521,25 @@ export const en: TranslationSchema = {
     upSlotB: '+1% base action critical hit chance',
     upSlotC: '7% more damage',
     upSlotD: '4% more action speed',
+  },
+  transcend: {
+    btn: 'Transcend',
+    pickerTitle: 'Choose a Relic',
+    pickerHint: 'Transcending resets everything — including ascents, universe points, and unequipped artifacts. Equipped artifacts and relics remain. Choose your relic to transcend.',
+    confirmTitle: 'Transcend?',
+    confirmBody: 'Everything resets — including ascents, universe points, and unequipped artifacts. Equipped artifacts and relics remain.',
+    relicFreeRebirth: 'Echo of Rebirth',
+    relicFreeRebirthDesc: 'Once per rebirth, gain your unearned mastery progress without dying.',
+    relicMultiAscend: 'Chainbreaker',
+    relicMultiAscendDesc: 'Ascending can grant multiple ascensions at once, up to your max enemy level −5.',
+    relicExtraTrigger: 'Third Hand',
+    relicExtraTriggerDesc: 'Unlock a permanent additional action trigger slot.',
+    relicOnslaught: 'Onslaught',
+    relicOnslaughtDesc: '30% more enemies, 10% more all XP, 10% more all damage.',
+    powerLabel: 'Transcendence: {n}',
+    powerSummary: '+{xp}% XP · +{dmg}% damage · +{life}% max life',
+    relicsLabel: 'Relics',
+    ascendPlus: '{label} (+{n})',
   },
   artifacts: {
     title: 'Artifacts',
