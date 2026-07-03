@@ -201,7 +201,11 @@ export function mountArtifactsModal(
     const used = artifacts.filter(a => a.equipped).length
     const isFull = artifacts.length >= max
 
-    const thumbsHtml = artifacts.map(a => renderArtifactThumb(a, used, maxEquipped, scraps)).join('')
+    // Equipped artifacts always list first (display order only — the stored
+    // order is untouched). Array.prototype.sort is stable, so bag order is
+    // preserved within each group.
+    const ordered = [...artifacts].sort((a, b) => Number(b.equipped) - Number(a.equipped))
+    const thumbsHtml = ordered.map(a => renderArtifactThumb(a, used, maxEquipped, scraps)).join('')
 
     backdrop.innerHTML = `
       <div class="modal-panel artifacts-panel" role="dialog" aria-modal="true" aria-labelledby="artifacts-title">
