@@ -30,15 +30,15 @@ Once a mastery's trees are fully purchased, excess points can be **dumped** for 
 
 ## Action Tags
 
-Every action carries a **damage-type tag**: Area, Projectile, or Strike, and a **damage-source tag** : Fire, Lightning, or Physical.
+Every action carries a **damage-type tag**: Area, Projectile, or Strike, and a **damage-source tag**: Fire, Lightning, Physical, Cold, or Rot.
 
 The tags controls which mastery bonuses apply and how the action behaves — area hits a radius, projectiles track a single target, strikes close to melee range. The element tag controls which afflictions the action can apply and which elemental mastery bonuses it benefits from.
 
 ## Afflictions
 
-Afflictions are byproducts of damage sources (e.g. physical, fire, lightning). They are applied to enemies by hits with a small base chance, modified by mastery nodes.
+Afflictions are byproducts of damage sources (e.g. physical, fire, lightning, cold, rot). They are applied to enemies by hits with a small base chance, modified by mastery nodes.
 
-Current afflictions: **Burn** (fire), **Bleed** (physical), **Electrocution** (lightning debuff). Affliction ticks are not hits — they do not trigger life steal, double damage, or status procs unless explicitely stated.
+Current afflictions: **Burn** (fire), **Bleed** (physical), **Electrocution** (lightning debuff), **Frost** (cold slow), **Poison** (rot). Affliction ticks are not hits — they do not trigger life steal, double damage, or status procs unless explicitely stated.
 
 ## Multi-Action
 
