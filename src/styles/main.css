@@ -4374,12 +4374,19 @@ body.privacy-page {
 
 /* Equip/unequip button inside the thumbnail — mirrors .game-action-btn hover
    (border-image swap + translateY press-down, no brightness wash). */
-.artifact-thumb-equip-btn {
-  width: 100%;
-  /* breathing room between the modifier lines plate and the equip button */
+/* breathing room between the modifier lines plate and the button pair */
+.artifact-thumb-btn-row {
+  display: flex;
+  gap: var(--space-xs);
   margin-top: var(--space-sm);
+}
+
+.artifact-thumb-equip-btn,
+.artifact-thumb-upgrade-btn {
+  flex: 1;
+  min-width: 0;
   min-height: 36px;
-  padding: 0 var(--space-sm);
+  padding: 0 var(--space-xs);
   border: 14px solid transparent;
   border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
   color: #fff;
@@ -4392,20 +4399,36 @@ body.privacy-page {
   background-clip: padding-box;
 }
 
-.artifact-thumb-equip-btn:hover:not(:disabled) {
+.artifact-thumb-equip-btn:hover:not(:disabled),
+.artifact-thumb-upgrade-btn:hover:not(:disabled) {
   border-image-source: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue_pressed.png');
   background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
   background-clip: padding-box;
   transform: translateY(2px);
 }
 
-.artifact-thumb-equip-btn:active {
+.artifact-thumb-equip-btn:active,
+.artifact-thumb-upgrade-btn:active {
   transform: translateY(2px) scale(0.98);
 }
 
-.artifact-thumb-equip-btn:disabled {
+.artifact-thumb-equip-btn:disabled,
+.artifact-thumb-upgrade-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+.artifact-scraps {
+  font-weight: 600;
+}
+
+/* before → after line in the upgrade result modal */
+.artifact-upgrade-diff {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
 }
 
 .artifact-card {

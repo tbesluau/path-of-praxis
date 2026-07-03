@@ -1,6 +1,6 @@
 import { balance } from './balance'
 
-export type Source = 'fire' | 'lightning' | 'physical'
+export type Source = 'fire' | 'lightning' | 'physical' | 'cold' | 'rot'
 export type PositiveType =
   | 'sourceMoreDamage' | 'sourceActionSpeed' | 'sourceAffliction'
   | 'globalActionSpeed' | 'globalMoreDamage'
@@ -16,6 +16,7 @@ export interface Artifact {
   lines: ArtifactLine[]   // 1..3 lines
   equipped: boolean
   createdAt: number
+  upgradeCount?: number   // times upgraded with scraps; absent on legacy saves (= 0)
 }
 
 export interface ArtifactMods {
@@ -28,6 +29,12 @@ export interface ArtifactMods {
   physicalMoreDamage: number
   physicalActionSpeedAdd: number
   bleedMoreDamage: number
+  coldMoreDamage: number
+  coldActionSpeedAdd: number
+  frostEffectAdd: number
+  rotMoreDamage: number
+  rotActionSpeedAdd: number
+  poisonMoreDamage: number
   globalMoreDamage: number
   globalActionSpeedMore: number
   doubleDamageChance: number
@@ -46,6 +53,8 @@ export const ZERO_ARTIFACT_MODS: ArtifactMods = {
   fireMoreDamage: 0, fireActionSpeedAdd: 0, burnMoreDamage: 0,
   lightningMoreDamage: 0, lightningMoreActionSpeed: 0, electrocuteEffectAdd: 0,
   physicalMoreDamage: 0, physicalActionSpeedAdd: 0, bleedMoreDamage: 0,
+  coldMoreDamage: 0, coldActionSpeedAdd: 0, frostEffectAdd: 0,
+  rotMoreDamage: 0, rotActionSpeedAdd: 0, poisonMoreDamage: 0,
   globalMoreDamage: 0, globalActionSpeedMore: 0,
   doubleDamageChance: 0, doubleActionChance: 0,
   rangeMore: 0, areaMore: 0,
@@ -65,6 +74,14 @@ const POSITIVE_POOL: PositiveSpec[] = [
   { type: 'sourceMoreDamage',  source: 'physical',   min: 10, max: 20, weight: 1 },
   { type: 'sourceActionSpeed', source: 'physical',   min:  5, max: 10, weight: 1 },
   { type: 'sourceAffliction',  source: 'physical',   min: 20, max: 30, weight: 1 },
+  // Frost is a debuff-effect affliction like electrocute → lightning-style range;
+  // poison is a DoT like burn/bleed → fire/physical-style range.
+  { type: 'sourceMoreDamage',  source: 'cold',       min: 10, max: 20, weight: 1 },
+  { type: 'sourceActionSpeed', source: 'cold',       min:  5, max: 10, weight: 1 },
+  { type: 'sourceAffliction',  source: 'cold',       min:  5, max: 10, weight: 1 },
+  { type: 'sourceMoreDamage',  source: 'rot',        min: 10, max: 20, weight: 1 },
+  { type: 'sourceActionSpeed', source: 'rot',        min:  5, max: 10, weight: 1 },
+  { type: 'sourceAffliction',  source: 'rot',        min: 20, max: 30, weight: 1 },
   { type: 'globalActionSpeed', min:  3, max:  6, weight: 1 },
   { type: 'globalMoreDamage',  min:  6, max: 12, weight: 1 },
   { type: 'doubleDamageChance',min:  5, max: 10, weight: 1 },
@@ -179,14 +196,20 @@ export function computeArtifactMods(artifacts: Artifact[]): ArtifactMods {
         if (p.source === 'fire') m.fireMoreDamage += p.value
         else if (p.source === 'lightning') m.lightningMoreDamage += p.value
         else if (p.source === 'physical') m.physicalMoreDamage += p.value
+        else if (p.source === 'cold') m.coldMoreDamage += p.value
+        else if (p.source === 'rot') m.rotMoreDamage += p.value
       } else if (p.type === 'sourceActionSpeed') {
         if (p.source === 'fire') m.fireActionSpeedAdd += p.value
         else if (p.source === 'lightning') m.lightningMoreActionSpeed += p.value
         else if (p.source === 'physical') m.physicalActionSpeedAdd += p.value
+        else if (p.source === 'cold') m.coldActionSpeedAdd += p.value
+        else if (p.source === 'rot') m.rotActionSpeedAdd += p.value
       } else if (p.type === 'sourceAffliction') {
         if (p.source === 'fire') m.burnMoreDamage += p.value
         else if (p.source === 'lightning') m.electrocuteEffectAdd += p.value
         else if (p.source === 'physical') m.bleedMoreDamage += p.value
+        else if (p.source === 'cold') m.frostEffectAdd += p.value
+        else if (p.source === 'rot') m.poisonMoreDamage += p.value
       } else if (p.type === 'globalActionSpeed') m.globalActionSpeedMore += p.value
       else if (p.type === 'globalMoreDamage') m.globalMoreDamage += p.value
       else if (p.type === 'doubleDamageChance') m.doubleDamageChance += p.value
@@ -222,4 +245,65 @@ export function describePositive(m: PositiveModifier): { key: string; value: num
 
 export function describeNegative(m: NegativeModifier): { key: string; value: number } {
   return { key: m.type, value: m.value }
+}
+
+// ── Scraps & upgrades ─────────────────────────────────────────────────────────
+
+/** Scraps granted for deleting/dropping an artifact: 1/2/3 by light/medium/heavy. */
+export function scrapsForArtifact(a: Artifact): number {
+  return a.lines.length
+}
+
+/** Upgrade cost in scraps: 1 for the first upgrade, doubling each time (no cap). */
+export function upgradeCost(a: Artifact): number {
+  return 2 ** (a.upgradeCount ?? 0)
+}
+
+export type UpgradeResult =
+  | { kind: 'maxed' }
+  | { kind: 'upgraded'; target: 'positive' | 'negative'; lineIndex: number; before: number; after: number }
+
+function positiveSpec(m: PositiveModifier): PositiveSpec | undefined {
+  return POSITIVE_POOL.find(s => s.type === m.type && s.source === m.source)
+}
+
+function negativeSpec(m: NegativeModifier): { min: number; max: number } | undefined {
+  return NEGATIVE_POOL.find(s => s.type === m.type)
+}
+
+/**
+ * Improve one random unmaxed modifier on the artifact by 1 point: positives
+ * move +1 toward their spec max, negatives −1 toward their spec min, clamped.
+ * A perfect-roll artifact has no unmaxed modifiers and returns {kind:'maxed'}
+ * with no mutation (and the caller spends nothing). On success the artifact's
+ * upgradeCount increments (doubling the next cost).
+ */
+export function upgradeArtifact(a: Artifact, rng = Math.random): UpgradeResult {
+  interface Candidate { target: 'positive' | 'negative'; lineIndex: number }
+  const candidates: Candidate[] = []
+  a.lines.forEach((line, i) => {
+    const ps = positiveSpec(line.positive)
+    if (ps && line.positive.value < ps.max) candidates.push({ target: 'positive', lineIndex: i })
+    const ns = negativeSpec(line.negative)
+    if (ns && line.negative.value > ns.min) candidates.push({ target: 'negative', lineIndex: i })
+  })
+  if (candidates.length === 0) return { kind: 'maxed' }
+
+  const pick = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]
+  const line = a.lines[pick.lineIndex]
+  const round1 = (v: number): number => Math.round(v * 10) / 10
+  let before: number, after: number
+  if (pick.target === 'positive') {
+    const spec = positiveSpec(line.positive)!
+    before = line.positive.value
+    after = round1(Math.min(spec.max, before + 1))
+    line.positive.value = after
+  } else {
+    const spec = negativeSpec(line.negative)!
+    before = line.negative.value
+    after = round1(Math.max(spec.min, before - 1))
+    line.negative.value = after
+  }
+  a.upgradeCount = (a.upgradeCount ?? 0) + 1
+  return { kind: 'upgraded', target: pick.target, lineIndex: pick.lineIndex, before, after }
 }

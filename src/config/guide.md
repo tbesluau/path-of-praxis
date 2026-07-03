@@ -87,4 +87,8 @@ Only equipped artifacts apply their modifiers. All equipped artifacts' modifiers
 - **Boss level 30+** — Medium Artifacts (2 lines) can drop
 - **Boss level 50+** — Heavy Artifacts (3 lines) can drop
 
-To manage your collection, open the Artifacts panel from the Ascent menu (available from Ascent 5 onward). From there you can equip, unequip, or permanently delete artifacts.
+Source-specific modifiers can roll any of the five damage sources: fire, lightning, physical, cold, or rot.
+
+To manage your collection, open the Artifacts panel from the Ascent menu (available from Ascent 5 onward). From there you can equip, unequip, upgrade, or permanently delete artifacts.
+
+**Scraps & upgrades** — deleting an artifact (or dropping a fresh boss drop) grants **Scraps**: 1 for a Light, 2 for a Medium, 3 for a Heavy artifact. Scraps pay for **upgrades**: each upgrade improves one random unmaxed line on the artifact by one point — positives increase, negatives shrink (7% more damage taken becomes 6%). A line can never pass the best value it could have rolled, so a perfect-roll artifact cannot be upgraded. The first upgrade on an artifact costs 1 scrap, and the cost doubles with each upgrade after that (2, 4, 8, …) without limit.

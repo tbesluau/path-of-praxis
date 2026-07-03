@@ -150,6 +150,22 @@ describe('character', () => {
     expect(chars[0].masteryProgress).toEqual({})
   })
 
+  it('scraps default to 0 on legacy saves and persist through saveCharacterState', () => {
+    const legacy = { characters: [{ id: 'x', name: 'Old', createdAt: 0 }], currentId: 'x' }
+    localStorage.setItem('pop:save', JSON.stringify(legacy))
+    expect(character.getCharacters()[0].scraps).toBe(0)
+
+    const c = character.createCharacter('Scrapper', 'sword')
+    expect(c.scraps).toBe(0)
+    character.saveCharacterState(
+      c.id, 80, 60, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, 7,
+    )
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.scraps).toBe(7)
+  })
+
   it('saveCharacterState persists actionProgress', () => {
     const c = character.createCharacter('Hero', 'sword')
     character.saveCharacterState(c.id, 80, 60, 'sword', { sword: { xp: 150, level: 2, maxLevel: 2 } })
