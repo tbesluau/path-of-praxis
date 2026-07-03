@@ -152,6 +152,8 @@ export interface TranslationSchema {
     sourceFire: string
     sourceLightning: string
     sourcePhysical: string
+    sourceCold: string
+    sourceRot: string
     posSourceMoreDamage: string      // template: "{v}% more {source} damage"
     posSourceActionSpeed: string     // template: "{v}% increased {source} action speed"
     posSourceAffliction: string      // template: "{v}% more {source} affliction effect"
@@ -168,6 +170,11 @@ export interface TranslationSchema {
     weightLight: string              // 1-line artifact title
     weightMedium: string             // 2-line artifact title
     weightHeavy: string              // 3-line artifact title
+    scrapsLabel: string              // template: "Scraps: {n}" — currency from deleted artifacts
+    upgradeBtn: string               // template: "Upgrade {scraps}/{cost}"
+    upgradeResultTitle: string       // shown after a successful line upgrade
+    upgradeMaxedTitle: string        // shown when the artifact has no unmaxed lines
+    upgradeMaxedBody: string
   }
   rune: {
     addToSlot: string              // template: "Add {type} rune to slot {n}"
@@ -513,6 +520,8 @@ export const en: TranslationSchema = {
     sourceFire: 'fire',
     sourceLightning: 'lightning',
     sourcePhysical: 'physical',
+    sourceCold: 'cold',
+    sourceRot: 'rot',
     posSourceMoreDamage: '{v}% more {source} damage',
     posSourceActionSpeed: '{v}% increased {source} action speed',
     posSourceAffliction: '{v}% more {source} affliction effect',
@@ -529,6 +538,11 @@ export const en: TranslationSchema = {
     weightLight: 'Light Artifact',
     weightMedium: 'Medium Artifact',
     weightHeavy: 'Heavy Artifact',
+    scrapsLabel: 'Scraps: {n}',
+    upgradeBtn: 'Upgrade {scraps}/{cost}',
+    upgradeResultTitle: 'Artifact upgraded',
+    upgradeMaxedTitle: 'Fully upgraded',
+    upgradeMaxedBody: 'Every line on this artifact is already at its maximum — it cannot be upgraded further.',
   },
   rune: {
     addToSlot: 'Add {type} rune to slot {n}',
