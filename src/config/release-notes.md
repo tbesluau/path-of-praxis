@@ -1,3 +1,12 @@
+### 0.3.0 — Transcendence, Relics, and Block
+
+New layer of prestige! Unlock it by killing a REALLY high level boss.
+
+- **Transcendence layer** — Transcend the game for permanent bonuses and chose a relic giving you huge QoL boosts for the next reset
+- **Block** - new ability and new mastery unlocked after the first transcendence, get harder to obliterate, but mostly look how good you look with that shield!
+- **Never done** — small bugfixes and UX improvements
+
+
 ### 0.2.52 — Artifacts min-maxing
 
 Gain scraps when deleting or dropping an artifact, the bigger the artifact the more scraps. Use those scraps to upgrade existing artifacts - upgrades are exponentially more expensive so spend the scraps wisely!
