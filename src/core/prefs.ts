@@ -18,6 +18,7 @@ export interface Prefs {
   // Character appearance
   playerHatVariant?:  string
   playerColorKey?:    string
+  playerShieldVariant?: string   // shield in the non-weapon hand (Block unlock)
   // Stable, anonymous analytics client identifier. Generated on first use and
   // persisted here alongside the other settings — it lives in localStorage,
   // NOT in the character save, so it never rides along with an exported save
