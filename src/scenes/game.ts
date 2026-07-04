@@ -34,7 +34,7 @@ import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type Ru
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
-import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey } from '../assets/entity-art'
+import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey, type ShieldVariant } from '../assets/entity-art'
 import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
 import { createBackgroundTicker, type BackgroundTicker } from '../core/background-ticker'
 import { trackEvent } from '../core/analytics'
@@ -480,6 +480,13 @@ export function createGameScene(
     cooldownMs: number
     healPct: number
     suppressAfflictions: boolean
+  }
+
+  // The player's shield (non-weapon hand) — visible only while Block is
+  // enabled, i.e. from the first Transcendence (same gate as blockParamsFor).
+  function playerShieldVariant(): ShieldVariant | null {
+    if (transcendCount < 1 && !getPrefs().fullMastery) return null
+    return (getPrefs().playerShieldVariant as ShieldVariant | undefined) ?? 'buckler'
   }
 
   // Resolves an entity's block parameters, or null when it cannot block.
@@ -3006,10 +3013,13 @@ export function createGameScene(
           const initHat   = (prefs.playerHatVariant  as HeadVariant)   ?? 'hood'
           const initColor = (prefs.playerColorKey     as PlayerColorKey) ?? 'teal'
           modalCleanup = mountCharacterCustomizeModal(el, {
-            initialHat:   initHat,
-            initialColor: initColor,
-            onChange: (hat, color) => {
+            initialHat:    initHat,
+            initialShield: (prefs.playerShieldVariant as ShieldVariant) ?? 'buckler',
+            initialColor:  initColor,
+            shieldsUnlocked: transcendCount >= 1 || getPrefs().fullMastery,
+            onChange: (hat, shield, color) => {
               setPref('playerHatVariant', hat)
+              setPref('playerShieldVariant', shield)
               setPref('playerColorKey', color)
               rebuildPlayerRig(hat, color)
             },
@@ -3365,6 +3375,7 @@ export function createGameScene(
       seed:   entity.id,
       ...(isPlayer && savedPrefs.playerColorKey  ? { colorKey:     savedPrefs.playerColorKey  as PlayerColorKey } : {}),
       ...(isPlayer && savedPrefs.playerHatVariant ? { headOverride: savedPrefs.playerHatVariant as HeadVariant  } : {}),
+      ...(isPlayer ? { shield: playerShieldVariant() } : {}),
     })
     c.addChild(rig.container)
     entityRigs.set(entity.id, rig)
@@ -3409,6 +3420,7 @@ export function createGameScene(
       seed:         playerEntity.id,
       colorKey:     color,
       headOverride: hat,
+      shield:       playerShieldVariant(),
     })
     c.addChildAt(rig.container, 0)
     entityRigs.set('player', rig)
@@ -4027,6 +4039,8 @@ export function createGameScene(
     updateAscentBar()
     persistState()
     rebirth()
+    // Block just unlocked (or stays unlocked): show the shield in-hand.
+    entityRigs.get('player')?.setShield(playerShieldVariant())
   }
 
   // Relic picker — mirrors the trigger-picker option list. Backdrop/close
