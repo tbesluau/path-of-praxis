@@ -108,6 +108,8 @@ export interface RunProgress {
   critXp: number
   // freeRebirth relic: whether the no-death mastery grant was used this run.
   freeRebirthUsed?: boolean
+  // Whether the character-button notification was seen this run.
+  charNotifSeen?: boolean
   // Block mastery XP banked this run (damage prevented by blocks).
   blockXp?: number
 }
@@ -253,6 +255,7 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       distancePx: Number.isFinite(c.runProgress.distancePx) ? c.runProgress.distancePx : 0,
       critXp: Number.isFinite(c.runProgress.critXp) ? c.runProgress.critXp : 0,
       freeRebirthUsed: c.runProgress.freeRebirthUsed === true,
+      charNotifSeen: c.runProgress.charNotifSeen === true,
       blockXp: Number.isFinite(c.runProgress.blockXp) ? c.runProgress.blockXp : 0,
     } : defaultRunProgress(),
     actionRunes: c.actionRunes ?? {},
