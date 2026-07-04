@@ -87,6 +87,7 @@ const NOTE_TERMS_EN: NoteTerm[] = [
   { id: 'boss',                  pattern: /\bBoss(?:es)?\b/gi },
   { id: 'frenzy',                pattern: /\bFrenzy\b/gi },
   { id: 'bleed',                 pattern: /\bBleeds?\b/gi },
+  { id: 'block',                 pattern: /\bBlock(?:s|ed|ing)?\b/gi },
   { id: 'area',                  pattern: /\bAreas?\b/gi },
   { id: 'knockback',             pattern: /\bKnockbacks?\b/gi },
   { id: 'tremor',                pattern: /\bTremors?\b/gi },
