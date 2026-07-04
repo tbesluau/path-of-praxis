@@ -157,6 +157,13 @@ export const balance = {
     manaXpMultiplier:     2,   // multiplier on mana XP earned per mana point spent
   },
 
+  // ── Block (unlocked by the first Transcendence) ───────────────────────────
+  block: {
+    baseChancePct:   5,     // chance to block an incoming hit (not affliction ticks)
+    baseBlockedPct:  20,    // % of the hit's damage prevented on a block
+    baseCooldownMs:  1000,  // one block per second before recovery-speed bonuses
+  },
+
   // ── Mastery leveling ──────────────────────────────────────────────────────
   mastery: {
     xpPerLevel:                  1000, // XP required for mastery level 1 → 2

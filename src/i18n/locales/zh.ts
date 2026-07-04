@@ -342,6 +342,7 @@ export const zh: TranslationSchema = {
     strike: '打击',
     life: '生命',
     mana: '法力',
+    block: '格挡',
     enemy: '敌人',
     movement: '移动',
   },
@@ -358,6 +359,7 @@ export const zh: TranslationSchema = {
     strike_0: '打击伤害', strike_1: '狂怒', strike_2: '打击范围', strike_3: '额外目标',
     life_0: '最大生命值', life_1: '抗性', life_2: '生命恢复', life_3: '生命偷取',
     mana_0: '最大法力值', mana_1: '法力护盾', mana_2: '法力恢复', mana_3: '法力偷取',
+    block_0: '格挡几率', block_1: '格挡效率',
     enemy_0: '敌人数量', enemy_1: '敌人质量', enemy_2: '冠军和Boss', enemy_3: '敌人扩散',
     movement_0: '移动速度', movement_1: '冲刺', movement_2: '风筝战术',
   },
@@ -366,6 +368,7 @@ export const zh: TranslationSchema = {
     fire: '火焰伤害', lightning: '闪电伤害', cold: '冰冷伤害', rot: '腐烂伤害', area: '区域行动范围',
     projectile: '弹射物射程', strike: '打击行动速度', life: '最大生命值',
     mana: '最大法力值', enemy: '生成的敌人', movement: '移动速度',
+    block: '格挡几率',
   },
   runeLabel: {
     minorDmg: '伤害', minorSpeed: '速度', minorMana: '法力', minorXp: '经验', minorAll: '综合',

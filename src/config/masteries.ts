@@ -10,7 +10,7 @@ export type MasteryId =
   | 'action' | 'criticalHit'
   | 'physical' | 'fire' | 'lightning' | 'cold' | 'rot'
   | 'area' | 'projectile' | 'strike'
-  | 'life' | 'mana'
+  | 'life' | 'mana' | 'block'
   | 'enemy' | 'movement'
 
 export interface MasteryTreeDef {
@@ -153,6 +153,11 @@ export const masteryCategories: MasteryCategoryDef[] = [
         { index: 2, label: 'Mana Regeneration', short: true },
         { index: 3, label: 'Mana Steal',        short: true },
       ] },
+      // Unlocked by the first Transcendence. Two full trees, no key nodes.
+      { id: 'block', label: 'Block', trees: [
+        { index: 0, label: 'Block Chance' },
+        { index: 1, label: 'Block Efficiency' },
+      ] },
     ],
   },
   {
@@ -182,7 +187,7 @@ export const allMasteries = masteryCategories.flatMap(c => c.masteries)
 
 export const MASTERY_LETTER: Record<MasteryId, string> = {
   action: 'A', criticalHit: 'C', physical: 'P', fire: 'F', lightning: 'L', cold: 'K', rot: 'O',
-  area: 'R', projectile: 'J', strike: 'S', life: 'H', mana: 'M', enemy: 'E', movement: 'V',
+  area: 'R', projectile: 'J', strike: 'S', life: 'H', mana: 'M', block: 'B', enemy: 'E', movement: 'V',
 }
 
 // Keyed by treeIdx (MasteryTreeDef.index), not display order.
@@ -199,6 +204,7 @@ export const TREE_LETTER: Record<MasteryId, Record<number, string>> = {
   strike:      { 0: 'D', 1: 'F', 2: 'R', 3: 'T' },
   life:        { 0: 'M', 1: 'R', 2: 'G', 3: 'T' },
   mana:        { 0: 'M', 1: 'S', 2: 'G', 3: 'T' },
+  block:       { 0: 'C', 1: 'E' },
   enemy:       { 0: 'Q', 1: 'U', 2: 'B', 3: 'P' },
   movement:    { 0: 'S', 1: 'D', 2: 'K' },
 }
@@ -269,7 +275,7 @@ export function getMasteryTreeLabel(masteryId: MasteryId, treeIdx: number): stri
 }
 
 function masteryXpGrowth(masteryId?: MasteryId): number {
-  return (masteryId === 'life' || masteryId === 'mana')
+  return (masteryId === 'life' || masteryId === 'mana' || masteryId === 'block')
     ? balance.mastery.lifeManaMasteryXpGrowth
     : balance.mastery.xpGrowth
 }

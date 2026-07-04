@@ -88,7 +88,9 @@ Avant de transcender, tu choisis une **Relique** — un atout permanent qui surv
 - **Troisième main** — un emplacement de déclencheur d'action supplémentaire permanent.
 - **Déferlement** — 30 % d'ennemis en plus, 10 % d'XP en plus, 10 % de dégâts en plus.
 
-Chaque Transcendance accorde aussi un palier de puissance permanent : **+10 % d'XP, +10 % de dégâts et +10 % de vie maximale** (additifs entre eux, multiplicatifs avec le reste). Ta puissance de transcendance et tes reliques s'affichent en bas du panneau de personnage.`,
+Chaque Transcendance accorde aussi un palier de puissance permanent : **+10 % d'XP, +10 % de dégâts et +10 % de vie maximale** (additifs entre eux, multiplicatifs avec le reste). Ta puissance de transcendance et tes reliques s'affichent en bas du panneau de personnage.
+
+Ta première Transcendance débloque aussi le **Blocage** : 5 % de chance de base de bloquer 20 % des dégâts d'un coup reçu (une fois par seconde), avec sa propre maîtrise Blocage dans la section Vie & Mana.`,
   },
 
   'Action Triggers': {

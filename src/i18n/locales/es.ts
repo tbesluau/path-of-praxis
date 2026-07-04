@@ -342,6 +342,7 @@ export const es: TranslationSchema = {
     strike: 'Golpe',
     life: 'Vida',
     mana: 'Maná',
+    block: 'Bloqueo',
     enemy: 'Enemigo',
     movement: 'Movimiento',
   },
@@ -358,6 +359,7 @@ export const es: TranslationSchema = {
     strike_0: 'Daño de golpe', strike_1: 'Frenesí', strike_2: 'Alcance de golpe', strike_3: 'Objetivo adicional',
     life_0: 'Vida máxima', life_1: 'Resistencias', life_2: 'Regeneración de vida', life_3: 'Robo de vida',
     mana_0: 'Maná máximo', mana_1: 'Escudo de maná', mana_2: 'Regeneración de maná', mana_3: 'Robo de maná',
+    block_0: 'Probabilidad de bloqueo', block_1: 'Eficiencia de bloqueo',
     enemy_0: 'Cantidad de enemigos', enemy_1: 'Calidad de enemigos', enemy_2: 'Campeones y jefes', enemy_3: 'Proliferación de enemigos',
     movement_0: 'Velocidad de movimiento', movement_1: 'Carrera', movement_2: 'Cometa',
   },
@@ -366,6 +368,7 @@ export const es: TranslationSchema = {
     fire: 'daño de fuego', lightning: 'daño de rayo', cold: 'daño de frío', rot: 'daño de putrefacción', area: 'radio de acción de área',
     projectile: 'alcance de proyectil', strike: 'velocidad de acción de golpe', life: 'vida máxima',
     mana: 'maná máximo', enemy: 'enemigos invocados', movement: 'velocidad de movimiento',
+    block: 'probabilidad de bloqueo',
   },
   runeLabel: {
     minorDmg: 'Daño', minorSpeed: 'Velocidad', minorMana: 'Maná', minorXp: 'Experiencia', minorAll: 'Muestrario',

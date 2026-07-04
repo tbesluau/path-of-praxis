@@ -73,6 +73,8 @@ Before transcending you choose one **Relic** — a permanent boon that survives 
 
 Every Transcendence also grants a permanent power stack: **+10% increased all XP, +10% increased damage, and +10% increased maximum life** (additive with themselves, multiplicative with everything else). Your transcendence power and relics are shown at the bottom of the character panel.
 
+Your first Transcendence also unlocks **Block**: a 5% base chance to block 20% of an incoming hit's damage (once per second), with its own Block mastery in the Life & Mana section.
+
 ## Action Triggers
 
 Action triggers fire an action automatically when a condition is met. The first slot is always the **Auto attack** — it fires on a continuous timer. Additional trigger slots unlock by Ascending.

@@ -342,6 +342,7 @@ export const ru: TranslationSchema = {
     strike: 'Удар',
     life: 'Жизнь',
     mana: 'Мана',
+    block: 'Блок',
     enemy: 'Враг',
     movement: 'Движение',
   },
@@ -358,6 +359,7 @@ export const ru: TranslationSchema = {
     strike_0: 'Урон от удара', strike_1: 'Ярость', strike_2: 'Дальность удара', strike_3: 'Доп. цель',
     life_0: 'Максимум жизни', life_1: 'Сопротивления', life_2: 'Восстановление жизни', life_3: 'Кража жизни',
     mana_0: 'Максимум маны', mana_1: 'Щит маны', mana_2: 'Восстановление маны', mana_3: 'Кража маны',
+    block_0: 'Шанс блока', block_1: 'Эффективность блока',
     enemy_0: 'Кол-во врагов', enemy_1: 'Качество врагов', enemy_2: 'Чемпионы и боссы', enemy_3: 'Размножение врагов',
     movement_0: 'Скорость движения', movement_1: 'Рывок', movement_2: 'Кайтинг',
   },
@@ -366,6 +368,7 @@ export const ru: TranslationSchema = {
     fire: 'урона огнём', lightning: 'урона молнией', cold: 'урона холодом', rot: 'урона гнилью', area: 'радиуса действия',
     projectile: 'дальности снаряда', strike: 'скорости удара', life: 'максимума жизни',
     mana: 'максимума маны', enemy: 'призываемых врагов', movement: 'скорости движения',
+    block: 'шанс блока',
   },
   runeLabel: {
     minorDmg: 'Урон', minorSpeed: 'Скорость', minorMana: 'Мана', minorXp: 'Опыт', minorAll: 'Смешанная',

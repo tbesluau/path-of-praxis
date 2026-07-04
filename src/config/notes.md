@@ -637,3 +637,19 @@ By itself each stack does nothing — you need to invest in the **Green Veins** 
 - **Buff duration** can be extended (node 2: +50% → 15 s)
 - **Maximum stacks** raised by 25 → 50 total (node 5)
 - **Extra stack-gain chance** on each trigger (node 5: +30%; nodes 0 and 3: +20% each)
+
+---
+
+## Block
+
+**Block** is a defensive mechanic unlocked by the **first Transcendence** (a live check — any save with one or more Transcendences has it). When you take a **hit**, you have a **5% base chance** to block **20%** of that hit's damage. After a block, blocking **recovers for 1 second** before it can trigger again (base: one block per second).
+
+Rules:
+
+- Block applies only to **hits** — affliction ticks (burn, bleed, poison) can never be blocked.
+- A blocked hit still grants its **full life XP** — blocking never reduces life experience.
+- A blocked hit can still inflict afflictions, and their damage is based on the **total hit damage before block**. The Block Efficiency major node can suppress afflictions from blocked hits entirely.
+- **Block recovery speed** bonuses add whole blocks per second: +100% = 2 blocks per second. The full Block mastery (8 recovery nodes) reaches **9 blocks per second**.
+
+Blocking grants **Block mastery** experience based on the amount of damage prevented, using the same requirements and multipliers as Life mastery (it starts slow — low block chance means little prevented damage at first).
+

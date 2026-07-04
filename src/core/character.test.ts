@@ -208,6 +208,22 @@ describe('character', () => {
     expect(c0.artifacts.filter(a => a.equipped).length).toBe(2)
   })
 
+  it('runProgress.blockXp defaults to 0 on legacy saves and survives normalize', () => {
+    const legacy = {
+      characters: [{ id: 'x', name: 'Old', createdAt: 0, runProgress: { actionXp: {}, lifeXp: 5, manaXp: 0, enemyXp: 0, distancePx: 0, critXp: 0 } }],
+      currentId: 'x',
+    }
+    localStorage.setItem('pop:save', JSON.stringify(legacy))
+    expect(character.getCharacters()[0].runProgress.blockXp).toBe(0)
+
+    const withBlock = {
+      characters: [{ id: 'y', name: 'Blocker', createdAt: 0, runProgress: { actionXp: {}, lifeXp: 0, manaXp: 0, enemyXp: 0, distancePx: 0, critXp: 0, blockXp: 42 } }],
+      currentId: 'y',
+    }
+    localStorage.setItem('pop:save', JSON.stringify(withBlock))
+    expect(character.getCharacters()[0].runProgress.blockXp).toBe(42)
+  })
+
   it('saveCharacterState persists actionProgress', () => {
     const c = character.createCharacter('Hero', 'sword')
     character.saveCharacterState(c.id, 80, 60, 'sword', { sword: { xp: 150, level: 2, maxLevel: 2 } })

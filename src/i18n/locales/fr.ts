@@ -342,6 +342,7 @@ export const fr: TranslationSchema = {
     strike: 'Frappe',
     life: 'Vie',
     mana: 'Mana',
+    block: 'Blocage',
     enemy: 'Ennemi',
     movement: 'Mouvement',
   },
@@ -358,6 +359,7 @@ export const fr: TranslationSchema = {
     strike_0: 'Dégâts de frappe', strike_1: 'Frénésie', strike_2: 'Portée de frappe', strike_3: 'Cible supplémentaire',
     life_0: 'Vie maximale', life_1: 'Résistances', life_2: 'Régénération de vie', life_3: 'Vol de vie',
     mana_0: 'Mana maximum', mana_1: 'Bouclier de mana', mana_2: 'Régénération de mana', mana_3: 'Vol de mana',
+    block_0: 'Chance de blocage', block_1: 'Efficacité de blocage',
     enemy_0: 'Quantité d\'ennemis', enemy_1: 'Qualité d\'ennemis', enemy_2: 'Champions et boss', enemy_3: 'Prolifération ennemie',
     movement_0: 'Vitesse de mouvement', movement_1: 'Ruée', movement_2: 'Cerf-volant',
   },
@@ -366,6 +368,7 @@ export const fr: TranslationSchema = {
     fire: 'dégâts de feu', lightning: 'dégâts de foudre', cold: 'dégâts de froid', rot: 'dégâts de pourriture', area: 'rayon d\'action de zone',
     projectile: 'portée de projectile', strike: 'vitesse d\'action de frappe', life: 'vie maximale',
     mana: 'mana maximum', enemy: 'ennemis invoqués', movement: 'vitesse de mouvement',
+    block: 'chance de blocage',
   },
   runeLabel: {
     minorDmg: 'Dégâts', minorSpeed: 'Vitesse', minorMana: 'Mana', minorXp: 'Expérience', minorAll: 'Échantillon',
