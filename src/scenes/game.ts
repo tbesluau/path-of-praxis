@@ -120,6 +120,7 @@ export function createGameScene(
   let relics: RelicId[] = [...(char?.relics ?? [])]
   let transcendReady = char?.transcendReady ?? false
   let freeRebirthUsed = char?.runProgress?.freeRebirthUsed ?? false
+  let charNotifSeen = char?.runProgress?.charNotifSeen ?? false
 
   const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
     JSON.stringify(char?.actionRunes ?? {}),
@@ -1693,6 +1694,7 @@ export function createGameScene(
       distancePx: runDistancePx,
       critXp: runCritXp,
       freeRebirthUsed,
+      charNotifSeen,
     }
   }
 
@@ -2086,7 +2088,9 @@ export function createGameScene(
   // mastery bank is waiting behind the "Free Rebirth" button).
   function refreshCharNotifDot(): void {
     const dot = el.querySelector<HTMLElement>('.char-notif-dot')
-    if (dot) dot.hidden = !freeRebirthActive()
+    // Lights while an armed Free Rebirth hasn't been seen this run; opening
+    // the character screen marks it seen (re-arms on the next rebirth).
+    if (dot) dot.hidden = !freeRebirthActive() || charNotifSeen
   }
   function awardAscentXp(amount: number): void {
     if (!isAscentUnlocked()) return
@@ -2982,6 +2986,12 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="open-character"]')!
     .addEventListener('click', () => {
       if (modalCleanup) { modalCleanup(); modalCleanup = null }
+      // Seeing the character screen clears its notification for this run.
+      if (!charNotifSeen) {
+        charNotifSeen = true
+        persistState()
+        refreshCharNotifDot()
+      }
       modalCleanup = mountCharacterModal(el, {
         dieLabel: dieButtonLabel(),
         transcendCount,
@@ -3822,6 +3832,7 @@ export function createGameScene(
     runDistancePx = 0
     runCritXp = 0
     freeRebirthUsed = false
+    charNotifSeen = false
     refreshCharNotifDot()
     dpsLog.length = 0
     dpsActionOrder.length = 0
