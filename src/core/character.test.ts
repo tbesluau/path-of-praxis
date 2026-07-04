@@ -224,6 +224,23 @@ describe('character', () => {
     expect(character.getCharacters()[0].runProgress.blockXp).toBe(42)
   })
 
+  it('masteryPointsSeen defaults to {} on legacy saves and persists', () => {
+    const legacy = { characters: [{ id: 'x', name: 'Old', createdAt: 0 }], currentId: 'x' }
+    localStorage.setItem('pop:save', JSON.stringify(legacy))
+    expect(character.getCharacters()[0].masteryPointsSeen).toEqual({})
+
+    const c = character.createCharacter('Seer', 'sword')
+    expect(c.masteryPointsSeen).toEqual({})
+    character.saveCharacterState(
+      c.id, 80, 60, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, { fire: 3, life: 1 },
+    )
+    const restored = character.getCharacters().find(x => x.id === c.id)!
+    expect(restored.masteryPointsSeen).toEqual({ fire: 3, life: 1 })
+  })
+
   it('saveCharacterState persists actionProgress', () => {
     const c = character.createCharacter('Hero', 'sword')
     character.saveCharacterState(c.id, 80, 60, 'sword', { sword: { xp: 150, level: 2, maxLevel: 2 } })
