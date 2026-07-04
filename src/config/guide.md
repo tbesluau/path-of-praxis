@@ -58,23 +58,6 @@ Ascent is a one-time escalating challenge unlocked after several Rebirths. It pr
 
 Ascent progress is separate from your run. You can attempt it at any time from the menu; failing an Ascent stage costs nothing.
 
-## Transcendence
-
-Transcendence is the prestige layer above Ascension — the deepest reset in the game, and the strongest rewards. Defeat a boss at enemy level 100 or above and the gold **Transcend** button appears at the bottom of the enemy-level panel. There is no bar to fill, but every Transcendence must be earned again with a fresh high-level boss kill.
-
-Transcending resets everything an Ascension resets, plus the Ascension layer itself: your ascent count, universe points, and any artifacts left in the bag. Your **equipped artifacts** and your **relics** survive — and once you have transcended, your artifact equip slots stay unlocked for good.
-
-Before transcending you choose one **Relic** — a permanent boon that survives every future reset. Each relic can only ever be owned once:
-
-- **Echo of Rebirth** — once per rebirth, bank your pending mastery progress without having to die for it.
-- **Chainbreaker** — when your enemy level has raced far ahead of your ascent count, a single Ascension can grant several ascents at once.
-- **Third Hand** — a permanent additional action trigger slot.
-- **Onslaught** — more enemies to fight, faster experience, stronger attacks.
-
-On top of the relic, every Transcendence permanently strengthens you: your experience gain, your damage, and your maximum life all grow with each one. Your transcendence power and collected relics are shown at the bottom of the character panel.
-
-Your first Transcendence also unlocks **Block**: your character raises a shield and gains a chance to soften incoming hits, along with a dedicated Block mastery in the Life & Mana section — and a choice of shields in the character customization screen.
-
 ## Action Triggers
 
 Action triggers fire an action automatically when a condition is met. The first slot is always the **Auto attack** — it fires on a continuous timer. Additional trigger slots unlock by Ascending.
@@ -109,3 +92,15 @@ Source-specific modifiers can roll any of the five damage sources: fire, lightni
 To manage your collection, open the Artifacts panel from the Ascent menu (available from Ascent 5 onward). From there you can equip, unequip, upgrade, or permanently delete artifacts.
 
 **Scraps & upgrades** — deleting an artifact (or dropping a fresh boss drop) grants **Scraps**: 1 for a Light, 2 for a Medium, 3 for a Heavy artifact. Scraps pay for **upgrades**: each upgrade improves one random unmaxed line on the artifact by one point — positives increase, negatives shrink (7% more damage taken becomes 6%). A line can never pass the best value it could have rolled, so a perfect-roll artifact cannot be upgraded. The first upgrade on an artifact costs 1 scrap, and the cost doubles with each upgrade after that (2, 4, 8, …) without limit.
+
+## Transcendence
+
+Transcendence is the prestige layer above Ascension — the deepest reset in the game, and the strongest rewards. Defeat a boss at enemy level 100 or above and the gold **Transcend** button appears at the bottom of the enemy-level panel. There is no bar to fill, but every Transcendence must be earned again with a fresh high-level boss kill.
+
+Transcending resets everything an Ascension resets, plus the Ascension layer itself: your ascent count, universe points, and any artifacts left in the bag. Your **equipped artifacts** and your **relics** survive — and once you have transcended, your artifact equip slots stay unlocked for good.
+
+Before transcending you choose one **Relic** — a permanent boon that survives every future reset. Each relic can only ever be owned once, so every Transcendence expands your collection until all of them are yours.
+
+On top of the relic, every Transcendence permanently strengthens you: your experience gain, your damage, and your maximum life all grow with each one. Your transcendence power and collected relics are shown at the bottom of the character panel.
+
+Your first Transcendence also unlocks **Block**: your character raises a shield and gains a chance to soften incoming hits, along with a dedicated Block mastery in the Life & Mana section — and a choice of shields in the character customization screen.

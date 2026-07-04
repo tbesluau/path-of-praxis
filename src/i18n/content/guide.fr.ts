@@ -77,20 +77,15 @@ La progression de l'Ascension est séparée de ta partie. Tu peux la tenter à t
 
   'Transcendence': {
     title: 'Transcendance',
-    body: `La Transcendance est la couche de prestige au-dessus de l'Ascension. Tuer un boss au **niveau ennemi 100 ou plus** active le bouton doré **Transcender** en bas du panneau de niveau ennemi — pas de barre à remplir, mais chaque Transcendance doit être regagnée avec un nouveau boss de niveau 100+.
+    body: `La Transcendance est la couche de prestige au-dessus de l'Ascension — la réinitialisation la plus profonde du jeu, et les récompenses les plus fortes. Vaincs un boss au niveau ennemi 100 ou plus et le bouton doré **Transcender** apparaît en bas du panneau de niveau ennemi. Il n'y a pas de barre à remplir, mais chaque Transcendance doit être regagnée avec un nouveau boss de haut niveau.
 
-Transcender réinitialise **tout** ce qu'une Ascension réinitialise, **plus** ton compteur d'ascensions, tes points d'univers et tous les artéfacts non équipés. Tes **artéfacts équipés** et tes **reliques** survivent — et une fois que tu as transcendé, les deux emplacements d'artéfact restent débloqués en permanence.
+Transcender réinitialise tout ce qu'une Ascension réinitialise, plus la couche d'Ascension elle-même : ton compteur d'ascensions, tes points d'univers et les artéfacts restés dans le sac. Tes **artéfacts équipés** et tes **reliques** survivent — et une fois que tu as transcendé, tes emplacements d'artéfact restent débloqués pour de bon.
 
-Avant de transcender, tu choisis une **Relique** — un atout permanent qui survit à toutes les réinitialisations. Chacune des quatre reliques ne peut être possédée qu'une fois :
+Avant de transcender, tu choisis une **Relique** — un atout permanent qui survit à toutes les réinitialisations futures. Chaque relique ne peut être possédée qu'une seule fois : chaque Transcendance agrandit donc ta collection jusqu'à ce qu'elles soient toutes à toi.
 
-- **Écho de renaissance** — une fois par renaissance, gagne ta progression de maîtrise non acquise sans mourir (le bouton indique simplement « Renaissance » quand c'est disponible).
-- **Brise-chaînes** — Ascendre peut accorder plusieurs ascensions à la fois, jusqu'à ton niveau ennemi max −5 (le bouton indique « Ascendre (+x) »).
-- **Troisième main** — un emplacement de déclencheur d'action supplémentaire permanent.
-- **Déferlement** — 30 % d'ennemis en plus, 10 % d'XP en plus, 10 % de dégâts en plus.
+En plus de la relique, chaque Transcendance te renforce durablement : ton gain d'expérience, tes dégâts et ta vie maximale grandissent à chaque fois. Ta puissance de transcendance et tes reliques s'affichent en bas du panneau de personnage.
 
-Chaque Transcendance accorde aussi un palier de puissance permanent : **+10 % d'XP, +10 % de dégâts et +10 % de vie maximale** (additifs entre eux, multiplicatifs avec le reste). Ta puissance de transcendance et tes reliques s'affichent en bas du panneau de personnage.
-
-Ta première Transcendance débloque aussi le **Blocage** : 5 % de chance de base de bloquer 20 % des dégâts d'un coup reçu (une fois par seconde), avec sa propre maîtrise Blocage dans la section Vie & Mana.`,
+Ta première Transcendance débloque aussi le **Blocage** : ton personnage lève un bouclier et gagne une chance d'amortir les coups reçus, avec une maîtrise Blocage dédiée dans la section Vie & Mana — et un choix de boucliers dans l'écran de personnalisation du personnage.`,
   },
 
   'Action Triggers': {

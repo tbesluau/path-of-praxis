@@ -23,6 +23,7 @@ import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, getActionLabel, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 import { mountSettingsButton, mountGuideModal } from '../ui/settings'
+import { hiddenGuideSectionIds } from '../core/guide-visibility'
 import { showTutorial, isTutorialSeen, getTutorialMessage } from '../ui/tutorial'
 import { mountNoteModal, getNoteTitle } from '../ui/notes'
 import { mountCharacterModal } from '../ui/character'
@@ -1839,9 +1840,20 @@ export function createGameScene(
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
   createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, User, ArrowUp, Star } })
 
+  function hiddenGuideSections(): string[] {
+    return hiddenGuideSectionIds({
+      ascentCount,
+      transcendCount,
+      transcendReady,
+      relics,
+      enemyMaxLevel: enemyProgress.maxLevel,
+      fullMastery: getPrefs().fullMastery,
+    })
+  }
+
   function openGuide(section: string): void {
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
-    mountGuideModal(el, () => {}, section)
+    mountGuideModal(el, () => {}, section, hiddenGuideSections())
   }
 
   const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
@@ -1962,6 +1974,7 @@ export function createGameScene(
       persistState()
       updateTranscendButton()
     } : undefined,
+    getHiddenGuideSections: () => hiddenGuideSections(),
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
