@@ -1657,6 +1657,9 @@ export function createGameScene(
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
+  // Point counts already "seen" per mastery (tree modal viewed) — unused
+  // points only light the notif dots until seen at that exact count.
+  let masteryPointsSeen: Partial<Record<MasteryId, number>> = { ...(char?.masteryPointsSeen ?? {}) }
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
   // Per-extra-slot state sized for the maximum of 3 slots (3rd via the extraTrigger relic).
@@ -1722,6 +1725,7 @@ export function createGameScene(
       transcendCount,
       relics,
       transcendReady,
+      masteryPointsSeen,
     )
   }
   let playerPrevX = 0
@@ -3165,6 +3169,8 @@ export function createGameScene(
         (id: MasteryId) => remainingFreeMasteryPointsFor(id),
         () => { handleManualDie() },
         dieButtonLabel(),
+        (id: MasteryId) => masteryPointsSeen[id] ?? 0,
+        (id: MasteryId) => { markMasteryTreeSeen(id) },
       )
     })
 
@@ -3864,6 +3870,7 @@ export function createGameScene(
     masteryProgress = {}
     freeMasteryPointsUsed = {}
     masteryDumpPoints = {}
+    masteryPointsSeen = {}
     setPref('activeMasteryPlan', undefined)
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
@@ -4284,20 +4291,33 @@ export function createGameScene(
     return Math.max(0, totalFreeMasteryPointsEarned() - (freeMasteryPointsUsed[id] ?? 0))
   }
 
+  // A mastery's notification-worthy point count: level points plus free points
+  // (free points only count once the mastery is visible, mirroring the modal).
+  function masteryNotifPoints(id: MasteryId): number {
+    const p = masteryProgress[id]
+    const levelPts = p ? masteryPointsAvailable(p, freeMasteryPointsUsed[id] ?? 0, masteryDumpPoints[id] ?? 0) : 0
+    const isAlwaysShown = id === 'enemy' || id === 'action'
+    const freeVisible = isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
+    const freePts = freeVisible ? remainingFreeMasteryPointsFor(id) : 0
+    return levelPts + freePts
+  }
+
+  // Viewing a mastery's tree marks its current point count as seen; the dots
+  // stay dark until the count changes (new points earned or refunded).
+  function markMasteryTreeSeen(id: MasteryId): void {
+    masteryPointsSeen = { ...masteryPointsSeen, [id]: masteryNotifPoints(id) }
+    persistState()
+    refreshMasteryDot()
+  }
+
   function refreshMasteryDot(): void {
     const dot = el.querySelector<HTMLElement>('.mastery-notif-dot')
     if (!dot) return
-    const hasUnspentLevelPoints = allMasteries.some(m => {
-      const p = masteryProgress[m.id]
-      return p ? masteryPointsAvailable(p, freeMasteryPointsUsed[m.id] ?? 0, masteryDumpPoints[m.id] ?? 0) > 0 : false
+    const hasUnseenPoints = allMasteries.some(m => {
+      const pts = masteryNotifPoints(m.id)
+      return pts > 0 && pts !== (masteryPointsSeen[m.id] ?? 0)
     })
-    const hasUnspentFreePoints = allMasteries.some(m => {
-      if (remainingFreeMasteryPointsFor(m.id) <= 0) return false
-      const p = masteryProgress[m.id]
-      const isAlwaysShown = m.id === 'enemy' || m.id === 'action'
-      return isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
-    })
-    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints)
+    dot.hidden = !hasUnseenPoints
   }
 
   function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {

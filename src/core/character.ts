@@ -163,6 +163,8 @@ export interface Character {
   extraSlots: ExtraActionSlot[]
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>
   masteryDumpPoints: Partial<Record<MasteryId, number>>
+  // Per-mastery point counts already seen in the tree modal (notif-dot memory).
+  masteryPointsSeen: Partial<Record<MasteryId, number>>
   unlockedTriggers: ('crit' | 'affliction')[]
   lastSeenAt: number       // Date.now() at last save/frame; basis for the ×2-speed away bonus
   fastForwardMs: number    // remaining ×2-speed stockpile in ms (≤ 3_600_000)
@@ -278,6 +280,10 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       Object.entries(c.masteryDumpPoints ?? {})
         .map(([k, v]) => [k, typeof v === 'number' && v >= 0 ? Math.floor(v) : 0])
     ) as Partial<Record<MasteryId, number>>,
+    masteryPointsSeen: Object.fromEntries(
+      Object.entries(c.masteryPointsSeen ?? {})
+        .map(([k, v]) => [k, typeof v === 'number' && v >= 0 ? Math.floor(v) : 0]),
+    ) as Partial<Record<MasteryId, number>>,
     lastSeenAt: typeof c.lastSeenAt === 'number' ? c.lastSeenAt : Date.now(),
     fastForwardMs: typeof c.fastForwardMs === 'number'
       ? Math.max(0, Math.min(3_600_000, Math.floor(c.fastForwardMs)))
@@ -381,6 +387,7 @@ export function createCharacter(name: string, actionId: string): Character {
     extraSlots: [],
     freeMasteryPointsUsed: {},
     masteryDumpPoints: {},
+    masteryPointsSeen: {},
     unlockedTriggers: [],
     lastSeenAt: Date.now(),
     fastForwardMs: 0,
@@ -464,6 +471,7 @@ export function saveCharacterState(
   transcendCount?: number,
   relics?: RelicId[],
   transcendReady?: boolean,
+  masteryPointsSeen?: Partial<Record<MasteryId, number>>,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -493,5 +501,6 @@ export function saveCharacterState(
   if (transcendCount !== undefined) char.transcendCount = transcendCount
   if (relics !== undefined) char.relics = relics
   if (transcendReady !== undefined) char.transcendReady = transcendReady
+  if (masteryPointsSeen !== undefined) char.masteryPointsSeen = masteryPointsSeen
   write(data)
 }
