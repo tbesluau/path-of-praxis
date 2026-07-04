@@ -60,20 +60,20 @@ Ascent progress is separate from your run. You can attempt it at any time from t
 
 ## Transcendence
 
-Transcendence is the prestige layer above Ascension. Killing a boss at **enemy level 100 or above** readies the gold **Transcend** button at the bottom of the enemy-level panel — no bar to fill, but each Transcendence must be re-earned with a fresh level-100+ boss kill.
+Transcendence is the prestige layer above Ascension — the deepest reset in the game, and the strongest rewards. Defeat a boss at enemy level 100 or above and the gold **Transcend** button appears at the bottom of the enemy-level panel. There is no bar to fill, but every Transcendence must be earned again with a fresh high-level boss kill.
 
-Transcending resets **everything** an Ascension resets, **plus** your ascent count, universe points, and all unequipped artifacts. Your **equipped artifacts** and **relics** survive — and once you have transcended, both artifact equip slots stay permanently unlocked.
+Transcending resets everything an Ascension resets, plus the Ascension layer itself: your ascent count, universe points, and any artifacts left in the bag. Your **equipped artifacts** and your **relics** survive — and once you have transcended, your artifact equip slots stay unlocked for good.
 
-Before transcending you choose one **Relic** — a permanent boon that survives every reset. Each of the four relics can be owned once:
+Before transcending you choose one **Relic** — a permanent boon that survives every future reset. Each relic can only ever be owned once:
 
-- **Echo of Rebirth** — once per rebirth, gain your unearned mastery progress without dying (the die-and-rebirth button reads just "Rebirth" while available).
-- **Chainbreaker** — Ascending can grant multiple ascensions at once, up to your max enemy level −5 (the button reads "Ascend (+x)").
+- **Echo of Rebirth** — once per rebirth, bank your pending mastery progress without having to die for it.
+- **Chainbreaker** — when your enemy level has raced far ahead of your ascent count, a single Ascension can grant several ascents at once.
 - **Third Hand** — a permanent additional action trigger slot.
-- **Onslaught** — 30% more enemies, 10% more all XP, 10% more all damage.
+- **Onslaught** — more enemies to fight, faster experience, stronger attacks.
 
-Every Transcendence also grants a permanent power stack: **+10% increased all XP, +10% increased damage, and +10% increased maximum life** (additive with themselves, multiplicative with everything else). Your transcendence power and relics are shown at the bottom of the character panel.
+On top of the relic, every Transcendence permanently strengthens you: your experience gain, your damage, and your maximum life all grow with each one. Your transcendence power and collected relics are shown at the bottom of the character panel.
 
-Your first Transcendence also unlocks **Block**: a 5% base chance to block 20% of an incoming hit's damage (once per second), with its own Block mastery in the Life & Mana section.
+Your first Transcendence also unlocks **Block**: your character raises a shield and gains a chance to soften incoming hits, along with a dedicated Block mastery in the Life & Mana section — and a choice of shields in the character customization screen.
 
 ## Action Triggers
 
