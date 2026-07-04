@@ -74,20 +74,15 @@ El progreso de Ascensión es independiente de tu partida. Puedes intentarlo en c
 
   'Transcendence': {
     title: 'Trascendencia',
-    body: `La Trascendencia es la capa de prestigio por encima de la Ascensión. Matar a un jefe de **nivel de enemigo 100 o superior** activa el botón dorado **Trascender** en la parte inferior del panel de nivel de enemigo — sin barra que llenar, pero cada Trascendencia debe ganarse de nuevo con otro jefe de nivel 100+.
+    body: `La Trascendencia es la capa de prestigio por encima de la Ascensión — el reinicio más profundo del juego, y las recompensas más fuertes. Derrota a un jefe de nivel de enemigo 100 o superior y el botón dorado **Trascender** aparecerá en la parte inferior del panel de nivel de enemigo. No hay barra que llenar, pero cada Trascendencia debe ganarse de nuevo con otro jefe de alto nivel.
 
-Trascender reinicia **todo** lo que reinicia una Ascensión, **más** tu contador de ascensiones, tus puntos de universo y todos los artefactos no equipados. Tus **artefactos equipados** y tus **reliquias** sobreviven — y una vez que has trascendido, ambas ranuras de artefacto permanecen desbloqueadas para siempre.
+Trascender reinicia todo lo que reinicia una Ascensión, más la propia capa de Ascensión: tu contador de ascensiones, tus puntos de universo y los artefactos que queden en la bolsa. Tus **artefactos equipados** y tus **reliquias** sobreviven — y una vez que has trascendido, tus ranuras de artefacto quedan desbloqueadas para siempre.
 
-Antes de trascender eliges una **Reliquia** — una bendición permanente que sobrevive a todos los reinicios. Cada una de las cuatro reliquias solo puede poseerse una vez:
+Antes de trascender eliges una **Reliquia** — una bendición permanente que sobrevive a todos los reinicios futuros. Cada reliquia solo puede poseerse una vez: cada Trascendencia amplía tu colección hasta que todas sean tuyas.
 
-- **Eco de renacimiento** — una vez por renacimiento, obtén tu progreso de maestría pendiente sin morir (el botón dice solo «Renacer» mientras está disponible).
-- **Rompecadenas** — Ascender puede otorgar varias ascensiones a la vez, hasta tu nivel máximo de enemigo −5 (el botón dice «Ascender (+x)»).
-- **Tercera mano** — una ranura de disparador de acción adicional permanente.
-- **Embestida** — 30% más enemigos, 10% más XP, 10% más daño.
+Además de la reliquia, cada Trascendencia te fortalece permanentemente: tu ganancia de experiencia, tu daño y tu vida máxima crecen con cada una. Tu poder de trascendencia y tus reliquias se muestran en la parte inferior del panel de personaje.
 
-Cada Trascendencia también otorga un nivel de poder permanente: **+10% XP, +10% daño y +10% vida máxima** (aditivos entre sí, multiplicativos con lo demás). Tu poder de trascendencia y tus reliquias se muestran en la parte inferior del panel de personaje.
-
-Tu primera Trascendencia también desbloquea el **Bloqueo**: un 5% de probabilidad base de bloquear el 20% del daño de un golpe recibido (una vez por segundo), con su propia maestría de Bloqueo en la sección Vida y Maná.`,
+Tu primera Trascendencia también desbloquea el **Bloqueo**: tu personaje alza un escudo y gana una probabilidad de amortiguar los golpes recibidos, con una maestría de Bloqueo dedicada en la sección Vida y Maná — y una selección de escudos en la pantalla de personalización del personaje.`,
   },
 
   'Action Triggers': {

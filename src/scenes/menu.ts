@@ -2,6 +2,8 @@ import { createIcons, Play, FolderOpen, Info, Trash2 } from 'lucide'
 import { t } from '../i18n'
 import { tokens } from '../theme'
 import { mountSettingsButton } from '../ui/settings'
+import { hiddenGuideSectionIds } from '../core/guide-visibility'
+import { getPrefs } from '../core/prefs'
 import { mountAboutModal } from '../ui/about'
 import { buildActionThumbnail, refreshActionThumbnailIcons, mountActionPickerModal } from '../ui/action-picker'
 import type { SceneId } from '../core/router'
@@ -66,7 +68,20 @@ export function createMenuScene(
   container.appendChild(el)
   createIcons({ icons: { Play, FolderOpen, Info, Trash2 } })
 
-  const unmountSettings = mountSettingsButton(el)
+  const unmountSettings = mountSettingsButton(el, el, {
+    getHiddenGuideSections: () => {
+      const chars = getCharacters()
+      const current = chars.find(c => c.id === getCurrentId()) ?? chars[0]
+      return hiddenGuideSectionIds({
+        ascentCount:    current?.ascentCount ?? 0,
+        transcendCount: current?.transcendCount ?? 0,
+        transcendReady: current?.transcendReady ?? false,
+        relics:         current?.relics ?? [],
+        enemyMaxLevel:  current?.enemyProgress?.maxLevel ?? 1,
+        fullMastery:    getPrefs().fullMastery,
+      })
+    },
+  })
 
   const canvas = el.querySelector<HTMLCanvasElement>('#menu-canvas')!
   const stopParticles = startParticles(canvas)

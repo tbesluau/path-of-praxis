@@ -78,6 +78,8 @@ export interface SettingsButtonOptions {
   onSpawnBoss?: () => void
   /** Cheat mode only: readies the Transcend button as if a lvl-100+ boss was killed (does NOT transcend). */
   onForceTranscendReady?: () => void
+  /** Guide sections hidden until their feature is unlocked. */
+  getHiddenGuideSections?: () => string[]
 }
 
 export function mountSettingsButton(
@@ -287,7 +289,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     backdrop.querySelector<HTMLButtonElement>('[data-action="guide"]')!
       .addEventListener('click', () => {
         closeSub()
-        subCleanup = mountGuideModal(parent, () => { subCleanup = null })
+        subCleanup = mountGuideModal(parent, () => { subCleanup = null }, undefined, opts.getHiddenGuideSections?.())
       })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="discord"]')!
@@ -683,10 +685,14 @@ function inline(text: string): string {
 
 // ── Guide modal ────────────────────────────────────────────────────────────
 
-export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSection?: string): () => void {
+export function mountGuideModal(parent: HTMLElement, onClose: () => void, openSection?: string, hiddenSectionIds?: readonly string[]): () => void {
   const baseUrl = (import.meta as { env: { BASE_URL: string } }).env.BASE_URL
   const arrowSrc = `${baseUrl}ui/kenney_ui-pack-rpg-expansion/PNG/arrowBlue_right.png`
-  const sections = localizedGuideSections()
+  // Locked-feature sections stay out of the guide until unlocked; an explicitly
+  // requested section (tutorial deep-link) always shows.
+  const sections = localizedGuideSections().filter(
+    sec => sec.id === openSection || !(hiddenSectionIds ?? []).includes(sec.id),
+  )
 
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop settings-submodal-backdrop'

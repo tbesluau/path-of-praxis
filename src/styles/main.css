@@ -3319,7 +3319,9 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 
 /* ── Note modal ── */
 
-.note-backdrop { z-index: 35; }
+/* Notes must layer above the guide/settings sub-modals (50) that spawn them,
+   while staying under the tutorial overlay (55) and away-bonus (60). */
+.note-backdrop { z-index: 52; }
 
 .note-panel {
   width: min(420px, 92vw);

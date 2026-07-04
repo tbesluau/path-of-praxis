@@ -11,6 +11,8 @@ import type { Locale } from '..'
 import releaseNotesRaw from '../../config/release-notes.md?raw'
 import { notesFr } from './notes.fr'
 import { notesEs } from './notes.es'
+import { notesZh } from './notes.zh'
+import { notesRu } from './notes.ru'
 import { guideFr } from './guide.fr'
 import { guideEs } from './guide.es'
 import { guideZh } from './guide.zh'
@@ -36,6 +38,8 @@ type ContentMap = Record<string, ContentBlock>
 const NOTES_BY_LOCALE: Partial<Record<Locale, ContentMap>> = {
   fr: notesFr,
   es: notesEs,
+  zh: notesZh,
+  ru: notesRu,
 }
 
 const GUIDE_BY_LOCALE: Partial<Record<Locale, ContentMap>> = {

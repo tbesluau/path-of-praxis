@@ -578,4 +578,18 @@ En soi, l'Armure de glace ne fait **rien** — les charges s'accumulent et s'aff
 
 La réduction de dégâts est appliquée après les résistances dans le pipeline de dégâts du joueur.`,
   },
+
+  block: {
+    title: 'Blocage',
+    body: `Le **Blocage** est une mécanique défensive débloquée par la **première Transcendance** (vérification en continu — toute sauvegarde avec une Transcendance ou plus en dispose). Lorsque tu subis un **coup**, tu as **5 % de chance de base** de bloquer **20 %** des dégâts de ce coup. Après un blocage, le blocage **récupère pendant 1 seconde** avant de pouvoir se déclencher à nouveau (base : un blocage par seconde).
+
+Règles :
+
+- Le blocage ne s'applique qu'aux **coups** — les ticks d'affliction (brûlure, saignement, poison) ne peuvent jamais être bloqués.
+- Un coup bloqué accorde toujours son **expérience de vie complète** — bloquer ne réduit jamais l'expérience de vie.
+- Un coup bloqué peut toujours infliger des afflictions, et leurs dégâts sont basés sur les **dégâts totaux du coup avant blocage**. Le nœud majeur d'Efficacité de blocage peut supprimer entièrement les afflictions des coups bloqués.
+- Les bonus de **vitesse de récupération de blocage** ajoutent des blocages entiers par seconde : +100 % = 2 blocages par seconde. La maîtrise de Blocage complète (8 nœuds de récupération) atteint **9 blocages par seconde**.
+
+Bloquer accorde de l'expérience de **maîtrise de Blocage** basée sur la quantité de dégâts évités, avec les mêmes exigences et multiplicateurs que la maîtrise de Vie (le démarrage est lent — une faible chance de blocage signifie peu de dégâts évités au début).`,
+  },
 }
