@@ -25,6 +25,7 @@ export const MASTERY_DUMP: Record<MasteryId, MasteryDumpInfo> = {
   strike:      { rate: 0.5, label: 'strike action speed' },
   life:        { rate: 0.5, label: 'maximum life' },
   mana:        { rate: 0.5, label: 'maximum mana' },
+  block:       { rate: 0.5, label: 'block chance' },
   enemy:       { rate: 1,   label: 'enemies spawned' },
   movement:    { rate: 0.5, label: 'movement speed' },
 }
@@ -77,6 +78,13 @@ export interface NodeEffect {
   lifeStealIncrease?: number         // additive %; increases life stolen
   lifeStealCapIncrease?: number      // additive %; increases the per-hit hard cap (base 1% of max life)
   lifeFeedingFrenzyChance?: number   // additive %; chance per life-steal instance to trigger Feeding Frenzy
+
+  // Block mastery effects (unlocked by the first Transcendence)
+  blockChanceIncrease?: number       // additive %; increased chance to block hits (base 5% × (1 + sum/100))
+  blockAmountIncrease?: number       // additive %; increased amount of damage blocked (base 20% × (1 + sum/100))
+  blockRecoveryIncrease?: number     // additive %; increased block recovery speed (blocks/sec × (1 + sum/100))
+  blockNoAfflictions?: boolean       // blocked hits cannot trigger afflictions on you
+  blockHealPct?: number              // blocked hits heal you for this % of the damage blocked
 
   // Life mastery key node effects
   lifeRegenAlsoAppliesToMax?: boolean  // Max Life key 12: increased/more regen bonuses also boost max life
@@ -995,6 +1003,76 @@ export function computeLifeBonuses(nodes: number[][], dumpedPoints = 0): LifeBon
       if (eff.lifeCannotRegen)           b.cannotRegen = true
       if (eff.lifeCannotSteal)           b.cannotSteal = true
       if (eff.lifeStealFromAfflictions)  b.stealFromAfflictions = true
+    }
+  }
+  return b
+}
+
+// ── Block mastery node effects ─────────────────────────────────────────────
+// Unlocked by the first Transcendence. Two full trees (line nodes 0-11 only,
+// no key nodes — the tree UI hides keys with no effects automatically).
+
+const BLOCK_EFFECTS: Partial<Record<number, TreeEffects>> = {
+  0: {  // Block Chance
+    0:  { blockChanceIncrease: 4 },
+    1:  { blockRecoveryIncrease: 100 },
+    2:  { blockChanceIncrease: 6, blockAmountIncrease: 5 },
+    3:  { blockChanceIncrease: 4 },
+    4:  { blockRecoveryIncrease: 100 },
+    5:  { blockChanceIncrease: 10 },
+    6:  { blockChanceIncrease: 4 },
+    7:  { blockRecoveryIncrease: 100 },
+    8:  { blockChanceIncrease: 6, blockAmountIncrease: 5 },
+    9:  { blockChanceIncrease: 4 },
+    10: { blockRecoveryIncrease: 100 },
+    11: { blockChanceIncrease: 10 },
+  },
+  1: {  // Block Efficiency
+    0:  { blockAmountIncrease: 6 },
+    1:  { blockRecoveryIncrease: 100 },
+    2:  { blockAmountIncrease: 12 },
+    3:  { blockAmountIncrease: 6 },
+    4:  { blockRecoveryIncrease: 100 },
+    5:  { blockNoAfflictions: true },
+    6:  { blockAmountIncrease: 6 },
+    7:  { blockRecoveryIncrease: 100 },
+    8:  { blockAmountIncrease: 12 },
+    9:  { blockAmountIncrease: 6 },
+    10: { blockRecoveryIncrease: 100 },
+    11: { blockHealPct: 20 },
+  },
+}
+
+export function getBlockNodeEffect(treeIdx: number, nodeIdx: number): NodeEffect {
+  return BLOCK_EFFECTS[treeIdx]?.[nodeIdx] ?? {}
+}
+
+export interface BlockBonuses {
+  chanceIncrease: number    // total additive %; block chance × (1 + sum/100)
+  moreChance: number        // 'more' % from dumped points; × (1 + sum/100)
+  amountIncrease: number    // total additive %; blocked amount × (1 + sum/100)
+  recoveryIncrease: number  // total additive %; blocks per second × (1 + sum/100)
+  noAfflictions: boolean    // blocked hits cannot trigger afflictions on you
+  healOnBlockPct: number    // % of damage blocked recovered as life
+}
+
+export function computeBlockBonuses(nodes: number[][], dumpedPoints = 0): BlockBonuses {
+  const b: BlockBonuses = {
+    chanceIncrease: 0,
+    moreChance: dumpedPoints * MASTERY_DUMP.block.rate,
+    amountIncrease: 0,
+    recoveryIncrease: 0,
+    noAfflictions: false,
+    healOnBlockPct: 0,
+  }
+  for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
+    for (const nodeIdx of nodes[treeIdx]) {
+      const eff = getBlockNodeEffect(treeIdx, nodeIdx)
+      b.chanceIncrease += eff.blockChanceIncrease ?? 0
+      b.amountIncrease += eff.blockAmountIncrease ?? 0
+      b.recoveryIncrease += eff.blockRecoveryIncrease ?? 0
+      b.healOnBlockPct += eff.blockHealPct ?? 0
+      if (eff.blockNoAfflictions) b.noAfflictions = true
     }
   }
   return b
@@ -2264,6 +2342,37 @@ export function getMasteryDumpLabel(id: MasteryId): string {
   return t('masteryDump', id as keyof TranslationSchema['masteryDump'])
 }
 
+const BLOCK_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
+  0: {
+    0:  '+4% increased chance to block hits',
+    1:  '+100% increased block recovery speed',
+    2:  '+6% increased chance to block hits · +5% increased amount of damage blocked',
+    3:  '+4% increased chance to block hits',
+    4:  '+100% increased block recovery speed',
+    5:  '+10% increased chance to block hits',
+    6:  '+4% increased chance to block hits',
+    7:  '+100% increased block recovery speed',
+    8:  '+6% increased chance to block hits · +5% increased amount of damage blocked',
+    9:  '+4% increased chance to block hits',
+    10: '+100% increased block recovery speed',
+    11: '+10% increased chance to block hits',
+  },
+  1: {
+    0:  '+6% increased amount of damage blocked',
+    1:  '+100% increased block recovery speed',
+    2:  '+12% increased amount of damage blocked',
+    3:  '+6% increased amount of damage blocked',
+    4:  '+100% increased block recovery speed',
+    5:  'Blocked hits cannot trigger afflictions on you',
+    6:  '+6% increased amount of damage blocked',
+    7:  '+100% increased block recovery speed',
+    8:  '+12% increased amount of damage blocked',
+    9:  '+6% increased amount of damage blocked',
+    10: '+100% increased block recovery speed',
+    11: 'Blocked hits heal you for 20% of damage blocked',
+  },
+}
+
 const MANA_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>> = {
   0: {  // Maximum Mana
     0:  '+5% increased maximum mana',
@@ -2573,6 +2682,7 @@ function getEnglishNodeDescription(
     criticalHit: CRIT_DESCRIPTIONS,
     life: LIFE_DESCRIPTIONS,
     mana: MANA_DESCRIPTIONS,
+    block: BLOCK_DESCRIPTIONS,
     fire: FIRE_DESCRIPTIONS,
     enemy: ENEMY_DESCRIPTIONS,
     projectile: PROJ_DESCRIPTIONS,
@@ -2844,6 +2954,7 @@ export function nodeHasAnyEffect(masteryId: MasteryId, treeIdx: number, nodeIdx:
     case 'criticalHit': effect = getCriticalHitNodeEffect(treeIdx, nodeIdx); break
     case 'life':        effect = getLifeNodeEffect(treeIdx, nodeIdx); break
     case 'mana':        effect = getManaNodeEffect(treeIdx, nodeIdx); break
+    case 'block':       effect = getBlockNodeEffect(treeIdx, nodeIdx); break
     case 'fire':        effect = getFireNodeEffect(treeIdx, nodeIdx); break
     case 'enemy':       effect = getEnemyNodeEffect(treeIdx, nodeIdx); break
     case 'projectile':  effect = getProjectileNodeEffect(treeIdx, nodeIdx); break

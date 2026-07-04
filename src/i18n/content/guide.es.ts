@@ -85,7 +85,9 @@ Antes de trascender eliges una **Reliquia** — una bendición permanente que so
 - **Tercera mano** — una ranura de disparador de acción adicional permanente.
 - **Embestida** — 30% más enemigos, 10% más XP, 10% más daño.
 
-Cada Trascendencia también otorga un nivel de poder permanente: **+10% XP, +10% daño y +10% vida máxima** (aditivos entre sí, multiplicativos con lo demás). Tu poder de trascendencia y tus reliquias se muestran en la parte inferior del panel de personaje.`,
+Cada Trascendencia también otorga un nivel de poder permanente: **+10% XP, +10% daño y +10% vida máxima** (aditivos entre sí, multiplicativos con lo demás). Tu poder de trascendencia y tus reliquias se muestran en la parte inferior del panel de personaje.
+
+Tu primera Trascendencia también desbloquea el **Bloqueo**: un 5% de probabilidad base de bloquear el 20% del daño de un golpe recibido (una vez por segundo), con su propia maestría de Bloqueo en la sección Vida y Maná.`,
   },
 
   'Action Triggers': {

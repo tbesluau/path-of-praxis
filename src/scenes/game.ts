@@ -6,7 +6,7 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, STOCKPILE_DOUBLED_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, computeBlockBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses, type BlockBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
@@ -257,6 +257,10 @@ export function createGameScene(
     return computeLifeBonuses(masteryNodes('life', 5), dumpedFor('life'))
   }
 
+  function getBlockBonuses(): BlockBonuses {
+    return computeBlockBonuses(masteryNodes('block', 5), dumpedFor('block'))
+  }
+
   function getManaBonuses(): ManaBonuses {
     return computeManaBonuses(masteryNodes('mana', 5), dumpedFor('mana'))
   }
@@ -401,6 +405,9 @@ export function createGameScene(
   // ── Frost affliction (cold-tagged hits) ──────────────────────────────────
   // One entry per entity: remaining duration ms. Immune while active — no refresh on re-apply.
   const frostTimers = new Map<string, number>()
+  // Per-entity block cooldowns (ms until the entity may block again). Generic —
+  // only the player has block params today, but enemies may block later.
+  const blockCooldowns = new Map<string, number>()
   // Per-entity frost Graphics (icy aura) attached to the entity's Container child list.
   const frostEffectGraphics = new Map<string, Graphics>()
   let totalFrostRolls = 0   // cumulative successful frost rolls per life; drives the frozen armor threshold
@@ -455,6 +462,39 @@ export function createGameScene(
       const updated = remaining - deltaMs
       if (updated <= 0) frostTimers.delete(id)
       else frostTimers.set(id, updated)
+    }
+  }
+
+  function tickBlockCooldowns(deltaMs: number): void {
+    for (const [id, remaining] of [...blockCooldowns]) {
+      const updated = remaining - deltaMs
+      if (updated <= 0) blockCooldowns.delete(id)
+      else blockCooldowns.set(id, updated)
+    }
+  }
+
+  interface BlockParams {
+    chancePct: number
+    blockedPct: number
+    cooldownMs: number
+    healPct: number
+    suppressAfflictions: boolean
+  }
+
+  // Resolves an entity's block parameters, or null when it cannot block.
+  // Generic seam for future enemy blocking; today only the player blocks,
+  // and only once Transcendence has been reached (live check, like crit's
+  // ascent gate in critChanceForAction).
+  function blockParamsFor(entity: Entity): BlockParams | null {
+    if (entity.role !== 'player') return null
+    if (transcendCount < 1 && !getPrefs().fullMastery) return null
+    const bb = getBlockBonuses()
+    return {
+      chancePct: balance.block.baseChancePct * (1 + bb.chanceIncrease / 100) * (1 + bb.moreChance / 100),
+      blockedPct: Math.min(100, balance.block.baseBlockedPct * (1 + bb.amountIncrease / 100)),
+      cooldownMs: balance.block.baseCooldownMs / (1 + bb.recoveryIncrease / 100),
+      healPct: bb.healOnBlockPct,
+      suppressAfflictions: bb.noAfflictions,
     }
   }
 
@@ -1381,6 +1421,13 @@ export function createGameScene(
     persistState()
   }
 
+  // Block mastery XP: same global multipliers as stat XP (life model), but it
+  // only feeds the run accumulator — block has no stat level of its own.
+  function awardBlockXp(amount: number): void {
+    amount *= (1 + ascentCount * balance.ascent.xpGainPerAscent) * transcendXpMult()
+    runBlockXp += amount
+  }
+
   function awardStatXp(stat: 'life' | 'mana', amount: number): void {
     amount *= (1 + ascentCount * balance.ascent.xpGainPerAscent) * transcendXpMult()
     if (stat === 'life') runLifeXp += amount
@@ -1627,6 +1674,7 @@ export function createGameScene(
   // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
   let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
   let runLifeXp = char?.runProgress?.lifeXp ?? 0
+  let runBlockXp = char?.runProgress?.blockXp ?? 0
   let runManaXp = char?.runProgress?.manaXp ?? 0
   let runEnemyXp = char?.runProgress?.enemyXp ?? 0
   let runDistancePx = char?.runProgress?.distancePx ?? 0
@@ -1636,6 +1684,7 @@ export function createGameScene(
     return {
       actionXp: { ...runActionXp },
       lifeXp: runLifeXp,
+      blockXp: runBlockXp,
       manaXp: runManaXp,
       enemyXp: runEnemyXp,
       distancePx: runDistancePx,
@@ -3601,6 +3650,7 @@ export function createGameScene(
     entityRigs.delete(entity.id)
     lifeBarGraphics.delete(entity.id)
     actionCooldowns.delete(entity.id)
+    blockCooldowns.delete(entity.id)
     pendingMultiActions.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
@@ -3760,6 +3810,7 @@ export function createGameScene(
     // Reset per-rebirth trackers
     runActionXp = {}
     runLifeXp = 0
+    runBlockXp = 0
     runManaXp = 0
     runEnemyXp = 0
     runDistancePx = 0
@@ -3839,6 +3890,7 @@ export function createGameScene(
     afflictionLastTarget = null
     bossLastHitWasCrit.clear()
     bossLastHitWasAffl.clear()
+    blockCooldowns.clear()
     for (const q of extraSlotMAQueues) q.length = 0
     extraSlotMACooldowns.fill(0)
   }
@@ -4150,6 +4202,7 @@ export function createGameScene(
     // criticalHit mastery: awards 2× the standard rate so it levels at half the base requirement
     if (runCritXp > 0) gainMap.set('criticalHit', runCritXp * balance.mastery.actionXpMultiplier * 2)
     if (runLifeXp > 0) gainMap.set('life', runLifeXp)
+    if (runBlockXp > 0) gainMap.set('block', runBlockXp)
     if (runManaXp > 0) gainMap.set('mana', runManaXp)
     const movementXp = Math.floor(runDistancePx / 50) * balance.mastery.movementXpMult
     if (movementXp > 0) gainMap.set('movement', movementXp)
@@ -4197,6 +4250,7 @@ export function createGameScene(
     // performs, but the run itself continues untouched.
     runActionXp = {}
     runLifeXp = 0
+    runBlockXp = 0
     runManaXp = 0
     runEnemyXp = 0
     runDistancePx = 0
@@ -6249,6 +6303,24 @@ export function createGameScene(
               }
             }
           }
+          // Block: the target may block a fraction of the incoming hit. Last
+          // mitigation layer; never applies to affliction ticks (those bypass
+          // applyHit entirely). Life XP still uses the pre-block value, and
+          // afflictions keep their pre-mitigation `damage` basis.
+          let blockedAmount = 0
+          let blockSuppressAffl = false
+          if (finalDamage > 0) {
+            const bp = blockParamsFor(target)
+            if (bp && (blockCooldowns.get(target.id) ?? 0) <= 0 && Math.random() * 100 < bp.chancePct) {
+              blockedAmount = finalDamage * bp.blockedPct / 100
+              finalDamage -= blockedAmount
+              blockCooldowns.set(target.id, bp.cooldownMs)
+              blockSuppressAffl = bp.suppressAfflictions
+              if (bp.healPct > 0) {
+                target.currentLife = Math.min(target.maxLife, target.currentLife + blockedAmount * bp.healPct / 100)
+              }
+            }
+          }
           // Bleed/Burn key 14: player physical/fire hits deal no direct damage (afflictions still
           // calculated from the original `damage` value). Capture whether the hit would have
           // landed pre-suppression so affliction gates that read `actualDamage > 0` still fire.
@@ -6301,11 +6373,15 @@ export function createGameScene(
             recordDps(actionId, baseDmg, 'hit:base')
             if (isCrit) recordDps(actionId, actualDamage - baseDmg, 'hit:crit')
           }
-          if (target.role === 'player' && actualDamage > 0) {
+          if (target.role === 'player' && (actualDamage > 0 || blockedAmount > 0)) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(attacker.id)
-            awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
-            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
+            // Blocking never reduces life XP — the basis is the full damage the
+            // hit would have dealt without the block.
+            awardStatXp('life', (actualDamage + blockedAmount) * balance.stat.lifeXpFromDamage * xpMult)
+            // Block mastery XP from the damage prevented — same model as life.
+            if (blockedAmount > 0) awardBlockXp(blockedAmount * balance.stat.lifeXpFromDamage * xpMult)
+            if (actualDamage > 0) spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
           damagedIds.add(target.id)
 
@@ -6513,7 +6589,7 @@ export function createGameScene(
 
           // Enemy → player affliction rolls: baseline 5% chance × 0.5, duration × 0.5.
           // No mastery bonuses on the enemy side (those are player-attacker buffs).
-          if (attacker.role === 'enemy' && target.role === 'player' && actualDamage > 0) {
+          if (attacker.role === 'enemy' && target.role === 'player' && actualDamage > 0 && !blockSuppressAffl) {
             const enemyChance = balance.effects.baseApplyChance * balance.effects.enemyAfflictionChanceMult
             const durMult = balance.effects.enemyAfflictionDurationMult
             if (action.tags.includes('fire') && Math.random() * 100 < enemyChance) {
@@ -7347,6 +7423,7 @@ export function createGameScene(
         tickElectrocutions(ticker.deltaMS)
         tickFrosts(ticker.deltaMS)
         tickFrozenArmor(ticker.deltaMS)
+        tickBlockCooldowns(ticker.deltaMS)
         tickKnockbacks(ticker.deltaMS)
         tickElectrocuteEffects()
         tickFrostEffects()
