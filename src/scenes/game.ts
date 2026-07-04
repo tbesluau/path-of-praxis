@@ -6,11 +6,12 @@ import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, STOCKPILE_DOUBLED_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
-import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses } from '../config/mastery-nodes'
+import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, computeBlockBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses, type BlockBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
 import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, scrapsForArtifact, upgradeCost, upgradeArtifact, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
+import { ALL_RELICS, ascentsGainedFor, type RelicId } from '../config/relics'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
 import { isPaid } from '../core/entitlement'
@@ -22,6 +23,7 @@ import { balance } from '../config/balance'
 import { allActions, getAction, randomAction, getActionLabel, type ActionId, type ActionDef } from '../config/actions'
 import type { SceneId } from '../core/router'
 import { mountSettingsButton, mountGuideModal } from '../ui/settings'
+import { hiddenGuideSectionIds } from '../core/guide-visibility'
 import { showTutorial, isTutorialSeen, getTutorialMessage } from '../ui/tutorial'
 import { mountNoteModal, getNoteTitle } from '../ui/notes'
 import { mountCharacterModal } from '../ui/character'
@@ -33,7 +35,7 @@ import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type Ru
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
-import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey } from '../assets/entity-art'
+import { preloadEntityArt, weaponForAction, type Tier, type HeadVariant, type PlayerColorKey, type ShieldVariant } from '../assets/entity-art'
 import { createEntityRig, rigTopOffset, type EntityRig } from './entity-rig'
 import { createBackgroundTicker, type BackgroundTicker } from '../core/background-ticker'
 import { trackEvent } from '../core/analytics'
@@ -111,6 +113,15 @@ export function createGameScene(
   let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
   let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
   let scraps = char?.scraps ?? 0
+
+  // Transcendence — also declared early: computePlayerMaxLife() (and the
+  // transcend power multipliers) run during scene construction, well before
+  // the mid-file state block executes.
+  let transcendCount = char?.transcendCount ?? 0
+  let relics: RelicId[] = [...(char?.relics ?? [])]
+  let transcendReady = char?.transcendReady ?? false
+  let freeRebirthUsed = char?.runProgress?.freeRebirthUsed ?? false
+  let charNotifSeen = char?.runProgress?.charNotifSeen ?? false
 
   const actionRunes: Partial<Record<string, ActionRunes>> = JSON.parse(
     JSON.stringify(char?.actionRunes ?? {}),
@@ -220,8 +231,36 @@ export function createGameScene(
     return 1 + universePointAllocations.placeholderD * balance.ascent.universePointActionSpeedPerPoint
   }
 
+  function hasRelic(id: RelicId): boolean {
+    return relics.includes(id)
+  }
+
+  // Transcendence power: +10% increased XP/damage per transcendence (additive
+  // with itself), times the onslaught relic's 10% more (multiplicative).
+  function transcendXpMult(): number {
+    return (1 + transcendCount * balance.transcend.xpPerTranscend)
+      * (hasRelic('onslaught') ? 1 + balance.transcend.onslaughtMoreXp : 1)
+  }
+
+  function transcendDamageMult(): number {
+    return (1 + transcendCount * balance.transcend.damagePerTranscend)
+      * (hasRelic('onslaught') ? 1 + balance.transcend.onslaughtMoreDamage : 1)
+  }
+
+  // Active extra trigger slots: ascent-gated 0/1/2, +1 with the extraTrigger
+  // relic, capped at 3. Damage penalties are positional (see balance.transcend).
+  function activeExtraSlotCount(): number {
+    const gated = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
+      : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
+    return Math.min(3, gated + (hasRelic('extraTrigger') ? 1 : 0))
+  }
+
   function getLifeBonuses(): LifeBonuses {
     return computeLifeBonuses(masteryNodes('life', 5), dumpedFor('life'))
+  }
+
+  function getBlockBonuses(): BlockBonuses {
+    return computeBlockBonuses(masteryNodes('block', 5), dumpedFor('block'))
   }
 
   function getManaBonuses(): ManaBonuses {
@@ -368,6 +407,9 @@ export function createGameScene(
   // ── Frost affliction (cold-tagged hits) ──────────────────────────────────
   // One entry per entity: remaining duration ms. Immune while active — no refresh on re-apply.
   const frostTimers = new Map<string, number>()
+  // Per-entity block cooldowns (ms until the entity may block again). Generic —
+  // only the player has block params today, but enemies may block later.
+  const blockCooldowns = new Map<string, number>()
   // Per-entity frost Graphics (icy aura) attached to the entity's Container child list.
   const frostEffectGraphics = new Map<string, Graphics>()
   let totalFrostRolls = 0   // cumulative successful frost rolls per life; drives the frozen armor threshold
@@ -422,6 +464,46 @@ export function createGameScene(
       const updated = remaining - deltaMs
       if (updated <= 0) frostTimers.delete(id)
       else frostTimers.set(id, updated)
+    }
+  }
+
+  function tickBlockCooldowns(deltaMs: number): void {
+    for (const [id, remaining] of [...blockCooldowns]) {
+      const updated = remaining - deltaMs
+      if (updated <= 0) blockCooldowns.delete(id)
+      else blockCooldowns.set(id, updated)
+    }
+  }
+
+  interface BlockParams {
+    chancePct: number
+    blockedPct: number
+    cooldownMs: number
+    healPct: number
+    suppressAfflictions: boolean
+  }
+
+  // The player's shield (non-weapon hand) — visible only while Block is
+  // enabled, i.e. from the first Transcendence (same gate as blockParamsFor).
+  function playerShieldVariant(): ShieldVariant | null {
+    if (transcendCount < 1 && !getPrefs().fullMastery) return null
+    return (getPrefs().playerShieldVariant as ShieldVariant | undefined) ?? 'buckler'
+  }
+
+  // Resolves an entity's block parameters, or null when it cannot block.
+  // Generic seam for future enemy blocking; today only the player blocks,
+  // and only once Transcendence has been reached (live check, like crit's
+  // ascent gate in critChanceForAction).
+  function blockParamsFor(entity: Entity): BlockParams | null {
+    if (entity.role !== 'player') return null
+    if (transcendCount < 1 && !getPrefs().fullMastery) return null
+    const bb = getBlockBonuses()
+    return {
+      chancePct: balance.block.baseChancePct * (1 + bb.chanceIncrease / 100) * (1 + bb.moreChance / 100),
+      blockedPct: Math.min(100, balance.block.baseBlockedPct * (1 + bb.amountIncrease / 100)),
+      cooldownMs: balance.block.baseCooldownMs / (1 + bb.recoveryIncrease / 100),
+      healPct: bb.healOnBlockPct,
+      suppressAfflictions: bb.noAfflictions,
     }
   }
 
@@ -1147,6 +1229,7 @@ export function createGameScene(
       * (1 + lb.moreMaxLife / 100)
       * Math.max(0, 1 - lb.lessMaxLife / 100)
       * (1 + mb.moreMaxLife / 100)
+      * (1 + transcendCount * balance.transcend.maxLifePerTranscend)
   }
 
   function computePlayerMaxMana(): number {
@@ -1229,7 +1312,7 @@ export function createGameScene(
   }
 
   function awardXp(actionId: ActionId, amount: number): void {
-    amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
+    amount *= (1 + ascentCount * balance.ascent.xpGainPerAscent) * transcendXpMult()
     const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     // Fields default-guarded so a legacy/corrupted entry can't poison the math
     // with NaN (which would silently zero out action/tag mastery gains).
@@ -1347,8 +1430,15 @@ export function createGameScene(
     persistState()
   }
 
+  // Block mastery XP: same global multipliers as stat XP (life model), but it
+  // only feeds the run accumulator — block has no stat level of its own.
+  function awardBlockXp(amount: number): void {
+    amount *= (1 + ascentCount * balance.ascent.xpGainPerAscent) * transcendXpMult()
+    runBlockXp += amount
+  }
+
   function awardStatXp(stat: 'life' | 'mana', amount: number): void {
-    amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
+    amount *= (1 + ascentCount * balance.ascent.xpGainPerAscent) * transcendXpMult()
     if (stat === 'life') runLifeXp += amount
     else runManaXp += amount
     let prog = stat === 'life' ? lifeProgress : manaProgress
@@ -1576,22 +1666,27 @@ export function createGameScene(
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
+  // Point counts already "seen" per mastery (tree modal viewed) — unused
+  // points only light the notif dots until seen at that exact count.
+  let masteryPointsSeen: Partial<Record<MasteryId, number>> = { ...(char?.masteryPointsSeen ?? {}) }
   let unlockedTriggers: ('crit' | 'affliction')[] = [...(char?.unlockedTriggers ?? [])]
   const extraSlotTimers: number[] = []  // ms remaining per slot (time trigger)
-  const afflictionTriggerCounters = [0, 0]  // per extra slot, counts applied afflictions
-  const manaTriggerCounters = [0, 0]        // per extra slot, counts mana spent by the player
+  // Per-extra-slot state sized for the maximum of 3 slots (3rd via the extraTrigger relic).
+  const afflictionTriggerCounters = [0, 0, 0]  // per extra slot, counts applied afflictions
+  const manaTriggerCounters = [0, 0, 0]        // per extra slot, counts mana spent by the player
   let manaSpentThisTick = 0                 // player mana paid this tick (any slot, any cast)
   let mainSlotCritTarget: Entity | null = null
   let afflictionAppliedThisTick = 0
   let afflictionLastTarget: Entity | null = null
   const bossLastHitWasCrit = new Map<string, boolean>()
   const bossLastHitWasAffl = new Map<string, boolean>()
-  const extraSlotMAQueues: ExtraSlotMA[][] = [[], []]
-  const extraSlotMACooldowns: number[] = [0, 0]
+  const extraSlotMAQueues: ExtraSlotMA[][] = [[], [], []]
+  const extraSlotMACooldowns: number[] = [0, 0, 0]
 
   // Per-rebirth XP accumulators — persisted in char.runProgress, reset in rebirth()
   let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
   let runLifeXp = char?.runProgress?.lifeXp ?? 0
+  let runBlockXp = char?.runProgress?.blockXp ?? 0
   let runManaXp = char?.runProgress?.manaXp ?? 0
   let runEnemyXp = char?.runProgress?.enemyXp ?? 0
   let runDistancePx = char?.runProgress?.distancePx ?? 0
@@ -1601,10 +1696,13 @@ export function createGameScene(
     return {
       actionXp: { ...runActionXp },
       lifeXp: runLifeXp,
+      blockXp: runBlockXp,
       manaXp: runManaXp,
       enemyXp: runEnemyXp,
       distancePx: runDistancePx,
       critXp: runCritXp,
+      freeRebirthUsed,
+      charNotifSeen,
     }
   }
 
@@ -1634,6 +1732,10 @@ export function createGameScene(
       masteryDumpPoints,
       artifacts,
       scraps,
+      transcendCount,
+      relics,
+      transcendReady,
+      masteryPointsSeen,
     )
   }
   let playerPrevX = 0
@@ -1647,8 +1749,9 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="go-home" aria-label="${t('game', 'backToMenu')}" data-tooltip="${t('game', 'backToMenu')}">
           <i data-lucide="arrow-left" aria-hidden="true"></i>
         </button>
-        <button class="game-action-btn game-action-btn--icon" data-action="open-character" data-sfx="modal" aria-label="Main Character" data-tooltip="Main Character">
+        <button class="game-action-btn game-action-btn--icon" data-action="open-character" data-sfx="modal" aria-label="Main Character" data-tooltip="Main Character" style="position:relative">
           <i data-lucide="user" aria-hidden="true"></i>
+          <span class="notif-dot char-notif-dot" hidden></span>
         </button>
       </div>
       <div class="game-top-center">
@@ -1708,6 +1811,7 @@ export function createGameScene(
           </div>
           <button class="ascent-action-btn" data-action="ascend" hidden>${t('game', 'ascendBtn')}</button>
         </div>
+        <button class="ascent-action-btn transcend-btn" data-action="transcend" hidden>${t('transcend', 'btn')}</button>
       </div>
     </div>
     <div class="game-bottom-bar">
@@ -1736,9 +1840,20 @@ export function createGameScene(
   const dpsMeterEl = el.querySelector<HTMLElement>('.dps-meter')!
   createIcons({ icons: { ArrowLeft, Play, Pause, Settings2, Award, Sword, Book, User, ArrowUp, Star } })
 
+  function hiddenGuideSections(): string[] {
+    return hiddenGuideSectionIds({
+      ascentCount,
+      transcendCount,
+      transcendReady,
+      relics,
+      enemyMaxLevel: enemyProgress.maxLevel,
+      fullMastery: getPrefs().fullMastery,
+    })
+  }
+
   function openGuide(section: string): void {
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
-    mountGuideModal(el, () => {}, section)
+    mountGuideModal(el, () => {}, section, hiddenGuideSections())
   }
 
   const DPS_MULTI_LABELS: Record<MultiActionType, string> = {
@@ -1852,6 +1967,14 @@ export function createGameScene(
       updateSpeedUI()
     } : undefined,
     onSpawnBoss: isCheatMode() ? () => spawnBossWave() : undefined,
+    // Readies the Transcend button exactly like a lvl-100+ boss kill would —
+    // does NOT transcend; the player still clicks the gold button themselves.
+    onForceTranscendReady: isCheatMode() ? () => {
+      transcendReady = true
+      persistState()
+      updateTranscendButton()
+    } : undefined,
+    getHiddenGuideSections: () => hiddenGuideSections(),
   })
 
   const lifeFill        = el.querySelector<HTMLElement>('.stat-bar-fill--life')!
@@ -1940,7 +2063,8 @@ export function createGameScene(
     const notifDot = el.querySelector<HTMLElement>('.enemy-notif-dot')!
     if (!isAscentUnlocked()) {
       section.hidden = true
-      notifDot.hidden = true
+      // The dot also announces a ready Transcend, independent of ascent state.
+      notifDot.hidden = !transcendReady
       return
     }
     section.hidden = false
@@ -1951,12 +2075,42 @@ export function createGameScene(
     const btn = section.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
     bar.hidden = isFull
     btn.hidden = !isFull
-    notifDot.hidden = !isFull
+    notifDot.hidden = !isFull && !transcendReady
+    // multiAscend relic: the button announces multi-count jumps ("Ascend (+x)").
+    const gain = pendingAscentGain()
+    btn.textContent = gain > 1
+      ? t('transcend', 'ascendPlus').replace('{label}', t('game', 'ascendBtn')).replace('{n}', String(gain))
+      : t('game', 'ascendBtn')
     if (!isFull) barFill.style.width = `${(ascentXp / xpNeeded * 100).toFixed(1)}%`
+  }
+  // How many ascent counts the next Ascend grants (multiAscend relic can jump).
+  function pendingAscentGain(): number {
+    return hasRelic('multiAscend') ? ascentsGainedFor(enemyProgress.maxLevel, ascentCount) : 1
   }
   function updateAscentButtonVisibility(): void {
     const btn = el.querySelector<HTMLButtonElement>('[data-action="open-ascent"]')!
-    btn.hidden = ascentCount < 1
+    // Grandfathered post-transcend: the ascent menu (universe points + artifacts
+    // panel) stays reachable even while ascentCount is back at 0.
+    btn.hidden = ascentCount < 1 && transcendCount < 1
+  }
+  function updateTranscendButton(): void {
+    const btn = el.querySelector<HTMLButtonElement>('[data-action="transcend"]')
+    if (btn) btn.hidden = !transcendReady
+    // Ready Transcend lights the red dot on the enemy toggle (union with the
+    // ascent-full condition handled in updateAscentBar).
+    if (transcendReady) {
+      const dot = el.querySelector<HTMLElement>('.enemy-notif-dot')
+      if (dot) dot.hidden = false
+    }
+  }
+
+  // Character-button dot: signals the freeRebirth relic is armed again (a free
+  // mastery bank is waiting behind the "Free Rebirth" button).
+  function refreshCharNotifDot(): void {
+    const dot = el.querySelector<HTMLElement>('.char-notif-dot')
+    // Lights while an armed Free Rebirth hasn't been seen this run; opening
+    // the character screen marks it seen (re-arms on the next rebirth).
+    if (dot) dot.hidden = !freeRebirthActive() || charNotifSeen
   }
   function awardAscentXp(amount: number): void {
     if (!isAscentUnlocked()) return
@@ -1986,7 +2140,7 @@ export function createGameScene(
     })
 
   function awardEnemyXp(amount: number): void {
-    amount *= 1 + ascentCount * balance.ascent.xpGainPerAscent
+    amount *= (1 + ascentCount * balance.ascent.xpGainPerAscent) * transcendXpMult()
     // Ascent-8 unlock: extra flat boost to enemy-level XP.
     if (ascentCount >= balance.ascent.enemyBoostUnlockAscent) amount *= 1 + balance.ascent.enemyBoostMoreLevelXp
     runEnemyXp += amount
@@ -2002,6 +2156,8 @@ export function createGameScene(
 
   updateEnemyLevelUI()
   updateAscentButtonVisibility()
+  updateTranscendButton()
+  refreshCharNotifDot()
 
   const speedPauseBtn = el.querySelector<HTMLButtonElement>('[data-action="playpause"]')!
   const speedOptBtns = el.querySelectorAll<HTMLButtonElement>('.speed-opt')
@@ -2010,14 +2166,12 @@ export function createGameScene(
   battleConfigBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; liveModalXpUpdater = null; return }
     const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id as ActionId
-    const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
-      : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
     const { cleanup, updateXp } = mountBattleConfigModal(
       container,
       currentId,
       ascentCount >= 1,
       critBaseAddTotal(),
-      activeExtraSlotCount,
+      activeExtraSlotCount(),
       extraSlots.map(s => ({ ...s })),
       {
         getActionXp: (id) => {
@@ -2520,10 +2674,8 @@ export function createGameScene(
     const eleRes  = Math.max(0, Math.min(100, lb.elementalResistance))
 
     // ── Equipped actions ──────────────────────────────────────────────────
-    const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
-      : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
     const entries: { id: ActionId; slot: number }[] = [{ id: playerActionId, slot: 0 }]
-    for (let i = 0; i < activeExtraSlotCount; i++) {
+    for (let i = 0; i < activeExtraSlotCount(); i++) {
       const sid = extraSlots[i]?.actionId
       if (sid) entries.push({ id: sid as ActionId, slot: i + 1 })
     }
@@ -2544,8 +2696,7 @@ export function createGameScene(
       const triggerType = slot > 0 ? (extraSlots[slot - 1]?.triggerType ?? null) : null
       // Fixed-frequency triggers (crit/affliction/mana): speed converts to damage, not cast rate
       const isDependentTrigger = triggerType === 'crit' || triggerType === 'affliction' || triggerType === 'mana'
-      const slotPenalty = slot === 1 ? balance.ascent.slot2DamagePenalty
-        : slot === 2 ? balance.ascent.slot3DamagePenalty : 1
+      const slotPenalty = slot > 0 ? (balance.transcend.slotDamagePenalties[slot - 1] ?? 1) : 1
 
       // Pre-compute tag-specific mastery data (used in damage chain and affliction)
       const ab = getActionBonuses()
@@ -2855,15 +3006,19 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="open-character"]')!
     .addEventListener('click', () => {
       if (modalCleanup) { modalCleanup(); modalCleanup = null }
+      // Seeing the character screen clears its notification for this run.
+      if (!charNotifSeen) {
+        charNotifSeen = true
+        persistState()
+        refreshCharNotifDot()
+      }
       modalCleanup = mountCharacterModal(el, {
+        dieLabel: dieButtonLabel(),
+        transcendCount,
+        relics: [...relics],
         onDie: () => {
           modalCleanup = null
-          const doDie = (): void => {
-            playerEntity.currentLife = 0
-            killEntity(playerEntity)
-          }
-          if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
-          else doDie()
+          handleManualDie()
         },
         onCustomize: () => {
           modalCleanup = null
@@ -2871,10 +3026,13 @@ export function createGameScene(
           const initHat   = (prefs.playerHatVariant  as HeadVariant)   ?? 'hood'
           const initColor = (prefs.playerColorKey     as PlayerColorKey) ?? 'teal'
           modalCleanup = mountCharacterCustomizeModal(el, {
-            initialHat:   initHat,
-            initialColor: initColor,
-            onChange: (hat, color) => {
+            initialHat:    initHat,
+            initialShield: (prefs.playerShieldVariant as ShieldVariant) ?? 'buckler',
+            initialColor:  initColor,
+            shieldsUnlocked: transcendCount >= 1 || getPrefs().fullMastery,
+            onChange: (hat, shield, color) => {
               setPref('playerHatVariant', hat)
+              setPref('playerShieldVariant', shield)
               setPref('playerColorKey', color)
               rebuildPlayerRig(hat, color)
             },
@@ -3042,14 +3200,10 @@ export function createGameScene(
         freeMasteryPointsUsed,
         masteryDumpPoints,
         (id: MasteryId) => remainingFreeMasteryPointsFor(id),
-        () => {
-          const doDie = (): void => {
-            playerEntity.currentLife = 0
-            killEntity(playerEntity)
-          }
-          if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
-          else doDie()
-        },
+        () => { handleManualDie() },
+        dieButtonLabel(),
+        (id: MasteryId) => masteryPointsSeen[id] ?? 0,
+        (id: MasteryId) => { markMasteryTreeSeen(id) },
       )
     })
 
@@ -3085,6 +3239,7 @@ export function createGameScene(
         queued?.()
       },
       () => openArtifactsModal(),
+      transcendCount > 0,
     )
   }
 
@@ -3094,7 +3249,7 @@ export function createGameScene(
       container,
       {
         getArtifacts: () => [...artifacts],
-        getMaxEquipped: () => maxEquippedArtifacts(ascentCount),
+        getMaxEquipped: () => maxEquippedArtifacts(ascentCount, transcendCount > 0),
         getMax: () => maxBaggedArtifacts(ascentCount),
         getScraps: () => scraps,
       },
@@ -3103,7 +3258,7 @@ export function createGameScene(
           const art = artifacts.find(a => a.id === id)
           if (!art) return
           const usedEq = artifacts.filter(a => a.equipped).length
-          if (usedEq >= maxEquippedArtifacts(ascentCount)) return
+          if (usedEq >= maxEquippedArtifacts(ascentCount, transcendCount > 0)) return
           art.equipped = true
           recomputeArtifactMods()
           assignAction(playerEntity, playerActionId)
@@ -3168,6 +3323,24 @@ export function createGameScene(
   el.querySelector<HTMLButtonElement>('[data-action="ascend"]')!
     .addEventListener('click', () => { ascend() })
 
+  el.querySelector<HTMLButtonElement>('[data-action="transcend"]')!
+    .addEventListener('click', () => {
+      if (!transcendReady) return
+      if (modalCleanup) { modalCleanup(); modalCleanup = null }
+      const unowned = ALL_RELICS.filter(r => !relics.includes(r))
+      if (unowned.length > 0) {
+        modalCleanup = mountRelicPickerModal(container, (relic) => {
+          modalCleanup = null
+          transcend(relic)
+        }, () => { modalCleanup = null })
+      } else {
+        modalCleanup = mountTranscendConfirmModal(container, () => {
+          modalCleanup = null
+          transcend(null)
+        })
+      }
+    })
+
   function drawLifeBar(entity: Entity): void {
     const bar = lifeBarGraphics.get(entity.id)
     if (!bar) return
@@ -3215,6 +3388,7 @@ export function createGameScene(
       seed:   entity.id,
       ...(isPlayer && savedPrefs.playerColorKey  ? { colorKey:     savedPrefs.playerColorKey  as PlayerColorKey } : {}),
       ...(isPlayer && savedPrefs.playerHatVariant ? { headOverride: savedPrefs.playerHatVariant as HeadVariant  } : {}),
+      ...(isPlayer ? { shield: playerShieldVariant() } : {}),
     })
     c.addChild(rig.container)
     entityRigs.set(entity.id, rig)
@@ -3259,6 +3433,7 @@ export function createGameScene(
       seed:         playerEntity.id,
       colorKey:     color,
       headOverride: hat,
+      shield:       playerShieldVariant(),
     })
     c.addChildAt(rig.container, 0)
     entityRigs.set('player', rig)
@@ -3516,6 +3691,7 @@ export function createGameScene(
     entityRigs.delete(entity.id)
     lifeBarGraphics.delete(entity.id)
     actionCooldowns.delete(entity.id)
+    blockCooldowns.delete(entity.id)
     pendingMultiActions.delete(entity.id)
     strongEntities.delete(entity.id)
     eliteEntities.delete(entity.id)
@@ -3561,6 +3737,13 @@ export function createGameScene(
       bossLastHitWasCrit.delete(entity.id)
       bossLastHitWasAffl.delete(entity.id)
       playSound('boss.defeat')
+      // Transcendence unlock: killing a boss at enemy level 100+ readies the
+      // Transcend option for this cycle (consumed when the player transcends).
+      if (!transcendReady && (enemyLevels.get(entity.id) ?? 1) >= balance.transcend.requiredBossLevel) {
+        transcendReady = true
+        persistState()
+        updateTranscendButton()
+      }
       if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent
           && artifacts.length < maxBaggedArtifacts(ascentCount)) {
         const bossX = entity.x, bossY = entity.y
@@ -3668,10 +3851,14 @@ export function createGameScene(
     // Reset per-rebirth trackers
     runActionXp = {}
     runLifeXp = 0
+    runBlockXp = 0
     runManaXp = 0
     runEnemyXp = 0
     runDistancePx = 0
     runCritXp = 0
+    freeRebirthUsed = false
+    charNotifSeen = false
+    refreshCharNotifDot()
     dpsLog.length = 0
     dpsActionOrder.length = 0
     pendingProliferateSpawns = 0
@@ -3708,36 +3895,23 @@ export function createGameScene(
     scheduleWave(balance.wave.spawnDelay)
   }
 
-  function ascend(): void {
-    if (modalCleanup) { modalCleanup(); modalCleanup = null }
-    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
-
-    ascentCount++
-    // Capture enemy max level before the deep reset below wipes it.
-    trackEvent('ascent_completed', {
-      ascent:          String(ascentCount),
-      action:          playerActionId,
-      slot2_trigger:   extraSlots[0]?.triggerType ?? 'none',
-      slot2_action:    extraSlots[0]?.actionId    ?? 'none',
-      slot3_trigger:   extraSlots[1]?.triggerType ?? 'none',
-      slot3_action:    extraSlots[1]?.actionId    ?? 'none',
-      enemy_max_level: String(enemyProgress.maxLevel),
-    })
+  // Shared deep reset used by both prestige layers (ascend and transcend):
+  // wipes everything including prestige multipliers (unlike rebirth). Reads the
+  // already-updated ascentCount for the move-speed recompute.
+  function deepPrestigeReset(): void {
     ascentXp = 0
-    // universePointAllocations persists; action is preserved
-
-    // Deep reset: everything including prestige multipliers (unlike rebirth)
     for (const id of Object.keys(actionProgress)) {
       actionProgress[id] = { xp: 0, level: 1, maxLevel: 1 }
     }
     masteryProgress = {}
     freeMasteryPointsUsed = {}
     masteryDumpPoints = {}
+    masteryPointsSeen = {}
     setPref('activeMasteryPlan', undefined)
     lifeProgress = { xp: 0, level: 1 }
     manaProgress = { xp: 0, level: 1 }
     enemyProgress = { xp: 0, level: 1, maxLevel: 1, autoLevel: false }
-    // Rune assignments persist across ascends as well — preserve selections
+    // Rune assignments persist across prestiges — preserve selections
     // and merge them into history so auto-fill keeps working.
     for (const id of Object.keys(actionRunes)) {
       const r = actionRunes[id]
@@ -3751,20 +3925,38 @@ export function createGameScene(
     playerEntity.moveSpeed = balance.player.moveSpeed * (1 + ascentCount * balance.ascent.moveSpeedPerAscent)
     // extraSlots configuration persists; only reset timers and transient trigger state
     extraSlotTimers.length = 0
-    afflictionTriggerCounters[0] = 0
-    afflictionTriggerCounters[1] = 0
-    manaTriggerCounters[0] = 0
-    manaTriggerCounters[1] = 0
+    afflictionTriggerCounters.fill(0)
+    manaTriggerCounters.fill(0)
     manaSpentThisTick = 0
     mainSlotCritTarget = null
     afflictionAppliedThisTick = 0
     afflictionLastTarget = null
     bossLastHitWasCrit.clear()
     bossLastHitWasAffl.clear()
-    extraSlotMAQueues[0].length = 0
-    extraSlotMAQueues[1].length = 0
-    extraSlotMACooldowns[0] = 0
-    extraSlotMACooldowns[1] = 0
+    blockCooldowns.clear()
+    for (const q of extraSlotMAQueues) q.length = 0
+    extraSlotMACooldowns.fill(0)
+  }
+
+  function ascend(): void {
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
+
+    const prevAscentCount = ascentCount
+    // multiAscend relic: a single Ascend can jump several counts at once.
+    ascentCount += pendingAscentGain()
+    // Capture enemy max level before the deep reset below wipes it.
+    trackEvent('ascent_completed', {
+      ascent:          String(ascentCount),
+      action:          playerActionId,
+      slot2_trigger:   extraSlots[0]?.triggerType ?? 'none',
+      slot2_action:    extraSlots[0]?.actionId    ?? 'none',
+      slot3_trigger:   extraSlots[1]?.triggerType ?? 'none',
+      slot3_action:    extraSlots[1]?.actionId    ?? 'none',
+      enemy_max_level: String(enemyProgress.maxLevel),
+    })
+    // universePointAllocations persists; action is preserved
+    deepPrestigeReset()
 
     updateAscentButtonVisibility()
     persistState()
@@ -3789,7 +3981,7 @@ export function createGameScene(
       })
     }
 
-    if (ascentCount === balance.ascent.slot2UnlockAscent
+    if (prevAscentCount < balance.ascent.slot2UnlockAscent && ascentCount >= balance.ascent.slot2UnlockAscent
         && !isTutorialSeen('second-trigger') && !getPrefs().tutorialDisabled) {
       // Defer until the ascent modal closes — the action button is behind it.
       pendingPostModalTutorial = () => {
@@ -3819,7 +4011,8 @@ export function createGameScene(
       }
     }
 
-    if (ascentCount === balance.ascent.endgameTutorialAscent && !isTutorialSeen('ascent-10') && !getPrefs().tutorialDisabled) {
+    if (prevAscentCount < balance.ascent.endgameTutorialAscent && ascentCount >= balance.ascent.endgameTutorialAscent
+        && !isTutorialSeen('ascent-10') && !getPrefs().tutorialDisabled) {
       showTutorial({
         id: 'ascent-10',
         steps: [{ message: getTutorialMessage('ascent-10', 0) }],
@@ -3828,6 +4021,110 @@ export function createGameScene(
         onDone: () => {},
       })
     }
+  }
+
+  // ── Transcendence ──────────────────────────────────────────────────────────
+
+  function transcend(relic: RelicId | null): void {
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    if (runesModal) { runesModal.cleanup(); runesModal = null; runesModalActionId = null }
+
+    if (relic && !relics.includes(relic)) relics.push(relic)
+    transcendCount++
+    transcendReady = false
+    trackEvent('transcend_completed', {
+      transcend: String(transcendCount),
+      relic:     relic ?? 'none',
+      ascent:    String(ascentCount),
+      enemy_max_level: String(enemyProgress.maxLevel),
+    })
+
+    // Everything ascent resets, plus the ascent layer itself. Equipped
+    // artifacts (and relics) survive; the bag does not.
+    ascentCount = 0
+    universePointAllocations = { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0 }
+    artifacts = artifacts.filter(a => a.equipped)
+    recomputeArtifactMods()
+    deepPrestigeReset()
+
+    updateAscentButtonVisibility()
+    updateTranscendButton()
+    updateAscentBar()
+    persistState()
+    rebirth()
+    // Block just unlocked (or stays unlocked): show the shield in-hand.
+    entityRigs.get('player')?.setShield(playerShieldVariant())
+  }
+
+  // Relic picker — mirrors the trigger-picker option list. Backdrop/close
+  // cancels without transcending; choosing a relic transcends immediately.
+  function mountRelicPickerModal(parent: HTMLElement, onSelect: (relic: RelicId) => void, onClose: () => void): () => void {
+    const backdrop = document.createElement('div')
+    backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+    const panel = document.createElement('div')
+    panel.className = 'modal-panel'
+    panel.setAttribute('role', 'dialog')
+    panel.setAttribute('aria-modal', 'true')
+    panel.innerHTML = `
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title">${t('transcend', 'pickerTitle')}</h2>
+      <p class="save-data-desc save-data-warning">${t('transcend', 'pickerHint')}</p>
+      <div class="trigger-picker-options"></div>
+    `
+    const optionsEl = panel.querySelector<HTMLElement>('.trigger-picker-options')!
+    const relicKey = (id: RelicId): 'relicFreeRebirth' => (`relic${id.charAt(0).toUpperCase()}${id.slice(1)}`) as 'relicFreeRebirth'
+    for (const id of ALL_RELICS) {
+      if (relics.includes(id)) continue
+      const btn = document.createElement('button')
+      btn.className = 'trigger-picker-opt relic-picker-opt'
+      btn.dataset.sfx = 'modal'
+      btn.innerHTML = `
+        <span class="trigger-picker-opt-name">${t('transcend', relicKey(id))}</span>
+        <span class="trigger-picker-opt-desc">${t('transcend', `${relicKey(id)}Desc` as 'relicFreeRebirthDesc')}</span>
+      `
+      btn.addEventListener('click', () => {
+        playSound('modal.close')
+        backdrop.remove()
+        onClose()
+        onSelect(id)
+      })
+      optionsEl.appendChild(btn)
+    }
+    const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
+    panel.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+    backdrop.appendChild(panel)
+    playSound('modal.open')
+    parent.appendChild(backdrop)
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+    return () => backdrop.remove()
+  }
+
+  function mountTranscendConfirmModal(parent: HTMLElement, onConfirm: () => void): () => void {
+    const backdrop = document.createElement('div')
+    backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+    backdrop.innerHTML = `
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="transcend-confirm-title">
+        <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+        <h2 class="modal-title" id="transcend-confirm-title">${t('transcend', 'confirmTitle')}</h2>
+        <p class="save-data-desc save-data-warning">${t('transcend', 'confirmBody')}</p>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn--ghost" data-action="cancel" data-sfx="modal">${t('settings', 'cancel')}</button>
+          <button class="modal-btn modal-btn--danger" data-action="confirm" data-sfx="modal">${t('transcend', 'btn')}</button>
+        </div>
+      </div>
+    `
+    playSound('modal.open')
+    parent.appendChild(backdrop)
+    const dismiss = (): void => { playSound('modal.close'); backdrop.remove() }
+    backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+    backdrop.querySelector<HTMLButtonElement>('[data-action="cancel"]')!.addEventListener('click', dismiss)
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+    backdrop.querySelector<HTMLButtonElement>('[data-action="confirm"]')!.addEventListener('click', () => {
+      playSound('modal.close')
+      backdrop.remove()
+      onConfirm()
+    })
+    return () => backdrop.remove()
   }
 
   function mountDeathModal(): () => void {
@@ -3950,6 +4247,7 @@ export function createGameScene(
     // criticalHit mastery: awards 2× the standard rate so it levels at half the base requirement
     if (runCritXp > 0) gainMap.set('criticalHit', runCritXp * balance.mastery.actionXpMultiplier * 2)
     if (runLifeXp > 0) gainMap.set('life', runLifeXp)
+    if (runBlockXp > 0) gainMap.set('block', runBlockXp)
     if (runManaXp > 0) gainMap.set('mana', runManaXp)
     const movementXp = Math.floor(runDistancePx / 50) * balance.mastery.movementXpMult
     if (movementXp > 0) gainMap.set('movement', movementXp)
@@ -3981,6 +4279,48 @@ export function createGameScene(
     refreshMasteryDot()
   }
 
+  // ── freeRebirth relic: bank pending mastery gains without dying ────────────
+
+  function freeRebirthActive(): boolean {
+    return hasRelic('freeRebirth') && !freeRebirthUsed
+  }
+
+  function dieButtonLabel(): string {
+    return freeRebirthActive() ? t('game', 'freeRebirth') : t('game', 'dieRebirth')
+  }
+
+  function grantMasteryWithoutDeath(): void {
+    applyMasteryGains(computeMasteryGains())
+    // The banked run progress is consumed — same accumulator reset rebirth()
+    // performs, but the run itself continues untouched.
+    runActionXp = {}
+    runLifeXp = 0
+    runBlockXp = 0
+    runManaXp = 0
+    runEnemyXp = 0
+    runDistancePx = 0
+    runCritXp = 0
+    freeRebirthUsed = true
+    refreshCharNotifDot()
+    persistState()
+  }
+
+  // Shared behavior for the die-and-rebirth buttons (character + mastery
+  // modals). With an unused freeRebirth relic this run, the click banks the
+  // mastery gains instead — no confirmation, no death.
+  function handleManualDie(): void {
+    if (freeRebirthActive()) {
+      grantMasteryWithoutDeath()
+      return
+    }
+    const doDie = (): void => {
+      playerEntity.currentLife = 0
+      killEntity(playerEntity)
+    }
+    if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+    else doDie()
+  }
+
   function totalFreeMasteryPointsEarned(): number {
     return ascentCount >= balance.ascent.freeMasteryPointsUnlockAscent ? ascentCount : 0
   }
@@ -3989,20 +4329,33 @@ export function createGameScene(
     return Math.max(0, totalFreeMasteryPointsEarned() - (freeMasteryPointsUsed[id] ?? 0))
   }
 
+  // A mastery's notification-worthy point count: level points plus free points
+  // (free points only count once the mastery is visible, mirroring the modal).
+  function masteryNotifPoints(id: MasteryId): number {
+    const p = masteryProgress[id]
+    const levelPts = p ? masteryPointsAvailable(p, freeMasteryPointsUsed[id] ?? 0, masteryDumpPoints[id] ?? 0) : 0
+    const isAlwaysShown = id === 'enemy' || id === 'action'
+    const freeVisible = isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
+    const freePts = freeVisible ? remainingFreeMasteryPointsFor(id) : 0
+    return levelPts + freePts
+  }
+
+  // Viewing a mastery's tree marks its current point count as seen; the dots
+  // stay dark until the count changes (new points earned or refunded).
+  function markMasteryTreeSeen(id: MasteryId): void {
+    masteryPointsSeen = { ...masteryPointsSeen, [id]: masteryNotifPoints(id) }
+    persistState()
+    refreshMasteryDot()
+  }
+
   function refreshMasteryDot(): void {
     const dot = el.querySelector<HTMLElement>('.mastery-notif-dot')
     if (!dot) return
-    const hasUnspentLevelPoints = allMasteries.some(m => {
-      const p = masteryProgress[m.id]
-      return p ? masteryPointsAvailable(p, freeMasteryPointsUsed[m.id] ?? 0, masteryDumpPoints[m.id] ?? 0) > 0 : false
+    const hasUnseenPoints = allMasteries.some(m => {
+      const pts = masteryNotifPoints(m.id)
+      return pts > 0 && pts !== (masteryPointsSeen[m.id] ?? 0)
     })
-    const hasUnspentFreePoints = allMasteries.some(m => {
-      if (remainingFreeMasteryPointsFor(m.id) <= 0) return false
-      const p = masteryProgress[m.id]
-      const isAlwaysShown = m.id === 'enemy' || m.id === 'action'
-      return isAlwaysShown || (p && (p.level > 1 || p.xp > 0))
-    })
-    dot.hidden = !(hasUnspentLevelPoints || hasUnspentFreePoints)
+    dot.hidden = !hasUnseenPoints
   }
 
   function assignMasteryNode(id: MasteryId, treeIdx: number, nodeIdx: number): void {
@@ -4227,6 +4580,8 @@ export function createGameScene(
     if (eb.moreSpawned > 0) count = Math.ceil(count * (1 + eb.moreSpawned / 100))
     // Ascent-8 unlock: extra flat boost to enemy spawn count.
     if (ascentCount >= balance.ascent.enemyBoostUnlockAscent) count = Math.ceil(count * (1 + balance.ascent.enemyBoostMoreEnemies))
+    // Onslaught relic: +30% enemy spawn count.
+    if (hasRelic('onslaught')) count = Math.ceil(count * (1 + balance.transcend.onslaughtMoreEnemies))
 
     // Determine tier per spawn (random rolls), then enforce minimum guarantees
     type Tier = 'normal' | 'strong' | 'elite' | 'champion' | 'boss'
@@ -4515,7 +4870,7 @@ export function createGameScene(
         onBag: bagArtifact,
         onEquip: () => {
           const usedEq = artifacts.filter(a => a.equipped).length
-          if (usedEq < maxEquippedArtifacts(ascentCount)) artifact.equipped = true
+          if (usedEq < maxEquippedArtifacts(ascentCount, transcendCount > 0)) artifact.equipped = true
           artifacts.push(artifact)
           recomputeArtifactMods()
           assignAction(playerEntity, playerActionId)
@@ -5568,7 +5923,7 @@ export function createGameScene(
           // (auto-attack + time/mana-trigger extra slots). Dependent triggers ignore range.
           let effectiveRange = entity.actionRange
           if (entity.role === 'player') {
-            const activeSlotCt = ascentCount >= balance.ascent.slot3UnlockAscent ? 2 : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
+            const activeSlotCt = activeExtraSlotCount()
             for (let si = 0; si < activeSlotCt; si++) {
               const sl = extraSlots[si]
               if (!sl?.actionId || (sl.triggerType !== 'time' && sl.triggerType !== 'mana')) continue
@@ -6006,6 +6361,24 @@ export function createGameScene(
               }
             }
           }
+          // Block: the target may block a fraction of the incoming hit. Last
+          // mitigation layer; never applies to affliction ticks (those bypass
+          // applyHit entirely). Life XP still uses the pre-block value, and
+          // afflictions keep their pre-mitigation `damage` basis.
+          let blockedAmount = 0
+          let blockSuppressAffl = false
+          if (finalDamage > 0) {
+            const bp = blockParamsFor(target)
+            if (bp && (blockCooldowns.get(target.id) ?? 0) <= 0 && Math.random() * 100 < bp.chancePct) {
+              blockedAmount = finalDamage * bp.blockedPct / 100
+              finalDamage -= blockedAmount
+              blockCooldowns.set(target.id, bp.cooldownMs)
+              blockSuppressAffl = bp.suppressAfflictions
+              if (bp.healPct > 0) {
+                target.currentLife = Math.min(target.maxLife, target.currentLife + blockedAmount * bp.healPct / 100)
+              }
+            }
+          }
           // Bleed/Burn key 14: player physical/fire hits deal no direct damage (afflictions still
           // calculated from the original `damage` value). Capture whether the hit would have
           // landed pre-suppression so affliction gates that read `actualDamage > 0` still fire.
@@ -6058,11 +6431,15 @@ export function createGameScene(
             recordDps(actionId, baseDmg, 'hit:base')
             if (isCrit) recordDps(actionId, actualDamage - baseDmg, 'hit:crit')
           }
-          if (target.role === 'player' && actualDamage > 0) {
+          if (target.role === 'player' && (actualDamage > 0 || blockedAmount > 0)) {
             const eLevel = enemyLevels.get(attacker.id) ?? 1
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(attacker.id)
-            awardStatXp('life', actualDamage * balance.stat.lifeXpFromDamage * xpMult)
-            spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
+            // Blocking never reduces life XP — the basis is the full damage the
+            // hit would have dealt without the block.
+            awardStatXp('life', (actualDamage + blockedAmount) * balance.stat.lifeXpFromDamage * xpMult)
+            // Block mastery XP from the damage prevented — same model as life.
+            if (blockedAmount > 0) awardBlockXp(blockedAmount * balance.stat.lifeXpFromDamage * xpMult)
+            if (actualDamage > 0) spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
           damagedIds.add(target.id)
 
@@ -6270,7 +6647,7 @@ export function createGameScene(
 
           // Enemy → player affliction rolls: baseline 5% chance × 0.5, duration × 0.5.
           // No mastery bonuses on the enemy side (those are player-attacker buffs).
-          if (attacker.role === 'enemy' && target.role === 'player' && actualDamage > 0) {
+          if (attacker.role === 'enemy' && target.role === 'player' && actualDamage > 0 && !blockSuppressAffl) {
             const enemyChance = balance.effects.baseApplyChance * balance.effects.enemyAfflictionChanceMult
             const durMult = balance.effects.enemyAfflictionDurationMult
             if (action.tags.includes('fire') && Math.random() * 100 < enemyChance) {
@@ -6492,9 +6869,10 @@ export function createGameScene(
             }
             playerMovedSinceLastAction = false
           }
-          // Ascent: independent damage multiplier per ascension, plus universe point C (more damage)
-          if (entity.role === 'player' && ascentCount > 0) {
-            effectiveDamage *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult()
+          // Ascent: independent damage multiplier per ascension, plus universe point C
+          // (more damage) and transcendence power (applies even at ascent 0).
+          if (entity.role === 'player' && (ascentCount > 0 || transcendCount > 0)) {
+            effectiveDamage *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult() * transcendDamageMult()
           }
 
           // ── Cycle duration ────────────────────────────────────────────────
@@ -6775,8 +7153,7 @@ export function createGameScene(
 
         // ── Extra action slot tick ────────────────────────────────────────────
         {
-          const activeExtraSlotCount = ascentCount >= balance.ascent.slot3UnlockAscent ? 2
-            : ascentCount >= balance.ascent.slot2UnlockAscent ? 1 : 0
+          const activeSlots = activeExtraSlotCount()
 
           function fireExtraSlot(slotI: number, trigger: TriggerType, triggerTarget?: Entity): boolean {
             const slot = extraSlots[slotI]
@@ -6843,7 +7220,7 @@ export function createGameScene(
             slotDmg *= (balance.ascent.timeTriggerIntervalMs / 1000) * speedForBalance
             if (trigger === 'crit')       slotDmg *= balance.ascent.critTriggerDamageMult
             if (trigger === 'affliction') slotDmg *= balance.ascent.afflictionTriggerDamageMult
-            slotDmg *= slotI === 0 ? balance.ascent.slot2DamagePenalty : balance.ascent.slot3DamagePenalty
+            slotDmg *= balance.transcend.slotDamagePenalties[slotI] ?? 1
             slotDmg *= (1 + slotAb.damageIncrease / 100) * (1 + slotAb.moreDamage / 100)
             if (slotDef.tags.includes('projectile')) { const b = getProjectileBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('strike')) { const b = getStrikeBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
@@ -6854,7 +7231,7 @@ export function createGameScene(
             if (slotDef.tags.includes('area')) { const b = getAreaBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
             if (slotRb.slowHeavy) slotDmg *= 2
-            if (ascentCount > 0) slotDmg *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult()
+            if (ascentCount > 0 || transcendCount > 0) slotDmg *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult() * transcendDamageMult()
 
             const slotPreHitDuration = (1000 / effectiveSlotSpeed) / 3
 
@@ -6965,7 +7342,7 @@ export function createGameScene(
           let extraManaSpent = false
 
           // Time trigger: decrement timer (interval scaled by action speed bonus), fire on expiry
-          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+          for (let slotI = 0; slotI < activeSlots; slotI++) {
             const slot = extraSlots[slotI]
             if (!slot?.actionId || slot.triggerType !== 'time') continue
             // Compute the effective trigger interval, shortened by action speed bonuses (mirrors
@@ -6997,7 +7374,7 @@ export function createGameScene(
 
           // Crit trigger: fire for the enemy that received the crit
           if (mainSlotCritTarget !== null) {
-            for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+            for (let slotI = 0; slotI < activeSlots; slotI++) {
               const slot = extraSlots[slotI]
               if (!slot?.actionId || slot.triggerType !== 'crit') continue
               if (fireExtraSlot(slotI, 'crit', mainSlotCritTarget)) extraManaSpent = true
@@ -7005,7 +7382,7 @@ export function createGameScene(
           }
 
           // Affliction trigger: fire targeting the enemy that received the threshold-crossing affliction
-          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+          for (let slotI = 0; slotI < activeSlots; slotI++) {
             const slot = extraSlots[slotI]
             if (!slot?.actionId || slot.triggerType !== 'affliction') continue
             afflictionTriggerCounters[slotI] = (afflictionTriggerCounters[slotI] ?? 0) + afflictionAppliedThisTick
@@ -7017,7 +7394,7 @@ export function createGameScene(
 
           // Mana trigger: fire once per threshold of mana spent by the player (any slot).
           // Mana spent by the trigger's own cast lands in manaSpentThisTick and counts next tick.
-          for (let slotI = 0; slotI < activeExtraSlotCount; slotI++) {
+          for (let slotI = 0; slotI < activeSlots; slotI++) {
             const slot = extraSlots[slotI]
             if (!slot?.actionId || slot.triggerType !== 'mana') continue
             manaTriggerCounters[slotI] = (manaTriggerCounters[slotI] ?? 0) + manaSpentThisTick
@@ -7104,6 +7481,7 @@ export function createGameScene(
         tickElectrocutions(ticker.deltaMS)
         tickFrosts(ticker.deltaMS)
         tickFrozenArmor(ticker.deltaMS)
+        tickBlockCooldowns(ticker.deltaMS)
         tickKnockbacks(ticker.deltaMS)
         tickElectrocuteEffects()
         tickFrostEffects()
@@ -7379,7 +7757,7 @@ function mountBattleConfigModal(
     runeBtn.addEventListener('click', e => { e.stopPropagation(); hooks.openRunesModal() })
 
     // ── Extra slots (slot 2 / slot 3) ─────────────────────────────────────
-    const SLOT_PENALTIES = [balance.ascent.slot2DamagePenalty, balance.ascent.slot3DamagePenalty]
+    const SLOT_PENALTIES = balance.transcend.slotDamagePenalties
     const TRIGGER_LABELS: Record<TriggerType, string> = {
       time:       t('game', 'triggerTime'),
       crit:       t('game', 'triggerCrit'),

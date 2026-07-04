@@ -157,6 +157,13 @@ export const balance = {
     manaXpMultiplier:     2,   // multiplier on mana XP earned per mana point spent
   },
 
+  // ── Block (unlocked by the first Transcendence) ───────────────────────────
+  block: {
+    baseChancePct:   5,     // chance to block an incoming hit (not affliction ticks)
+    baseBlockedPct:  20,    // % of the hit's damage prevented on a block
+    baseCooldownMs:  1000,  // one block per second before recovery-speed bonuses
+  },
+
   // ── Mastery leveling ──────────────────────────────────────────────────────
   mastery: {
     xpPerLevel:                  1000, // XP required for mastery level 1 → 2
@@ -219,8 +226,6 @@ export const balance = {
     freeMasteryPointsUnlockAscent: 4,  // ascentCount at which free mastery points are earned (1 per ascent)
     slot2UnlockAscent:       3,    // ascentCount required for 2nd action trigger slot
     slot3UnlockAscent:       6,    // ascentCount required for 3rd action trigger slot
-    slot2DamagePenalty:      0.75,  // global damage multiplier for slot 2
-    slot3DamagePenalty:      0.50,  // global damage multiplier for slot 3
     artifactSlot1UnlockAscent: 5,   // ascentCount required for 1st artifact equip slot
     artifactSlot2UnlockAscent: 9,   // ascentCount required for 2nd artifact equip slot
     timeTriggerIntervalMs:  2000,   // fire period (ms) for the time trigger type
@@ -234,6 +239,21 @@ export const balance = {
     greenVeinsBaseDurationMs:     10000, // how long Green Veins buff lasts after each trigger (10 s)
     greenVeinsMaxStacks:          25,    // default maximum Green Vein stacks (major node adds 25 more → 50 total)
     greenVeinsPoisonsPerStack:    100,   // poison applications needed to gain 1 Green Vein stack
+  },
+
+  // ── Transcendence (prestige layer above Ascension) ────────────────────────
+  transcend: {
+    requiredBossLevel:   100,  // killing a boss at this enemy level (or above) readies Transcend
+    xpPerTranscend:      0.10, // +10% increased all XP per transcendence (additive with itself)
+    damagePerTranscend:  0.10, // +10% increased damage per transcendence (additive with itself)
+    maxLifePerTranscend: 0.10, // +10% increased maximum life per transcendence (additive with itself)
+    multiAscendMargin:   5,    // multiAscend relic: reachable count derived from maxLevel − margin
+    // Positional global damage penalties for active extra trigger slots
+    // (1st extra ×0.75, 2nd ×0.50, 3rd ×0.25 — the extraTrigger relic enables a 3rd).
+    slotDamagePenalties: [0.75, 0.50, 0.25],
+    onslaughtMoreEnemies: 0.30, // onslaught relic: +30% enemy spawn count
+    onslaughtMoreXp:      0.10, // onslaught relic: +10% more all XP
+    onslaughtMoreDamage:  0.10, // onslaught relic: +10% more damage
   },
 
   // ── Frost affliction ──────────────────────────────────────────────────────

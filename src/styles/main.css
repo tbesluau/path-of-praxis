@@ -3319,7 +3319,9 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
 
 /* ── Note modal ── */
 
-.note-backdrop { z-index: 35; }
+/* Notes must layer above the guide/settings sub-modals (50) that spawn them,
+   while staying under the tutorial overlay (55) and away-bonus (60). */
+.note-backdrop { z-index: 52; }
 
 .note-panel {
   width: min(420px, 92vw);
@@ -4560,4 +4562,83 @@ body.privacy-page {
 @keyframes cursor-ember {
   from { transform: translate(-50%, -50%) scale(1);   opacity: 0.9; }
   to   { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.1); opacity: 0; }
+}
+
+/* ── Transcendence ───────────────────────────────────────────────────────────
+   Gold-lettered Transcend button at the bottom of the enemy-level dropdown,
+   plus the transcendence power/relics section in the character modal. */
+.transcend-btn {
+  color: #dea83c;
+  text-shadow: 0 0 8px rgba(200, 146, 42, 0.55);
+  margin-top: var(--space-xs);
+}
+
+.relic-picker-opt .trigger-picker-opt-name {
+  color: #dea83c;
+}
+
+.char-transcend-section {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  font-size: 0.85rem;
+}
+
+.char-transcend-power {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.char-transcend-title {
+  color: #dea83c;
+  font-weight: 700;
+}
+
+.char-transcend-summary {
+  color: var(--color-text-muted);
+}
+
+.char-transcend-relics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.char-transcend-relics-label {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.char-relic-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* Owned-relic thumbnails — same look as the relic-picker options, minus interactivity. */
+.char-relic-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  border: 14px solid transparent;
+  border-image: url('/ui/kenney_ui-pack-rpg-expansion/PNG/buttonLong_blue.png') 14 fill stretch;
+  background: linear-gradient(180deg, var(--btn-face-top), var(--btn-face) 55%, var(--btn-face-bottom));
+  background-clip: padding-box;
+  text-align: left;
+}
+
+.char-relic-name {
+  color: #dea83c;
+  font-weight: 700;
+}
+
+.char-relic-desc {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }

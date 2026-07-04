@@ -572,4 +572,18 @@ Por sí sola, la Armadura helada no hace **nada** — las cargas se acumulan y s
 
 La reducción de daño se aplica después de las resistencias en el pipeline de daño del jugador.`,
   },
+
+  block: {
+    title: 'Bloqueo',
+    body: `El **Bloqueo** es una mecánica defensiva desbloqueada por la **primera Trascendencia** (comprobación en vivo — cualquier partida con una o más Trascendencias la tiene). Cuando recibes un **golpe**, tienes un **5 % de probabilidad base** de bloquear el **20 %** del daño de ese golpe. Tras un bloqueo, el bloqueo **se recupera durante 1 segundo** antes de poder activarse de nuevo (base: un bloqueo por segundo).
+
+Reglas:
+
+- El bloqueo solo se aplica a **golpes** — los ticks de aflicción (quemadura, sangrado, veneno) nunca pueden bloquearse.
+- Un golpe bloqueado sigue otorgando su **experiencia de vida completa** — bloquear nunca reduce la experiencia de vida.
+- Un golpe bloqueado aún puede infligir aflicciones, y su daño se basa en el **daño total del golpe antes del bloqueo**. El nodo mayor de Eficiencia de bloqueo puede suprimir por completo las aflicciones de los golpes bloqueados.
+- Los bonos de **velocidad de recuperación de bloqueo** añaden bloqueos enteros por segundo: +100 % = 2 bloqueos por segundo. La maestría de Bloqueo completa (8 nodos de recuperación) alcanza **9 bloqueos por segundo**.
+
+Bloquear otorga experiencia de **maestría de Bloqueo** según la cantidad de daño evitado, con los mismos requisitos y multiplicadores que la maestría de Vida (empieza lento — poca probabilidad de bloqueo significa poco daño evitado al principio).`,
+  },
 }

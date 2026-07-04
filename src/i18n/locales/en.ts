@@ -25,6 +25,7 @@ export interface TranslationSchema {
     targetRandomDesc: string
     backToMenu: string
     dieRebirth: string
+    freeRebirth: string            // die-button label while the freeRebirth relic is armed
     dieConfirmTitle: string
     dieConfirmBody: string
     dieConfirmYes: string
@@ -134,6 +135,25 @@ export interface TranslationSchema {
     upSlotB: string
     upSlotC: string
     upSlotD: string
+  }
+  transcend: {
+    btn: string                    // gold button in the enemy-level dropdown
+    pickerTitle: string            // relic selection modal title
+    pickerHint: string             // warning above the relic list (what resets)
+    confirmTitle: string           // confirm modal when all relics are owned
+    confirmBody: string
+    relicFreeRebirth: string
+    relicFreeRebirthDesc: string
+    relicMultiAscend: string
+    relicMultiAscendDesc: string
+    relicExtraTrigger: string
+    relicExtraTriggerDesc: string
+    relicOnslaught: string
+    relicOnslaughtDesc: string
+    powerLabel: string             // template: "Transcendence: {n}"
+    powerSummary: string           // template: "+{xp}% XP · +{dmg}% damage · +{life}% max life"
+    relicsLabel: string
+    ascendPlus: string             // template: "{label} (+{n})" — multiAscend button
   }
   artifacts: {
     title: string
@@ -320,6 +340,7 @@ export interface TranslationSchema {
     strike: string
     life: string
     mana: string
+    block: string
     enemy: string
     movement: string
   }
@@ -336,13 +357,14 @@ export interface TranslationSchema {
     strike_0: string; strike_1: string; strike_2: string; strike_3: string
     life_0: string; life_1: string; life_2: string; life_3: string
     mana_0: string; mana_1: string; mana_2: string; mana_3: string
+    block_0: string; block_1: string
     enemy_0: string; enemy_1: string; enemy_2: string; enemy_3: string
     movement_0: string; movement_1: string; movement_2: string
   }
   masteryDump: {
     action: string; criticalHit: string; physical: string; fire: string
     lightning: string; cold: string; rot: string; area: string; projectile: string; strike: string
-    life: string; mana: string; enemy: string; movement: string
+    life: string; mana: string; block: string; enemy: string; movement: string
   }
   runeLabel: {
     minorDmg: string; minorSpeed: string; minorMana: string; minorXp: string; minorAll: string
@@ -393,6 +415,7 @@ export const en: TranslationSchema = {
     targetRandomDesc: 'Pick random target',
     backToMenu: 'Back to menu',
     dieRebirth: 'Die and rebirth',
+    freeRebirth: 'Free Rebirth',
     dieConfirmTitle: 'Die and rebirth?',
     dieConfirmBody: 'Your current run will end and your masteries will be applied. Continue?',
     dieConfirmYes: 'Die and rebirth',
@@ -502,6 +525,25 @@ export const en: TranslationSchema = {
     upSlotB: '+1% base action critical hit chance',
     upSlotC: '7% more damage',
     upSlotD: '4% more action speed',
+  },
+  transcend: {
+    btn: 'Transcend',
+    pickerTitle: 'Choose a Relic',
+    pickerHint: 'Transcending resets everything — including ascents, universe points, and unequipped artifacts. Equipped artifacts and relics remain. Choose your relic to transcend.',
+    confirmTitle: 'Transcend?',
+    confirmBody: 'Everything resets — including ascents, universe points, and unequipped artifacts. Equipped artifacts and relics remain.',
+    relicFreeRebirth: 'Echo of Rebirth',
+    relicFreeRebirthDesc: 'Once per rebirth, gain your unearned mastery progress without dying.',
+    relicMultiAscend: 'Chainbreaker',
+    relicMultiAscendDesc: 'Ascending can grant multiple ascensions at once, up to your max enemy level −5.',
+    relicExtraTrigger: 'Third Hand',
+    relicExtraTriggerDesc: 'Unlock a permanent additional action trigger slot.',
+    relicOnslaught: 'Onslaught',
+    relicOnslaughtDesc: '30% more enemies, 10% more all XP, 10% more all damage.',
+    powerLabel: 'Transcendence: {n}',
+    powerSummary: '+{xp}% XP · +{dmg}% damage · +{life}% max life',
+    relicsLabel: 'Relics',
+    ascendPlus: '{label} (+{n})',
   },
   artifacts: {
     title: 'Artifacts',
@@ -688,6 +730,7 @@ export const en: TranslationSchema = {
     strike: 'Strike',
     life: 'Life',
     mana: 'Mana',
+    block: 'Block',
     enemy: 'Enemy',
     movement: 'Movement',
   },
@@ -704,6 +747,7 @@ export const en: TranslationSchema = {
     strike_0: 'Strike Damage', strike_1: 'Frenzy', strike_2: 'Strike Range', strike_3: 'Additional Target',
     life_0: 'Maximum Life', life_1: 'Resistances', life_2: 'Life Regeneration', life_3: 'Life Steal',
     mana_0: 'Maximum Mana', mana_1: 'Mana Shield', mana_2: 'Mana Regeneration', mana_3: 'Mana Steal',
+    block_0: 'Block Chance', block_1: 'Block Efficiency',
     enemy_0: 'Enemy Quantity', enemy_1: 'Enemy Quality', enemy_2: 'Champions and Bosses', enemy_3: 'Enemy Proliferation',
     movement_0: 'Movement Speed', movement_1: 'Dash', movement_2: 'Kite',
   },
@@ -711,7 +755,7 @@ export const en: TranslationSchema = {
     action: 'action damage', criticalHit: 'critical hit damage', physical: 'physical damage',
     fire: 'fire damage', lightning: 'lightning damage', cold: 'cold damage', rot: 'rot damage', area: 'area action radius',
     projectile: 'projectile range', strike: 'strike action speed', life: 'maximum life',
-    mana: 'maximum mana', enemy: 'enemies spawned', movement: 'movement speed',
+    mana: 'maximum mana', block: 'block chance', enemy: 'enemies spawned', movement: 'movement speed',
   },
   runeLabel: {
     minorDmg: 'Damage', minorSpeed: 'Speed', minorMana: 'Mana', minorXp: 'Experience', minorAll: 'Sampler',

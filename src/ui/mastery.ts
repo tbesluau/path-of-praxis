@@ -829,6 +829,12 @@ export function mountMasteryModal(
   masteryDumpPoints: Partial<Record<MasteryId, number>>,
   getRemainingFreePoints: (id: MasteryId) => number,
   onDie: () => void,
+  // "Rebirth" while the freeRebirth relic is armed, else "Die and rebirth".
+  dieLabel: string = t('game', 'dieRebirth'),
+  // Seen-points tracking: a mastery's unused points only show a notif dot
+  // until its tree modal has been viewed at that point count.
+  getSeenPoints: (id: MasteryId) => number = () => 0,
+  onTreeSeen: (id: MasteryId) => void = () => {},
 ): () => void {
   // Active plan: persisted in prefs, reset on ascent.
   let activePlan: string | null = getPrefs().activeMasteryPlan ?? null
@@ -852,7 +858,7 @@ export function mountMasteryModal(
       <div class="mastery-categories"></div>
       <div class="mastery-die-footer">
         <p class="mastery-die-note">${t('mastery', 'pendingGainsNote')}</p>
-        <button class="modal-btn modal-btn--danger mastery-die-btn" data-action="die">${t('game', 'dieRebirth')}</button>
+        <button class="modal-btn modal-btn--danger mastery-die-btn" data-action="die">${dieLabel}</button>
       </div>
     </div>
   `
@@ -918,11 +924,13 @@ export function mountMasteryModal(
     return out
   }
 
-  function applyRowState(rowEl: HTMLElement, label: string, s: RowState): void {
+  function applyRowState(rowEl: HTMLElement, label: string, s: RowState, id: MasteryId): void {
     const btnLabel = rowEl.querySelector<HTMLElement>('.mastery-name-label')!
     btnLabel.textContent = label
     const dot = rowEl.querySelector<HTMLElement>('.mastery-name-btn .notif-dot')!
-    dot.hidden = s.pts === 0
+    // Unused points only light the dot until the tree modal has been seen at
+    // this exact point count (new points re-light it).
+    dot.hidden = s.pts === 0 || s.pts === getSeenPoints(id)
     const barWrap = rowEl.querySelector<HTMLElement>('.mastery-bar-wrap')!
     barWrap.innerHTML = renderMasteryBar(s.oldPct, s.gainPct)
     const levelEl = rowEl.querySelector<HTMLElement>('.mastery-level')!
@@ -948,11 +956,15 @@ export function mountMasteryModal(
       // subCleanup in those callbacks — only when the tree modal itself closes.
       subCleanup = mountMasteryTreeModal(
         parent, def, masteryProgress, freeMasteryPointsUsed, masteryDumpPoints, () => getRemainingFreePoints(id), ascentCount,
-        (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); buildRows() },
-        (count) => { onDump(id, count); buildRows() },
-        () => { onReset(id); buildRows() },
+        (treeIdx, nodeIdx) => { onAssign(id, treeIdx, nodeIdx); onTreeSeen(id); buildRows() },
+        (count) => { onDump(id, count); onTreeSeen(id); buildRows() },
+        () => { onReset(id); onTreeSeen(id); buildRows() },
         () => { subCleanup = null },
       )
+      // Viewing the tree marks its current points as seen — the row dot (and
+      // the top-bar masteries dot, via the callback) clear until new points.
+      onTreeSeen(id)
+      buildRows()
     })
   }
 
@@ -988,7 +1000,7 @@ export function mountMasteryModal(
           <span class="mastery-level"></span>
           <span class="mastery-gain-badge" hidden></span>
         `
-        applyRowState(rowEl, r.label, r.state)
+        applyRowState(rowEl, r.label, r.state, r.id)
         wireRowButton(rowEl)
         catEl.appendChild(rowEl)
       }
@@ -1008,7 +1020,7 @@ export function mountMasteryModal(
       && currentIds.every((id, i) => id === newIds[i])
     if (!sameStructure) { buildRows(); return }
     for (let i = 0; i < visible.length; i++) {
-      applyRowState(currentRowEls[i], visible[i].label, visible[i].state)
+      applyRowState(currentRowEls[i], visible[i].label, visible[i].state, visible[i].id)
     }
   }
 

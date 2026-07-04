@@ -72,6 +72,19 @@ Cuando vuelves, una notificación muestra lo que has ganado. Mientras corres a �
 El progreso de Ascensión es independiente de tu partida. Puedes intentarlo en cualquier momento desde el menú; fallar una etapa de Ascensión no cuesta nada.`,
   },
 
+  'Transcendence': {
+    title: 'Trascendencia',
+    body: `La Trascendencia es la capa de prestigio por encima de la Ascensión — el reinicio más profundo del juego, y las recompensas más fuertes. Derrota a un jefe de nivel de enemigo 100 o superior y el botón dorado **Trascender** aparecerá en la parte inferior del panel de nivel de enemigo. No hay barra que llenar, pero cada Trascendencia debe ganarse de nuevo con otro jefe de alto nivel.
+
+Trascender reinicia todo lo que reinicia una Ascensión, más la propia capa de Ascensión: tu contador de ascensiones, tus puntos de universo y los artefactos que queden en la bolsa. Tus **artefactos equipados** y tus **reliquias** sobreviven — y una vez que has trascendido, tus ranuras de artefacto quedan desbloqueadas para siempre.
+
+Antes de trascender eliges una **Reliquia** — una bendición permanente que sobrevive a todos los reinicios futuros. Cada reliquia solo puede poseerse una vez: cada Trascendencia amplía tu colección hasta que todas sean tuyas.
+
+Además de la reliquia, cada Trascendencia te fortalece permanentemente: tu ganancia de experiencia, tu daño y tu vida máxima crecen con cada una. Tu poder de trascendencia y tus reliquias se muestran en la parte inferior del panel de personaje.
+
+Tu primera Trascendencia también desbloquea el **Bloqueo**: tu personaje alza un escudo y gana una probabilidad de amortiguar los golpes recibidos, con una maestría de Bloqueo dedicada en la sección Vida y Maná — y una selección de escudos en la pantalla de personalización del personaje.`,
+  },
+
   'Action Triggers': {
     title: 'Disparadores de acción',
     body: `Los disparadores de acción ejecutan una acción automáticamente cuando se cumple una condición. La primera ranura siempre es el **Ataque automático** — se dispara con un temporizador continuo. Otras ranuras de disparador se desbloquean al Ascender.

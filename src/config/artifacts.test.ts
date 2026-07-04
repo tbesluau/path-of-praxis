@@ -207,6 +207,11 @@ describe('maxEquippedArtifacts', () => {
     expect(maxEquippedArtifacts(9)).toBe(2)
     expect(maxEquippedArtifacts(15)).toBe(2)
   })
+  it('grandfathers both slots once transcended, regardless of ascent', () => {
+    expect(maxEquippedArtifacts(0, true)).toBe(2)
+    expect(maxEquippedArtifacts(5, true)).toBe(2)
+    expect(maxEquippedArtifacts(0, false)).toBe(0)
+  })
 })
 
 // ── Cold / rot sources ────────────────────────────────────────────────────────

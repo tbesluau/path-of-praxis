@@ -29,6 +29,8 @@ export function mountAscentModal(
   onAllocate: (slot: keyof UniversePointAllocations, delta: 1 | -1) => void,
   onClose: () => void,
   onOpenArtifacts?: () => void,
+  // Transcendence grandfathers artifacts-panel access even at ascent 0.
+  hasTranscended = false,
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop ascent-backdrop'
@@ -94,7 +96,7 @@ export function mountAscentModal(
           <h3 class="ascent-section-title">${t('ascent', 'universePoints')} <span class="ascent-points-avail">${t('ascent', 'available').replace('{n}', String(available))}</span></h3>
           <div class="universe-point-list">${pointsHtml}</div>
         </section>
-        ${ascentCount >= balance.ascent.artifactSlot1UnlockAscent ? `
+        ${(ascentCount >= balance.ascent.artifactSlot1UnlockAscent || hasTranscended) ? `
           <section class="ascent-section ascent-artifacts-section">
             <button class="modal-btn modal-btn--primary ascent-artifacts-btn" data-action="open-artifacts" style="position:relative">
               ${t('ascent', 'artifactsBtn')}

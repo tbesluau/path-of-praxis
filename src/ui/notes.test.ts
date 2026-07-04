@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getNoteTitle } from './notes'
+import { getNoteTitle, linkifyNoteTerms } from './notes'
 
 // The buff bar (src/scenes/game.ts renderBuffBar) wires each clickable buff icon
 // to a note via a hardcoded `data-note` slug. If a note heading is renamed the
@@ -8,5 +8,23 @@ import { getNoteTitle } from './notes'
 describe('buff-bar note slugs resolve', () => {
   it.each(['green-veins', 'frozen-armor'])('%s note exists', (id) => {
     expect(getNoteTitle(id)).toBeTruthy()
+  })
+})
+
+describe('block note linking', () => {
+  it('the block note exists', () => {
+    expect(getNoteTitle('block')).toBe('Block')
+  })
+
+  it('block-tree node descriptions link the term to the note', () => {
+    // Representative Block-tree node descriptions.
+    for (const desc of [
+      '+4% increased chance to block hits',
+      '+6% increased amount of damage blocked',
+      'Blocked hits cannot trigger afflictions on you',
+      '+100% increased block recovery speed',
+    ]) {
+      expect(linkifyNoteTerms(desc)).toContain('data-note-id="block"')
+    }
   })
 })

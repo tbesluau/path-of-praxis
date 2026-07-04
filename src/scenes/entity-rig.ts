@@ -1,9 +1,9 @@
 import { Container, Sprite } from 'pixi.js'
 import {
   pickVariants,
-  getBodyTex, getHeadTex, getLegTex, getArmTex, getWeaponTex,
+  getBodyTex, getHeadTex, getLegTex, getArmTex, getWeaponTex, getPlayerShieldTex,
   getPlayerBodyTex, getPlayerHeadTex, getPlayerLegTex, getPlayerArmTex,
-  type Tier, type Weapon, type PlayerColorKey, type HeadVariant,
+  type Tier, type Weapon, type PlayerColorKey, type HeadVariant, type ShieldVariant,
 } from '../assets/entity-art'
 import type { EntityRole } from '../core/entity'
 
@@ -19,6 +19,8 @@ const BREATHE_FREQ  = 0.0012 // idle breathing frequency
 
 // Weapons render 20% larger than their native SVG size for visibility.
 const WEAPON_SCALE  = 1.2
+// Shields render slightly larger too, hanging from the back (non-weapon) hand.
+const SHIELD_SCALE  = 1.1
 
 // Weapon anchor.y values (fraction from top = grip position in SVG)
 const WEAPON_GRIP_Y: Record<string, number> = {
@@ -65,6 +67,7 @@ export function rigTopOffset(radius: number): number {
 export interface EntityRig {
   container: Container
   setWeapon(w: Weapon): void
+  setShield(v: ShieldVariant | null): void
   setFacing(f: 1 | -1): void
   playAttack(durationMs: number): void
   update(deltaMs: number, opts: { vx: number; speed: number; maxSpeed: number }): void
@@ -80,6 +83,7 @@ export function createEntityRig(opts: {
   seed:         string
   colorKey?:    PlayerColorKey
   headOverride?: HeadVariant
+  shield?:      ShieldVariant | null
 }): EntityRig {
   const { tier, weapon, radius, seed } = opts
   const { body: bodyV, head: seedHeadV } = pickVariants(seed)
@@ -122,10 +126,20 @@ export function createEntityRig(opts: {
   frontArmC.addChild(weaponSprite)
   weaponSprite.position.set(0, ARM_H)  // grip at hand position
 
+  // Back arm gets a sub-container too so a shield swings with it. Player-only
+  // today (shield textures exist per player colour), but the seam is generic.
+  const backArmC = new Container()
+  backArmC.addChild(backArm)
+  const shieldSprite = new Sprite()
+  shieldSprite.anchor.set(0.5, 0.45)
+  shieldSprite.position.set(0, ARM_H)  // held at the hand
+  shieldSprite.visible = false
+  backArmC.addChild(shieldSprite)
+
   // ── Layout ────────────────────────────────────────────────────────────────
 
   backLeg.position.set(BACK_LEG_X,   LEG_Y)
-  backArm.position.set(BACK_ARM_X,   ARM_Y)
+  backArmC.position.set(BACK_ARM_X,  ARM_Y)
   body.position.set(0,                BODY_Y)
   head.position.set(HEAD_X,           HEAD_Y)
   frontLeg.position.set(FRONT_LEG_X, LEG_Y)
@@ -135,7 +149,7 @@ export function createEntityRig(opts: {
 
   const container = new Container()
   container.addChild(backLeg)
-  container.addChild(backArm)
+  container.addChild(backArmC)
   container.addChild(body)
   container.addChild(head)
   container.addChild(frontLeg)
@@ -151,6 +165,19 @@ export function createEntityRig(opts: {
   let walkAcc      = 0    // walk phase accumulator (ms)
 
   // ── Methods ───────────────────────────────────────────────────────────────
+
+  function setShield(v: ShieldVariant | null): void {
+    if (!v || !colorKey) {
+      shieldSprite.visible = false
+      return
+    }
+    const tex = getPlayerShieldTex(v, colorKey)
+    shieldSprite.texture = tex
+    shieldSprite.width   = tex.width  * SHIELD_SCALE
+    shieldSprite.height  = tex.height * SHIELD_SCALE
+    shieldSprite.visible = true
+  }
+  if (opts.shield) setShield(opts.shield)
 
   function setWeapon(w: Weapon): void {
     const tex = getWeaponTex(w)
@@ -214,17 +241,17 @@ export function createEntityRig(opts: {
       else               angle =  2.3 - 2.3 * ((p - 0.65) / 0.35)
       frontArmC.rotation = angle
       // Back arm and torso counter the swing for follow-through punch
-      backArm.rotation   = angle * -0.25
+      backArmC.rotation  = angle * -0.25
       body.rotation      = wobble + angle * 0.12
     } else {
       // Idle / walk arm swing (counter to legs)
       const armSwing = walking ? -legSwing * ARM_COUNTER : 0
       frontArmC.rotation = armSwing
-      backArm.rotation   = -armSwing
+      backArmC.rotation  = -armSwing
     }
   }
 
-  return { container, setWeapon, setFacing, playAttack, update }
+  return { container, setWeapon, setShield, setFacing, playAttack, update }
 }
 
 // Re-export Sprite type for use without importing pixi directly

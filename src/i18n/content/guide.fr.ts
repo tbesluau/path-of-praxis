@@ -75,6 +75,19 @@ Chaque multi-action est un nouveau cast à part entière : elle peut déclencher
 La progression de l'Ascension est séparée de ta partie. Tu peux la tenter à tout moment depuis le menu ; échouer à une étape d'Ascension ne coûte rien.`,
   },
 
+  'Transcendence': {
+    title: 'Transcendance',
+    body: `La Transcendance est la couche de prestige au-dessus de l'Ascension — la réinitialisation la plus profonde du jeu, et les récompenses les plus fortes. Vaincs un boss au niveau ennemi 100 ou plus et le bouton doré **Transcender** apparaît en bas du panneau de niveau ennemi. Il n'y a pas de barre à remplir, mais chaque Transcendance doit être regagnée avec un nouveau boss de haut niveau.
+
+Transcender réinitialise tout ce qu'une Ascension réinitialise, plus la couche d'Ascension elle-même : ton compteur d'ascensions, tes points d'univers et les artéfacts restés dans le sac. Tes **artéfacts équipés** et tes **reliques** survivent — et une fois que tu as transcendé, tes emplacements d'artéfact restent débloqués pour de bon.
+
+Avant de transcender, tu choisis une **Relique** — un atout permanent qui survit à toutes les réinitialisations futures. Chaque relique ne peut être possédée qu'une seule fois : chaque Transcendance agrandit donc ta collection jusqu'à ce qu'elles soient toutes à toi.
+
+En plus de la relique, chaque Transcendance te renforce durablement : ton gain d'expérience, tes dégâts et ta vie maximale grandissent à chaque fois. Ta puissance de transcendance et tes reliques s'affichent en bas du panneau de personnage.
+
+Ta première Transcendance débloque aussi le **Blocage** : ton personnage lève un bouclier et gagne une chance d'amortir les coups reçus, avec une maîtrise Blocage dédiée dans la section Vie & Mana — et un choix de boucliers dans l'écran de personnalisation du personnage.`,
+  },
+
   'Action Triggers': {
     title: 'Déclencheurs d\'action',
     body: `Les déclencheurs d'action déclenchent une action automatiquement quand une condition est remplie. Le premier emplacement est toujours l'**Auto-attaque** — il se déclenche sur une minuterie continue. D'autres emplacements de déclencheur se débloquent en Ascendant.

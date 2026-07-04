@@ -33,6 +33,19 @@ export const PLAYER_COLOR_SWATCHES: Record<PlayerColorKey, string> = {
   black:  '#282828',
 }
 
+// Shields — held in the non-weapon hand once Block is unlocked (Transcendence 1).
+export type ShieldVariant = 'buckler' | 'round' | 'pavise' | 'kite' | 'tome'
+
+export const SHIELD_VARIANTS: ShieldVariant[] = ['buckler', 'round', 'pavise', 'kite', 'tome']
+
+export const SHIELD_VARIANT_LABELS: Record<ShieldVariant, string> = {
+  buckler: 'Leather Round',
+  round:   'Iron & Wood',
+  pavise:  'Pavise',
+  kite:    'Kite',
+  tome:    'Tome',
+}
+
 export interface EntityPalette {
   armor:      string
   armorShade: string
@@ -349,6 +362,54 @@ function weaponSvg(w: Weapon): string {
   return '' // unreachable
 }
 
+// ── Shield SVGs ───────────────────────────────────────────────────────────────
+// Painted surfaces take the entity palette (armor/armorShade/trim) so shields
+// respect the character colour like the armour does; wood/leather/steel accents
+// stay neutral.
+
+function shieldSvg(v: ShieldVariant, p: EntityPalette): string {
+  if (v === 'buckler') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20">
+  <circle cx="10" cy="10" r="9" fill="${p.armor}" ${OLb}/>
+  <circle cx="10" cy="10" r="9" fill="none" stroke="${p.armorShade}" stroke-width="2.4"/>
+  <circle cx="10" cy="10" r="6.4" fill="none" stroke="${p.armorShade}" stroke-width="0.7" stroke-dasharray="1.6 1.4" opacity="0.85"/>
+  <circle cx="10" cy="10" r="2.6" fill="#9aa0a8" ${OL}/>
+  <circle cx="9.2" cy="9.2" r="0.9" fill="#e8ecf0" opacity="0.7"/>
+</svg>`
+
+  if (v === 'round') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20">
+  <circle cx="10" cy="10" r="9" fill="#8a6030" ${OLb}/>
+  <path d="M6.5,1.7 L6.5,18.3 M13.5,1.7 L13.5,18.3" stroke="#5a3c18" stroke-width="0.8" opacity="0.8"/>
+  <path d="M10,1 A9,9 0 0 1 10,19" fill="${p.armor}" opacity="0.85"/>
+  <circle cx="10" cy="10" r="9" fill="none" stroke="#9aa0a8" stroke-width="2"/>
+  <circle cx="10" cy="10" r="2.8" fill="${p.trim}" ${OL}/>
+</svg>`
+
+  if (v === 'pavise') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 26" width="18" height="26">
+  <path d="M2,4 Q9,0 16,4 L16,22 Q9,26 2,22 Z" fill="${p.armor}" ${OLb}/>
+  <path d="M2,4 Q9,0 16,4 L16,7 Q9,3.4 2,7 Z" fill="${p.trim}" ${OLs}/>
+  <path d="M9,2.4 L9,24.6" stroke="${p.armorShade}" stroke-width="2.6"/>
+  <path d="M9,2.4 L9,24.6" stroke="#000" stroke-width="0.6" opacity="0.35"/>
+  <circle cx="9" cy="13" r="1.4" fill="#9aa0a8" ${OLs}/>
+</svg>`
+
+  if (v === 'kite') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 24" width="16" height="24">
+  <path d="M8,1 Q15,3 15,9 Q15,17 8,23 Q1,17 1,9 Q1,3 8,1 Z" fill="${p.armor}" ${OLb}/>
+  <path d="M8,1 Q15,3 15,9 Q15,17 8,23 Q1,17 1,9 Q1,3 8,1 Z" fill="none" stroke="${p.trim}" stroke-width="1.2" opacity="0.9"/>
+  <path d="M8,3 L8,21 M2.6,9.5 L13.4,9.5" stroke="${p.armorShade}" stroke-width="1.6"/>
+  <circle cx="8" cy="9.5" r="1.6" fill="#9aa0a8" ${OLs}/>
+</svg>`
+
+  // tome — a heavy spellbook for caster tastes
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 20" width="16" height="20">
+  <rect x="1" y="1.5" width="13" height="17" rx="1.5" fill="${p.armor}" ${OLb}/>
+  <rect x="1" y="1.5" width="3" height="17" rx="1.2" fill="${p.armorShade}" ${OLs}/>
+  <path d="M14,3.4 L15,3.4 L15,16.6 L14,16.6" fill="#e8dfc0" stroke="#b8ac88" stroke-width="0.5"/>
+  <rect x="8.6" y="8" width="4.2" height="3.6" rx="0.8" fill="none" stroke="${p.trim}" stroke-width="1"/>
+  <circle cx="10.7" cy="9.8" r="0.8" fill="${p.trim}"/>
+  <path d="M5.6,5 L12.6,5 M5.6,15 L12.6,15" stroke="${p.trim}" stroke-width="0.9" opacity="0.8"/>
+</svg>`
+}
+
 // ── Weapon-for-action mapping ─────────────────────────────────────────────────
 
 export function weaponForAction(action: ActionDef): Weapon {
@@ -406,6 +467,9 @@ export async function preloadEntityArt(): Promise<void> {
     }
     tasks.push(loadSvgTex(`leg_pc_${colorKey}`, legSvg(p)))
     tasks.push(loadSvgTex(`arm_pc_${colorKey}`, armSvg(p)))
+    for (const sv of SHIELD_VARIANTS) {
+      tasks.push(loadSvgTex(`shield_${sv}_pc_${colorKey}`, shieldSvg(sv, p)))
+    }
   }
 
   // Non-elemental weapons
@@ -457,6 +521,9 @@ export function getPlayerLegTex(colorKey: PlayerColorKey): Texture {
 export function getPlayerArmTex(colorKey: PlayerColorKey): Texture {
   return texCache.get(`arm_pc_${colorKey}`)!
 }
+export function getPlayerShieldTex(v: ShieldVariant, colorKey: PlayerColorKey): Texture {
+  return texCache.get(`shield_${v}_pc_${colorKey}`)!
+}
 
 // ── Character preview SVG ─────────────────────────────────────────────────────
 
@@ -471,7 +538,7 @@ function embedPart(svg: string, origW: number, origH: number, tx: number, ty: nu
   return `<g transform="translate(${tx.toFixed(2)},${ty.toFixed(2)}) scale(${sx.toFixed(4)},${sy.toFixed(4)})">${stripSvg(svg)}</g>`
 }
 
-export function renderCharacterPreviewSvg(headVariant: HeadVariant, colorKey: PlayerColorKey): string {
+export function renderCharacterPreviewSvg(headVariant: HeadVariant, colorKey: PlayerColorKey, shield?: ShieldVariant | null): string {
   const p = PLAYER_COLOR_PALETTES[colorKey]
   const S = 1.25   // rig scale for preview
   const CX = 40, CY = 65   // waist centre in SVG space
@@ -485,10 +552,21 @@ export function renderCharacterPreviewSvg(headVariant: HeadVariant, colorKey: Pl
   // back-to-front order
   const backLeg  = embedPart(legSvg(p),  10, 18, CX + (-5)*S - legW/2, CY + 0,       legW,  legH)
   const backArm  = embedPart(armSvg(p),  10, 16, CX + (-16)*S - armW/2, CY + (-26)*S, armW, armH)
+  // Shield hangs from the back (non-weapon) hand, drawn over the back arm but
+  // behind the body — matching the rig's layering.
+  let shield_ = ''
+  if (shield) {
+    const dims: Record<ShieldVariant, [number, number]> = {
+      buckler: [20, 20], round: [20, 20], pavise: [18, 26], kite: [16, 24], tome: [16, 20],
+    }
+    const [sw, sh] = dims[shield]
+    const shW = sw * S * 1.1, shH = sh * S * 1.1
+    shield_ = embedPart(shieldSvg(shield, p), sw, sh, CX + (-16)*S - shW/2, CY + (-26)*S + armH - shH/2, shW, shH)
+  }
   const body_    = embedPart(bodySvg('tunic', p), 36, 22, CX - bodyW/2, CY + (-11)*S - bodyH/2, bodyW, bodyH)
   const head_    = embedPart(headSvg(headVariant, p), 24, 20, CX + 2*S - headW/2, CY + (-26)*S - headH, headW, headH)
   const frontLeg = embedPart(legSvg(p),  10, 18, CX + 5*S - legW/2, CY + 0,          legW,  legH)
   const frontArm = embedPart(armSvg(p),  10, 16, CX + 16*S - armW/2, CY + (-26)*S,   armW,  armH)
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 100" width="80" height="100">${backLeg}${backArm}${body_}${head_}${frontLeg}${frontArm}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 100" width="80" height="100">${backLeg}${backArm}${shield_}${body_}${head_}${frontLeg}${frontArm}</svg>`
 }

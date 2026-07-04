@@ -226,7 +226,10 @@ export function computeArtifactMods(artifacts: Artifact[]): ArtifactMods {
   return m
 }
 
-export function maxEquippedArtifacts(ascentCount: number): number {
+export function maxEquippedArtifacts(ascentCount: number, transcended = false): number {
+  // Transcendence grandfathers both equip slots permanently — equipped
+  // artifacts survive the transcend reset and must keep working at ascent 0.
+  if (transcended) return 2
   if (ascentCount >= balance.ascent.artifactSlot2UnlockAscent) return 2
   if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent) return 1
   return 0

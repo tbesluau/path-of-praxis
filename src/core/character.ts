@@ -3,6 +3,7 @@ import { nodeCost, type MasteryId } from '../config/masteries'
 import type { RuneId } from '../config/runes'
 import type { Artifact } from '../config/artifacts'
 import { maxEquippedArtifacts } from '../config/artifacts'
+import { isRelicId, type RelicId } from '../config/relics'
 import { storage } from './storage'
 
 const STORAGE_KEY = 'pop:save'
@@ -105,6 +106,12 @@ export interface RunProgress {
   enemyXp: number
   distancePx: number
   critXp: number
+  // freeRebirth relic: whether the no-death mastery grant was used this run.
+  freeRebirthUsed?: boolean
+  // Whether the character-button notification was seen this run.
+  charNotifSeen?: boolean
+  // Block mastery XP banked this run (damage prevented by blocks).
+  blockXp?: number
 }
 
 export function defaultRunProgress(): RunProgress {
@@ -158,11 +165,16 @@ export interface Character {
   extraSlots: ExtraActionSlot[]
   freeMasteryPointsUsed: Partial<Record<MasteryId, number>>
   masteryDumpPoints: Partial<Record<MasteryId, number>>
+  // Per-mastery point counts already seen in the tree modal (notif-dot memory).
+  masteryPointsSeen: Partial<Record<MasteryId, number>>
   unlockedTriggers: ('crit' | 'affliction')[]
   lastSeenAt: number       // Date.now() at last save/frame; basis for the ×2-speed away bonus
   fastForwardMs: number    // remaining ×2-speed stockpile in ms (≤ 3_600_000)
   artifacts: Artifact[]
   scraps: number           // artifact-upgrade currency, earned by deleting/dropping artifacts
+  transcendCount: number   // completed Transcendences (prestige layer above Ascension)
+  relics: RelicId[]        // permanent relics chosen when Transcending (each owned once)
+  transcendReady: boolean  // a lvl-100+ boss was killed this cycle; consumed on transcend
 }
 
 interface SaveData {
@@ -242,6 +254,9 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       enemyXp: Number.isFinite(c.runProgress.enemyXp) ? c.runProgress.enemyXp : 0,
       distancePx: Number.isFinite(c.runProgress.distancePx) ? c.runProgress.distancePx : 0,
       critXp: Number.isFinite(c.runProgress.critXp) ? c.runProgress.critXp : 0,
+      freeRebirthUsed: c.runProgress.freeRebirthUsed === true,
+      charNotifSeen: c.runProgress.charNotifSeen === true,
+      blockXp: Number.isFinite(c.runProgress.blockXp) ? c.runProgress.blockXp : 0,
     } : defaultRunProgress(),
     actionRunes: c.actionRunes ?? {},
     ascentCount: c.ascentCount ?? 0,
@@ -268,6 +283,10 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       Object.entries(c.masteryDumpPoints ?? {})
         .map(([k, v]) => [k, typeof v === 'number' && v >= 0 ? Math.floor(v) : 0])
     ) as Partial<Record<MasteryId, number>>,
+    masteryPointsSeen: Object.fromEntries(
+      Object.entries(c.masteryPointsSeen ?? {})
+        .map(([k, v]) => [k, typeof v === 'number' && v >= 0 ? Math.floor(v) : 0]),
+    ) as Partial<Record<MasteryId, number>>,
     lastSeenAt: typeof c.lastSeenAt === 'number' ? c.lastSeenAt : Date.now(),
     fastForwardMs: typeof c.fastForwardMs === 'number'
       ? Math.max(0, Math.min(3_600_000, Math.floor(c.fastForwardMs)))
@@ -276,7 +295,8 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       if (!Array.isArray(c.artifacts)) return []
       const raw = (c.artifacts as Artifact[]).filter(isValidArtifact).slice(0, 20)
       const ascentCnt = typeof c.ascentCount === 'number' ? c.ascentCount : 0
-      const maxEquipped = maxEquippedArtifacts(ascentCnt)
+      const transcended = typeof c.transcendCount === 'number' && c.transcendCount > 0
+      const maxEquipped = maxEquippedArtifacts(ascentCnt, transcended)
       let equippedCount = 0
       return raw.map(a => {
         if (a.equipped) {
@@ -287,6 +307,9 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       })
     })(),
     scraps: typeof c.scraps === 'number' && c.scraps >= 0 ? Math.floor(c.scraps) : 0,
+    transcendCount: typeof c.transcendCount === 'number' && c.transcendCount >= 0 ? Math.floor(c.transcendCount) : 0,
+    relics: Array.isArray(c.relics) ? (c.relics as unknown[]).filter(isRelicId) : [],
+    transcendReady: c.transcendReady === true,
   }
 }
 
@@ -367,11 +390,15 @@ export function createCharacter(name: string, actionId: string): Character {
     extraSlots: [],
     freeMasteryPointsUsed: {},
     masteryDumpPoints: {},
+    masteryPointsSeen: {},
     unlockedTriggers: [],
     lastSeenAt: Date.now(),
     fastForwardMs: 0,
     artifacts: [],
     scraps: 0,
+    transcendCount: 0,
+    relics: [],
+    transcendReady: false,
   }
   data.characters.push(char)
   data.currentId = char.id
@@ -444,6 +471,10 @@ export function saveCharacterState(
   masteryDumpPoints?: Partial<Record<MasteryId, number>>,
   artifacts?: Artifact[],
   scraps?: number,
+  transcendCount?: number,
+  relics?: RelicId[],
+  transcendReady?: boolean,
+  masteryPointsSeen?: Partial<Record<MasteryId, number>>,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -470,5 +501,9 @@ export function saveCharacterState(
   if (masteryDumpPoints !== undefined) char.masteryDumpPoints = masteryDumpPoints
   if (artifacts !== undefined) char.artifacts = artifacts
   if (scraps !== undefined) char.scraps = scraps
+  if (transcendCount !== undefined) char.transcendCount = transcendCount
+  if (relics !== undefined) char.relics = relics
+  if (transcendReady !== undefined) char.transcendReady = transcendReady
+  if (masteryPointsSeen !== undefined) char.masteryPointsSeen = masteryPointsSeen
   write(data)
 }
