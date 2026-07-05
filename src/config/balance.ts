@@ -222,7 +222,6 @@ export const balance = {
     enemyBoostUnlockAscent:    8,    // ascentCount unlocking +enemies and +enemy-level XP
     enemyBoostMoreEnemies:     0.20, // +20% enemy spawn count from the ascent-8 unlock
     enemyBoostMoreLevelXp:     0.20, // +20% enemy level XP from the ascent-8 unlock
-    endgameTutorialAscent:     10,   // ascentCount that shows the end-game tutorial screen
     freeMasteryPointsUnlockAscent: 4,  // ascentCount at which free mastery points are earned (1 per ascent)
     slot2UnlockAscent:       3,    // ascentCount required for 2nd action trigger slot
     slot3UnlockAscent:       6,    // ascentCount required for 3rd action trigger slot

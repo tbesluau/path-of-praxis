@@ -4011,16 +4011,6 @@ export function createGameScene(
       }
     }
 
-    if (prevAscentCount < balance.ascent.endgameTutorialAscent && ascentCount >= balance.ascent.endgameTutorialAscent
-        && !isTutorialSeen('ascent-10') && !getPrefs().tutorialDisabled) {
-      showTutorial({
-        id: 'ascent-10',
-        steps: [{ message: getTutorialMessage('ascent-10', 0) }],
-        parent: container,
-        openGuide,
-        onDone: () => {},
-      })
-    }
   }
 
   // ── Transcendence ──────────────────────────────────────────────────────────
