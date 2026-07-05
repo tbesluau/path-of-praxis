@@ -54,7 +54,4 @@ export const tutorialsFr: Record<string, string> = {
 
   'first-enemy-level.1':
     "Utilise les flèches pour choisir le niveau d'ennemi, ou active Auto pour qu'il monte automatiquement à mesure que tu débloques de nouveaux niveaux. Des niveaux plus élevés veulent dire des ennemis plus coriaces — et plus d'XP par combat.",
-
-  'ascent-7.0':
-    "Félicitations, tu as atteint le contenu de fin actuel. D'autres contenus sont en préparation en ce moment même. N'hésite pas à continuer avec ce personnage ou à expérimenter avec d'autres builds — merci d'avoir joué !",
 }
