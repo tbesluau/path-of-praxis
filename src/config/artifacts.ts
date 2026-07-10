@@ -285,9 +285,24 @@ export function artifactQuality(a: Artifact): number {
 
 // ── Scraps & upgrades ─────────────────────────────────────────────────────────
 
-/** Scraps granted for deleting/dropping an artifact: 1/2/3 by light/medium/heavy. */
+/** Total scraps spent on an artifact's upgrades so far (sum of the cost curve). */
+export function totalUpgradeSpent(a: Artifact): number {
+  let cost = 1
+  let total = 0
+  for (let i = 0; i < (a.upgradeCount ?? 0); i++) {
+    total += cost
+    cost = Math.ceil(cost * 1.5)
+  }
+  return total
+}
+
+/**
+ * Scraps granted for deleting/dropping an artifact: 1/2/3 by
+ * light/medium/heavy, plus half the scraps spent on its upgrades
+ * (rounded down).
+ */
 export function scrapsForArtifact(a: Artifact): number {
-  return a.lines.length
+  return a.lines.length + Math.floor(totalUpgradeSpent(a) / 2)
 }
 
 /** Upgrade cost in scraps: starts at 1, +50% rounded up each upgrade (1, 2, 3, 5, 8, 12, 18, 27, 41, …). */
