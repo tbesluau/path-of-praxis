@@ -1,7 +1,7 @@
 import { t } from '../i18n'
 import { playSound } from '../audio'
-import type { Artifact, ArtifactLine, UpgradeResult } from '../config/artifacts'
-import { describePositive, describeNegative, upgradeCost } from '../config/artifacts'
+import type { Artifact, PositiveModifier, NegativeModifier, UpgradeResult } from '../config/artifacts'
+import { describePositive, describeNegative, upgradeCost, modifierQuality, artifactQuality } from '../config/artifacts'
 
 // Matches the Lucide `trash-2` glyph used for character deletion in the menu.
 const TRASH_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`
@@ -18,25 +18,44 @@ function weightLabel(lines: number): string {
   return t('artifacts', 'weightLight')
 }
 
-function positiveLineHtml(line: ArtifactLine): string {
-  const pd = describePositive(line.positive)
+// Per-modifier roll quality, shown at the end of each line: 0% = worst
+// possible roll, 100% = perfect (for bad lines, lower rolls score higher).
+function qualityHtml(m: PositiveModifier | NegativeModifier): string {
+  return ` <span class="artifact-line-quality">(${Math.round(modifierQuality(m))}%)</span>`
+}
+
+function positiveLineHtml(positive: PositiveModifier): string {
+  const pd = describePositive(positive)
   const sourceKey = pd.source ? t('artifacts', `source${pd.source.charAt(0).toUpperCase() + pd.source.slice(1)}` as 'sourceFire') : ''
   const posKey = `pos${pd.key.charAt(0).toUpperCase() + pd.key.slice(1)}` as 'posGlobalMoreDamage'
   const posText = t('artifacts', posKey)
     .replace('{v}', String(pd.value))
     .replace('{source}', sourceKey)
-  return `<span class="artifact-line-positive">${posText}</span>`
+  return `<span class="artifact-line-positive">${posText}${qualityHtml(positive)}</span>`
 }
 
-function negativeLineHtml(line: ArtifactLine): string {
-  const nd = describeNegative(line.negative)
+function negativeLineHtml(negative: NegativeModifier): string {
+  const nd = describeNegative(negative)
   const negKey = `neg${nd.key.charAt(0).toUpperCase() + nd.key.slice(1)}` as 'negDamageTaken'
   const negText = t('artifacts', negKey).replace('{v}', String(nd.value))
-  return `<span class="artifact-line-negative">${negText}</span>`
+  return `<span class="artifact-line-negative">${negText}${qualityHtml(negative)}</span>`
+}
+
+function positivesHtml(artifact: Artifact): string {
+  return artifact.lines.map(l => positiveLineHtml(l.positive)).join('')
+}
+
+function negativesHtml(artifact: Artifact): string {
+  return artifact.lines.filter(l => l.negative).map(l => negativeLineHtml(l.negative!)).join('')
 }
 
 function allLinesHtml(artifact: Artifact): string {
-  return artifact.lines.map(positiveLineHtml).join('') + artifact.lines.map(negativeLineHtml).join('')
+  return positivesHtml(artifact) + negativesHtml(artifact)
+}
+
+// "Artifact quality" — the average of all line qualities, next to the title.
+function titleQualityHtml(artifact: Artifact): string {
+  return ` <span class="artifact-quality">(${Math.round(artifactQuality(artifact))}%)</span>`
 }
 
 function renderArtifactThumb(
@@ -60,7 +79,7 @@ function renderArtifactThumb(
     <div class="artifact-thumb-row">
       <div class="artifact-thumb ${rc}${equippedClass}" data-artifact-id="${artifact.id}">
         <div class="artifact-thumb-header">
-          <span class="artifact-rarity-label">${weightLabel(artifact.lines.length)}</span>
+          <span class="artifact-rarity-label">${weightLabel(artifact.lines.length)}${titleQualityHtml(artifact)}</span>
         </div>
         <div class="artifact-thumb-lines">${allLinesHtml(artifact)}</div>
         <div class="artifact-thumb-btn-row">
@@ -101,14 +120,14 @@ export function mountDeleteConfirmModal(
   return teardown
 }
 
-// Renders the affected modifier's line text at an arbitrary value (for the
+// Renders the improved modifier's line text at an arbitrary value (for the
 // before → after display in the upgrade result modal).
-function modifierHtmlAt(artifact: Artifact, res: Extract<UpgradeResult, { kind: 'upgraded' }>, value: number): string {
-  const line = artifact.lines[res.lineIndex]
-  if (res.target === 'positive') {
-    return positiveLineHtml({ ...line, positive: { ...line.positive, value } })
+function improvementHtmlAt(artifact: Artifact, imp: NonNullable<Extract<UpgradeResult, { kind: 'upgraded' }>['improvement']>, value: number): string {
+  const line = artifact.lines[imp.lineIndex]
+  if (imp.target === 'positive') {
+    return positiveLineHtml({ ...line.positive, value })
   }
-  return negativeLineHtml({ ...line, negative: { ...line.negative, value } })
+  return negativeLineHtml({ ...line.negative!, value })
 }
 
 export function mountUpgradeResultModal(
@@ -120,9 +139,17 @@ export function mountUpgradeResultModal(
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
   const isUpgraded = result.kind === 'upgraded'
-  const bodyHtml = isUpgraded
-    ? `<p class="modal-body artifact-upgrade-diff">${modifierHtmlAt(artifact, result, result.before)} → ${modifierHtmlAt(artifact, result, result.after)}</p>`
-    : `<p class="modal-body">${t('artifacts', 'upgradeMaxedBody')}</p>`
+  let bodyHtml = ''
+  if (result.kind === 'upgraded') {
+    if (result.removed) {
+      bodyHtml += `<p class="modal-body artifact-upgrade-removed"><strong>${t('artifacts', 'upgradeRemovedLabel')}</strong> <s>${negativeLineHtml(result.removed)}</s></p>`
+    }
+    if (result.improvement) {
+      bodyHtml += `<p class="modal-body artifact-upgrade-diff">${improvementHtmlAt(artifact, result.improvement, result.improvement.before)} → ${improvementHtmlAt(artifact, result.improvement, result.improvement.after)}</p>`
+    }
+  } else {
+    bodyHtml = `<p class="modal-body">${t('artifacts', 'upgradeMaxedBody')}</p>`
+  }
   backdrop.innerHTML = `
     <div class="modal-panel" role="dialog" aria-modal="true">
       <h2 class="modal-title">${t('artifacts', isUpgraded ? 'upgradeResultTitle' : 'upgradeMaxedTitle')}</h2>
@@ -150,13 +177,13 @@ export function mountArtifactCardModal(
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop'
-  const posHtml = artifact.lines.map(positiveLineHtml).join('')
-  const negHtml = artifact.lines.map(negativeLineHtml).join('')
+  const posHtml = positivesHtml(artifact)
+  const negHtml = negativesHtml(artifact)
   const rc = rarityClass(artifact.lines.length)
   backdrop.innerHTML = `
     <div class="modal-panel artifact-card ${rc}" role="dialog" aria-modal="true">
       <button class="artifact-card-drop-btn" data-action="drop" aria-label="${t('artifacts', 'drop')}" title="${t('artifacts', 'drop')}">${TRASH_ICON}</button>
-      <h2 class="modal-title">${weightLabel(artifact.lines.length)}</h2>
+      <h2 class="modal-title">${weightLabel(artifact.lines.length)}${titleQualityHtml(artifact)}</h2>
       <div class="artifact-card-lines">${posHtml}${negHtml}</div>
       <div class="artifact-card-actions">
         <button class="modal-btn modal-btn--primary" data-action="bag">${t('artifacts', 'bag')}</button>
@@ -181,12 +208,14 @@ export function mountArtifactsModal(
     getMaxEquipped: () => number
     getMax: () => number
     getScraps: () => number
+    getAutoDiscard: () => number
   },
   actions: {
     onEquip: (id: string) => void
     onUnequip: (id: string) => void
     onDelete: (id: string) => void
     onUpgrade: (id: string) => UpgradeResult | null
+    onAutoDiscardChange: (v: number) => void
   },
   onClose: () => void,
 ): () => void {
@@ -207,6 +236,25 @@ export function mountArtifactsModal(
     const ordered = [...artifacts].sort((a, b) => Number(b.equipped) - Number(a.equipped))
     const thumbsHtml = ordered.map(a => renderArtifactThumb(a, used, maxEquipped, scraps)).join('')
 
+    // Auto-discard threshold widget — mirrors the enemy-level arrow buttons.
+    const autoDiscard = state.getAutoDiscard()
+    const autoDiscardText = autoDiscard <= 0
+      ? t('artifacts', 'autoDiscardNever')
+      : autoDiscard >= 110
+        ? t('artifacts', 'autoDiscardAll')
+        : t('artifacts', 'autoDiscardBelow').replace('{v}', String(autoDiscard)).replace('<', '&lt;')
+    const arrowBase = `${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG`
+    const autoDiscardHtml = `
+      <div class="artifact-autodiscard">
+        <span class="artifact-autodiscard-label">${t('artifacts', 'autoDiscardLabel')}</span>
+        <div class="artifact-autodiscard-main">
+          <button class="enemy-level-btn" data-action="autodiscard-down" ${autoDiscard <= 0 ? 'disabled' : ''} aria-label="${t('artifacts', 'autoDiscardDown')}"><img class="enemy-level-arrow" src="${arrowBase}/arrowSilver_left.png" alt=""></button>
+          <span class="artifact-autodiscard-display">${autoDiscardText}</span>
+          <button class="enemy-level-btn" data-action="autodiscard-up" ${autoDiscard >= 110 ? 'disabled' : ''} aria-label="${t('artifacts', 'autoDiscardUp')}"><img class="enemy-level-arrow" src="${arrowBase}/arrowSilver_right.png" alt=""></button>
+        </div>
+      </div>
+    `
+
     backdrop.innerHTML = `
       <div class="modal-panel artifacts-panel" role="dialog" aria-modal="true" aria-labelledby="artifacts-title">
         <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
@@ -217,6 +265,7 @@ export function mountArtifactsModal(
           <span class="artifact-scraps">${t('artifacts', 'scrapsLabel').replace('{n}', String(scraps))}</span>
         </div>
         ${isFull ? `<p class="artifact-warning">${t('artifacts', 'full')}</p>` : ''}
+        ${autoDiscardHtml}
         <div class="artifact-grid">${thumbsHtml.length ? thumbsHtml : '<p class="artifact-empty">—</p>'}</div>
       </div>
     `
@@ -224,6 +273,15 @@ export function mountArtifactsModal(
     const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
     backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
     backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="autodiscard-down"]')!.addEventListener('click', () => {
+      actions.onAutoDiscardChange(Math.max(0, state.getAutoDiscard() - 10))
+      buildPanel()
+    })
+    backdrop.querySelector<HTMLButtonElement>('[data-action="autodiscard-up"]')!.addEventListener('click', () => {
+      actions.onAutoDiscardChange(Math.min(110, state.getAutoDiscard() + 10))
+      buildPanel()
+    })
 
     backdrop.querySelectorAll<HTMLButtonElement>('[data-artifact-id][data-action="equip"]').forEach(btn => {
       btn.addEventListener('click', () => {

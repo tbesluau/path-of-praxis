@@ -115,6 +115,14 @@ La **rareza** está determinada por el número de pares de modificadores: un Art
 - **Nivel de jefe 30+** — los Artefactos Medios (2 líneas) pueden caer
 - **Nivel de jefe 50+** — los Artefactos Pesados (3 líneas) pueden caer
 
-Para gestionar tu colección, abre el panel de Artefactos desde el menú de Ascensión (disponible a partir de la Ascensión 5). Desde allí puedes equipar, desequipar o eliminar permanentemente artefactos.`,
+Para gestionar tu colección, abre el panel de Artefactos desde el menú de Ascensión (disponible a partir de la Ascensión 5). Desde allí puedes equipar, desequipar o eliminar permanentemente artefactos.
+
+**Calidad** — cada línea muestra lo cerca que está de una tirada perfecta, de 0 % (peor) a 100 % (perfecta); en las líneas negativas, las tiradas más bajas puntúan más alto. El porcentaje junto al nombre del artefacto es su **calidad** global: la media de todas sus líneas.
+
+**Chatarra y mejoras** — eliminar un artefacto (o descartar un botín recién caído) otorga **Chatarra**: 1 por un Ligero, 2 por un Medio, 3 por un Pesado. La chatarra paga las **mejoras**: cada mejora hace progresar una línea no maximizada al azar un 10 % de su calidad — las positivas suben, las negativas bajan. Una línea nunca puede superar el mejor valor que podría haber sacado. La primera mejora cuesta 1 de chatarra, y el coste crece un 50 % (redondeado hacia arriba) con cada mejora posterior (1, 2, 3, 5, 8, 12, …).
+
+**Eliminación de líneas negativas** — la 5.ª y la 10.ª mejora eliminan cada una la línea negativa de peor calidad antes de mejorar una línea como de costumbre. Un artefacto Pesado acaba conservando una sola línea negativa, mientras que los Medios y Ligeros pierden todas las suyas.
+
+**Descarte automático** — el panel de Artefactos tiene un control de umbral de calidad: los botines de jefe por debajo de él se convierten automáticamente en chatarra, sin interrumpir el combate.`,
   },
 }

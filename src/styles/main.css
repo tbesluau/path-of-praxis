@@ -4374,6 +4374,14 @@ body.privacy-page {
   font-weight: 500;
 }
 
+/* Per-line roll quality "(80%)" and per-artifact average next to the title. */
+.artifact-line-quality,
+.artifact-quality {
+  color: #6b5d4f;
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
 /* Equip/unequip button inside the thumbnail — mirrors .game-action-btn hover
    (border-image swap + translateY press-down, no brightness wash). */
 /* breathing room between the modifier lines plate and the button pair */
@@ -4431,6 +4439,41 @@ body.privacy-page {
   justify-content: center;
   gap: var(--space-xs);
   flex-wrap: wrap;
+}
+
+/* removed bad line in the upgrade result modal */
+.artifact-upgrade-removed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+/* Auto-discard threshold widget — arrow buttons reuse .enemy-level-btn. */
+.artifact-autodiscard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-sm);
+}
+
+.artifact-autodiscard-label {
+  font-size: 0.85rem;
+}
+
+.artifact-autodiscard-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.artifact-autodiscard-display {
+  min-width: 7ch;
+  text-align: center;
+  font-weight: 600;
 }
 
 .artifact-card {

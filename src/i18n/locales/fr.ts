@@ -197,6 +197,13 @@ export const fr: TranslationSchema = {
     upgradeResultTitle: 'Artéfact amélioré',
     upgradeMaxedTitle: 'Amélioration maximale',
     upgradeMaxedBody: 'Chaque ligne de cet artéfact est déjà à son maximum — il ne peut plus être amélioré.',
+    upgradeRemovedLabel: 'Ligne négative supprimée :',
+    autoDiscardLabel: "Rejeter automatiquement les artéfacts selon la qualité :",
+    autoDiscardNever: 'ne jamais rejeter',
+    autoDiscardAll: 'tout rejeter',
+    autoDiscardBelow: '<{v}%',
+    autoDiscardDown: 'Abaisser le seuil de qualité de rejet automatique',
+    autoDiscardUp: 'Augmenter le seuil de qualité de rejet automatique',
   },
   rune: {
     addToSlot: 'Ajouter une rune {type} à l\'emplacement {n}',

@@ -197,6 +197,13 @@ export const es: TranslationSchema = {
     upgradeResultTitle: 'Artefacto mejorado',
     upgradeMaxedTitle: 'Mejora máxima',
     upgradeMaxedBody: 'Cada línea de este artefacto ya está en su máximo — no se puede mejorar más.',
+    upgradeRemovedLabel: 'Línea negativa eliminada:',
+    autoDiscardLabel: 'Descartar artefactos automáticamente según la calidad:',
+    autoDiscardNever: 'nunca descartar',
+    autoDiscardAll: 'descartar todos',
+    autoDiscardBelow: '<{v}%',
+    autoDiscardDown: 'Bajar el umbral de calidad de descarte automático',
+    autoDiscardUp: 'Subir el umbral de calidad de descarte automático',
   },
   rune: {
     addToSlot: 'Añadir runa {type} a la ranura {n}',

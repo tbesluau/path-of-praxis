@@ -91,7 +91,13 @@ Source-specific modifiers can roll any of the five damage sources: fire, lightni
 
 To manage your collection, open the Artifacts panel from the Ascent menu (available from Ascent 5 onward). From there you can equip, unequip, upgrade, or permanently delete artifacts.
 
-**Scraps & upgrades** — deleting an artifact (or dropping a fresh boss drop) grants **Scraps**: 1 for a Light, 2 for a Medium, 3 for a Heavy artifact. Scraps pay for **upgrades**: each upgrade improves one random unmaxed line on the artifact by one point — positives increase, negatives shrink (7% more damage taken becomes 6%). A line can never pass the best value it could have rolled, so a perfect-roll artifact cannot be upgraded. The first upgrade on an artifact costs 1 scrap, and the cost doubles with each upgrade after that (2, 4, 8, …) without limit.
+**Quality** — every line shows how close it is to a perfect roll, from 0% (worst) to 100% (perfect); for bad lines, lower rolls score higher. The percentage next to the artifact's name is its overall **quality**: the average of all its lines.
+
+**Scraps & upgrades** — deleting an artifact (or dropping a fresh boss drop) grants **Scraps**: 1 for a Light, 2 for a Medium, 3 for a Heavy artifact. Scraps pay for **upgrades**: each upgrade improves one random unmaxed line by 10% of its quality — positives increase, negatives shrink. A line can never pass the best value it could have rolled. The first upgrade on an artifact costs 1 scrap, and the cost grows by 50% (rounded up) with each upgrade after that (1, 2, 3, 5, 8, 12, …).
+
+**Bad-line removal** — the 5th and 10th upgrades each remove the artifact's worst-quality bad line before improving a line as usual. A Heavy artifact ends up keeping a single bad line, while Medium and Light artifacts lose theirs entirely.
+
+**Auto-discard** — the Artifacts panel has a quality threshold control: fresh boss drops below it are scrapped automatically, granting their Scraps without interrupting the fight.
 
 ## Transcendence
 
