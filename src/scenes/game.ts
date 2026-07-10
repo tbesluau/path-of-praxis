@@ -5966,15 +5966,27 @@ export function createGameScene(
           const playerMb = entity.role === 'player' ? getMovementBonuses() : null
           const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= effectiveRange / 2
 
-          // Close-gap: when key node active + dash available, stop only when touching
-          const closeGapActive = entity.role === 'player' && (playerMb?.dashCloseGapToTarget ?? false) && dashCharges > 0
+          // Close-gap: when the key node is active and a dash is available OR
+          // already in flight, ignore action range and stop just short of
+          // contact (range 1.1 in player-radius units — touching would be an
+          // instant collision). The in-flight check matters: starting the dash
+          // consumes the charge, and gating on charges alone made the stop
+          // distance snap back to action range mid-dash.
+          const closeGapActive = entity.role === 'player' && (playerMb?.dashCloseGapToTarget ?? false)
+            && (dashCharges > 0 || dashRemainingMs > 0)
           const stopDist = closeGapActive
-            ? entity.radius + target.radius
+            ? entity.radius * 1.1 + target.radius
             : effectiveRange + target.radius
 
           if (!shouldKite && dist <= stopDist) {
             if (entity.role === 'player') {
               playerIsKiting = false
+              // A dash halted at its stop distance is finished — leftover
+              // dash time must not resume later toward a stale direction.
+              if (dashRemainingMs > 0) {
+                dashRemainingMs = 0
+                endDashSound(entity.x, entity.y)
+              }
             }
             Matter.Body.setVelocity(body, { x: 0, y: 0 })
             continue
