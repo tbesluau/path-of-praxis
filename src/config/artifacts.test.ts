@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   rollValue, rollLineCount, drawPositives, drawNegatives,
   rollArtifact, computeArtifactMods, maxEquippedArtifacts,
-  scrapsForArtifact, upgradeCost, upgradeArtifact,
+  scrapsForArtifact, totalUpgradeSpent, upgradeCost, upgradeArtifact,
   modifierQuality, artifactQuality,
   ZERO_ARTIFACT_MODS, type Artifact, type ArtifactLine,
 } from './artifacts'
@@ -290,6 +290,24 @@ describe('scrapsForArtifact', () => {
     expect(scrapsForArtifact(mkArtifact([posLine(8)]))).toBe(1)
     expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8)]))).toBe(2)
     expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8), posLine(8)]))).toBe(3)
+  })
+
+  it('refunds half the upgrade costs on top of the base value', () => {
+    // Cost curve 1, 2, 3, 5, 8 → cumulative spend 0, 1, 3, 6, 11, 19.
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 1))).toBe(1)       // 1 + floor(1/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 2))).toBe(2)       // 1 + floor(3/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 3))).toBe(4)       // 1 + floor(6/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 5))).toBe(10)      // 1 + floor(19/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8), posLine(8)], 4))).toBe(8)  // 3 + floor(11/2)
+  })
+})
+
+describe('totalUpgradeSpent', () => {
+  it('sums the cost curve for the upgrades bought so far', () => {
+    const spent = [0, 1, 3, 6, 11, 19, 31, 49, 76, 117]
+    spent.forEach((total, n) => {
+      expect(totalUpgradeSpent(mkArtifact([posLine(8)], n))).toBe(total)
+    })
   })
 })
 
