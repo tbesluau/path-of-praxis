@@ -47,6 +47,7 @@ export const zh: TranslationSchema = {
     masteryGains: '精通收益',
     actionTriggerTitle: '行动触发器',
     selectActionTrigger: '选择行动触发器',
+    slotInUse: '已被其他触发器使用',
     triggerTime: '时间触发器',
     triggerTimeDesc: '每2秒触发一次。更快的行动造成更多伤害，更慢的行动造成更少伤害。',
     triggerCrit: '暴击触发器',

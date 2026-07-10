@@ -151,6 +151,9 @@ export function mountActionPickerModal(
   onClose: () => void,
   showCritChance = false,
   critBaseAdd = 0,
+  // Actions already assigned to another trigger slot — an action can only be
+  // used once, so these render disabled with an "in use" hint.
+  disabledActionIds: readonly string[] = [],
 ): () => void {
   const backdrop = document.createElement('div')
   backdrop.className = 'modal-backdrop picker-backdrop'
@@ -180,17 +183,27 @@ export function mountActionPickerModal(
   list.appendChild(legendWrap)
 
   actions.forEach(action => {
+    const isUsed = disabledActionIds.includes(action.id) && action.id !== currentActionId
     const btn = document.createElement('button')
-    btn.className = `action-picker-btn${action.id === currentActionId ? ' action-picker-btn--selected' : ''}`
+    btn.className = `action-picker-btn${action.id === currentActionId ? ' action-picker-btn--selected' : ''}${isUsed ? ' action-picker-btn--used' : ''}`
     btn.dataset['actionId'] = action.id
     btn.dataset['sfx'] = 'modal'  // selecting closes the modal → modal.close, not toggle
     btn.appendChild(buildActionThumbnail(action, false, showCritChance, critBaseAdd))
-    btn.addEventListener('click', () => {
-      onSelect(action.id)
-      playSound('modal.close')
-      backdrop.remove()
-      onClose()
-    })
+    if (isUsed) {
+      btn.disabled = true
+      btn.title = t('game', 'slotInUse')
+      const hint = document.createElement('span')
+      hint.className = 'action-picker-used-hint'
+      hint.textContent = t('game', 'slotInUse')
+      btn.appendChild(hint)
+    } else {
+      btn.addEventListener('click', () => {
+        onSelect(action.id)
+        playSound('modal.close')
+        backdrop.remove()
+        onClose()
+      })
+    }
     list.appendChild(btn)
   })
 

@@ -47,6 +47,7 @@ export const fr: TranslationSchema = {
     masteryGains: 'Gains de maîtrise',
     actionTriggerTitle: 'Déclencheur d\'action',
     selectActionTrigger: 'Choisir un déclencheur',
+    slotInUse: 'Déjà utilisé par un autre déclencheur',
     triggerTime: 'Déclencheur temporel',
     triggerTimeDesc: 'Se déclenche toutes les 2 secondes. Les actions plus rapides infligent plus de dégâts, les plus lentes en infligent moins.',
     triggerCrit: 'Déclencheur critique',

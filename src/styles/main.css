@@ -1605,6 +1605,24 @@ button.action-trigger-title:hover { filter: brightness(1.1); }
   background-clip: padding-box;
 }
 
+/* Action already assigned to another trigger slot — visible but not pickable. */
+.action-picker-btn--used {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.action-picker-btn--used:hover {
+  filter: none;
+}
+
+.action-picker-used-hint {
+  display: block;
+  font-size: 0.72rem;
+  font-style: italic;
+  color: #7a2e2e;
+  margin-top: 2px;
+}
+
 /* ── Settings section button (for Targeting) ── */
 
 .settings-section-btn {
