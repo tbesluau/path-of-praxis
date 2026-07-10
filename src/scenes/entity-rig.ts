@@ -206,9 +206,11 @@ export function createEntityRig(opts: {
     const speedFrac = maxSpeed > 0 ? Math.min(1, speed / maxSpeed) : 0
     const walking   = speedFrac > 0.05
 
-    // Walk phase
+    // Walk phase — stride frequency follows run speed at half rate: n% faster
+    // (or slower) than base speed only strides n/2% faster (or slower).
     if (walking) {
-      walkAcc += deltaMs
+      const speedRatio = maxSpeed > 0 ? speed / maxSpeed : 1
+      walkAcc += deltaMs * (1 + (speedRatio - 1) * 0.5)
     }
     const walkPhase = walkAcc * WALK_FREQ
     const stride    = Math.sin(walkPhase)          // -1 → 1, drives legs/arms/wobble
