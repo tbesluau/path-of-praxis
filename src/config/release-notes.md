@@ -1,3 +1,13 @@
+### 0.3.9 — Artifact updates
+
+Smoother and more powerful artifact experience for truly worthy artifacts!
+
+- **Stronger Upgrade** — upgrade 5 and 10 now delete the worst artifact's downside line on top of upgrading, upgrading is also stronger
+- **Cheaper Upgrade** - upgrading scales slower to allow for maxed out artifacts, upgraded artifacts also refund 1/2 of upgrade costs
+- **More Info** - ability to see the quality of a line at a glance, and the global quality (%age from perfection) of an artifact
+- **Auto Delete** - configure a artifact deletion filter to only keep artifacts based on quality or size
+- **Never done** — small bugfixes and UX improvements, some balancing fixes
+
 ### 0.3.0 — Transcendence, Relics, and Block
 
 New layer of prestige! Unlock it by killing a REALLY high level boss.
