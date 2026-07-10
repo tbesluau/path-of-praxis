@@ -97,7 +97,7 @@ To manage your collection, open the Artifacts panel from the Ascent menu (availa
 
 **Bad-line removal** — the 5th and 10th upgrades each remove the artifact's worst-quality bad line before improving a line as usual. A Heavy artifact ends up keeping a single bad line, while Medium and Light artifacts lose theirs entirely.
 
-**Auto-discard** — the Artifacts panel has a quality threshold control: fresh boss drops below it are scrapped automatically, granting their Scraps without interrupting the fight.
+**Auto-discard** — the Artifacts panel has a quality threshold control: fresh boss drops below it are scrapped automatically, granting their Scraps without interrupting the fight. A separate weight selector can also discard by size (light, or medium and less) — either condition is enough to discard.
 
 ## Transcendence
 

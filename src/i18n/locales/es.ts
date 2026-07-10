@@ -205,6 +205,12 @@ export const es: TranslationSchema = {
     autoDiscardBelow: '<{v}%',
     autoDiscardDown: 'Bajar el umbral de calidad de descarte automático',
     autoDiscardUp: 'Subir el umbral de calidad de descarte automático',
+    autoDiscardWeightLabel: 'o peso:',
+    autoDiscardWeightAll: 'conservar todos los tamaños',
+    autoDiscardWeightLight: 'descartar ligeros',
+    autoDiscardWeightMedium: 'descartar medios o menos',
+    autoDiscardWeightDown: 'Bajar el umbral de peso de descarte automático',
+    autoDiscardWeightUp: 'Subir el umbral de peso de descarte automático',
   },
   rune: {
     addToSlot: 'Añadir runa {type} a la ranura {n}',

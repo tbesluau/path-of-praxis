@@ -205,6 +205,12 @@ export const ru: TranslationSchema = {
     autoDiscardBelow: '<{v}%',
     autoDiscardDown: 'Понизить порог качества автоотбрасывания',
     autoDiscardUp: 'Повысить порог качества автоотбрасывания',
+    autoDiscardWeightLabel: 'или вес:',
+    autoDiscardWeightAll: 'хранить все размеры',
+    autoDiscardWeightLight: 'отбрасывать лёгкие',
+    autoDiscardWeightMedium: 'отбрасывать средние и ниже',
+    autoDiscardWeightDown: 'Понизить порог веса автоотбрасывания',
+    autoDiscardWeightUp: 'Повысить порог веса автоотбрасывания',
   },
   rune: {
     addToSlot: 'Добавить руну {type} в слот {n}',

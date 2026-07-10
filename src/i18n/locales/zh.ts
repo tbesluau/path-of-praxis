@@ -205,6 +205,12 @@ export const zh: TranslationSchema = {
     autoDiscardBelow: '<{v}%',
     autoDiscardDown: '降低自动丢弃品质阈值',
     autoDiscardUp: '提高自动丢弃品质阈值',
+    autoDiscardWeightLabel: '或重量：',
+    autoDiscardWeightAll: '保留所有尺寸',
+    autoDiscardWeightLight: '丢弃轻型',
+    autoDiscardWeightMedium: '丢弃中型及以下',
+    autoDiscardWeightDown: '降低自动丢弃重量阈值',
+    autoDiscardWeightUp: '提高自动丢弃重量阈值',
   },
   rune: {
     addToSlot: '将 {type} 符文添加到第 {n} 槽',

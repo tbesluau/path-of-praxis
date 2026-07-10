@@ -126,6 +126,6 @@ Pour gérer ta collection, ouvre le panneau Artefacts depuis le menu d'Ascension
 
 **Suppression des lignes négatives** — les 5e et 10e améliorations suppriment chacune la ligne négative de pire qualité avant d'améliorer une ligne comme d'habitude. Un artefact Lourd finit par ne garder qu'une seule ligne négative, tandis que les Moyens et les Légers perdent toutes les leurs.
 
-**Rejet automatique** — le panneau des Artefacts propose un réglage de seuil de qualité : les butins de boss en dessous de ce seuil sont automatiquement transformés en fragments, sans interrompre le combat.`,
+**Rejet automatique** — le panneau des Artefacts propose un réglage de seuil de qualité : les butins de boss en dessous de ce seuil sont automatiquement transformés en fragments, sans interrompre le combat. Un sélecteur de poids séparé permet aussi de rejeter par taille (légers, ou moyens et moins) — une seule des deux conditions suffit pour rejeter.`,
   },
 }
