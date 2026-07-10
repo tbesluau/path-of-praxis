@@ -205,6 +205,12 @@ export const fr: TranslationSchema = {
     autoDiscardBelow: '<{v}%',
     autoDiscardDown: 'Abaisser le seuil de qualité de rejet automatique',
     autoDiscardUp: 'Augmenter le seuil de qualité de rejet automatique',
+    autoDiscardWeightLabel: 'ou poids :',
+    autoDiscardWeightAll: 'garder toutes les tailles',
+    autoDiscardWeightLight: 'rejeter les légers',
+    autoDiscardWeightMedium: 'rejeter moyens et moins',
+    autoDiscardWeightDown: 'Abaisser le seuil de poids de rejet automatique',
+    autoDiscardWeightUp: 'Augmenter le seuil de poids de rejet automatique',
   },
   rune: {
     addToSlot: 'Ajouter une rune {type} à l\'emplacement {n}',

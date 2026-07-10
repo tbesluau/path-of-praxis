@@ -209,6 +209,7 @@ export function mountArtifactsModal(
     getMax: () => number
     getScraps: () => number
     getAutoDiscard: () => number
+    getAutoDiscardWeight: () => number
   },
   actions: {
     onEquip: (id: string) => void
@@ -216,6 +217,7 @@ export function mountArtifactsModal(
     onDelete: (id: string) => void
     onUpgrade: (id: string) => UpgradeResult | null
     onAutoDiscardChange: (v: number) => void
+    onAutoDiscardWeightChange: (v: number) => void
   },
   onClose: () => void,
 ): () => void {
@@ -243,6 +245,14 @@ export function mountArtifactsModal(
       : autoDiscard >= 110
         ? t('artifacts', 'autoDiscardAll')
         : t('artifacts', 'autoDiscardBelow').replace('{v}', String(autoDiscard)).replace('<', '&lt;')
+    // Weight selector — an OR condition on top of quality: drops at or below
+    // the selected weight are discarded regardless of their quality.
+    const autoDiscardWeight = state.getAutoDiscardWeight()
+    const weightText = autoDiscardWeight <= 0
+      ? t('artifacts', 'autoDiscardWeightAll')
+      : autoDiscardWeight === 1
+        ? t('artifacts', 'autoDiscardWeightLight')
+        : t('artifacts', 'autoDiscardWeightMedium')
     const arrowBase = `${import.meta.env.BASE_URL}ui/kenney_ui-pack-rpg-expansion/PNG`
     const autoDiscardHtml = `
       <div class="artifact-autodiscard">
@@ -251,6 +261,12 @@ export function mountArtifactsModal(
           <button class="enemy-level-btn" data-action="autodiscard-down" ${autoDiscard <= 0 ? 'disabled' : ''} aria-label="${t('artifacts', 'autoDiscardDown')}"><img class="enemy-level-arrow" src="${arrowBase}/arrowSilver_left.png" alt=""></button>
           <span class="artifact-autodiscard-display">${autoDiscardText}</span>
           <button class="enemy-level-btn" data-action="autodiscard-up" ${autoDiscard >= 110 ? 'disabled' : ''} aria-label="${t('artifacts', 'autoDiscardUp')}"><img class="enemy-level-arrow" src="${arrowBase}/arrowSilver_right.png" alt=""></button>
+        </div>
+        <span class="artifact-autodiscard-label">${t('artifacts', 'autoDiscardWeightLabel')}</span>
+        <div class="artifact-autodiscard-main">
+          <button class="enemy-level-btn" data-action="autodiscard-weight-down" ${autoDiscardWeight <= 0 ? 'disabled' : ''} aria-label="${t('artifacts', 'autoDiscardWeightDown')}"><img class="enemy-level-arrow" src="${arrowBase}/arrowSilver_left.png" alt=""></button>
+          <span class="artifact-autodiscard-display artifact-autodiscard-display--weight">${weightText}</span>
+          <button class="enemy-level-btn" data-action="autodiscard-weight-up" ${autoDiscardWeight >= 2 ? 'disabled' : ''} aria-label="${t('artifacts', 'autoDiscardWeightUp')}"><img class="enemy-level-arrow" src="${arrowBase}/arrowSilver_right.png" alt=""></button>
         </div>
       </div>
     `
@@ -280,6 +296,14 @@ export function mountArtifactsModal(
     })
     backdrop.querySelector<HTMLButtonElement>('[data-action="autodiscard-up"]')!.addEventListener('click', () => {
       actions.onAutoDiscardChange(Math.min(110, state.getAutoDiscard() + 10))
+      buildPanel()
+    })
+    backdrop.querySelector<HTMLButtonElement>('[data-action="autodiscard-weight-down"]')!.addEventListener('click', () => {
+      actions.onAutoDiscardWeightChange(Math.max(0, state.getAutoDiscardWeight() - 1))
+      buildPanel()
+    })
+    backdrop.querySelector<HTMLButtonElement>('[data-action="autodiscard-weight-up"]')!.addEventListener('click', () => {
+      actions.onAutoDiscardWeightChange(Math.min(2, state.getAutoDiscardWeight() + 1))
       buildPanel()
     })
 

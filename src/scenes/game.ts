@@ -115,6 +115,7 @@ export function createGameScene(
   let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
   let scraps = char?.scraps ?? 0
   let artifactAutoDiscard = char?.artifactAutoDiscard ?? 0
+  let artifactAutoDiscardWeight = char?.artifactAutoDiscardWeight ?? 0
 
   // Transcendence — also declared early: computePlayerMaxLife() (and the
   // transcend power multipliers) run during scene construction, well before
@@ -1744,6 +1745,7 @@ export function createGameScene(
       transcendReady,
       masteryPointsSeen,
       artifactAutoDiscard,
+      artifactAutoDiscardWeight,
       triggerSlotsNotif,
     )
   }
@@ -3275,6 +3277,7 @@ export function createGameScene(
         getMax: () => maxBaggedArtifacts(ascentCount),
         getScraps: () => scraps,
         getAutoDiscard: () => artifactAutoDiscard,
+        getAutoDiscardWeight: () => artifactAutoDiscardWeight,
       },
       {
         onEquip: (id) => {
@@ -3328,6 +3331,10 @@ export function createGameScene(
         },
         onAutoDiscardChange: (v) => {
           artifactAutoDiscard = Math.max(0, Math.min(110, v))
+          persistState()
+        },
+        onAutoDiscardWeightChange: (v) => {
+          artifactAutoDiscardWeight = Math.max(0, Math.min(2, v))
           persistState()
         },
       },
@@ -3783,7 +3790,8 @@ export function createGameScene(
         if (dropped) {
           // Auto-discard: drops below the configured average quality are
           // scrapped immediately, without the drop card.
-          if (artifactAutoDiscard > 0 && artifactQuality(dropped) < artifactAutoDiscard) {
+          if ((artifactAutoDiscard > 0 && artifactQuality(dropped) < artifactAutoDiscard)
+              || (artifactAutoDiscardWeight > 0 && dropped.lines.length <= artifactAutoDiscardWeight)) {
             scraps += scrapsForArtifact(dropped)
             persistState()
           } else {

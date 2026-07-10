@@ -203,6 +203,12 @@ export interface TranslationSchema {
     autoDiscardBelow: string         // template: "<{v}%"
     autoDiscardDown: string          // aria: lower the threshold
     autoDiscardUp: string            // aria: raise the threshold
+    autoDiscardWeightLabel: string   // connector label for the weight selector ("or weight:")
+    autoDiscardWeightAll: string     // weight 0 — keep all sizes
+    autoDiscardWeightLight: string   // weight 1 — discard light
+    autoDiscardWeightMedium: string  // weight 2 — discard medium or less
+    autoDiscardWeightDown: string    // aria: lower the weight threshold
+    autoDiscardWeightUp: string      // aria: raise the weight threshold
   }
   rune: {
     addToSlot: string              // template: "Add {type} rune to slot {n}"
@@ -601,6 +607,12 @@ export const en: TranslationSchema = {
     autoDiscardBelow: '<{v}%',
     autoDiscardDown: 'Lower the auto-discard quality threshold',
     autoDiscardUp: 'Raise the auto-discard quality threshold',
+    autoDiscardWeightLabel: 'or weight:',
+    autoDiscardWeightAll: 'keep all sizes',
+    autoDiscardWeightLight: 'discard light',
+    autoDiscardWeightMedium: 'discard medium or less',
+    autoDiscardWeightDown: 'Lower the auto-discard weight threshold',
+    autoDiscardWeightUp: 'Raise the auto-discard weight threshold',
   },
   rune: {
     addToSlot: 'Add {type} rune to slot {n}',

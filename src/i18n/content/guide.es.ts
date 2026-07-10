@@ -123,6 +123,6 @@ Para gestionar tu colección, abre el panel de Artefactos desde el menú de Asce
 
 **Eliminación de líneas negativas** — la 5.ª y la 10.ª mejora eliminan cada una la línea negativa de peor calidad antes de mejorar una línea como de costumbre. Un artefacto Pesado acaba conservando una sola línea negativa, mientras que los Medios y Ligeros pierden todas las suyas.
 
-**Descarte automático** — el panel de Artefactos tiene un control de umbral de calidad: los botines de jefe por debajo de él se convierten automáticamente en chatarra, sin interrumpir el combate.`,
+**Descarte automático** — el panel de Artefactos tiene un control de umbral de calidad: los botines de jefe por debajo de él se convierten automáticamente en chatarra, sin interrumpir el combate. Un selector de peso aparte también permite descartar por tamaño (ligeros, o medios y menos) — basta con que se cumpla una de las dos condiciones.`,
   },
 }
