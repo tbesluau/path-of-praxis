@@ -195,6 +195,13 @@ export interface TranslationSchema {
     upgradeResultTitle: string       // shown after a successful line upgrade
     upgradeMaxedTitle: string        // shown when the artifact has no unmaxed lines
     upgradeMaxedBody: string
+    upgradeRemovedLabel: string      // prefix before the removed bad line in the upgrade summary
+    autoDiscardLabel: string         // label of the auto-discard threshold widget
+    autoDiscardNever: string         // threshold 0
+    autoDiscardAll: string           // threshold 110
+    autoDiscardBelow: string         // template: "<{v}%"
+    autoDiscardDown: string          // aria: lower the threshold
+    autoDiscardUp: string            // aria: raise the threshold
   }
   rune: {
     addToSlot: string              // template: "Add {type} rune to slot {n}"
@@ -585,6 +592,13 @@ export const en: TranslationSchema = {
     upgradeResultTitle: 'Artifact upgraded',
     upgradeMaxedTitle: 'Fully upgraded',
     upgradeMaxedBody: 'Every line on this artifact is already at its maximum — it cannot be upgraded further.',
+    upgradeRemovedLabel: 'Bad line removed:',
+    autoDiscardLabel: 'Automatically discard artifacts based on quality:',
+    autoDiscardNever: 'never discard',
+    autoDiscardAll: 'discard all',
+    autoDiscardBelow: '<{v}%',
+    autoDiscardDown: 'Lower the auto-discard quality threshold',
+    autoDiscardUp: 'Raise the auto-discard quality threshold',
   },
   rune: {
     addToSlot: 'Add {type} rune to slot {n}',

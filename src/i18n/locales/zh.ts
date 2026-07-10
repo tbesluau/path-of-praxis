@@ -197,6 +197,13 @@ export const zh: TranslationSchema = {
     upgradeResultTitle: '神器已升级',
     upgradeMaxedTitle: '已满级',
     upgradeMaxedBody: '该神器的所有词条均已达到上限，无法继续升级。',
+    upgradeRemovedLabel: '已移除负面词条：',
+    autoDiscardLabel: '按品质自动丢弃神器：',
+    autoDiscardNever: '从不丢弃',
+    autoDiscardAll: '全部丢弃',
+    autoDiscardBelow: '<{v}%',
+    autoDiscardDown: '降低自动丢弃品质阈值',
+    autoDiscardUp: '提高自动丢弃品质阈值',
   },
   rune: {
     addToSlot: '将 {type} 符文添加到第 {n} 槽',

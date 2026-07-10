@@ -197,6 +197,13 @@ export const ru: TranslationSchema = {
     upgradeResultTitle: 'Артефакт улучшен',
     upgradeMaxedTitle: 'Максимальное улучшение',
     upgradeMaxedBody: 'Каждая строка этого артефакта уже на максимуме — его нельзя улучшить дальше.',
+    upgradeRemovedLabel: 'Плохая строка удалена:',
+    autoDiscardLabel: 'Автоматически отбрасывать артефакты по качеству:',
+    autoDiscardNever: 'никогда не отбрасывать',
+    autoDiscardAll: 'отбрасывать все',
+    autoDiscardBelow: '<{v}%',
+    autoDiscardDown: 'Понизить порог качества автоотбрасывания',
+    autoDiscardUp: 'Повысить порог качества автоотбрасывания',
   },
   rune: {
     addToSlot: 'Добавить руну {type} в слот {n}',

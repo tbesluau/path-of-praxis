@@ -10,7 +10,7 @@ import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFi
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
-import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, scrapsForArtifact, upgradeCost, upgradeArtifact, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
+import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, scrapsForArtifact, upgradeCost, upgradeArtifact, artifactQuality, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
 import { ALL_RELICS, ascentsGainedFor, type RelicId } from '../config/relics'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
@@ -113,6 +113,7 @@ export function createGameScene(
   let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
   let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
   let scraps = char?.scraps ?? 0
+  let artifactAutoDiscard = char?.artifactAutoDiscard ?? 0
 
   // Transcendence — also declared early: computePlayerMaxLife() (and the
   // transcend power multipliers) run during scene construction, well before
@@ -1736,6 +1737,7 @@ export function createGameScene(
       relics,
       transcendReady,
       masteryPointsSeen,
+      artifactAutoDiscard,
     )
   }
   let playerPrevX = 0
@@ -3252,6 +3254,7 @@ export function createGameScene(
         getMaxEquipped: () => maxEquippedArtifacts(ascentCount, transcendCount > 0),
         getMax: () => maxBaggedArtifacts(ascentCount),
         getScraps: () => scraps,
+        getAutoDiscard: () => artifactAutoDiscard,
       },
       {
         onEquip: (id) => {
@@ -3302,6 +3305,10 @@ export function createGameScene(
             persistState()
           }
           return res
+        },
+        onAutoDiscardChange: (v) => {
+          artifactAutoDiscard = Math.max(0, Math.min(110, v))
+          persistState()
         },
       },
       () => { modalCleanup = null },
@@ -3753,7 +3760,16 @@ export function createGameScene(
         const lu = balance.artifacts.lineUnlockLevels
         const maxLines: 1 | 2 | 3 = bossLevel > lu.three ? 3 : bossLevel > lu.two ? 2 : 1
         const dropped = rollArtifact(Math.random, maxLines)
-        if (dropped) playArtifactDropAnimation(bossX, bossY, dropped)
+        if (dropped) {
+          // Auto-discard: drops below the configured average quality are
+          // scrapped immediately, without the drop card.
+          if (artifactAutoDiscard > 0 && artifactQuality(dropped) < artifactAutoDiscard) {
+            scraps += scrapsForArtifact(dropped)
+            persistState()
+          } else {
+            playArtifactDropAnimation(bossX, bossY, dropped)
+          }
+        }
       }
     }
     // Proliferate roll: enemies not spawned by this tree get a chance to add one to the next wave.
