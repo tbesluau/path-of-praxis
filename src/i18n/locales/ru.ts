@@ -47,6 +47,7 @@ export const ru: TranslationSchema = {
     masteryGains: 'Прирост мастерства',
     actionTriggerTitle: 'Триггер действия',
     selectActionTrigger: 'Выбрать триггер действия',
+    slotInUse: 'Уже используется другим триггером',
     triggerTime: 'Временной триггер',
     triggerTimeDesc: 'Срабатывает каждые 2 секунды. Более быстрые действия наносят больше урона, более медленные — меньше.',
     triggerCrit: 'Триггер крита',

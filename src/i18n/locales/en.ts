@@ -45,6 +45,7 @@ export interface TranslationSchema {
     masteryGains: string
     actionTriggerTitle: string
     selectActionTrigger: string
+    slotInUse: string           // trigger/action already taken by another slot
     triggerTime: string
     triggerTimeDesc: string
     triggerCrit: string
@@ -442,6 +443,7 @@ export const en: TranslationSchema = {
     masteryGains: 'Mastery gains',
     actionTriggerTitle: 'Action Trigger',
     selectActionTrigger: 'Select action trigger',
+    slotInUse: 'Already used by another trigger',
     triggerTime: 'Time Trigger',
     triggerTimeDesc: 'Triggers every 2 seconds. Faster actions deal more damage, slower actions deal less.',
     triggerCrit: 'Critical Trigger',

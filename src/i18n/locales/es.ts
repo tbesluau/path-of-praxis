@@ -47,6 +47,7 @@ export const es: TranslationSchema = {
     masteryGains: 'Ganancias de maestría',
     actionTriggerTitle: 'Disparador de acción',
     selectActionTrigger: 'Seleccionar disparador',
+    slotInUse: 'Ya en uso por otro disparador',
     triggerTime: 'Disparador temporal',
     triggerTimeDesc: 'Se activa cada 2 segundos. Las acciones más rápidas infligen más daño, las más lentas menos.',
     triggerCrit: 'Disparador de golpe crítico',
