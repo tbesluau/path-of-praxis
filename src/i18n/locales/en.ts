@@ -45,6 +45,7 @@ export interface TranslationSchema {
     masteryGains: string
     actionTriggerTitle: string
     selectActionTrigger: string
+    slotInUse: string           // trigger/action already taken by another slot
     triggerTime: string
     triggerTimeDesc: string
     triggerCrit: string
@@ -195,6 +196,19 @@ export interface TranslationSchema {
     upgradeResultTitle: string       // shown after a successful line upgrade
     upgradeMaxedTitle: string        // shown when the artifact has no unmaxed lines
     upgradeMaxedBody: string
+    upgradeRemovedLabel: string      // prefix before the removed bad line in the upgrade summary
+    autoDiscardLabel: string         // label of the auto-discard threshold widget
+    autoDiscardNever: string         // threshold 0
+    autoDiscardAll: string           // threshold 110
+    autoDiscardBelow: string         // template: "<{v}%"
+    autoDiscardDown: string          // aria: lower the threshold
+    autoDiscardUp: string            // aria: raise the threshold
+    autoDiscardWeightLabel: string   // connector label for the weight selector ("or weight:")
+    autoDiscardWeightAll: string     // weight 0 — keep all sizes
+    autoDiscardWeightLight: string   // weight 1 — discard light
+    autoDiscardWeightMedium: string  // weight 2 — discard medium or less
+    autoDiscardWeightDown: string    // aria: lower the weight threshold
+    autoDiscardWeightUp: string      // aria: raise the weight threshold
   }
   rune: {
     addToSlot: string              // template: "Add {type} rune to slot {n}"
@@ -435,6 +449,7 @@ export const en: TranslationSchema = {
     masteryGains: 'Mastery gains',
     actionTriggerTitle: 'Action Trigger',
     selectActionTrigger: 'Select action trigger',
+    slotInUse: 'Already used by another trigger',
     triggerTime: 'Time Trigger',
     triggerTimeDesc: 'Triggers every 2 seconds. Faster actions deal more damage, slower actions deal less.',
     triggerCrit: 'Critical Trigger',
@@ -585,6 +600,19 @@ export const en: TranslationSchema = {
     upgradeResultTitle: 'Artifact upgraded',
     upgradeMaxedTitle: 'Fully upgraded',
     upgradeMaxedBody: 'Every line on this artifact is already at its maximum — it cannot be upgraded further.',
+    upgradeRemovedLabel: 'Bad line removed:',
+    autoDiscardLabel: 'Automatically discard artifacts based on quality:',
+    autoDiscardNever: 'never discard',
+    autoDiscardAll: 'discard all',
+    autoDiscardBelow: '<{v}%',
+    autoDiscardDown: 'Lower the auto-discard quality threshold',
+    autoDiscardUp: 'Raise the auto-discard quality threshold',
+    autoDiscardWeightLabel: 'or weight:',
+    autoDiscardWeightAll: 'keep all sizes',
+    autoDiscardWeightLight: 'discard light',
+    autoDiscardWeightMedium: 'discard medium or less',
+    autoDiscardWeightDown: 'Lower the auto-discard weight threshold',
+    autoDiscardWeightUp: 'Raise the auto-discard weight threshold',
   },
   rune: {
     addToSlot: 'Add {type} rune to slot {n}',

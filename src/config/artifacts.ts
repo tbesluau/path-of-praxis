@@ -10,7 +10,8 @@ export type NegativeType =
 
 export interface PositiveModifier { kind: 'positive'; type: PositiveType; source?: Source; value: number }
 export interface NegativeModifier { kind: 'negative'; type: NegativeType; value: number }
-export interface ArtifactLine { positive: PositiveModifier; negative: NegativeModifier }
+// `negative` becomes absent once removed by the upgrade-5/10 bad-line removals.
+export interface ArtifactLine { positive: PositiveModifier; negative?: NegativeModifier }
 export interface Artifact {
   id: string
   lines: ArtifactLine[]   // 1..3 lines
@@ -97,15 +98,11 @@ const NEGATIVE_POOL: { type: NegativeType; min: number; max: number }[] = [
   { type: 'lessRangeAndArea', min:  5, max: 10 },
 ]
 
-// Box-Muller Gaussian, clamped and rounded to 1 decimal.
+// Rolls land exactly on 10%-quality steps: an 11-sided die over
+// min..max, so every roll sits at 0%, 10%, …, 100% quality. 1 decimal.
 export function rollValue(min: number, max: number, rng = Math.random): number {
-  const mid = (min + max) / 2
-  const sigma = (max - min) / 4
-  const u1 = Math.max(Number.EPSILON, rng())
-  const u2 = rng()
-  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
-  const raw = mid + z * sigma
-  return Math.round(Math.max(min, Math.min(max, raw)) * 10) / 10
+  const step = Math.min(10, Math.floor(rng() * 11))
+  return Math.round((min + ((max - min) * step) / 10) * 10) / 10
 }
 
 // `maxLines` caps how many lines an artifact may roll (boss-level gating).
@@ -215,7 +212,8 @@ export function computeArtifactMods(artifacts: Artifact[]): ArtifactMods {
       else if (p.type === 'doubleDamageChance') m.doubleDamageChance += p.value
       else if (p.type === 'doubleActionChance') m.doubleActionChance += p.value
       else if (p.type === 'rangeAndArea') { m.rangeMore += p.value; m.areaMore += p.value }
-      // Negative
+      // Negative (absent once removed by upgrade-level removals)
+      if (!neg) continue
       if (neg.type === 'damageTaken') m.damageTakenMore += neg.value
       else if (neg.type === 'allResistances') m.resistanceLess += neg.value
       else if (neg.type === 'lessMoveSpeed') m.moveSpeedLess += neg.value
@@ -250,21 +248,7 @@ export function describeNegative(m: NegativeModifier): { key: string; value: num
   return { key: m.type, value: m.value }
 }
 
-// ── Scraps & upgrades ─────────────────────────────────────────────────────────
-
-/** Scraps granted for deleting/dropping an artifact: 1/2/3 by light/medium/heavy. */
-export function scrapsForArtifact(a: Artifact): number {
-  return a.lines.length
-}
-
-/** Upgrade cost in scraps: 1 for the first upgrade, doubling each time (no cap). */
-export function upgradeCost(a: Artifact): number {
-  return 2 ** (a.upgradeCount ?? 0)
-}
-
-export type UpgradeResult =
-  | { kind: 'maxed' }
-  | { kind: 'upgraded'; target: 'positive' | 'negative'; lineIndex: number; before: number; after: number }
+// ── Quality ───────────────────────────────────────────────────────────────────
 
 function positiveSpec(m: PositiveModifier): PositiveSpec | undefined {
   return POSITIVE_POOL.find(s => s.type === m.type && s.source === m.source)
@@ -275,38 +259,135 @@ function negativeSpec(m: NegativeModifier): { min: number; max: number } | undef
 }
 
 /**
- * Improve one random unmaxed modifier on the artifact by 1 point: positives
- * move +1 toward their spec max, negatives −1 toward their spec min, clamped.
- * A perfect-roll artifact has no unmaxed modifiers and returns {kind:'maxed'}
- * with no mutation (and the caller spends nothing). On success the artifact's
- * upgradeCount increments (doubling the next cost).
+ * How close a modifier is to its perfect roll, linearly: 0 = worst possible
+ * roll, 100 = perfect. Positives are best at their spec max, negatives at
+ * their spec min.
  */
-export function upgradeArtifact(a: Artifact, rng = Math.random): UpgradeResult {
-  interface Candidate { target: 'positive' | 'negative'; lineIndex: number }
+export function modifierQuality(m: PositiveModifier | NegativeModifier): number {
+  const spec = m.kind === 'positive' ? positiveSpec(m) : negativeSpec(m)
+  if (!spec || spec.max === spec.min) return 100
+  const q = m.kind === 'positive'
+    ? ((m.value - spec.min) / (spec.max - spec.min)) * 100
+    : ((spec.max - m.value) / (spec.max - spec.min)) * 100
+  return Math.max(0, Math.min(100, q))
+}
+
+/** Artifact quality = average of all remaining modifier qualities. */
+export function artifactQuality(a: Artifact): number {
+  let sum = 0
+  let n = 0
+  for (const line of a.lines) {
+    sum += modifierQuality(line.positive); n++
+    if (line.negative) { sum += modifierQuality(line.negative); n++ }
+  }
+  return n === 0 ? 100 : sum / n
+}
+
+// ── Scraps & upgrades ─────────────────────────────────────────────────────────
+
+/** Total scraps spent on an artifact's upgrades so far (sum of the cost curve). */
+export function totalUpgradeSpent(a: Artifact): number {
+  let cost = 1
+  let total = 0
+  for (let i = 0; i < (a.upgradeCount ?? 0); i++) {
+    total += cost
+    cost = Math.ceil(cost * 1.5)
+  }
+  return total
+}
+
+/**
+ * Scraps granted for deleting/dropping an artifact: 1/2/3 by
+ * light/medium/heavy, plus half the scraps spent on its upgrades
+ * (rounded down).
+ */
+export function scrapsForArtifact(a: Artifact): number {
+  return a.lines.length + Math.floor(totalUpgradeSpent(a) / 2)
+}
+
+/** Upgrade cost in scraps: starts at 1, +50% rounded up each upgrade (1, 2, 3, 5, 8, 12, 18, 27, 41, …). */
+export function upgradeCost(a: Artifact): number {
+  let cost = 1
+  for (let i = 0; i < (a.upgradeCount ?? 0); i++) cost = Math.ceil(cost * 1.5)
+  return cost
+}
+
+// Upgrades 5 and 10 each remove the worst-quality bad line before improving
+// (max 2 removals; nothing special happens past upgrade 10).
+export const NEGATIVE_REMOVAL_UPGRADES: readonly number[] = [5, 10]
+
+export interface UpgradeImprovement { target: 'positive' | 'negative'; lineIndex: number; before: number; after: number }
+export type UpgradeResult =
+  | { kind: 'maxed' }
+  | { kind: 'upgraded'; removed: NegativeModifier | null; improvement: UpgradeImprovement | null }
+
+interface Candidate { target: 'positive' | 'negative'; lineIndex: number }
+
+function upgradeCandidates(a: Artifact): Candidate[] {
   const candidates: Candidate[] = []
   a.lines.forEach((line, i) => {
     const ps = positiveSpec(line.positive)
     if (ps && line.positive.value < ps.max) candidates.push({ target: 'positive', lineIndex: i })
-    const ns = negativeSpec(line.negative)
-    if (ns && line.negative.value > ns.min) candidates.push({ target: 'negative', lineIndex: i })
+    if (line.negative) {
+      const ns = negativeSpec(line.negative)
+      if (ns && line.negative.value > ns.min) candidates.push({ target: 'negative', lineIndex: i })
+    }
   })
-  if (candidates.length === 0) return { kind: 'maxed' }
+  return candidates
+}
 
-  const pick = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]
-  const line = a.lines[pick.lineIndex]
-  const round1 = (v: number): number => Math.round(v * 10) / 10
-  let before: number, after: number
-  if (pick.target === 'positive') {
-    const spec = positiveSpec(line.positive)!
-    before = line.positive.value
-    after = round1(Math.min(spec.max, before + 1))
-    line.positive.value = after
-  } else {
-    const spec = negativeSpec(line.negative)!
-    before = line.negative.value
-    after = round1(Math.max(spec.min, before - 1))
-    line.negative.value = after
+/**
+ * Apply one upgrade to the artifact:
+ * 1. If this upgrade reaches level 5 or 10 and a bad line remains, the
+ *    worst-quality bad line is removed first.
+ * 2. Then one random unmaxed modifier moves 10% of its roll range toward
+ *    perfect (positives up, negatives down), clamped and rounded to 1 decimal.
+ * A perfect artifact with no removal due returns {kind:'maxed'} with no
+ * mutation (and the caller spends nothing).
+ */
+export function upgradeArtifact(a: Artifact, rng = Math.random): UpgradeResult {
+  const nextLevel = (a.upgradeCount ?? 0) + 1
+  const removalDue = NEGATIVE_REMOVAL_UPGRADES.includes(nextLevel) && a.lines.some(l => l.negative)
+
+  if (!removalDue && upgradeCandidates(a).length === 0) return { kind: 'maxed' }
+
+  let removed: NegativeModifier | null = null
+  if (removalDue) {
+    let worstIdx = -1
+    let worstQ = Infinity
+    a.lines.forEach((line, i) => {
+      if (!line.negative) return
+      const q = modifierQuality(line.negative)
+      if (q < worstQ) { worstQ = q; worstIdx = i }
+    })
+    removed = a.lines[worstIdx].negative!
+    delete a.lines[worstIdx].negative
   }
-  a.upgradeCount = (a.upgradeCount ?? 0) + 1
-  return { kind: 'upgraded', target: pick.target, lineIndex: pick.lineIndex, before, after }
+
+  // Improvement candidates are collected AFTER the removal so the removed
+  // line can never be picked.
+  const candidates = upgradeCandidates(a)
+  let improvement: UpgradeImprovement | null = null
+  if (candidates.length > 0) {
+    const pick = candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))]
+    const line = a.lines[pick.lineIndex]
+    const round1 = (v: number): number => Math.round(v * 10) / 10
+    let before: number, after: number
+    if (pick.target === 'positive') {
+      const spec = positiveSpec(line.positive)!
+      const step = (spec.max - spec.min) / 10
+      before = line.positive.value
+      after = round1(Math.min(spec.max, before + step))
+      line.positive.value = after
+    } else {
+      const spec = negativeSpec(line.negative!)!
+      const step = (spec.max - spec.min) / 10
+      before = line.negative!.value
+      after = round1(Math.max(spec.min, before - step))
+      line.negative!.value = after
+    }
+    improvement = { target: pick.target, lineIndex: pick.lineIndex, before, after }
+  }
+  a.upgradeCount = nextLevel
+  return { kind: 'upgraded', removed, improvement }
 }

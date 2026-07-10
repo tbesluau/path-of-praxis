@@ -5,12 +5,13 @@ import { createIcons, ArrowLeft, Play, Pause, Settings2, Award, Sword, Flame, Za
 import { tokens } from '../theme'
 import { t } from '../i18n'
 import { getCurrentCharacter, saveCharacterState, masteryPointsAvailable, defaultMasteryNodes, defaultActionRunes, computeAward, universePointsForAscent, STOCKPILE_MAX_MS, STOCKPILE_DOUBLED_MAX_MS, AWAY_DETECT_MS, type ActionProgress, type StatProgress, type EnemyProgress, type TargetingMode, type MasteryProgress, type RunProgress, type ActionRunes, type UniversePointAllocations, type ExtraActionSlot, type TriggerType } from '../core/character'
+import { enforceUniqueSlots } from '../core/trigger-slots'
 import { allMasteries, masteryCategories, previewMasteryGain, nodeCost, nodeType, type MasteryId, type ActionTag } from '../config/masteries'
 import { computeActionBonuses, computeLifeBonuses, computeManaBonuses, computeFireBonuses, computeEnemyBonuses, computeProjectileBonuses, computeLightningBonuses, computeStrikeBonuses, computePhysicalBonuses, computeAreaBonuses, computeMovementBonuses, computeCriticalHitBonuses, computeColdBonuses, computeRotBonuses, computeBlockBonuses, getActionNodeEffect, getLifeNodeEffect, getManaNodeEffect, getFireNodeEffect, getLightningNodeEffect, getStrikeNodeEffect, getPhysicalNodeEffect, getAreaNodeEffect, getProjectileNodeEffect, getCriticalHitNodeEffect, getColdNodeEffect, getRotNodeEffect, MASTERY_DUMP, type ActionBonuses, type LifeBonuses, type ManaBonuses, type FireBonuses, type EnemyBonuses, type ProjectileBonuses, type LightningBonuses, type StrikeBonuses, type PhysicalBonuses, type AreaBonuses, type MovementBonuses, type CriticalHitBonuses, type ColdBonuses, type RotBonuses, type BlockBonuses } from '../config/mastery-nodes'
 import { mountMasteryModal, renderMasteryBar } from '../ui/mastery'
 import { mountAscentModal } from '../ui/ascent'
 import { mountArtifactsModal, mountArtifactCardModal } from '../ui/artifacts'
-import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, scrapsForArtifact, upgradeCost, upgradeArtifact, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
+import { rollArtifact, computeArtifactMods, maxEquippedArtifacts, maxBaggedArtifacts, scrapsForArtifact, upgradeCost, upgradeArtifact, artifactQuality, ZERO_ARTIFACT_MODS, type Artifact, type ArtifactMods } from '../config/artifacts'
 import { ALL_RELICS, ascentsGainedFor, type RelicId } from '../config/relics'
 import { mountAwayBonusModal } from '../ui/away-bonus'
 import { mountRefillAdModal } from '../ui/refill-ad'
@@ -113,6 +114,8 @@ export function createGameScene(
   let artifacts: Artifact[] = JSON.parse(JSON.stringify(char?.artifacts ?? [])) as Artifact[]
   let artifactMods: ArtifactMods = { ...ZERO_ARTIFACT_MODS }
   let scraps = char?.scraps ?? 0
+  let artifactAutoDiscard = char?.artifactAutoDiscard ?? 0
+  let artifactAutoDiscardWeight = char?.artifactAutoDiscardWeight ?? 0
 
   // Transcendence — also declared early: computePlayerMaxLife() (and the
   // transcend power multipliers) run during scene construction, well before
@@ -1665,6 +1668,11 @@ export function createGameScene(
   let ascentXp    = char?.ascentXp ?? 0
   let universePointAllocations: UniversePointAllocations = char?.universePointAllocations ?? { placeholderA: 0, placeholderB: 0, placeholderC: 0, placeholderD: 0 }
   let extraSlots: ExtraActionSlot[] = (char?.extraSlots ?? []).map(s => ({ ...s }))
+  // A trigger type and an action can each only be used by one slot. Saves
+  // that predate the rule are brought into compliance here; the cleared slot
+  // is flagged with a notif dot on the battle-config button until viewed.
+  let triggerSlotsNotif = char?.triggerSlotsNotif ?? false
+  if (enforceUniqueSlots(playerActionId, extraSlots)) triggerSlotsNotif = true
   let freeMasteryPointsUsed: Partial<Record<MasteryId, number>> = { ...(char?.freeMasteryPointsUsed ?? {}) }
   // Point counts already "seen" per mastery (tree modal viewed) — unused
   // points only light the notif dots until seen at that exact count.
@@ -1736,6 +1744,9 @@ export function createGameScene(
       relics,
       transcendReady,
       masteryPointsSeen,
+      artifactAutoDiscard,
+      artifactAutoDiscardWeight,
+      triggerSlotsNotif,
     )
   }
   let playerPrevX = 0
@@ -1758,6 +1769,7 @@ export function createGameScene(
         <button class="game-action-btn game-action-btn--icon" data-action="open-config" data-sfx="modal" aria-label="${t('game', 'battleConfig')}" data-tooltip="${t('game', 'battleConfig')}" style="position:relative">
           <i data-lucide="settings-2" aria-hidden="true"></i>
           <span class="notif-dot rune-notif-dot rune-notif-dot--top" hidden></span>
+          <span class="notif-dot config-notif-dot" hidden></span>
         </button>
         <button class="game-action-btn game-action-btn--icon" data-action="open-mastery" data-sfx="modal" aria-label="${t('game', 'masteries')}" data-tooltip="${t('game', 'masteries')}" style="position:relative">
           <i data-lucide="award" aria-hidden="true"></i>
@@ -2163,8 +2175,20 @@ export function createGameScene(
   const speedOptBtns = el.querySelectorAll<HTMLButtonElement>('.speed-opt')
   const battleConfigBtn = el.querySelector<HTMLButtonElement>('[data-action="open-config"]')!
 
+  function refreshConfigNotifDot(): void {
+    const dot = el.querySelector<HTMLElement>('.config-notif-dot')
+    if (dot) dot.hidden = !triggerSlotsNotif
+  }
+  refreshConfigNotifDot()
+
   battleConfigBtn.addEventListener('click', () => {
     if (modalCleanup) { modalCleanup(); modalCleanup = null; liveModalXpUpdater = null; return }
+    // Opening the config counts as seeing the enforcement notification.
+    if (triggerSlotsNotif) {
+      triggerSlotsNotif = false
+      refreshConfigNotifDot()
+      persistState()
+    }
     const currentId = entityActions.get(playerEntity.id) ?? allActions[0].id as ActionId
     const { cleanup, updateXp } = mountBattleConfigModal(
       container,
@@ -3252,6 +3276,8 @@ export function createGameScene(
         getMaxEquipped: () => maxEquippedArtifacts(ascentCount, transcendCount > 0),
         getMax: () => maxBaggedArtifacts(ascentCount),
         getScraps: () => scraps,
+        getAutoDiscard: () => artifactAutoDiscard,
+        getAutoDiscardWeight: () => artifactAutoDiscardWeight,
       },
       {
         onEquip: (id) => {
@@ -3302,6 +3328,14 @@ export function createGameScene(
             persistState()
           }
           return res
+        },
+        onAutoDiscardChange: (v) => {
+          artifactAutoDiscard = Math.max(0, Math.min(110, v))
+          persistState()
+        },
+        onAutoDiscardWeightChange: (v) => {
+          artifactAutoDiscardWeight = Math.max(0, Math.min(2, v))
+          persistState()
         },
       },
       () => { modalCleanup = null },
@@ -3753,7 +3787,17 @@ export function createGameScene(
         const lu = balance.artifacts.lineUnlockLevels
         const maxLines: 1 | 2 | 3 = bossLevel > lu.three ? 3 : bossLevel > lu.two ? 2 : 1
         const dropped = rollArtifact(Math.random, maxLines)
-        if (dropped) playArtifactDropAnimation(bossX, bossY, dropped)
+        if (dropped) {
+          // Auto-discard: drops below the configured average quality are
+          // scrapped immediately, without the drop card.
+          if ((artifactAutoDiscard > 0 && artifactQuality(dropped) < artifactAutoDiscard)
+              || (artifactAutoDiscardWeight > 0 && dropped.lines.length <= artifactAutoDiscardWeight)) {
+            scraps += scrapsForArtifact(dropped)
+            persistState()
+          } else {
+            playArtifactDropAnimation(bossX, bossY, dropped)
+          }
+        }
       }
     }
     // Proliferate roll: enemies not spawned by this tree get a chance to add one to the next wave.
@@ -5930,15 +5974,27 @@ export function createGameScene(
           const playerMb = entity.role === 'player' ? getMovementBonuses() : null
           const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= effectiveRange / 2
 
-          // Close-gap: when key node active + dash available, stop only when touching
-          const closeGapActive = entity.role === 'player' && (playerMb?.dashCloseGapToTarget ?? false) && dashCharges > 0
+          // Close-gap: when the key node is active and a dash is available OR
+          // already in flight, ignore action range and stop just short of
+          // contact (range 1.1 in player-radius units — touching would be an
+          // instant collision). The in-flight check matters: starting the dash
+          // consumes the charge, and gating on charges alone made the stop
+          // distance snap back to action range mid-dash.
+          const closeGapActive = entity.role === 'player' && (playerMb?.dashCloseGapToTarget ?? false)
+            && (dashCharges > 0 || dashRemainingMs > 0)
           const stopDist = closeGapActive
-            ? entity.radius + target.radius
+            ? entity.radius * 1.1 + target.radius
             : effectiveRange + target.radius
 
           if (!shouldKite && dist <= stopDist) {
             if (entity.role === 'player') {
               playerIsKiting = false
+              // A dash halted at its stop distance is finished — leftover
+              // dash time must not resume later toward a stale direction.
+              if (dashRemainingMs > 0) {
+                dashRemainingMs = 0
+                endDashSound(entity.x, entity.y)
+              }
             }
             Matter.Body.setVelocity(body, { x: 0, y: 0 })
             continue
@@ -7612,6 +7668,7 @@ function mountTriggerPickerModal(
   parent: HTMLElement,
   currentType: TriggerType | null,
   unlockedTriggers: ('crit' | 'affliction')[],
+  usedTypes: TriggerType[],   // trigger types taken by OTHER slots — each type can only be used once
   onSelect: (type: TriggerType) => void,
   onClose: () => void,
 ): () => void {
@@ -7630,7 +7687,8 @@ function mountTriggerPickerModal(
 
   const optionsEl = panel.querySelector<HTMLElement>('.trigger-picker-options')!
   for (const def of getTriggerDefs()) {
-    const isUnlocked = def.type === 'time' || def.type === 'mana' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')
+    const inUse = usedTypes.includes(def.type)
+    const isUnlocked = (def.type === 'time' || def.type === 'mana' || unlockedTriggers.includes(def.type as 'crit' | 'affliction')) && !inUse
     const isActive = def.type === currentType
     const btn = document.createElement('button')
     btn.className = 'trigger-picker-opt'
@@ -7641,7 +7699,8 @@ function mountTriggerPickerModal(
     btn.innerHTML = `
       <span class="trigger-picker-opt-name">${def.label}</span>
       <span class="trigger-picker-opt-desc">${def.description}</span>
-      ${!isUnlocked ? `<span class="trigger-picker-opt-unlock">🔒 ${def.unlockHint}</span>` : ''}
+      ${inUse ? `<span class="trigger-picker-opt-unlock">${t('game', 'slotInUse')}</span>`
+        : !isUnlocked ? `<span class="trigger-picker-opt-unlock">🔒 ${def.unlockHint}</span>` : ''}
     `
     if (isUnlocked) {
       btn.addEventListener('click', () => {
@@ -7736,12 +7795,20 @@ function mountBattleConfigModal(
     wrap.appendChild(row)
     triggerList.appendChild(wrap)
 
+    const slotActionIds = (excludeSlot: number): string[] =>
+      currentExtraSlots
+        .slice(0, activeExtraSlotCount)
+        .filter((_, j) => j !== excludeSlot)
+        .map(s => s?.actionId)
+        .filter((x): x is string => x != null)
+
     card.addEventListener('click', () => {
       mountActionPickerModal(
         parent, allActions, selectedActionId,
         (id) => { selectedActionId = id as ActionId; onSelectAction(id as ActionId); renderTriggerCard() },
         () => {},
         showCritChance, critBaseAdd,
+        slotActionIds(-1),   // actions used by extra slots can't be the auto attack
       )
     })
     runeBtn.addEventListener('click', e => { e.stopPropagation(); hooks.openRunesModal() })
@@ -7758,10 +7825,15 @@ function mountBattleConfigModal(
     function openTriggerPicker(slotIdx: number): void {
       const slot = currentExtraSlots[slotIdx] ?? { actionId: null, triggerType: null }
       const unlocked = hooks.getUnlockedTriggers()
+      const usedTypes = currentExtraSlots
+        .filter((_, j) => j !== slotIdx && j < activeExtraSlotCount)
+        .map(s => s?.triggerType)
+        .filter((x): x is TriggerType => x != null)
       mountTriggerPickerModal(
         parent,
         slot.triggerType,
         unlocked,
+        usedTypes,
         (type) => {
           currentExtraSlots[slotIdx] = { ...currentExtraSlots[slotIdx], triggerType: type }
           onUpdateExtraSlot(slotIdx, { triggerType: type })
@@ -7812,9 +7884,10 @@ function mountBattleConfigModal(
           extraCard.appendChild(empty)
         }
         extraCard.addEventListener('click', () => {
-          const fallbackId = (slot.actionId as ActionId | null) ?? allActions[0].id as ActionId
+          // Pass the slot's real action (null when empty) — a non-null fallback
+          // would keep that action clickable through the in-use exclusion.
           mountActionPickerModal(
-            parent, allActions, fallbackId,
+            parent, allActions, slot.actionId,
             (id) => {
               currentExtraSlots[i] = { ...currentExtraSlots[i], actionId: id as string }
               onUpdateExtraSlot(i, { actionId: id as string })
@@ -7822,6 +7895,7 @@ function mountBattleConfigModal(
             },
             () => {},
             showCritChance, critBaseAdd,
+            [selectedActionId, ...slotActionIds(i)],   // auto attack + other slots' actions
           )
         })
         extraRow.appendChild(extraCard)

@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   rollValue, rollLineCount, drawPositives, drawNegatives,
   rollArtifact, computeArtifactMods, maxEquippedArtifacts,
-  scrapsForArtifact, upgradeCost, upgradeArtifact,
+  scrapsForArtifact, totalUpgradeSpent, upgradeCost, upgradeArtifact,
+  modifierQuality, artifactQuality,
   ZERO_ARTIFACT_MODS, type Artifact, type ArtifactLine,
 } from './artifacts'
 
@@ -39,6 +40,20 @@ describe('rollValue', () => {
     const N = 10000
     for (let i = 0; i < N; i++) sum += rollValue(10, 20, rng)
     expect(sum / N).toBeCloseTo(15, 0)
+  })
+
+  it('rolls land exactly on 10%-quality steps (an 11-dice)', () => {
+    const rng = makeLcg(9)
+    for (const [min, max] of [[10, 20], [5, 10], [3, 6], [20, 30]] as const) {
+      const seen = new Set<number>()
+      for (let i = 0; i < 500; i++) {
+        const v = rollValue(min, max, rng)
+        const step = ((v - min) / (max - min)) * 10
+        expect(step).toBeCloseTo(Math.round(step), 5)
+        seen.add(Math.round(step))
+      }
+      expect(seen.size).toBe(11)   // all 11 faces reachable
+    }
   })
 })
 
@@ -154,7 +169,7 @@ describe('rollArtifact', () => {
       if (!art) continue
       for (const line of art.lines) {
         expect(line.positive.value).toBeGreaterThan(0)
-        expect(line.negative.value).toBeGreaterThan(0)
+        expect(line.negative!.value).toBeGreaterThan(0)
       }
     }
   })
@@ -276,38 +291,87 @@ describe('scrapsForArtifact', () => {
     expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8)]))).toBe(2)
     expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8), posLine(8)]))).toBe(3)
   })
+
+  it('refunds half the upgrade costs on top of the base value', () => {
+    // Cost curve 1, 2, 3, 5, 8 → cumulative spend 0, 1, 3, 6, 11, 19.
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 1))).toBe(1)       // 1 + floor(1/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 2))).toBe(2)       // 1 + floor(3/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 3))).toBe(4)       // 1 + floor(6/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8)], 5))).toBe(10)      // 1 + floor(19/2)
+    expect(scrapsForArtifact(mkArtifact([posLine(8), posLine(8), posLine(8)], 4))).toBe(8)  // 3 + floor(11/2)
+  })
+})
+
+describe('totalUpgradeSpent', () => {
+  it('sums the cost curve for the upgrades bought so far', () => {
+    const spent = [0, 1, 3, 6, 11, 19, 31, 49, 76, 117]
+    spent.forEach((total, n) => {
+      expect(totalUpgradeSpent(mkArtifact([posLine(8)], n))).toBe(total)
+    })
+  })
 })
 
 describe('upgradeCost', () => {
-  it('doubles per upgrade: 1, 2, 4, 8', () => {
-    expect(upgradeCost(mkArtifact([posLine(8)], 0))).toBe(1)
-    expect(upgradeCost(mkArtifact([posLine(8)], 1))).toBe(2)
-    expect(upgradeCost(mkArtifact([posLine(8)], 2))).toBe(4)
-    expect(upgradeCost(mkArtifact([posLine(8)], 3))).toBe(8)
+  it('grows 50% rounded up per upgrade: 1, 2, 3, 5, 8, 12, 18, 27, 41', () => {
+    const expected = [1, 2, 3, 5, 8, 12, 18, 27, 41]
+    expected.forEach((cost, n) => {
+      expect(upgradeCost(mkArtifact([posLine(8)], n))).toBe(cost)
+    })
   })
   it('legacy artifact without upgradeCount costs 1', () => {
     expect(upgradeCost(mkArtifact([posLine(8)]))).toBe(1)
   })
 })
 
+describe('quality', () => {
+  it('positive quality is linear from min (0%) to max (100%)', () => {
+    const mk = (value: number) => ({ kind: 'positive' as const, type: 'globalMoreDamage' as const, value })  // spec 6-12
+    expect(modifierQuality(mk(6))).toBe(0)
+    expect(modifierQuality(mk(9))).toBe(50)
+    expect(modifierQuality(mk(12))).toBe(100)
+  })
+
+  it('negative quality is inverted: lower rolls score higher', () => {
+    const mk = (value: number) => ({ kind: 'negative' as const, type: 'damageTaken' as const, value })  // spec 5-10
+    expect(modifierQuality(mk(10))).toBe(0)
+    expect(modifierQuality(mk(7.5))).toBe(50)
+    expect(modifierQuality(mk(5))).toBe(100)
+  })
+
+  it('artifact quality is the average of all line qualities', () => {
+    const art = mkArtifact([{
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 9 },   // 50%
+      negative: { kind: 'negative', type: 'damageTaken', value: 5 },        // 100%
+    }])
+    expect(artifactQuality(art)).toBe(75)
+  })
+
+  it('removed bad lines no longer count toward the average', () => {
+    const art = mkArtifact([{
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 9 },   // 50%
+    }])
+    expect(artifactQuality(art)).toBe(50)
+  })
+})
+
 describe('upgradeArtifact', () => {
-  it('improves a positive by +1', () => {
+  it('improves a positive by 10% of its roll range (6-12 → +0.6)', () => {
     // globalMoreDamage 8 (max 12) unmaxed; negative at 5 (min) is maxed → only candidate is the positive.
     const art = mkArtifact([posLine(8)])
     const res = upgradeArtifact(art, () => 0)
-    expect(res).toEqual({ kind: 'upgraded', target: 'positive', lineIndex: 0, before: 8, after: 9 })
-    expect(art.lines[0].positive.value).toBe(9)
+    expect(res).toEqual({ kind: 'upgraded', removed: null, improvement: { target: 'positive', lineIndex: 0, before: 8, after: 8.6 } })
+    expect(art.lines[0].positive.value).toBe(8.6)
     expect(art.upgradeCount).toBe(1)
   })
 
-  it('reduces a negative by 1', () => {
+  it('reduces a negative by 10% of its roll range (5-10 → −0.5)', () => {
     const art = mkArtifact([{
       positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 },  // maxed
       negative: { kind: 'negative', type: 'damageTaken', value: 7 },        // unmaxed
     }])
     const res = upgradeArtifact(art, () => 0)
-    expect(res).toEqual({ kind: 'upgraded', target: 'negative', lineIndex: 0, before: 7, after: 6 })
-    expect(art.lines[0].negative.value).toBe(6)
+    expect(res).toEqual({ kind: 'upgraded', removed: null, improvement: { target: 'negative', lineIndex: 0, before: 7, after: 6.5 } })
+    expect(art.lines[0].negative!.value).toBe(6.5)
   })
 
   it('clamps at the spec bound (19.5 → 20 on a 10-20 mod)', () => {
@@ -332,7 +396,7 @@ describe('upgradeArtifact', () => {
     for (const r of [0, 0.5, 0.99]) {
       const clone: Artifact = JSON.parse(JSON.stringify(art))
       const res = upgradeArtifact(clone, () => r)
-      expect(res).toMatchObject({ kind: 'upgraded', target: 'positive', lineIndex: 1 })
+      expect(res).toMatchObject({ kind: 'upgraded', improvement: { target: 'positive', lineIndex: 1 } })
     }
   })
 
@@ -353,7 +417,78 @@ describe('upgradeArtifact', () => {
     upgradeArtifact(art, () => 0)
     upgradeArtifact(art, () => 0)
     expect(art.upgradeCount).toBe(2)
-    expect(art.lines[0].positive.value).toBe(8)
-    expect(upgradeCost(art)).toBe(4)
+    expect(art.lines[0].positive.value).toBe(7.2)   // 6 → 6.6 → 7.2
+    expect(upgradeCost(art)).toBe(3)                // 1, 2, 3, …
+  })
+})
+
+describe('upgrade-level bad-line removals', () => {
+  const heavyLines = (): ArtifactLine[] => [
+    {
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 6 },
+      negative: { kind: 'negative', type: 'damageTaken', value: 10 },      // quality 0% — worst
+    },
+    {
+      positive: { kind: 'positive', type: 'globalActionSpeed', value: 3 },
+      negative: { kind: 'negative', type: 'lessMoveSpeed', value: 15 },    // quality 50%
+    },
+    {
+      positive: { kind: 'positive', type: 'doubleDamageChance', value: 5 },
+      negative: { kind: 'negative', type: 'lessActionSpeed', value: 3 },   // quality 100%
+    },
+  ]
+
+  it('upgrade 5 removes the worst-quality bad line, then still improves', () => {
+    const art = mkArtifact(heavyLines(), 4)
+    const res = upgradeArtifact(art, () => 0)
+    expect(res.kind).toBe('upgraded')
+    if (res.kind !== 'upgraded') return
+    expect(res.removed).toEqual({ kind: 'negative', type: 'damageTaken', value: 10 })
+    expect(res.improvement).not.toBeNull()
+    expect(art.lines[0].negative).toBeUndefined()
+    expect(art.lines[1].negative).toBeDefined()
+    expect(art.lines[2].negative).toBeDefined()
+    expect(art.upgradeCount).toBe(5)
+  })
+
+  it('upgrade 10 removes the next worst bad line, leaving one on a heavy', () => {
+    const art = mkArtifact(heavyLines(), 4)
+    for (let i = 0; i < 6; i++) upgradeArtifact(art, () => 0.99)
+    expect(art.upgradeCount).toBe(10)
+    const remaining = art.lines.filter(l => l.negative)
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0].negative!.type).toBe('lessActionSpeed')
+  })
+
+  it('no removal happens between or past levels 5 and 10', () => {
+    const art = mkArtifact(heavyLines(), 4)
+    for (let i = 0; i < 8; i++) upgradeArtifact(art, () => 0.99)  // levels 5..12
+    expect(art.upgradeCount).toBe(12)
+    expect(art.lines.filter(l => l.negative)).toHaveLength(1)     // still just the 2 removals
+  })
+
+  it('a light artifact has no removal at level 10 (bad line already gone at 5)', () => {
+    const art = mkArtifact([{
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 6 },
+      negative: { kind: 'negative', type: 'damageTaken', value: 10 },
+    }], 4)
+    const res5 = upgradeArtifact(art, () => 0)
+    expect(res5.kind === 'upgraded' && res5.removed !== null).toBe(true)
+    for (let i = 0; i < 5; i++) upgradeArtifact(art, () => 0)     // levels 6..10
+    expect(art.upgradeCount).toBe(10)
+    expect(art.lines[0].negative).toBeUndefined()                 // removed once, at 5
+  })
+
+  it('a removal-due upgrade succeeds even on an otherwise perfect artifact', () => {
+    const art = mkArtifact([{
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 },  // maxed
+      negative: { kind: 'negative', type: 'damageTaken', value: 5 },        // maxed (perfect)
+    }], 4)
+    const res = upgradeArtifact(art, () => 0)
+    expect(res.kind).toBe('upgraded')
+    if (res.kind !== 'upgraded') return
+    expect(res.removed).toEqual({ kind: 'negative', type: 'damageTaken', value: 5 })
+    expect(res.improvement).toBeNull()   // nothing left to improve after removal
+    expect(art.upgradeCount).toBe(5)
   })
 })

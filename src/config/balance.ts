@@ -24,14 +24,14 @@ export const balance = {
     radius:           20,   // pixels
     moveSpeed:        60,   // pixels per second
     maxLife:          60,
-    damageMultiplier: 0.5,  // applied on top of the action's base damage
+    damageMultiplier: 0.475,  // applied on top of the action's base damage (0.5 − 5% global nerf)
   },
 
   enemyB: {
     radius:           20,   // pixels
     moveSpeed:        60,   // pixels per second
     maxLife:          60,
-    damageMultiplier: 0.5,
+    damageMultiplier: 0.475,
   },
 
   // ── Enemy waves ─────────────────────────────────────────────────────────

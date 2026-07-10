@@ -172,6 +172,9 @@ export interface Character {
   fastForwardMs: number    // remaining ×2-speed stockpile in ms (≤ 3_600_000)
   artifacts: Artifact[]
   scraps: number           // artifact-upgrade currency, earned by deleting/dropping artifacts
+  artifactAutoDiscard: number  // auto-discard drops below this avg quality % (0 = never, 110 = all)
+  artifactAutoDiscardWeight: number  // auto-discard drops at or below this line count (0 = keep all, 1 = light, 2 = medium)
+  triggerSlotsNotif: boolean  // slot uniqueness was enforced on load; dot until battle config is opened
   transcendCount: number   // completed Transcendences (prestige layer above Ascension)
   relics: RelicId[]        // permanent relics chosen when Transcending (each owned once)
   transcendReady: boolean  // a lvl-100+ boss was killed this cycle; consumed on transcend
@@ -193,8 +196,10 @@ function isValidArtifact(a: unknown): a is Artifact {
     const l = line as Record<string, unknown>
     const p = l.positive as Record<string, unknown> | undefined
     const n = l.negative as Record<string, unknown> | undefined
-    if (!p || !n) return false
-    if (typeof p.value !== 'number' || typeof n.value !== 'number') return false
+    if (!p || typeof p.value !== 'number') return false
+    // negative is optional (removed by upgrade-level removals) but must be
+    // well-formed when present.
+    if (n !== undefined && typeof n.value !== 'number') return false
   }
   if (typeof art.equipped !== 'boolean') return false
   if (typeof art.createdAt !== 'number') return false
@@ -293,7 +298,9 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       : 0,
     artifacts: (() => {
       if (!Array.isArray(c.artifacts)) return []
-      const raw = (c.artifacts as Artifact[]).filter(isValidArtifact).slice(0, 20)
+      // Cap at the largest possible bag (ascent-9 boost), not the base size —
+      // slicing to the base 20 would silently drop artifacts from boosted bags.
+      const raw = (c.artifacts as Artifact[]).filter(isValidArtifact).slice(0, balance.artifacts.maxCountBoosted)
       const ascentCnt = typeof c.ascentCount === 'number' ? c.ascentCount : 0
       const transcended = typeof c.transcendCount === 'number' && c.transcendCount > 0
       const maxEquipped = maxEquippedArtifacts(ascentCnt, transcended)
@@ -307,6 +314,13 @@ function normalize(c: Partial<Character> & Pick<Character, 'id' | 'name' | 'crea
       })
     })(),
     scraps: typeof c.scraps === 'number' && c.scraps >= 0 ? Math.floor(c.scraps) : 0,
+    artifactAutoDiscard: typeof c.artifactAutoDiscard === 'number'
+      ? Math.max(0, Math.min(110, Math.round(c.artifactAutoDiscard / 10) * 10))
+      : 0,
+    artifactAutoDiscardWeight: typeof c.artifactAutoDiscardWeight === 'number'
+      ? Math.max(0, Math.min(2, Math.round(c.artifactAutoDiscardWeight)))
+      : 0,
+    triggerSlotsNotif: c.triggerSlotsNotif === true,
     transcendCount: typeof c.transcendCount === 'number' && c.transcendCount >= 0 ? Math.floor(c.transcendCount) : 0,
     relics: Array.isArray(c.relics) ? (c.relics as unknown[]).filter(isRelicId) : [],
     transcendReady: c.transcendReady === true,
@@ -396,6 +410,9 @@ export function createCharacter(name: string, actionId: string): Character {
     fastForwardMs: 0,
     artifacts: [],
     scraps: 0,
+    artifactAutoDiscard: 0,
+    artifactAutoDiscardWeight: 0,
+    triggerSlotsNotif: false,
     transcendCount: 0,
     relics: [],
     transcendReady: false,
@@ -475,6 +492,9 @@ export function saveCharacterState(
   relics?: RelicId[],
   transcendReady?: boolean,
   masteryPointsSeen?: Partial<Record<MasteryId, number>>,
+  artifactAutoDiscard?: number,
+  artifactAutoDiscardWeight?: number,
+  triggerSlotsNotif?: boolean,
 ): void {
   const data = read()
   const char = data.characters.find(c => c.id === id)
@@ -505,5 +525,8 @@ export function saveCharacterState(
   if (relics !== undefined) char.relics = relics
   if (transcendReady !== undefined) char.transcendReady = transcendReady
   if (masteryPointsSeen !== undefined) char.masteryPointsSeen = masteryPointsSeen
+  if (artifactAutoDiscard !== undefined) char.artifactAutoDiscard = artifactAutoDiscard
+  if (artifactAutoDiscardWeight !== undefined) char.artifactAutoDiscardWeight = artifactAutoDiscardWeight
+  if (triggerSlotsNotif !== undefined) char.triggerSlotsNotif = triggerSlotsNotif
   write(data)
 }
