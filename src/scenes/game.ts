@@ -807,6 +807,26 @@ export function createGameScene(
   // The highest-dps stack is used for XP/splash attribution.
   // Splashes a fraction to nearby non-burning enemies (fire mastery 11).
   // Adds touched entity IDs to `damagedIds` so the main loop's death pass picks them up.
+  // Mana Shield node 5 ("intercepts all damage sources"): shield a player
+  // DoT tick, spending mana at the conversion rate. Returns the damage left
+  // for life. `resPct` is the resistance already applied to this tick — with
+  // node 11 it also reduces the mana cost, mirroring the hit path.
+  function manaShieldInterceptDot(dmg: number, resPct: number): number {
+    const mb = getManaBonuses()
+    if (!mb.manaShieldAllSources || mb.manaShieldAbsorb <= 0 || playerEntity.currentMana <= 0) return dmg
+    const absorbed = dmg * Math.min(1, mb.manaShieldAbsorb / 100)
+    let manaRate = mb.manaShieldDamageTaken / 100
+    if (mb.manaShieldResistancesApply) manaRate *= Math.max(0, 1 - Math.min(100, resPct) / 100)
+    const manaCost = absorbed * manaRate
+    if (playerEntity.currentMana >= manaCost) {
+      playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
+      return dmg - absorbed
+    }
+    const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
+    playerEntity.currentMana = 0
+    return dmg - partialAbsorbed
+  }
+
   function tickBurns(deltaMs: number, damagedIds: Set<string>): void {
     if (burnStacks.size === 0 && burnAccum.size === 0) return
     const dts = deltaMs / 1000
@@ -827,6 +847,7 @@ export function createGameScene(
         // Player-targeted burn: apply elemental resistance, no XP, no DPS attribution.
         const elemRes = Math.max(0, Math.min(100, getLifeBonuses().elementalResistance))
         tickDmg *= 1 - elemRes / 100
+        tickDmg = manaShieldInterceptDot(tickDmg, elemRes)
         if (tickDmg <= 0) continue
         const prev = entity.currentLife
         entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
@@ -914,22 +935,7 @@ export function createGameScene(
       const elemRes = Math.max(0, Math.min(100, getLifeBonuses().elementalResistance))
       let selfDmg = playerImmolation.dps * dts * (1 - elemRes / 100)
       if (selfDmg > 0) {
-        // Mana Shield node 5: intercept DoT sources
-        const mb = getManaBonuses()
-        if (mb.manaShieldAllSources && mb.manaShieldAbsorb > 0 && playerEntity.currentMana > 0) {
-          const absorbFrac = Math.min(1, mb.manaShieldAbsorb / 100)
-          const absorbed = selfDmg * absorbFrac
-          const manaRate = mb.manaShieldDamageTaken / 100
-          const manaCost = absorbed * manaRate
-          if (playerEntity.currentMana >= manaCost) {
-            playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
-            selfDmg -= absorbed
-          } else {
-            const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
-            playerEntity.currentMana = 0
-            selfDmg -= partialAbsorbed
-          }
-        }
+        selfDmg = manaShieldInterceptDot(selfDmg, elemRes)
         playerEntity.currentLife = Math.max(0, playerEntity.currentLife - selfDmg)
         damagedIds.add(playerEntity.id)
         playerImmolAccum.damage += selfDmg
@@ -974,6 +980,7 @@ export function createGameScene(
       if (isPlayerTarget) {
         const physRes = Math.max(0, Math.min(100, getLifeBonuses().physRotResistance))
         tickDmg *= 1 - physRes / 100
+        tickDmg = manaShieldInterceptDot(tickDmg, physRes)
         if (tickDmg > 0) {
           const prev = entity.currentLife
           entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
@@ -1044,6 +1051,7 @@ export function createGameScene(
       if (entity.role === 'player') {
         const physRotRes = Math.max(0, Math.min(100, getLifeBonuses().physRotResistance))
         tickDmg *= 1 - physRotRes / 100
+        tickDmg = manaShieldInterceptDot(tickDmg, physRotRes)
         if (tickDmg <= 0) continue
         const prev = entity.currentLife
         entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
