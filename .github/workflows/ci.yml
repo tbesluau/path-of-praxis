@@ -2,6 +2,9 @@ name: CI
 
 on:
   pull_request:
+    # `edited` covers base-branch retargeting — a PR opened against another
+    # base and later retargeted to main would otherwise never run CI.
+    types: [opened, synchronize, reopened, edited]
     branches: [main]
 
 jobs:
