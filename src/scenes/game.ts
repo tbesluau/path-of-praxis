@@ -853,6 +853,7 @@ export function createGameScene(
         entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
         const actual = prev - entity.currentLife
         if (actual > 0) {
+          recordTaken(actual, 'affliction')
           const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
           acc.damage += actual
           burnAccum.set(entityId, acc)
@@ -936,6 +937,7 @@ export function createGameScene(
       let selfDmg = playerImmolation.dps * dts * (1 - elemRes / 100)
       if (selfDmg > 0) {
         selfDmg = manaShieldInterceptDot(selfDmg, elemRes)
+        if (selfDmg > 0) recordTaken(selfDmg, 'affliction')
         playerEntity.currentLife = Math.max(0, playerEntity.currentLife - selfDmg)
         damagedIds.add(playerEntity.id)
         playerImmolAccum.damage += selfDmg
@@ -986,6 +988,7 @@ export function createGameScene(
           entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
           const actual = prev - entity.currentLife
           if (actual > 0) {
+            recordTaken(actual, 'affliction')
             const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
             acc.damage += actual
             bleedAccum.set(entityId, acc)
@@ -1057,6 +1060,7 @@ export function createGameScene(
         entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
         const actual = prev - entity.currentLife
         if (actual > 0) {
+          recordTaken(actual, 'affliction')
           const acc = poisonAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
           acc.damage += actual
           poisonAccum.set(entityId, acc)
@@ -1900,11 +1904,12 @@ export function createGameScene(
   function updateDpsMeter(): void {
     if (!getPrefs().showDpsMeter) { dpsMeterEl.hidden = true; return }
     const data = computeDps()
-    if (data.size === 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
+    const taken = computeTaken()
+    if (data.size === 0 && taken.hitDps <= 0 && taken.afflDps <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     dpsMeterEl.hidden = false
 
     // hit:base and hit:crit are auxiliary (they duplicate hit data) — exclude from scale computation.
-    let instantMax = 0
+    let instantMax = Math.max(taken.hitDps, taken.afflDps)
     for (const byKind of data.values()) {
       let total = 0
       for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
@@ -1914,7 +1919,7 @@ export function createGameScene(
     smoothedDpsMax = instantMax >= smoothedDpsMax ? instantMax : smoothedDpsMax * 0.93 + instantMax * 0.07
     const maxDps = smoothedDpsMax
 
-    const pct = (v: number) => (v / maxDps * 100).toFixed(1)
+    const pct = (v: number) => Math.min(100, v / maxDps * 100).toFixed(1)
 
     const singleBar = (val: number): string =>
       `<div class="dps-bar-track"><div class="dps-bar" style="width:${pct(val)}%"></div></div>`
@@ -1966,6 +1971,14 @@ export function createGameScene(
         const val = byKind.get(key) ?? 0
         if (val > 0) html += subRow(DPS_AFFLICTION_LABELS[key], val)
       }
+    }
+    // Incoming damage — hits, affliction ticks, and the average hit taken.
+    if (taken.hitDps > 0 || taken.afflDps > 0) {
+      const takenRow = (name: string, val: number, bar: string): string =>
+        `<div class="dps-row dps-row--taken"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${bar}</div>`
+      html += takenRow(t('game', 'dpsTakenHits'), taken.hitDps, singleBar(taken.hitDps))
+      html += takenRow(t('game', 'dpsTakenAfflictions'), taken.afflDps, singleBar(taken.afflDps))
+      html += takenRow(t('game', 'dpsAvgHitTaken'), taken.avgHit, '<div class="dps-bar-track"></div>')
     }
     dpsMeterEl.innerHTML = html
   }
@@ -3176,6 +3189,23 @@ export function createGameScene(
   function recordDps(actionId: ActionId, dmg: number, kind: DpsKind): void {
     dpsLog.push({ t: gameTimeMs, actionId, dmg, kind })
     if (!dpsActionOrder.includes(actionId)) dpsActionOrder.push(actionId)
+  }
+  // Damage the PLAYER takes, same rolling window as outgoing DPS. Hits also
+  // count events so the meter can show the average damage per hit taken.
+  const takenLog: { t: number; dmg: number; kind: 'hit' | 'affliction' }[] = []
+  function recordTaken(dmg: number, kind: 'hit' | 'affliction'): void {
+    takenLog.push({ t: gameTimeMs, dmg, kind })
+  }
+  function computeTaken(): { hitDps: number; afflDps: number; avgHit: number } {
+    const cutoff = gameTimeMs - DPS_WINDOW_MS
+    while (takenLog.length > 0 && takenLog[0].t < cutoff) takenLog.shift()
+    let hitTotal = 0, hitCount = 0, afflTotal = 0
+    for (const e of takenLog) {
+      if (e.kind === 'hit') { hitTotal += e.dmg; hitCount++ }
+      else afflTotal += e.dmg
+    }
+    const secs = DPS_WINDOW_MS / 1000
+    return { hitDps: hitTotal / secs, afflDps: afflTotal / secs, avgHit: hitCount > 0 ? hitTotal / hitCount : 0 }
   }
   function fmtDps(n: number): string {
     const f = (x: number) => x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)
@@ -6534,6 +6564,7 @@ export function createGameScene(
             awardStatXp('life', (actualDamage + blockedAmount) * balance.stat.lifeXpFromDamage * xpMult)
             // Block mastery XP from the damage prevented — same model as life.
             if (blockedAmount > 0) awardBlockXp(blockedAmount * balance.stat.lifeXpFromDamage * xpMult)
+            if (actualDamage > 0) recordTaken(actualDamage, 'hit')
             if (actualDamage > 0) spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
           damagedIds.add(target.id)
