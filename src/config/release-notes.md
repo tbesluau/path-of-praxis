@@ -1,3 +1,12 @@
+### 0.3.19 — Endgame and Survivability Balancing
+
+A more balanced experience for the endgame and reaching transcendence!
+
+- **More base life** — starting with twice the life is less strong than it seems but still something
+- **Softer Enemy Scaling** - less brutal enemy power creep around level 75
+- **Damage Taken in DPS meter** - see how much you're suffering
+- **Never done** — small bugfixes and UX improvements
+
 ### 0.3.9 — Artifact updates
 
 Smoother and more powerful artifact experience for truly worthy artifacts!
