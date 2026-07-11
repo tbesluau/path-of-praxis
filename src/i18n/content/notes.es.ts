@@ -473,14 +473,14 @@ El robo de maná se aplica una vez por golpe directo. Las fuentes de daño por t
 
   champion: {
     title: 'Campeón',
-    body: `Un nivel de variante de enemigo por encima de **Élite**. Los Campeones tienen **2,0–4,0× vida**, **2,0–4,0× daño**, **+30 % de velocidad de ataque** y **+20 % de velocidad de movimiento** comparados con un enemigo normal del mismo nivel. Otorgan **×5 XP de acción** al ser eliminados. Identificados por un **diamante dorado** sobre la barra de vida.
+    body: `Un nivel de variante de enemigo por encima de **Élite**. Los Campeones tienen **3–5× vida**, **2–3,5× daño**, **×2 de velocidad de ataque** y **+20 % de velocidad de movimiento** comparados con un enemigo normal del mismo nivel. Otorgan **×5 XP de acción** al ser eliminados. Identificados por un **diamante dorado** sobre la barra de vida.
 
 Los Campeones no pueden aparecer sin nodos de maestría de Enemigo que otorguen probabilidad de campeón. Cada enemigo Élite tiene una tirada separada para ser ascendido a Campeón basada en esta probabilidad.`,
   },
 
   boss: {
     title: 'Jefe',
-    body: `El nivel de enemigo más raro y fuerte, por encima de **Campeón**. Los Jefes tienen **4,0–8,0× vida**, **4,0–8,0× daño**, **+40 % de velocidad de ataque** y **+30 % de velocidad de movimiento** comparados con un enemigo normal del mismo nivel. Otorgan **×10 XP de acción** al ser eliminados. Identificados por un **diamante rojo** sobre la barra de vida.
+    body: `El nivel de enemigo más raro y fuerte, por encima de **Campeón**. Los Jefes tienen **48–60× vida**, **7–10× daño**, **×2 de velocidad de ataque** y **+20 % de velocidad de movimiento** comparados con un enemigo normal del mismo nivel. Otorgan **×10 XP de acción** al ser eliminados. Identificados por un **diamante rojo** sobre la barra de vida.
 
 Los Jefes no pueden aparecer sin nodos de maestría de Enemigo que otorguen probabilidad de jefe. Cada enemigo Campeón tiene una tirada separada para ser ascendido a Jefe.`,
   },
