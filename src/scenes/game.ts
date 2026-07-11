@@ -527,6 +527,7 @@ export function createGameScene(
 
   function tickElectrocuteEffects(): void {
     if (!app) return
+    if (!showAmbientVfx()) { clearEffectGraphics(electrocuteGraphics); return }
     const frame = Math.floor(Date.now() / 60)
 
     for (const id of electrocuteStacks.keys()) {
@@ -588,6 +589,7 @@ export function createGameScene(
   }
 
   function tickFrostEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(frostEffectGraphics); return }
     if (!app) return
     const frame = Math.floor(Date.now() / 90)
 
@@ -644,6 +646,7 @@ export function createGameScene(
   }
 
   function tickBurnEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(burnEffectGraphics); return }
     if (!app) return
     const now = Date.now()
     const frame = Math.floor(now / 40)
@@ -712,6 +715,7 @@ export function createGameScene(
   }
 
   function tickBleedEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(bleedEffectGraphics); return }
     if (!app) return
     const now = Date.now()
     const pulse = 0.5 + 0.5 * Math.sin(now / 220)
@@ -759,6 +763,7 @@ export function createGameScene(
   }
 
   function tickPoisonEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(poisonEffectGraphics); return }
     if (!app) return
     const now = Date.now()
     const pulse = 0.5 + 0.5 * Math.sin(now / 250)
@@ -802,6 +807,26 @@ export function createGameScene(
   // The highest-dps stack is used for XP/splash attribution.
   // Splashes a fraction to nearby non-burning enemies (fire mastery 11).
   // Adds touched entity IDs to `damagedIds` so the main loop's death pass picks them up.
+  // Mana Shield node 5 ("intercepts all damage sources"): shield a player
+  // DoT tick, spending mana at the conversion rate. Returns the damage left
+  // for life. `resPct` is the resistance already applied to this tick — with
+  // node 11 it also reduces the mana cost, mirroring the hit path.
+  function manaShieldInterceptDot(dmg: number, resPct: number): number {
+    const mb = getManaBonuses()
+    if (!mb.manaShieldAllSources || mb.manaShieldAbsorb <= 0 || playerEntity.currentMana <= 0) return dmg
+    const absorbed = dmg * Math.min(1, mb.manaShieldAbsorb / 100)
+    let manaRate = mb.manaShieldDamageTaken / 100
+    if (mb.manaShieldResistancesApply) manaRate *= Math.max(0, 1 - Math.min(100, resPct) / 100)
+    const manaCost = absorbed * manaRate
+    if (playerEntity.currentMana >= manaCost) {
+      playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
+      return dmg - absorbed
+    }
+    const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
+    playerEntity.currentMana = 0
+    return dmg - partialAbsorbed
+  }
+
   function tickBurns(deltaMs: number, damagedIds: Set<string>): void {
     if (burnStacks.size === 0 && burnAccum.size === 0) return
     const dts = deltaMs / 1000
@@ -822,11 +847,13 @@ export function createGameScene(
         // Player-targeted burn: apply elemental resistance, no XP, no DPS attribution.
         const elemRes = Math.max(0, Math.min(100, getLifeBonuses().elementalResistance))
         tickDmg *= 1 - elemRes / 100
+        tickDmg = manaShieldInterceptDot(tickDmg, elemRes)
         if (tickDmg <= 0) continue
         const prev = entity.currentLife
         entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
         const actual = prev - entity.currentLife
         if (actual > 0) {
+          recordTaken(actual, 'affliction')
           const acc = burnAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
           acc.damage += actual
           burnAccum.set(entityId, acc)
@@ -909,22 +936,8 @@ export function createGameScene(
       const elemRes = Math.max(0, Math.min(100, getLifeBonuses().elementalResistance))
       let selfDmg = playerImmolation.dps * dts * (1 - elemRes / 100)
       if (selfDmg > 0) {
-        // Mana Shield node 5: intercept DoT sources
-        const mb = getManaBonuses()
-        if (mb.manaShieldAllSources && mb.manaShieldAbsorb > 0 && playerEntity.currentMana > 0) {
-          const absorbFrac = Math.min(1, mb.manaShieldAbsorb / 100)
-          const absorbed = selfDmg * absorbFrac
-          const manaRate = mb.manaShieldDamageTaken / 100
-          const manaCost = absorbed * manaRate
-          if (playerEntity.currentMana >= manaCost) {
-            playerEntity.currentMana = Math.max(0, playerEntity.currentMana - manaCost)
-            selfDmg -= absorbed
-          } else {
-            const partialAbsorbed = manaRate > 0 ? playerEntity.currentMana / manaRate : 0
-            playerEntity.currentMana = 0
-            selfDmg -= partialAbsorbed
-          }
-        }
+        selfDmg = manaShieldInterceptDot(selfDmg, elemRes)
+        if (selfDmg > 0) recordTaken(selfDmg, 'affliction')
         playerEntity.currentLife = Math.max(0, playerEntity.currentLife - selfDmg)
         damagedIds.add(playerEntity.id)
         playerImmolAccum.damage += selfDmg
@@ -969,11 +982,13 @@ export function createGameScene(
       if (isPlayerTarget) {
         const physRes = Math.max(0, Math.min(100, getLifeBonuses().physRotResistance))
         tickDmg *= 1 - physRes / 100
+        tickDmg = manaShieldInterceptDot(tickDmg, physRes)
         if (tickDmg > 0) {
           const prev = entity.currentLife
           entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
           const actual = prev - entity.currentLife
           if (actual > 0) {
+            recordTaken(actual, 'affliction')
             const acc = bleedAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
             acc.damage += actual
             bleedAccum.set(entityId, acc)
@@ -1039,11 +1054,13 @@ export function createGameScene(
       if (entity.role === 'player') {
         const physRotRes = Math.max(0, Math.min(100, getLifeBonuses().physRotResistance))
         tickDmg *= 1 - physRotRes / 100
+        tickDmg = manaShieldInterceptDot(tickDmg, physRotRes)
         if (tickDmg <= 0) continue
         const prev = entity.currentLife
         entity.currentLife = Math.max(0, entity.currentLife - tickDmg)
         const actual = prev - entity.currentLife
         if (actual > 0) {
+          recordTaken(actual, 'affliction')
           const acc = poisonAccum.get(entityId) ?? { damage: 0, timeMs: 0 }
           acc.damage += actual
           poisonAccum.set(entityId, acc)
@@ -1169,6 +1186,7 @@ export function createGameScene(
   }
 
   function tickBurnGroundEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(burnGroundGraphics); return }
     if (!app || !burnGroundContainer) return
     const gs = balance.world.gridSize
     const now = Date.now()
@@ -1886,21 +1904,24 @@ export function createGameScene(
   function updateDpsMeter(): void {
     if (!getPrefs().showDpsMeter) { dpsMeterEl.hidden = true; return }
     const data = computeDps()
-    if (data.size === 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
+    const taken = computeTaken()
+    if (data.size === 0 && taken.hitDps <= 0 && taken.afflDps <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     dpsMeterEl.hidden = false
 
     // hit:base and hit:crit are auxiliary (they duplicate hit data) — exclude from scale computation.
+    // Taken rows scale independently (below), so they don't participate here.
     let instantMax = 0
     for (const byKind of data.values()) {
       let total = 0
       for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
       instantMax = Math.max(instantMax, total)
     }
-    if (instantMax <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
+    const takenMax = Math.max(taken.hitDps, taken.afflDps, taken.avgHit, taken.maxHit)
+    if (instantMax <= 0 && takenMax <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     smoothedDpsMax = instantMax >= smoothedDpsMax ? instantMax : smoothedDpsMax * 0.93 + instantMax * 0.07
     const maxDps = smoothedDpsMax
 
-    const pct = (v: number) => (v / maxDps * 100).toFixed(1)
+    const pct = (v: number) => (maxDps > 0 ? Math.min(100, v / maxDps * 100) : 0).toFixed(1)
 
     const singleBar = (val: number): string =>
       `<div class="dps-bar-track"><div class="dps-bar" style="width:${pct(val)}%"></div></div>`
@@ -1952,6 +1973,20 @@ export function createGameScene(
         const val = byKind.get(key) ?? 0
         if (val > 0) html += subRow(DPS_AFFLICTION_LABELS[key], val)
       }
+    }
+    // Incoming damage — hit/affliction DPS plus the average and largest single
+    // hit taken. All four rows share one scale, independent of outgoing DPS:
+    // whichever value is largest takes the full track width, so per-hit
+    // magnitudes read directly against the incoming DPS bars.
+    if (takenMax > 0) {
+      const takenBar = (val: number): string =>
+        `<div class="dps-bar-track"><div class="dps-bar" style="width:${(val / takenMax * 100).toFixed(1)}%"></div></div>`
+      const takenRow = (name: string, val: number, bar: string): string =>
+        `<div class="dps-row dps-row--taken"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${bar}</div>`
+      html += takenRow(t('game', 'dpsTakenHits'), taken.hitDps, takenBar(taken.hitDps))
+      html += takenRow(t('game', 'dpsTakenAfflictions'), taken.afflDps, takenBar(taken.afflDps))
+      html += takenRow(t('game', 'dpsAvgHitTaken'), taken.avgHit, takenBar(taken.avgHit))
+      html += takenRow(t('game', 'dpsMaxHitTaken'), taken.maxHit, takenBar(taken.maxHit))
     }
     dpsMeterEl.innerHTML = html
   }
@@ -3163,6 +3198,23 @@ export function createGameScene(
     dpsLog.push({ t: gameTimeMs, actionId, dmg, kind })
     if (!dpsActionOrder.includes(actionId)) dpsActionOrder.push(actionId)
   }
+  // Damage the PLAYER takes, same rolling window as outgoing DPS. Hits also
+  // count events so the meter can show the average damage per hit taken.
+  const takenLog: { t: number; dmg: number; kind: 'hit' | 'affliction' }[] = []
+  function recordTaken(dmg: number, kind: 'hit' | 'affliction'): void {
+    takenLog.push({ t: gameTimeMs, dmg, kind })
+  }
+  function computeTaken(): { hitDps: number; afflDps: number; avgHit: number; maxHit: number } {
+    const cutoff = gameTimeMs - DPS_WINDOW_MS
+    while (takenLog.length > 0 && takenLog[0].t < cutoff) takenLog.shift()
+    let hitTotal = 0, hitCount = 0, afflTotal = 0, maxHit = 0
+    for (const e of takenLog) {
+      if (e.kind === 'hit') { hitTotal += e.dmg; hitCount++; if (e.dmg > maxHit) maxHit = e.dmg }
+      else afflTotal += e.dmg
+    }
+    const secs = DPS_WINDOW_MS / 1000
+    return { hitDps: hitTotal / secs, afflDps: afflTotal / secs, avgHit: hitCount > 0 ? hitTotal / hitCount : 0, maxHit }
+  }
   function fmtDps(n: number): string {
     const f = (x: number) => x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)
     if (n >= 1e9) return f(n / 1e9) + 'b'
@@ -3615,6 +3667,7 @@ export function createGameScene(
   // ── Death system ─────────────────────────────────────────────────────────
 
   function spawnDeathFragments(entity: Entity): void {
+    if (entity.role !== 'player' && !showAmbientVfx()) return
     if (!app) return
     const color = entity.role === 'player' ? tokens.color.primary : tokens.color.accentAlt
     const fragSize = entity.radius * 0.35
@@ -3653,7 +3706,7 @@ export function createGameScene(
     // White star-shaped shatter burst: a central flash and an expanding 5-pointed
     // star that grows to the edge of the blast radius.
     const STAR_POINTS = 5
-    addVfx(450, (g, p) => {
+    if (showAmbientVfx()) addVfx(450, (g, p) => {
       g.clear()
       g.position.set(srcX, srcY)
       const ease = 1 - Math.pow(1 - p, 2)
@@ -4839,6 +4892,7 @@ export function createGameScene(
   }
 
   function spawnCritVfx(x: number, y: number, r: number): void {
+    if (fxDetail() <= 1) return
     addVfx(320, (g, p) => {
       g.clear()
       g.position.set(x, y)
@@ -4856,11 +4910,41 @@ export function createGameScene(
     })
   }
 
-  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void, onComplete?: () => void): void {
+  // ── Effect rendering preferences ────────────────────────────────────────
+  // Opacity slider (10–100%) fades all effect visuals; the detail slider
+  // (1–5) sheds effect load: 1 renders nothing; 2 renders only the player's
+  // main (non-multi) actions; 3/4 add 1/3 (2/3) of enemy actions and
+  // multi-actions plus afflictions/death effects; 5 renders everything.
+  const fxOpacity = (): number => getPrefs().effectOpacity ?? 1
+  const fxDetail  = (): number => getPrefs().effectDetail ?? 5
+
+  function shouldRenderActionVfx(attacker: Entity, isMulti: boolean): boolean {
+    const lvl = fxDetail()
+    if (lvl >= 5) return true
+    if (lvl <= 1) return false
+    if (attacker.role === 'player' && !isMulti) return true
+    if (lvl <= 2) return false
+    return Math.random() < (lvl === 3 ? 1 / 3 : 2 / 3)
+  }
+
+  // Afflictions, burning ground, shatter, and enemy death effects: levels 3+.
+  const showAmbientVfx = (): boolean => fxDetail() >= 3
+
+  function clearEffectGraphics(map: Map<string, Graphics>): void {
+    for (const g of map.values()) g.destroy()
+    map.clear()
+  }
+
+  // `ui` marks non-gameplay animations (e.g. the artifact drop card) that
+  // must ignore the effect-opacity preference.
+  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void, onComplete?: () => void, ui = false): void {
     if (!app) return
     const g = new Graphics()
     app.stage.addChild(g)
-    vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p), onComplete })
+    const wrapped = ui
+      ? (p: number) => tick(g, p)
+      : (p: number) => { g.alpha = 1; tick(g, p); g.alpha *= fxOpacity() }
+    vfxList.push({ g, age: 0, maxAge, tick: wrapped, onComplete })
   }
 
   function playArtifactDropAnimation(sx: number, sy: number, artifact: Artifact): void {
@@ -4922,18 +5006,20 @@ export function createGameScene(
           if (artifacts.length < maxBaggedArtifacts(ascentCount)) bagArtifact()
         },
       }, () => {})
-    })
+    }, true)   // ui vfx: exempt from the effect-opacity preference
   }
 
   // Pre-hit VFX: spawned at attack-start, plays until damage lands (1/3 of cycle).
   // Each action has a natural duration; if it's less than preHitDuration the animation
   // starts late (startFraction > 0) so it completes right at impact.
-  function spawnPreHitVfx(attacker: Entity, target: Entity, action: ActionDef, preHitDuration: number): void {
+  function spawnPreHitVfx(attacker: Entity, target: Entity, action: ActionDef, preHitDuration: number, isMulti = false): void {
     const rig = entityRigs.get(attacker.id)
     if (rig) {
       rig.setFacing(target.x >= attacker.x ? 1 : -1)
       rig.playAttack(preHitDuration)
     }
+    // The rig swing above always plays — only the effect drawing is sheddable.
+    if (!shouldRenderActionVfx(attacker, isMulti)) return
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const baseAng = Math.atan2(ty - ay, tx - ax)
@@ -5266,6 +5352,7 @@ export function createGameScene(
 
   // Post-hit VFX: spawned when damage lands, duration does not affect game timing.
   function spawnPostHitVfx(attacker: Entity, target: Entity, action: ActionDef, multiActionType?: MultiActionType): void {
+    if (!shouldRenderActionVfx(attacker, multiActionType !== undefined)) return
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const tr = target.radius
@@ -5970,9 +6057,14 @@ export function createGameScene(
               if (sr < effectiveRange) effectiveRange = sr
             }
           }
-          // Kite check for player (before stop-distance check to avoid early exit)
+          // Kite check for player (before stop-distance check to avoid early exit).
+          // Kite key A: kite whenever the target is inside action range, backing
+          // off to 90% of range — close enough that the next action still fires.
           const playerMb = entity.role === 'player' ? getMovementBonuses() : null
-          const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= effectiveRange / 2
+          const kiteThreshold = playerMb?.kiteFullRange
+            ? effectiveRange * 0.9 + target.radius
+            : effectiveRange / 2
+          const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= kiteThreshold
 
           // Close-gap: when the key node is active and a dash is available OR
           // already in flight, ignore action range and stop just short of
@@ -6065,7 +6157,9 @@ export function createGameScene(
             if (shouldKite) {
               const kiteMoveX = -(dx / dist)
               const kiteMoveY = -(dy / dist)
-              if (dashCharges > 0 && mb.kiteAllowDash) {
+              // Full-range kiting never dashes away: a dash would overshoot far
+              // past the 90% hold distance and waste the action window.
+              if (dashCharges > 0 && mb.kiteAllowDash && !mb.kiteFullRange) {
                 dashCharges--
                 dashRemainingMs = DASH_DURATION_MS
                 dashStartX = entity.x; dashStartY = entity.y
@@ -6077,8 +6171,7 @@ export function createGameScene(
                   y: dashMoveY * dashSpeed * MATTER_BASE_DT,
                 })
               } else {
-                const kiteSpeedMore = mb.kiteMoreSpeed > 0 ? (1 + mb.kiteMoreSpeed / 100) : 1
-                const kiteMs = effectiveMs * mb.kiteSpeedFraction * kiteSpeedMore
+                const kiteMs = effectiveMs * mb.kiteSpeedFraction
                 Matter.Body.setVelocity(body, {
                   x: kiteMoveX * kiteMs * MATTER_BASE_DT,
                   y: kiteMoveY * kiteMs * MATTER_BASE_DT,
@@ -6485,6 +6578,7 @@ export function createGameScene(
             awardStatXp('life', (actualDamage + blockedAmount) * balance.stat.lifeXpFromDamage * xpMult)
             // Block mastery XP from the damage prevented — same model as life.
             if (blockedAmount > 0) awardBlockXp(blockedAmount * balance.stat.lifeXpFromDamage * xpMult)
+            if (actualDamage > 0) recordTaken(actualDamage, 'hit')
             if (actualDamage > 0) spawnDamageNumber(target.x, target.y - target.radius - 8, actualDamage, 0xff3333)
           }
           damagedIds.add(target.id)
@@ -7511,7 +7605,7 @@ export function createGameScene(
                 countdown: ma.slotPreHitDuration, guaranteedAfflictions: false,
                 multiActionType: ma.type,
               })
-              spawnPreHitVfx(playerEntity, maTarget, ma.slotDef, ma.slotPreHitDuration)
+              spawnPreHitVfx(playerEntity, maTarget, ma.slotDef, ma.slotPreHitDuration, true)
             }
             // Advance to next MA cooldown if more are queued
             if (maQueue.length > 0) {
@@ -7535,6 +7629,15 @@ export function createGameScene(
         tickBleedEffects()
         tickPoisonEffects()
         tickBurnGroundEffects()
+        // Effect-opacity preference — applied to the persistent effect
+        // graphics each frame (one-shot vfx handle it inside addVfx).
+        {
+          const fxAlpha = fxOpacity()
+          for (const m of [electrocuteGraphics, frostEffectGraphics, burnEffectGraphics, bleedEffectGraphics, poisonEffectGraphics, burnGroundGraphics]) {
+            for (const g of m.values()) g.alpha = fxAlpha
+          }
+          for (const f of deathFragments) f.g.alpha = Math.min(f.g.alpha, fxAlpha)
+        }
         tickPoisons(ticker.deltaMS, damagedIds)
         tickGreenVeins(ticker.deltaMS)
 

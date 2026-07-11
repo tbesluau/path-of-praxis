@@ -201,6 +201,24 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           </label>
         </div>
         <div class="modal-field">
+          <div class="settings-zoom-row">
+            <span class="modal-label">${t('settings', 'effectOpacity')}</span>
+            <input type="range" class="settings-volume-slider" data-action="effect-opacity"
+              min="10" max="100" step="10" value="${Math.round((prefs.effectOpacity ?? 1) * 100)}"
+              aria-label="${t('settings', 'effectOpacity')}">
+            <span class="settings-zoom-value" data-value="effect-opacity">${Math.round((prefs.effectOpacity ?? 1) * 100)}%</span>
+          </div>
+        </div>
+        <div class="modal-field">
+          <div class="settings-zoom-row">
+            <span class="modal-label">${t('settings', 'effectDetail')}</span>
+            <input type="range" class="settings-volume-slider" data-action="effect-detail"
+              min="1" max="5" step="1" value="${prefs.effectDetail ?? 5}"
+              aria-label="${t('settings', 'effectDetail')}">
+            <span class="settings-zoom-value" data-value="effect-detail">${prefs.effectDetail ?? 5}</span>
+          </div>
+        </div>
+        <div class="modal-field">
           <label class="settings-toggle-row">
             <span class="modal-label">${t('settings', 'showDamageNumbers')}</span>
             <input type="checkbox" class="settings-toggle-input" data-pref="showDamageNumbers" ${prefs.showDamageNumbers ? 'checked' : ''}>
@@ -285,6 +303,20 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
 
     backdrop.querySelector<HTMLInputElement>('[data-action="sound-muted"]')!
       .addEventListener('change', (e) => { setMuted((e.target as HTMLInputElement).checked) })
+
+    backdrop.querySelector<HTMLInputElement>('[data-action="effect-opacity"]')!
+      .addEventListener('input', (e) => {
+        const v = Number((e.target as HTMLInputElement).value)
+        setPref('effectOpacity', v / 100)
+        backdrop.querySelector<HTMLElement>('[data-value="effect-opacity"]')!.textContent = `${v}%`
+      })
+
+    backdrop.querySelector<HTMLInputElement>('[data-action="effect-detail"]')!
+      .addEventListener('input', (e) => {
+        const v = Number((e.target as HTMLInputElement).value)
+        setPref('effectDetail', v)
+        backdrop.querySelector<HTMLElement>('[data-value="effect-detail"]')!.textContent = String(v)
+      })
 
     backdrop.querySelector<HTMLButtonElement>('[data-action="guide"]')!
       .addEventListener('click', () => {

@@ -458,6 +458,22 @@ body::after {
   height: 5px;
   background: rgba(255, 255, 255, 0.5);
 }
+
+/* Incoming-damage rows at the bottom of the meter — red-tinted. */
+.dps-row--taken {
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: rgba(255, 150, 150, 0.85);
+}
+
+.dps-row--taken:nth-last-child(4) {
+  margin-top: 4px;
+}
+
+.dps-row--taken .dps-bar {
+  height: 5px;
+  background: rgba(232, 69, 69, 0.75);
+}
 .buff-icon {
   position: relative;
   width: 32px;

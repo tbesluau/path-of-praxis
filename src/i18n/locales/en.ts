@@ -66,6 +66,10 @@ export interface TranslationSchema {
     dpsAfflictionBleed: string
     dpsAfflictionGroundFire: string
     dpsAfflictionPoison: string
+    dpsTakenHits: string         // DPS meter: damage taken from hits
+    dpsTakenAfflictions: string  // DPS meter: damage taken from affliction ticks
+    dpsAvgHitTaken: string       // DPS meter: average damage of hits taken
+    dpsMaxHitTaken: string       // DPS meter: largest single hit taken in the window
     selectAnAction: string
     critLabel: string
   }
@@ -289,6 +293,8 @@ export interface TranslationSchema {
     discord: string
     soundVolume: string
     soundMuted: string
+    effectOpacity: string        // effect visuals opacity slider label
+    effectDetail: string         // effect rendering level slider label (1-5, intentionally unexplained)
     showDamageNumbers: string
     showDpsMeter: string
     fullMastery: string
@@ -470,6 +476,10 @@ export const en: TranslationSchema = {
     dpsAfflictionBleed: 'Bleed',
     dpsAfflictionGroundFire: 'Ground fire',
     dpsAfflictionPoison: 'Poison',
+    dpsTakenHits: 'Damage taken (hits)',
+    dpsTakenAfflictions: 'Damage taken (afflictions)',
+    dpsAvgHitTaken: 'Average hit taken',
+    dpsMaxHitTaken: 'Largest hit taken',
     selectAnAction: 'Select an action',
     critLabel: 'Crit',
   },
@@ -693,6 +703,8 @@ export const en: TranslationSchema = {
     discord: 'Discord',
     soundVolume: 'Sound volume',
     soundMuted: 'Mute sound',
+    effectOpacity: 'Effect opacity',
+    effectDetail: 'Effect rendering',
     showDamageNumbers: 'Show damage numbers',
     showDpsMeter: 'DPS meter',
     fullMastery: 'Full mastery',

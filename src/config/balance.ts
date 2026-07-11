@@ -11,9 +11,9 @@ export const balance = {
   player: {
     radius:        20,   // pixels
     moveSpeed:    120,   // pixels per second
-    maxLife:       100,
+    maxLife:       200,
     maxMana:       100,
-    startingLife:  100,  // on new character creation and after rebirth
+    startingLife:  200,  // on new character creation and after rebirth
     startingMana:  100,
     regenRate:     0.01, // fraction of max life/mana recovered per second
     // action stats are defined per-action in src/config/weapons.ts and spells.ts
@@ -66,14 +66,14 @@ export const balance = {
     eliteXpMultiplier:  3,
     championChance:     0,             // probability that an elite is upgraded to "champion" (mastery-only, requires 2 ascensions)
     championLifeMin:    3,   championLifeMax:    5,
-    championDamageMin:  3,   championDamageMax:  5,
+    championDamageMin:  2,   championDamageMax:  3.5,
     championResistMin: 40,   championResistMax:  70,
     championActionSpeedMult: 2,
     championXpMultiplier: 5,
     championSizeMult:   1.25,         // champion enemies are 25% larger than normal
     bossChance:         0,             // probability that a champion is upgraded to "boss" (mastery-only)
     bossLifeMin:       48,   bossLifeMax:       60,
-    bossDamageMin:     12,   bossDamageMax:     15,
+    bossDamageMin:      7,   bossDamageMax:     10,
     bossResistMin:     80,   bossResistMax:     90,
     bossActionSpeedMult: 2,
     bossXpMultiplier:  10,
@@ -193,8 +193,8 @@ export const balance = {
     ],
     xpDividerBase:      0.5,  // divider at level 1 → 2× XP cost; increases xpDividerPerLevel per level
     xpDividerPerLevel:  0.02, // +0.02 per level → divider reaches 1.0 at level 26 (unchanged), >1 above
-    lifeMultiplier:      1.229, // multiplicative per-level bonus on enemy life (~2× at lv30 vs 1.2)
-    damageMultiplier:    1.1266, // multiplicative per-level bonus on enemy damage (~2× at lv30 vs 1.1)
+    lifeMultiplier:      1.1893, // multiplicative per-level bonus on enemy life (lv100 total ≈ the old 1.229 curve at lv85)
+    damageMultiplier:    1.1,   // multiplicative per-level bonus on enemy damage (~×1160 at lv75)
     lifeAddPerLevel:     0.30, // additive life bonus per level above 1, stacks on top of lifeMultiplier
     speedAddPerLevel:    0.01, // additive move-speed bonus per level above 1 (40% faster at lv41)
     rangeAreaAddPerLevel: 0.005, // additive +0.5% range and area size per enemy level above 1

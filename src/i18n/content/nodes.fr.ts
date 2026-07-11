@@ -501,7 +501,7 @@ export const nodesFr: Record<string, string> = {
   'movement_2_3': '+25% de votre vitesse de déplacement utilisée pour Esquiver quand des ennemis sont à moins de la moitié de votre portée d\'action',
   'movement_2_4': '+25% de votre vitesse de déplacement utilisée pour Esquiver quand des ennemis sont à moins de la moitié de votre portée d\'action',
   'movement_2_5': 'Le Dash peut être utilisé pour Esquiver loin des ennemis',
-  'movement_2_12': '+10% de vitesse d\'Esquive supplémentaire',
+  'movement_2_12': 'Esquive en continu tant que la cible est à portée, en reculant jusqu\'à 90% de ta portée d\'action',
   'movement_2_13': '+5% d\'augmentation de la vitesse d\'action pendant l\'Esquive',
 
   'cold_0_0':  '+5% de dégâts de froid augmentés',
