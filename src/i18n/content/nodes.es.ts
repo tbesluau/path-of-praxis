@@ -501,7 +501,7 @@ export const nodesEs: Record<string, string> = {
   'movement_2_3': '+25% de tu velocidad de movimiento usada para Kite cuando los enemigos están a menos de la mitad de tu rango de acción',
   'movement_2_4': '+25% de tu velocidad de movimiento usada para Kite cuando los enemigos están a menos de la mitad de tu rango de acción',
   'movement_2_5': 'El Dash puede usarse para hacer Kite y alejarse de los enemigos',
-  'movement_2_12': '+10% más de velocidad de Kite',
+  'movement_2_12': 'Kitea siempre mientras el objetivo esté a tu alcance, retrocediendo hasta el 90% de tu alcance de acción',
   'movement_2_13': '+5% de aumento en la velocidad de acción mientras haces Kite',
 
   'cold_0_0':  '+5% de aumento en el daño de frío',

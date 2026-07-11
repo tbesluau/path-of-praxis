@@ -6061,9 +6061,14 @@ export function createGameScene(
               if (sr < effectiveRange) effectiveRange = sr
             }
           }
-          // Kite check for player (before stop-distance check to avoid early exit)
+          // Kite check for player (before stop-distance check to avoid early exit).
+          // Kite key A: kite whenever the target is inside action range, backing
+          // off to 90% of range — close enough that the next action still fires.
           const playerMb = entity.role === 'player' ? getMovementBonuses() : null
-          const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= effectiveRange / 2
+          const kiteThreshold = playerMb?.kiteFullRange
+            ? effectiveRange * 0.9 + target.radius
+            : effectiveRange / 2
+          const shouldKite = playerMb !== null && playerMb.kiteSpeedFraction > 0 && dist <= kiteThreshold
 
           // Close-gap: when the key node is active and a dash is available OR
           // already in flight, ignore action range and stop just short of
@@ -6156,7 +6161,9 @@ export function createGameScene(
             if (shouldKite) {
               const kiteMoveX = -(dx / dist)
               const kiteMoveY = -(dy / dist)
-              if (dashCharges > 0 && mb.kiteAllowDash) {
+              // Full-range kiting never dashes away: a dash would overshoot far
+              // past the 90% hold distance and waste the action window.
+              if (dashCharges > 0 && mb.kiteAllowDash && !mb.kiteFullRange) {
                 dashCharges--
                 dashRemainingMs = DASH_DURATION_MS
                 dashStartX = entity.x; dashStartY = entity.y
@@ -6168,8 +6175,7 @@ export function createGameScene(
                   y: dashMoveY * dashSpeed * MATTER_BASE_DT,
                 })
               } else {
-                const kiteSpeedMore = mb.kiteMoreSpeed > 0 ? (1 + mb.kiteMoreSpeed / 100) : 1
-                const kiteMs = effectiveMs * mb.kiteSpeedFraction * kiteSpeedMore
+                const kiteMs = effectiveMs * mb.kiteSpeedFraction
                 Matter.Body.setVelocity(body, {
                   x: kiteMoveX * kiteMs * MATTER_BASE_DT,
                   y: kiteMoveY * kiteMs * MATTER_BASE_DT,
