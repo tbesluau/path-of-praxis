@@ -289,6 +289,8 @@ export interface TranslationSchema {
     discord: string
     soundVolume: string
     soundMuted: string
+    effectOpacity: string        // effect visuals opacity slider label
+    effectDetail: string         // effect rendering level slider label (1-5, intentionally unexplained)
     showDamageNumbers: string
     showDpsMeter: string
     fullMastery: string
@@ -693,6 +695,8 @@ export const en: TranslationSchema = {
     discord: 'Discord',
     soundVolume: 'Sound volume',
     soundMuted: 'Mute sound',
+    effectOpacity: 'Effect opacity',
+    effectDetail: 'Effect rendering',
     showDamageNumbers: 'Show damage numbers',
     showDpsMeter: 'DPS meter',
     fullMastery: 'Full mastery',

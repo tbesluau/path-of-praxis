@@ -527,6 +527,7 @@ export function createGameScene(
 
   function tickElectrocuteEffects(): void {
     if (!app) return
+    if (!showAmbientVfx()) { clearEffectGraphics(electrocuteGraphics); return }
     const frame = Math.floor(Date.now() / 60)
 
     for (const id of electrocuteStacks.keys()) {
@@ -588,6 +589,7 @@ export function createGameScene(
   }
 
   function tickFrostEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(frostEffectGraphics); return }
     if (!app) return
     const frame = Math.floor(Date.now() / 90)
 
@@ -644,6 +646,7 @@ export function createGameScene(
   }
 
   function tickBurnEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(burnEffectGraphics); return }
     if (!app) return
     const now = Date.now()
     const frame = Math.floor(now / 40)
@@ -712,6 +715,7 @@ export function createGameScene(
   }
 
   function tickBleedEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(bleedEffectGraphics); return }
     if (!app) return
     const now = Date.now()
     const pulse = 0.5 + 0.5 * Math.sin(now / 220)
@@ -759,6 +763,7 @@ export function createGameScene(
   }
 
   function tickPoisonEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(poisonEffectGraphics); return }
     if (!app) return
     const now = Date.now()
     const pulse = 0.5 + 0.5 * Math.sin(now / 250)
@@ -1169,6 +1174,7 @@ export function createGameScene(
   }
 
   function tickBurnGroundEffects(): void {
+    if (!showAmbientVfx()) { clearEffectGraphics(burnGroundGraphics); return }
     if (!app || !burnGroundContainer) return
     const gs = balance.world.gridSize
     const now = Date.now()
@@ -3615,6 +3621,7 @@ export function createGameScene(
   // ── Death system ─────────────────────────────────────────────────────────
 
   function spawnDeathFragments(entity: Entity): void {
+    if (entity.role !== 'player' && !showAmbientVfx()) return
     if (!app) return
     const color = entity.role === 'player' ? tokens.color.primary : tokens.color.accentAlt
     const fragSize = entity.radius * 0.35
@@ -3653,7 +3660,7 @@ export function createGameScene(
     // White star-shaped shatter burst: a central flash and an expanding 5-pointed
     // star that grows to the edge of the blast radius.
     const STAR_POINTS = 5
-    addVfx(450, (g, p) => {
+    if (showAmbientVfx()) addVfx(450, (g, p) => {
       g.clear()
       g.position.set(srcX, srcY)
       const ease = 1 - Math.pow(1 - p, 2)
@@ -4839,6 +4846,7 @@ export function createGameScene(
   }
 
   function spawnCritVfx(x: number, y: number, r: number): void {
+    if (fxDetail() <= 1) return
     addVfx(320, (g, p) => {
       g.clear()
       g.position.set(x, y)
@@ -4856,11 +4864,41 @@ export function createGameScene(
     })
   }
 
-  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void, onComplete?: () => void): void {
+  // ── Effect rendering preferences ────────────────────────────────────────
+  // Opacity slider (10–100%) fades all effect visuals; the detail slider
+  // (1–5) sheds effect load: 1 renders nothing; 2 renders only the player's
+  // main (non-multi) actions; 3/4 add 1/3 (2/3) of enemy actions and
+  // multi-actions plus afflictions/death effects; 5 renders everything.
+  const fxOpacity = (): number => getPrefs().effectOpacity ?? 1
+  const fxDetail  = (): number => getPrefs().effectDetail ?? 5
+
+  function shouldRenderActionVfx(attacker: Entity, isMulti: boolean): boolean {
+    const lvl = fxDetail()
+    if (lvl >= 5) return true
+    if (lvl <= 1) return false
+    if (attacker.role === 'player' && !isMulti) return true
+    if (lvl <= 2) return false
+    return Math.random() < (lvl === 3 ? 1 / 3 : 2 / 3)
+  }
+
+  // Afflictions, burning ground, shatter, and enemy death effects: levels 3+.
+  const showAmbientVfx = (): boolean => fxDetail() >= 3
+
+  function clearEffectGraphics(map: Map<string, Graphics>): void {
+    for (const g of map.values()) g.destroy()
+    map.clear()
+  }
+
+  // `ui` marks non-gameplay animations (e.g. the artifact drop card) that
+  // must ignore the effect-opacity preference.
+  function addVfx(maxAge: number, tick: (g: Graphics, progress: number) => void, onComplete?: () => void, ui = false): void {
     if (!app) return
     const g = new Graphics()
     app.stage.addChild(g)
-    vfxList.push({ g, age: 0, maxAge, tick: (p) => tick(g, p), onComplete })
+    const wrapped = ui
+      ? (p: number) => tick(g, p)
+      : (p: number) => { g.alpha = 1; tick(g, p); g.alpha *= fxOpacity() }
+    vfxList.push({ g, age: 0, maxAge, tick: wrapped, onComplete })
   }
 
   function playArtifactDropAnimation(sx: number, sy: number, artifact: Artifact): void {
@@ -4922,18 +4960,20 @@ export function createGameScene(
           if (artifacts.length < maxBaggedArtifacts(ascentCount)) bagArtifact()
         },
       }, () => {})
-    })
+    }, true)   // ui vfx: exempt from the effect-opacity preference
   }
 
   // Pre-hit VFX: spawned at attack-start, plays until damage lands (1/3 of cycle).
   // Each action has a natural duration; if it's less than preHitDuration the animation
   // starts late (startFraction > 0) so it completes right at impact.
-  function spawnPreHitVfx(attacker: Entity, target: Entity, action: ActionDef, preHitDuration: number): void {
+  function spawnPreHitVfx(attacker: Entity, target: Entity, action: ActionDef, preHitDuration: number, isMulti = false): void {
     const rig = entityRigs.get(attacker.id)
     if (rig) {
       rig.setFacing(target.x >= attacker.x ? 1 : -1)
       rig.playAttack(preHitDuration)
     }
+    // The rig swing above always plays — only the effect drawing is sheddable.
+    if (!shouldRenderActionVfx(attacker, isMulti)) return
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const baseAng = Math.atan2(ty - ay, tx - ax)
@@ -5266,6 +5306,7 @@ export function createGameScene(
 
   // Post-hit VFX: spawned when damage lands, duration does not affect game timing.
   function spawnPostHitVfx(attacker: Entity, target: Entity, action: ActionDef, multiActionType?: MultiActionType): void {
+    if (!shouldRenderActionVfx(attacker, multiActionType !== undefined)) return
     const ax = attacker.x, ay = attacker.y
     const tx = target.x, ty = target.y
     const tr = target.radius
@@ -7511,7 +7552,7 @@ export function createGameScene(
                 countdown: ma.slotPreHitDuration, guaranteedAfflictions: false,
                 multiActionType: ma.type,
               })
-              spawnPreHitVfx(playerEntity, maTarget, ma.slotDef, ma.slotPreHitDuration)
+              spawnPreHitVfx(playerEntity, maTarget, ma.slotDef, ma.slotPreHitDuration, true)
             }
             // Advance to next MA cooldown if more are queued
             if (maQueue.length > 0) {
@@ -7535,6 +7576,15 @@ export function createGameScene(
         tickBleedEffects()
         tickPoisonEffects()
         tickBurnGroundEffects()
+        // Effect-opacity preference — applied to the persistent effect
+        // graphics each frame (one-shot vfx handle it inside addVfx).
+        {
+          const fxAlpha = fxOpacity()
+          for (const m of [electrocuteGraphics, frostEffectGraphics, burnEffectGraphics, bleedEffectGraphics, poisonEffectGraphics, burnGroundGraphics]) {
+            for (const g of m.values()) g.alpha = fxAlpha
+          }
+          for (const f of deathFragments) f.g.alpha = Math.min(f.g.alpha, fxAlpha)
+        }
         tickPoisons(ticker.deltaMS, damagedIds)
         tickGreenVeins(ticker.deltaMS)
 
