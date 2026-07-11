@@ -1909,17 +1909,19 @@ export function createGameScene(
     dpsMeterEl.hidden = false
 
     // hit:base and hit:crit are auxiliary (they duplicate hit data) — exclude from scale computation.
-    let instantMax = Math.max(taken.hitDps, taken.afflDps)
+    // Taken rows scale independently (below), so they don't participate here.
+    let instantMax = 0
     for (const byKind of data.values()) {
       let total = 0
       for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
       instantMax = Math.max(instantMax, total)
     }
-    if (instantMax <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
+    const takenMax = Math.max(taken.hitDps, taken.afflDps)
+    if (instantMax <= 0 && takenMax <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     smoothedDpsMax = instantMax >= smoothedDpsMax ? instantMax : smoothedDpsMax * 0.93 + instantMax * 0.07
     const maxDps = smoothedDpsMax
 
-    const pct = (v: number) => Math.min(100, v / maxDps * 100).toFixed(1)
+    const pct = (v: number) => (maxDps > 0 ? Math.min(100, v / maxDps * 100) : 0).toFixed(1)
 
     const singleBar = (val: number): string =>
       `<div class="dps-bar-track"><div class="dps-bar" style="width:${pct(val)}%"></div></div>`
@@ -1973,11 +1975,15 @@ export function createGameScene(
       }
     }
     // Incoming damage — hits, affliction ticks, and the average hit taken.
-    if (taken.hitDps > 0 || taken.afflDps > 0) {
+    // Own scale, independent of outgoing DPS: the larger of the two taken
+    // bars takes the full track width.
+    if (takenMax > 0) {
+      const takenBar = (val: number): string =>
+        `<div class="dps-bar-track"><div class="dps-bar" style="width:${(val / takenMax * 100).toFixed(1)}%"></div></div>`
       const takenRow = (name: string, val: number, bar: string): string =>
         `<div class="dps-row dps-row--taken"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${bar}</div>`
-      html += takenRow(t('game', 'dpsTakenHits'), taken.hitDps, singleBar(taken.hitDps))
-      html += takenRow(t('game', 'dpsTakenAfflictions'), taken.afflDps, singleBar(taken.afflDps))
+      html += takenRow(t('game', 'dpsTakenHits'), taken.hitDps, takenBar(taken.hitDps))
+      html += takenRow(t('game', 'dpsTakenAfflictions'), taken.afflDps, takenBar(taken.afflDps))
       html += takenRow(t('game', 'dpsAvgHitTaken'), taken.avgHit, '<div class="dps-bar-track"></div>')
     }
     dpsMeterEl.innerHTML = html
