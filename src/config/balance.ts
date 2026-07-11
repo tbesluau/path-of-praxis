@@ -11,9 +11,9 @@ export const balance = {
   player: {
     radius:        20,   // pixels
     moveSpeed:    120,   // pixels per second
-    maxLife:       100,
+    maxLife:       200,
     maxMana:       100,
-    startingLife:  100,  // on new character creation and after rebirth
+    startingLife:  200,  // on new character creation and after rebirth
     startingMana:  100,
     regenRate:     0.01, // fraction of max life/mana recovered per second
     // action stats are defined per-action in src/config/weapons.ts and spells.ts
