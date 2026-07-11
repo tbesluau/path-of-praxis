@@ -479,14 +479,14 @@ Le vol de mana est appliqué une fois par coup direct. Les sources de dégâts d
 
   champion: {
     title: 'Champion',
-    body: `Une variante d'ennemi au-dessus de l'**Élite**. Les Champions ont **2,0–4,0× de vie**, **2,0–4,0× de dégâts**, **+30 % de vitesse d'attaque** et **+20 % de vitesse de déplacement** par rapport à un ennemi normal de même niveau. Ils accordent **×5 XP d'action** à la mort. Identifiés par un **diamant doré** au-dessus de la barre de vie.
+    body: `Une variante d'ennemi au-dessus de l'**Élite**. Les Champions ont **3–5× de vie**, **2–3,5× de dégâts**, **×2 de vitesse d'attaque** et **+20 % de vitesse de déplacement** par rapport à un ennemi normal de même niveau. Ils accordent **×5 XP d'action** à la mort. Identifiés par un **diamant doré** au-dessus de la barre de vie.
 
 Les Champions ne peuvent pas apparaître sans des nœuds de maîtrise Ennemi qui accordent une chance de champion. Chaque ennemi Élite subit un tirage séparé pour être promu Champion en fonction de cette chance.`,
   },
 
   boss: {
     title: 'Boss',
-    body: `Le tier d'ennemi le plus rare et le plus fort, au-dessus du **Champion**. Les Boss ont **4,0–8,0× de vie**, **4,0–8,0× de dégâts**, **+40 % de vitesse d'attaque** et **+30 % de vitesse de déplacement** par rapport à un ennemi normal de même niveau. Ils accordent **×10 XP d'action** à la mort. Identifiés par un **diamant rouge** au-dessus de la barre de vie.
+    body: `Le tier d'ennemi le plus rare et le plus fort, au-dessus du **Champion**. Les Boss ont **48–60× de vie**, **7–10× de dégâts**, **×2 de vitesse d'attaque** et **+20 % de vitesse de déplacement** par rapport à un ennemi normal de même niveau. Ils accordent **×10 XP d'action** à la mort. Identifiés par un **diamant rouge** au-dessus de la barre de vie.
 
 Les Boss ne peuvent pas apparaître sans des nœuds de maîtrise Ennemi qui accordent une chance de boss. Chaque ennemi Champion subit un tirage séparé pour être promu Boss.`,
   },

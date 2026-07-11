@@ -505,7 +505,7 @@ Mana steal is applied once per direct hit. Damage-over-time sources (burn ticks,
 
 ## Champion
 
-A variant enemy tier above **Elite**. Champions have **2.0–4.0× life**, **2.0–4.0× damage**, **+30% attack speed**, and **+20% move speed** compared to a normal enemy of the same level. They award **×5 action XP** on kill. Identified by a **gold diamond** above the health bar.
+A variant enemy tier above **Elite**. Champions have **3–5× life**, **2–3.5× damage**, **×2 attack speed**, and **+20% move speed** compared to a normal enemy of the same level. They award **×5 action XP** on kill. Identified by a **gold diamond** above the health bar.
 
 Champions cannot spawn without Enemy mastery nodes that grant champion chance. Each Elite enemy has a separate roll to be upgraded to Champion based on this chance.
 
@@ -513,7 +513,7 @@ Champions cannot spawn without Enemy mastery nodes that grant champion chance. E
 
 ## Boss
 
-The rarest and strongest enemy tier, above **Champion**. Bosses have **4.0–8.0× life**, **4.0–8.0× damage**, **+40% attack speed**, and **+30% move speed** compared to a normal enemy of the same level. They award **×10 action XP** on kill. Identified by a **red diamond** above the health bar.
+The rarest and strongest enemy tier, above **Champion**. Bosses have **48–60× life**, **7–10× damage**, **×2 attack speed**, and **+20% move speed** compared to a normal enemy of the same level. They award **×10 action XP** on kill. Identified by a **red diamond** above the health bar.
 
 Bosses cannot spawn without Enemy mastery nodes that grant boss chance. Each Champion enemy has a separate roll to be upgraded to Boss.
 
