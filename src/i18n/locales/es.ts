@@ -291,6 +291,8 @@ export const es: TranslationSchema = {
     discord: 'Discord',
     soundVolume: 'Volumen de sonido',
     soundMuted: 'Silenciar sonido',
+    effectOpacity: 'Opacidad de los efectos',
+    effectDetail: 'Renderizado de efectos',
     showDamageNumbers: 'Mostrar números de daño',
     showDpsMeter: 'Medidor DPS',
     fullMastery: 'Maestría completa',

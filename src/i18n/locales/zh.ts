@@ -291,6 +291,8 @@ export const zh: TranslationSchema = {
     discord: 'Discord',
     soundVolume: '音效音量',
     soundMuted: '静音',
+    effectOpacity: '特效不透明度',
+    effectDetail: '特效渲染',
     showDamageNumbers: '显示伤害数字',
     showDpsMeter: 'DPS 计量器',
     fullMastery: '完整精通',

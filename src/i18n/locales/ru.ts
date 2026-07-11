@@ -291,6 +291,8 @@ export const ru: TranslationSchema = {
     discord: 'Discord',
     soundVolume: 'Громкость звука',
     soundMuted: 'Отключить звук',
+    effectOpacity: 'Непрозрачность эффектов',
+    effectDetail: 'Отрисовка эффектов',
     showDamageNumbers: 'Показывать числа урона',
     showDpsMeter: 'Счётчик DPS',
     fullMastery: 'Полное мастерство',

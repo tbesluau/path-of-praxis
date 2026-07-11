@@ -10,6 +10,8 @@ export interface Prefs {
   zoomLevel:          number
   soundVolume:        number
   soundMuted:         boolean
+  effectOpacity:      number   // 0.1–1.0 — alpha applied to all action/affliction effect visuals
+  effectDetail:       number   // 1–5 — how much of the effect load is rendered (5 = everything)
   tutorialDisabled?:  boolean
   seenTutorials?:     string[]
   // Bump the suffix (V1 → V2 → …) to re-prompt all users when the
@@ -38,6 +40,8 @@ const defaults: Prefs = {
   zoomLevel:         1.0,
   soundVolume:       0.7,
   soundMuted:        false,
+  effectOpacity:     1.0,
+  effectDetail:      5,
 }
 
 let cache: Prefs | null = null
