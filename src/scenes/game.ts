@@ -1985,6 +1985,7 @@ export function createGameScene(
       html += takenRow(t('game', 'dpsTakenHits'), taken.hitDps, takenBar(taken.hitDps))
       html += takenRow(t('game', 'dpsTakenAfflictions'), taken.afflDps, takenBar(taken.afflDps))
       html += takenRow(t('game', 'dpsAvgHitTaken'), taken.avgHit, '<div class="dps-bar-track"></div>')
+      html += takenRow(t('game', 'dpsMaxHitTaken'), taken.maxHit, '<div class="dps-bar-track"></div>')
     }
     dpsMeterEl.innerHTML = html
   }
@@ -3202,16 +3203,16 @@ export function createGameScene(
   function recordTaken(dmg: number, kind: 'hit' | 'affliction'): void {
     takenLog.push({ t: gameTimeMs, dmg, kind })
   }
-  function computeTaken(): { hitDps: number; afflDps: number; avgHit: number } {
+  function computeTaken(): { hitDps: number; afflDps: number; avgHit: number; maxHit: number } {
     const cutoff = gameTimeMs - DPS_WINDOW_MS
     while (takenLog.length > 0 && takenLog[0].t < cutoff) takenLog.shift()
-    let hitTotal = 0, hitCount = 0, afflTotal = 0
+    let hitTotal = 0, hitCount = 0, afflTotal = 0, maxHit = 0
     for (const e of takenLog) {
-      if (e.kind === 'hit') { hitTotal += e.dmg; hitCount++ }
+      if (e.kind === 'hit') { hitTotal += e.dmg; hitCount++; if (e.dmg > maxHit) maxHit = e.dmg }
       else afflTotal += e.dmg
     }
     const secs = DPS_WINDOW_MS / 1000
-    return { hitDps: hitTotal / secs, afflDps: afflTotal / secs, avgHit: hitCount > 0 ? hitTotal / hitCount : 0 }
+    return { hitDps: hitTotal / secs, afflDps: afflTotal / secs, avgHit: hitCount > 0 ? hitTotal / hitCount : 0, maxHit }
   }
   function fmtDps(n: number): string {
     const f = (x: number) => x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1) : x.toFixed(2)

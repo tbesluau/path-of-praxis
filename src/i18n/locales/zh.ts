@@ -71,6 +71,7 @@ export const zh: TranslationSchema = {
     dpsTakenHits: '受到伤害（击打）',
     dpsTakenAfflictions: '受到伤害（异常状态）',
     dpsAvgHitTaken: '平均受击伤害',
+    dpsMaxHitTaken: '最大单次受击',
     selectAnAction: '选择一个行动',
     critLabel: '暴击',
   },
