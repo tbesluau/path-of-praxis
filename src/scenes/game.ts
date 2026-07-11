@@ -1921,7 +1921,7 @@ export function createGameScene(
       for (const [kind, v] of byKind.entries()) if (!kind.startsWith('hit:')) total += v
       instantMax = Math.max(instantMax, total)
     }
-    const takenMax = Math.max(taken.hitDps, taken.afflDps)
+    const takenMax = Math.max(taken.hitDps, taken.afflDps, taken.avgHit, taken.maxHit)
     if (instantMax <= 0 && takenMax <= 0) { dpsMeterEl.hidden = true; smoothedDpsMax = 0; return }
     smoothedDpsMax = instantMax >= smoothedDpsMax ? instantMax : smoothedDpsMax * 0.93 + instantMax * 0.07
     const maxDps = smoothedDpsMax
@@ -1979,9 +1979,10 @@ export function createGameScene(
         if (val > 0) html += subRow(DPS_AFFLICTION_LABELS[key], val)
       }
     }
-    // Incoming damage — hits, affliction ticks, and the average hit taken.
-    // Own scale, independent of outgoing DPS: the larger of the two taken
-    // bars takes the full track width.
+    // Incoming damage — hit/affliction DPS plus the average and largest single
+    // hit taken. All four rows share one scale, independent of outgoing DPS:
+    // whichever value is largest takes the full track width, so per-hit
+    // magnitudes read directly against the incoming DPS bars.
     if (takenMax > 0) {
       const takenBar = (val: number): string =>
         `<div class="dps-bar-track"><div class="dps-bar" style="width:${(val / takenMax * 100).toFixed(1)}%"></div></div>`
@@ -1989,8 +1990,8 @@ export function createGameScene(
         `<div class="dps-row dps-row--taken"><span class="dps-name">${name}</span><span class="dps-value">${fmtDps(val)}</span>${bar}</div>`
       html += takenRow(t('game', 'dpsTakenHits'), taken.hitDps, takenBar(taken.hitDps))
       html += takenRow(t('game', 'dpsTakenAfflictions'), taken.afflDps, takenBar(taken.afflDps))
-      html += takenRow(t('game', 'dpsAvgHitTaken'), taken.avgHit, '<div class="dps-bar-track"></div>')
-      html += takenRow(t('game', 'dpsMaxHitTaken'), taken.maxHit, '<div class="dps-bar-track"></div>')
+      html += takenRow(t('game', 'dpsAvgHitTaken'), taken.avgHit, takenBar(taken.avgHit))
+      html += takenRow(t('game', 'dpsMaxHitTaken'), taken.maxHit, takenBar(taken.maxHit))
     }
     dpsMeterEl.innerHTML = html
   }
