@@ -71,6 +71,7 @@ export const es: TranslationSchema = {
     dpsTakenHits: 'Daño recibido (golpes)',
     dpsTakenAfflictions: 'Daño recibido (aflicciones)',
     dpsAvgHitTaken: 'Golpe recibido medio',
+    dpsMaxHitTaken: 'Mayor golpe recibido',
     selectAnAction: 'Seleccionar una acción',
     critLabel: 'Crítico',
   },

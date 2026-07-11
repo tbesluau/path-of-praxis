@@ -69,6 +69,7 @@ export interface TranslationSchema {
     dpsTakenHits: string         // DPS meter: damage taken from hits
     dpsTakenAfflictions: string  // DPS meter: damage taken from affliction ticks
     dpsAvgHitTaken: string       // DPS meter: average damage of hits taken
+    dpsMaxHitTaken: string       // DPS meter: largest single hit taken in the window
     selectAnAction: string
     critLabel: string
   }
@@ -478,6 +479,7 @@ export const en: TranslationSchema = {
     dpsTakenHits: 'Damage taken (hits)',
     dpsTakenAfflictions: 'Damage taken (afflictions)',
     dpsAvgHitTaken: 'Average hit taken',
+    dpsMaxHitTaken: 'Largest hit taken',
     selectAnAction: 'Select an action',
     critLabel: 'Crit',
   },

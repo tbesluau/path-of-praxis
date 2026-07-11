@@ -71,6 +71,7 @@ export const ru: TranslationSchema = {
     dpsTakenHits: 'Полученный урон (удары)',
     dpsTakenAfflictions: 'Полученный урон (недуги)',
     dpsAvgHitTaken: 'Средний полученный удар',
+    dpsMaxHitTaken: 'Крупнейший полученный удар',
     selectAnAction: 'Выбрать действие',
     critLabel: 'Крит',
   },

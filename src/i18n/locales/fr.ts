@@ -71,6 +71,7 @@ export const fr: TranslationSchema = {
     dpsTakenHits: 'Dégâts subis (coups)',
     dpsTakenAfflictions: 'Dégâts subis (afflictions)',
     dpsAvgHitTaken: 'Coup subi moyen',
+    dpsMaxHitTaken: 'Plus gros coup subi',
     selectAnAction: 'Choisir une action',
     critLabel: 'Crit',
   },
