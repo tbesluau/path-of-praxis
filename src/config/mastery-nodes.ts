@@ -307,7 +307,7 @@ export interface NodeEffect {
   dashExtraCharge?: boolean               // +1 maximum Dash charge
   dashLessDistance?: number              // additive %; less dash distance (penalty for extra charge)
   dashCloseGapToTarget?: boolean          // Dash closes gap to target regardless of action range
-  kiteMoreSpeed?: number                  // 'more' %; multiplies effective kite speed
+  kiteFullRange?: true                    // Kite key A: kite whenever the target is in range, back to 90% of range
   kiteMoreActionSpeed?: number            // additive %; action speed bonus while kiting
 
   // Action mastery — ignore enemy damage mitigation (tree 0 final major)
@@ -624,7 +624,7 @@ export interface MovementBonuses {
   dashExtraCharge: boolean               // +1 maximum Dash charge
   dashLessDistance: number               // additive %; less dash distance
   dashCloseGapToTarget: boolean          // Dash closes gap to target regardless of action range
-  kiteMoreSpeed: number                  // 'more' %; multiplies effective kite speed
+  kiteFullRange: boolean                 // kite whenever the target is in range, back to 90% of range
   kiteMoreActionSpeed: number            // additive %; action speed bonus while kiting
 }
 
@@ -2122,7 +2122,7 @@ const MOVEMENT_EFFECTS: Partial<Record<number, TreeEffects>> = {
     3: { kiteSpeedFraction: 0.25 },
     4: { kiteSpeedFraction: 0.25 },
     5: { kiteAllowDash: true },
-    12: { kiteMoreSpeed: 10 },
+    12: { kiteFullRange: true },
     13: { kiteMoreActionSpeed: 5 },
   },
 }
@@ -2147,7 +2147,7 @@ export function computeMovementBonuses(nodes: number[][], dumpedPoints = 0): Mov
     dashExtraCharge: false,
     dashLessDistance: 0,
     dashCloseGapToTarget: false,
-    kiteMoreSpeed: 0,
+    kiteFullRange: false,
     kiteMoreActionSpeed: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
@@ -2163,7 +2163,7 @@ export function computeMovementBonuses(nodes: number[][], dumpedPoints = 0): Mov
       b.firstActionMoreDamage          += eff.moveFirstActionMoreDamage ?? 0
       b.stationaryMoreDamagePerAction  += eff.moveStationaryMoreDamagePerAction ?? 0
       b.dashLessDistance               += eff.dashLessDistance ?? 0
-      b.kiteMoreSpeed                  += eff.kiteMoreSpeed ?? 0
+      if (eff.kiteFullRange)         b.kiteFullRange = true
       b.kiteMoreActionSpeed            += eff.kiteMoreActionSpeed ?? 0
       if (eff.kiteAllowDash)         b.kiteAllowDash = true
       if (eff.moveImmuneToSlowing)   b.immuneToSlowing = true
@@ -2942,7 +2942,7 @@ const MOVEMENT_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, strin
     3: '+25% of your movement speed used to Kite when enemies are within half your action range',
     4: '+25% of your movement speed used to Kite when enemies are within half your action range',
     5: 'Dash can be used to Kite away from enemies',
-    12: '+10% more Kite speed',
+    12: 'Always Kite while your target is in range, back to 90% of your action range',
     13: '+5% increased action speed while Kiting',
   },
 }
