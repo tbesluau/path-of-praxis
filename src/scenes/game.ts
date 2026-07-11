@@ -146,12 +146,7 @@ export function createGameScene(
   function enemyDamageScale(): number {
     // Low-level damage penalty: 0.5× at L1, +0.05 per level, capped at 1.0× from L11
     const lowLevelPenalty = Math.min(1, 0.5 + 0.05 * (enemyProgress.level - 1))
-    // Exponential up to the softcap level, then a much softer per-level rate.
-    const lvl = enemyProgress.level
-    const cap = balance.enemyLevel.damageSoftcapLevel
-    let scale = Math.pow(balance.enemyLevel.damageMultiplier, Math.min(lvl, cap) - 1)
-    if (lvl > cap) scale *= Math.pow(balance.enemyLevel.damageMultiplierSoft, lvl - cap)
-    return scale * lowLevelPenalty
+    return Math.pow(balance.enemyLevel.damageMultiplier, enemyProgress.level - 1) * lowLevelPenalty
   }
 
   function enemyLifeScale(): number {
