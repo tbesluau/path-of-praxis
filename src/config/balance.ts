@@ -193,7 +193,7 @@ export const balance = {
     ],
     xpDividerBase:      0.5,  // divider at level 1 → 2× XP cost; increases xpDividerPerLevel per level
     xpDividerPerLevel:  0.02, // +0.02 per level → divider reaches 1.0 at level 26 (unchanged), >1 above
-    lifeMultiplier:      1.229, // multiplicative per-level bonus on enemy life (~2× at lv30 vs 1.2)
+    lifeMultiplier:      1.1893, // multiplicative per-level bonus on enemy life (lv100 total ≈ the old 1.229 curve at lv85)
     damageMultiplier:    1.1,   // multiplicative per-level bonus on enemy damage (~×1160 at lv75)
     lifeAddPerLevel:     0.30, // additive life bonus per level above 1, stacks on top of lifeMultiplier
     speedAddPerLevel:    0.01, // additive move-speed bonus per level above 1 (40% faster at lv41)
