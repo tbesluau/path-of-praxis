@@ -342,6 +342,11 @@ export function removableNegativesLeft(a: Artifact): number {
   return Math.max(0, Math.min(2, a.lines.length) - removalsDone)
 }
 
+/** True when nothing is left to do: every line perfect and no removable bad line remains. */
+export function isFullyUpgraded(a: Artifact): boolean {
+  return upgradeCandidates(a).length === 0 && removableNegativesLeft(a) === 0
+}
+
 /**
  * Apply one upgrade to the artifact:
  * 1. If this upgrade reaches level 5 or 10 and a removable bad line remains,

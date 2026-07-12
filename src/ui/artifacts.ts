@@ -1,7 +1,7 @@
 import { t } from '../i18n'
 import { playSound } from '../audio'
 import type { Artifact, PositiveModifier, NegativeModifier, UpgradeResult } from '../config/artifacts'
-import { describePositive, describeNegative, upgradeCost, modifierQuality, artifactQuality } from '../config/artifacts'
+import { describePositive, describeNegative, upgradeCost, modifierQuality, artifactQuality, isFullyUpgraded } from '../config/artifacts'
 
 // Matches the Lucide `trash-2` glyph used for character deletion in the menu.
 const TRASH_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`
@@ -71,10 +71,11 @@ function renderArtifactThumb(
     ? `<button class="artifact-thumb-equip-btn" data-artifact-id="${artifact.id}" data-action="unequip">${t('artifacts', 'unequip')}</button>`
     : `<button class="artifact-thumb-equip-btn" data-artifact-id="${artifact.id}" data-action="equip" ${canEquip ? '' : 'disabled'} title="${canEquip ? '' : t('artifacts', 'lockedHint')}">${t('artifacts', 'equip')}</button>`
   const cost = upgradeCost(artifact)
-  const upgradeLabel = t('artifacts', 'upgradeBtn')
-    .replace('{scraps}', String(scraps))
-    .replace('{cost}', String(cost))
-  const upgradeBtn = `<button class="artifact-thumb-upgrade-btn" data-artifact-id="${artifact.id}" data-action="upgrade" ${scraps >= cost ? '' : 'disabled'}>${upgradeLabel}</button>`
+  const maxed = isFullyUpgraded(artifact)
+  const upgradeLabel = maxed
+    ? t('artifacts', 'upgradeMaxedTitle')
+    : t('artifacts', 'upgradeBtn').replace('{scraps}', String(scraps)).replace('{cost}', String(cost))
+  const upgradeBtn = `<button class="artifact-thumb-upgrade-btn" data-artifact-id="${artifact.id}" data-action="upgrade" ${!maxed && scraps >= cost ? '' : 'disabled'} ${maxed ? `title="${t('artifacts', 'upgradeMaxedBody')}"` : ''}>${upgradeLabel}</button>`
   return `
     <div class="artifact-thumb-row">
       <div class="artifact-thumb ${rc}${equippedClass}" data-artifact-id="${artifact.id}">
