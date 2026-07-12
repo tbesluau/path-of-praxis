@@ -95,7 +95,7 @@ To manage your collection, open the Artifacts panel from the Ascent menu (availa
 
 **Scraps & upgrades** — deleting an artifact (or dropping a fresh boss drop) grants **Scraps**: 1 for a Light, 2 for a Medium, 3 for a Heavy artifact. Scraps pay for **upgrades**: each upgrade improves one random unmaxed line by 10% of its quality — positives increase, negatives shrink. A line can never pass the best value it could have rolled. The first upgrade on an artifact costs 1 scrap, and the cost grows by 50% (rounded up) with each upgrade after that (1, 2, 3, 5, 8, 12, …). Deleting an upgraded artifact refunds half the scraps spent on its upgrades on top of its base value.
 
-**Bad-line removal** — the 5th and 10th upgrades each remove the artifact's worst-quality bad line before improving a line as usual. A Heavy artifact ends up keeping a single bad line, while Medium and Light artifacts lose theirs entirely.
+**Bad-line removal** — the 5th and 10th upgrades each remove the artifact's worst-quality bad line before improving a line as usual. A Heavy artifact ends up keeping a single bad line, while Medium and Light artifacts lose theirs entirely. A perfect artifact is never stuck: while a bad line can still be removed, each further upgrade removes one — only a perfect artifact with no removable bad lines left cannot be upgraded.
 
 **Auto-discard** — the Artifacts panel has a quality threshold control: fresh boss drops below it are scrapped automatically, granting their Scraps without interrupting the fight. A separate weight selector can also discard by size (light, or medium and less) — either condition is enough to discard.
 

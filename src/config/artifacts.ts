@@ -336,30 +336,53 @@ function upgradeCandidates(a: Artifact): Candidate[] {
   return candidates
 }
 
+/** Bad-line removals still available: 1 for a light, 2 for a medium/heavy (a heavy keeps its third). */
+export function removableNegativesLeft(a: Artifact): number {
+  const removalsDone = a.lines.length - a.lines.filter(l => l.negative).length
+  return Math.max(0, Math.min(2, a.lines.length) - removalsDone)
+}
+
+/** True when nothing is left to do: every line perfect and no removable bad line remains. */
+export function isFullyUpgraded(a: Artifact): boolean {
+  return upgradeCandidates(a).length === 0 && removableNegativesLeft(a) === 0
+}
+
 /**
  * Apply one upgrade to the artifact:
- * 1. If this upgrade reaches level 5 or 10 and a bad line remains, the
- *    worst-quality bad line is removed first.
+ * 1. If this upgrade reaches level 5 or 10 and a removable bad line remains,
+ *    the worst-quality bad line is removed first.
  * 2. Then one random unmaxed modifier moves 10% of its roll range toward
  *    perfect (positives up, negatives down), clamped and rounded to 1 decimal.
- * A perfect artifact with no removal due returns {kind:'maxed'} with no
- * mutation (and the caller spends nothing).
+ * A perfect artifact is never blocked while removable bad lines remain: each
+ * further upgrade removes one, off-schedule. Only a perfect artifact with all
+ * its removable lines gone returns {kind:'maxed'} with no mutation (and the
+ * caller spends nothing).
  */
 export function upgradeArtifact(a: Artifact, rng = Math.random): UpgradeResult {
   const nextLevel = (a.upgradeCount ?? 0) + 1
-  const removalDue = NEGATIVE_REMOVAL_UPGRADES.includes(nextLevel) && a.lines.some(l => l.negative)
+  const canRemove = removableNegativesLeft(a) > 0
+  const scheduledRemoval = NEGATIVE_REMOVAL_UPGRADES.includes(nextLevel) && canRemove
+  // Perfection removal: nothing left to improve but a bad line is still
+  // removable — the upgrade deletes it instead of being blocked.
+  const perfectionRemoval = canRemove && upgradeCandidates(a).length === 0
+  const removalDue = scheduledRemoval || perfectionRemoval
 
   if (!removalDue && upgradeCandidates(a).length === 0) return { kind: 'maxed' }
 
   let removed: NegativeModifier | null = null
   if (removalDue) {
-    let worstIdx = -1
+    // Worst-quality bad line goes; ties (e.g. on a perfect artifact, where
+    // every bad line sits at 100%) are broken at random so no line position
+    // carries an undesigned removal bias.
     let worstQ = Infinity
+    for (const line of a.lines) {
+      if (line.negative) worstQ = Math.min(worstQ, modifierQuality(line.negative))
+    }
+    const tied: number[] = []
     a.lines.forEach((line, i) => {
-      if (!line.negative) return
-      const q = modifierQuality(line.negative)
-      if (q < worstQ) { worstQ = q; worstIdx = i }
+      if (line.negative && modifierQuality(line.negative) === worstQ) tied.push(i)
     })
+    const worstIdx = tied[Math.min(tied.length - 1, Math.floor(rng() * tied.length))]
     removed = a.lines[worstIdx].negative!
     delete a.lines[worstIdx].negative
   }
