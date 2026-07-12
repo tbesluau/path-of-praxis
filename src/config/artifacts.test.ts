@@ -433,6 +433,22 @@ describe('upgradeArtifact', () => {
     expect(art.lines[2].negative).toBeDefined()
   })
 
+  it('ties on removal quality are broken at random, not by line position', () => {
+    // Perfect medium: both bad lines at 100% quality. rng drives the pick.
+    const mk = (): Artifact => mkArtifact([
+      { positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 }, negative: { kind: 'negative', type: 'damageTaken', value: 5 } },
+      { positive: { kind: 'positive', type: 'globalActionSpeed', value: 6 }, negative: { kind: 'negative', type: 'lessMoveSpeed', value: 10 } },
+    ], 7)
+    const low = mk()
+    upgradeArtifact(low, () => 0)      // rng 0 → first tied line
+    expect(low.lines[0].negative).toBeUndefined()
+    expect(low.lines[1].negative).toBeDefined()
+    const high = mk()
+    upgradeArtifact(high, () => 0.99)  // rng 0.99 → second tied line
+    expect(high.lines[0].negative).toBeDefined()
+    expect(high.lines[1].negative).toBeUndefined()
+  })
+
   it('a perfect medium deletes both bad lines over successive upgrades, then blocks', () => {
     const art = mkArtifact([
       { positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 }, negative: { kind: 'negative', type: 'damageTaken', value: 5 } },

@@ -366,13 +366,18 @@ export function upgradeArtifact(a: Artifact, rng = Math.random): UpgradeResult {
 
   let removed: NegativeModifier | null = null
   if (removalDue) {
-    let worstIdx = -1
+    // Worst-quality bad line goes; ties (e.g. on a perfect artifact, where
+    // every bad line sits at 100%) are broken at random so no line position
+    // carries an undesigned removal bias.
     let worstQ = Infinity
+    for (const line of a.lines) {
+      if (line.negative) worstQ = Math.min(worstQ, modifierQuality(line.negative))
+    }
+    const tied: number[] = []
     a.lines.forEach((line, i) => {
-      if (!line.negative) return
-      const q = modifierQuality(line.negative)
-      if (q < worstQ) { worstQ = q; worstIdx = i }
+      if (line.negative && modifierQuality(line.negative) === worstQ) tied.push(i)
     })
+    const worstIdx = tied[Math.min(tied.length - 1, Math.floor(rng() * tied.length))]
     removed = a.lines[worstIdx].negative!
     delete a.lines[worstIdx].negative
   }
