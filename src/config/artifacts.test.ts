@@ -400,16 +400,51 @@ describe('upgradeArtifact', () => {
     }
   })
 
-  it('returns maxed for a perfect-roll artifact without mutating it', () => {
+  it('a perfect artifact with a removable bad line removes it instead of blocking', () => {
     const art = mkArtifact([{
       positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 },
       negative: { kind: 'negative', type: 'damageTaken', value: 5 },
     }], 3)
+    const res = upgradeArtifact(art, () => 0)   // level 4 — off the 5/10 schedule
+    expect(res).toEqual({ kind: 'upgraded', removed: { kind: 'negative', type: 'damageTaken', value: 5 }, improvement: null })
+    expect(art.lines[0].negative).toBeUndefined()
+    expect(art.upgradeCount).toBe(4)
+  })
+
+  it('returns maxed only when perfect AND all removable lines are gone', () => {
+    // Perfect light whose bad line was already removed.
+    const art: Artifact = { id: 'p', equipped: false, createdAt: 0, upgradeCount: 5,
+      lines: [{ positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 } }] }
     const snapshot = JSON.stringify(art)
     const res = upgradeArtifact(art, () => 0)
     expect(res).toEqual({ kind: 'maxed' })
     expect(JSON.stringify(art)).toBe(snapshot)
-    expect(art.upgradeCount).toBe(3)
+  })
+
+  it('a heavy keeps its third bad line: perfect + 2 removals done = maxed', () => {
+    const perfect = (i: number): ArtifactLine => [
+      { positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 } },
+      { positive: { kind: 'positive', type: 'globalActionSpeed', value: 6 } },
+      { positive: { kind: 'positive', type: 'doubleDamageChance', value: 10 }, negative: { kind: 'negative', type: 'damageTaken', value: 5 } },
+    ][i] as ArtifactLine
+    const art = mkArtifact([perfect(0), perfect(1), perfect(2)], 10)
+    const res = upgradeArtifact(art, () => 0)
+    expect(res).toEqual({ kind: 'maxed' })
+    expect(art.lines[2].negative).toBeDefined()
+  })
+
+  it('a perfect medium deletes both bad lines over successive upgrades, then blocks', () => {
+    const art = mkArtifact([
+      { positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 }, negative: { kind: 'negative', type: 'damageTaken', value: 5 } },
+      { positive: { kind: 'positive', type: 'globalActionSpeed', value: 6 }, negative: { kind: 'negative', type: 'lessMoveSpeed', value: 10 } },
+    ], 7)
+    const r1 = upgradeArtifact(art, () => 0)   // level 8: perfection removal
+    const r2 = upgradeArtifact(art, () => 0)   // level 9: perfection removal
+    expect(r1.kind).toBe('upgraded')
+    expect(r2.kind).toBe('upgraded')
+    expect(art.lines.every(l => !l.negative)).toBe(true)
+    expect(upgradeArtifact(art, () => 0)).toEqual({ kind: 'maxed' })
+    expect(art.upgradeCount).toBe(9)
   })
 
   it('increments upgradeCount on each success', () => {
