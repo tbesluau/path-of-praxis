@@ -3,7 +3,7 @@ import {
   rollValue, rollLineCount, drawPositives, drawNegatives,
   rollArtifact, computeArtifactMods, maxEquippedArtifacts,
   scrapsForArtifact, totalUpgradeSpent, upgradeCost, upgradeArtifact,
-  modifierQuality, artifactQuality,
+  modifierQuality, artifactQuality, isFullyUpgraded,
   ZERO_ARTIFACT_MODS, type Artifact, type ArtifactLine,
 } from './artifacts'
 
@@ -447,6 +447,21 @@ describe('upgradeArtifact', () => {
     upgradeArtifact(high, () => 0.99)  // rng 0.99 → second tied line
     expect(high.lines[0].negative).toBeDefined()
     expect(high.lines[1].negative).toBeUndefined()
+  })
+
+  it('isFullyUpgraded mirrors the maxed gate', () => {
+    // Perfect but still holding a removable bad line → not fully upgraded.
+    const withLine = mkArtifact([{
+      positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 },
+      negative: { kind: 'negative', type: 'damageTaken', value: 5 },
+    }], 3)
+    expect(isFullyUpgraded(withLine)).toBe(false)
+    // Perfect light whose bad line is gone → fully upgraded.
+    const done: Artifact = { id: 'd', equipped: false, createdAt: 0, upgradeCount: 5,
+      lines: [{ positive: { kind: 'positive', type: 'globalMoreDamage', value: 12 } }] }
+    expect(isFullyUpgraded(done)).toBe(true)
+    // Unmaxed line → not fully upgraded regardless of removals.
+    expect(isFullyUpgraded(mkArtifact([posLine(8)]))).toBe(false)
   })
 
   it('a perfect medium deletes both bad lines over successive upgrades, then blocks', () => {
