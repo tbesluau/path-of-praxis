@@ -1,3 +1,12 @@
+### 0.3.27 — Action balance, runes, hotkeys
+
+New and better runes, projectile and strike buffs, damage source switching, Some QoL improvements.
+
+- **Better runes** — better lvl 40 runes (now benefit other triggers nicely), and new lvl 70 runes for alternative damage source (e.g. cold --> fire)
+- **Strike and Projectile buff** - much better projectile damage, better strike damage, new splash ability in strike mastery, better additional target
+- **Hotkeys** - check them out in options, top right
+- **Never done** — small bugfixes and UX improvements
+
 ### 0.3.19 — Endgame and Survivability Balancing
 
 A more balanced experience for the endgame and reaching transcendence!
