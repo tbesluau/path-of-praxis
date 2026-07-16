@@ -459,6 +459,43 @@ body::after {
   background: rgba(255, 255, 255, 0.5);
 }
 
+/* ── Hotkeys reference modal (static) ── */
+.hotkey-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.hotkey-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.hotkey-keys {
+  min-width: 9ch;
+  display: inline-flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.hotkey-kbd {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 6px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-bottom-width: 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.hotkey-label {
+  font-size: 0.85rem;
+}
+
 /* Incoming-damage rows at the bottom of the meter — red-tinted. */
 .dps-row--taken {
   font-size: 0.62rem;

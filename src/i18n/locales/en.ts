@@ -283,6 +283,7 @@ export interface TranslationSchema {
     title: string
     language: string
     languageTitle: string
+    hotkeysTitle: string         // title/aria of the hotkeys reference modal
     langEn: string
     langFr: string
     langEs: string
@@ -693,6 +694,7 @@ export const en: TranslationSchema = {
     title: 'Settings',
     language: 'Language',
     languageTitle: 'Language',
+    hotkeysTitle: 'Hotkeys',
     langEn: 'English',
     langFr: 'French',
     langEs: 'Spanish',

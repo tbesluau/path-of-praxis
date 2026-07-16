@@ -285,6 +285,7 @@ export const es: TranslationSchema = {
     title: 'Ajustes',
     language: 'Idioma',
     languageTitle: 'Idioma',
+    hotkeysTitle: 'Atajos de teclado',
     langEn: 'Inglés',
     langFr: 'Francés',
     langEs: 'Español',

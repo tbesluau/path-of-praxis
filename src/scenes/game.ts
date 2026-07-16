@@ -1992,6 +1992,67 @@ export function createGameScene(
   }
   const dpsMeterInterval = setInterval(updateDpsMeter, 1000)
 
+  // ── Hotkeys ─────────────────────────────────────────────────────────────
+  // r: die & rebirth (never the free one) · f: free rebirth · a: artifacts ·
+  // s: stats · q double-press: mastery "Assign all" (Ctrl held: with dump) ·
+  // c: ascend when available.
+  let lastQPressAt = 0
+  function triggerAssignAll(withDump: boolean): void {
+    const doClick = (): void => {
+      const btn = container.querySelector<HTMLButtonElement>('[data-action="assign-all"]')
+      if (!btn) return
+      const dump = container.querySelector<HTMLInputElement>('[data-action="assign-all-dump"]')
+      const prev = dump?.checked ?? false
+      if (dump) dump.checked = withDump
+      btn.click()
+      if (dump) dump.checked = prev
+    }
+    if (container.querySelector('[data-action="assign-all"]')) { doClick(); return }
+    // Mastery modal closed — open it, then fire once its DOM exists.
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    el.querySelector<HTMLButtonElement>('[data-action="open-mastery"]')!.click()
+    requestAnimationFrame(doClick)
+  }
+  const onHotkey = (e: KeyboardEvent): void => {
+    if (destroyed || e.repeat || e.metaKey || e.altKey) return
+    const target = e.target as HTMLElement | null
+    if (target && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable)) return
+    const key = e.key.toLowerCase()
+    if (key === 'q') {
+      const now = performance.now()
+      if (now - lastQPressAt < 500) {
+        lastQPressAt = 0
+        triggerAssignAll(e.ctrlKey)
+      } else {
+        lastQPressAt = now
+      }
+      return
+    }
+    if (e.ctrlKey) return
+    switch (key) {
+      case 'r':
+        if (!playerDead) manualDieAndRebirth()
+        break
+      case 'f':
+        if (!playerDead && freeRebirthActive()) grantMasteryWithoutDeath()
+        break
+      case 'a':
+        if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent || transcendCount > 0) openArtifactsModal()
+        break
+      case 's':
+        if (modalCleanup) { modalCleanup(); modalCleanup = null }
+        modalCleanup = mountCharacterStatsModal(el, {
+          snapshot: buildPlayerStatsSnapshot(),
+          onClose: () => { modalCleanup = null },
+        })
+        break
+      case 'c':
+        if (isAscentUnlocked() && ascentXp >= ascentXpNeeded()) ascend()
+        break
+    }
+  }
+  document.addEventListener('keydown', onHotkey)
+
   let zoomLevel = getPrefs().zoomLevel ?? 1.0
   const topCenter = el.querySelector<HTMLElement>('.game-top-center')!
   const unmountSettings = mountSettingsButton(topCenter, container, {
@@ -4392,6 +4453,17 @@ export function createGameScene(
     persistState()
   }
 
+  // Plain die-and-rebirth, never the freeRebirth bank (R hotkey uses this
+  // directly). Respects the "confirm before manual death" preference.
+  function manualDieAndRebirth(): void {
+    const doDie = (): void => {
+      playerEntity.currentLife = 0
+      killEntity(playerEntity)
+    }
+    if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+    else doDie()
+  }
+
   // Shared behavior for the die-and-rebirth buttons (character + mastery
   // modals). With an unused freeRebirth relic this run, the click banks the
   // mastery gains instead — no confirmation, no death.
@@ -4400,12 +4472,7 @@ export function createGameScene(
       grantMasteryWithoutDeath()
       return
     }
-    const doDie = (): void => {
-      playerEntity.currentLife = 0
-      killEntity(playerEntity)
-    }
-    if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
-    else doDie()
+    manualDieAndRebirth()
   }
 
   function totalFreeMasteryPointsEarned(): number {
@@ -7673,6 +7740,7 @@ export function createGameScene(
     clearInterval(masteryDotInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (onVisibilityChange) { document.removeEventListener('visibilitychange', onVisibilityChange); onVisibilityChange = null }
+    document.removeEventListener('keydown', onHotkey)
     if (bgTicker) { bgTicker.dispose(); bgTicker = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()

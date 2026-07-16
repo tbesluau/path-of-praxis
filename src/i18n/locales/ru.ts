@@ -285,6 +285,7 @@ export const ru: TranslationSchema = {
     title: 'Настройки',
     language: 'Язык',
     languageTitle: 'Язык',
+    hotkeysTitle: 'Горячие клавиши',
     langEn: 'English',
     langFr: 'Français',
     langEs: 'Español',

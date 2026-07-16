@@ -1,5 +1,5 @@
 import 'flag-icons/css/flag-icons.min.css'
-import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle, Save } from 'lucide'
+import { createIcons, Settings, BookOpen, Plus, Minus, Crosshair, TrendingDown, TrendingUp, Shuffle, Save, Keyboard } from 'lucide'
 import { t, setLocale, getLocale, SUPPORTED_LOCALES, type Locale } from '../i18n'
 import { getCurrentSceneId, navigate } from '../core/router'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
@@ -149,6 +149,9 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
           <button class="settings-top-btn" data-action="language" data-sfx="modal" aria-label="${t('settings', 'languageTitle')}">
             <span class="${LOCALE_FLAG_CLASS[locale]} settings-flag-icon" role="img" aria-label="${t('settings', LOCALE_NAME_KEY[locale])}"></span>
           </button>
+          <button class="settings-top-btn" data-action="hotkeys" data-sfx="modal" aria-label="${t('settings', 'hotkeysTitle')}">
+            <i data-lucide="keyboard" aria-hidden="true"></i>
+          </button>
         </div>
         ${opts.getTargetingMode ? `
         <div class="modal-field">
@@ -277,7 +280,7 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
         </div>` : ''}` : ''}
       </div>
     `
-    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair, Save } })
+    createIcons({ icons: { BookOpen, Plus, Minus, Crosshair, Save, Keyboard } })
 
     const stepZoom = (delta: 1 | -1): void => {
       const next = zoomIdx + delta
@@ -333,6 +336,12 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
       .addEventListener('click', () => {
         closeSub()
         subCleanup = mountLanguageModal(parent, () => { subCleanup = null }, () => { render() })
+      })
+
+    backdrop.querySelector<HTMLButtonElement>('[data-action="hotkeys"]')!
+      .addEventListener('click', () => {
+        closeSub()
+        subCleanup = mountHotkeysModal(parent, () => { subCleanup = null })
       })
 
     backdrop.querySelector<HTMLInputElement>('[data-pref="confirmManualDeath"]')!
@@ -423,6 +432,35 @@ function mountSettingsModal(parent: HTMLElement, onClose: () => void, opts: Sett
     closeSub(); backdrop.remove()
     document.removeEventListener('fullscreenchange', onFullscreenChange)
   }
+}
+
+// Static (non-interactive) list of the in-game hotkeys.
+function mountHotkeysModal(parent: HTMLElement, onClose: () => void): () => void {
+  const backdrop = document.createElement('div')
+  backdrop.className = 'modal-backdrop settings-submodal-backdrop'
+  const row = (keys: string[], label: string): string =>
+    `<div class="hotkey-row"><span class="hotkey-keys">${keys.map(k => `<kbd class="hotkey-kbd">${k}</kbd>`).join(' ')}</span><span class="hotkey-label">${label}</span></div>`
+  backdrop.innerHTML = `
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <button class="modal-close-btn" data-action="close" aria-label="${t('settings', 'close')}"></button>
+      <h2 class="modal-title">${t('settings', 'hotkeysTitle')}</h2>
+      <div class="hotkey-list">
+        ${row(['R'], t('game', 'dieRebirth'))}
+        ${row(['F'], t('game', 'freeRebirth'))}
+        ${row(['A'], t('artifacts', 'title'))}
+        ${row(['S'], 'Stats')}
+        ${row(['C'], t('game', 'ascendBtn'))}
+        ${row(['Q', 'Q'], t('mastery', 'assignAll'))}
+        ${row(['Ctrl', 'Q', 'Q'], `${t('mastery', 'assignAll')} + ${t('mastery', 'assignAllDump')}`)}
+      </div>
+    </div>
+  `
+  const dismiss = (): void => { playSound('modal.close'); backdrop.remove(); onClose() }
+  backdrop.querySelector<HTMLButtonElement>('[data-action="close"]')!.addEventListener('click', dismiss)
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss() })
+  playSound('modal.open')
+  parent.appendChild(backdrop)
+  return () => backdrop.remove()
 }
 
 function mountLanguageModal(
