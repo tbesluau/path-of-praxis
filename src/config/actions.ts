@@ -33,10 +33,10 @@ export type ActionId =
   | 'rotten-dagger' | 'poisonous-arrow'
 
 export const allActions: ActionDef[] = [
-  { id: 'sword',          label: 'Sword Strike',   icon: 'sword',           iconSystem: 'lucide', range: 1,  damage: 2,   speed: 2,   manaCost: 1,   tags: ['physical',  'strike']     },
+  { id: 'sword',          label: 'Sword Strike',   icon: 'sword',           iconSystem: 'lucide', range: 1,  damage: 2.4, speed: 2,   manaCost: 1,   tags: ['physical',  'strike']     },
   { id: 'bow',            label: 'Sniping Arrow',  icon: 'crosshair',       iconSystem: 'lucide', range: 10, damage: 2,   speed: 1.2, manaCost: 2,   tags: ['physical',  'projectile'] },
   { id: 'fireball',       label: 'Fireball',       icon: 'flame',           iconSystem: 'lucide', range: 12, damage: 1,   speed: 2.4, manaCost: 3,   tags: ['fire',      'projectile'] },
-  { id: 'zap',            label: 'Zap',            icon: 'zap',             iconSystem: 'lucide', range: 1,  damage: 1.2, speed: 3.6, manaCost: 1,   tags: ['lightning', 'strike']     },
+  { id: 'zap',            label: 'Zap',            icon: 'zap',             iconSystem: 'lucide', range: 1,  damage: 1.44, speed: 3.6, manaCost: 1,   tags: ['lightning', 'strike']     },
   { id: 'fire-nova',      label: 'Fire Nova',      icon: 'flame',           iconSystem: 'lucide', range: 0,  damage: 1,   speed: 2,   manaCost: 2,   tags: ['fire',      'area'], area: 4,   selfTargeted: true },
   { id: 'grenade',        label: 'Grenade',        icon: 'bomb',            iconSystem: 'lucide', range: 8,  damage: 2,   speed: 1,   manaCost: 1.5, tags: ['fire',      'area'], area: 2.5 },
   { id: 'hammer-slam',    label: 'Hammer Slam',    icon: 'hammer',          iconSystem: 'lucide', range: 0,  damage: 1.7, speed: 1,   manaCost: 1,   tags: ['physical', 'area'],  area: 4,   selfTargeted: true },
@@ -45,7 +45,7 @@ export const allActions: ActionDef[] = [
   { id: 'cold-nova',      label: 'Cold Nova',      icon: 'snowflake',       iconSystem: 'lucide', range: 0,  damage: 1,   speed: 2,   manaCost: 2,   tags: ['cold',      'area'], area: 4,   selfTargeted: true },
   { id: 'ice-spear',      label: 'Ice Spear',      icon: 'navigation-2',    iconSystem: 'lucide', range: 5,  damage: 1,   speed: 3,   manaCost: 2,   tags: ['cold',      'projectile'] },
   { id: 'putrid-nova',   label: 'Putrid Nova',    icon: 'skull',           iconSystem: 'lucide', range: 0,  damage: 1,   speed: 2,   manaCost: 2,   tags: ['rot',       'area'], area: 4,   selfTargeted: true },
-  { id: 'rotten-dagger', label: 'Rotten Dagger',  icon: 'syringe',         iconSystem: 'lucide', range: 1,  damage: 1.2, speed: 3.8, manaCost: 1.2, tags: ['rot',       'strike']     },
+  { id: 'rotten-dagger', label: 'Rotten Dagger',  icon: 'syringe',         iconSystem: 'lucide', range: 1,  damage: 1.44, speed: 3.8, manaCost: 1.2, tags: ['rot',       'strike']     },
   { id: 'poisonous-arrow',label: 'Poisonous Arrow',icon: 'biohazard',      iconSystem: 'lucide', range: 8,  damage: 1.2, speed: 2,   manaCost: 1.5, tags: ['rot',       'projectile'] },
 ]
 

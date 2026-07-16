@@ -288,7 +288,7 @@ export const nodesEs: Record<string, string> = {
   'projectile_2_2': '+12% de aumento en el rango de proyectiles',
   'projectile_2_3': '+5% de aumento en el rango de proyectiles',
   'projectile_2_4': '+5% de aumento en el daño de proyectil',
-  'projectile_2_5': '+3% de aumento en el daño de proyectil por unidad de rango (mínimo 3% a rango 1)',
+  'projectile_2_5': '+5% de aumento en el daño de proyectil por unidad de rango (mínimo 5% a rango 1)',
 
   'projectile_3_0': 'Los impactos de proyectil tienen +10% de probabilidad de empujar al objetivo',
   'projectile_3_1': 'Los enemigos empujados tienen 10% menos de velocidad de movimiento durante 2 segundos',
@@ -330,12 +330,12 @@ export const nodesEs: Record<string, string> = {
   'strike_2_4': '+3% de aumento en la velocidad de acción de golpe',
   'strike_2_5': '+10% más de rango de golpe · +5% más de velocidad de acción de golpe',
 
-  'strike_3_0': '+5% de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
+  'strike_3_0': '+8% de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
   'strike_3_1': '+3% de aumento en la velocidad de acción de golpe',
-  'strike_3_2': '+10% de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
-  'strike_3_3': '+5% de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
+  'strike_3_2': '+15% de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
+  'strike_3_3': '+8% de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
   'strike_3_4': '+3% de aumento en la velocidad de acción de golpe',
-  'strike_3_5': '+10% más de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
+  'strike_3_5': '+20% más de probabilidad de que las acciones de golpe apunten a un enemigo adicional',
 
   'life_0_0': '+5% de aumento en la vida máxima',
   'life_0_1': '+5% de resistencia física y putrefacción',

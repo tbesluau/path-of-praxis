@@ -256,7 +256,7 @@ Les ennemis Élites ne peuvent pas apparaître sans des nœuds de maîtrise Enne
 
   'additional-target': {
     title: 'Cible supplémentaire',
-    body: `Une **Multi-action** qui met en file un cast de suivi à **1/5 du cycle normal** contre un ennemi différent à portée, sans payer de mana. Le suivi inflige des dégâts complets sans modificateur spécifique à la Multi-action.
+    body: `Une **Multi-action** qui met en file un cast de suivi à **1/5 du cycle normal** contre un ennemi différent à portée, sans payer de mana. Le suivi inflige des dégâts complets sans modificateur spécifique à la Multi-action. Pour les actions de **frappe**, la cible supplémentaire est cherchée dans **le double de la portée de l'action**, en privilégiant un ennemi différent — s'il n'y en a pas d'autre, le suivi frappe à nouveau la même cible.
 
 **Sources (les chances sont sommées en un seul tirage par action) :**
 - Maîtrise d'Action — arbre Transe (nœuds de chance multi-cible), uniquement pendant que la **Transe** est active

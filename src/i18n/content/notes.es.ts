@@ -250,7 +250,7 @@ Los enemigos Élite no pueden aparecer sin nodos de maestría de Enemigo que oto
 
   'additional-target': {
     title: 'Objetivo adicional',
-    body: `Una **Multi-acción** que encola un lanzamiento de seguimiento a **1/5 del ciclo normal** contra un enemigo distinto dentro de rango, sin pagar maná. El seguimiento inflige daño completo sin modificador específico de Multi-acción.
+    body: `Una **Multi-acción** que encola un lanzamiento de seguimiento a **1/5 del ciclo normal** contra un enemigo distinto dentro de rango, sin pagar maná. El seguimiento inflige daño completo sin modificador específico de Multi-acción. Para las acciones de **golpe**, el objetivo adicional se busca dentro del **doble del alcance de la acción**, favoreciendo a un enemigo distinto — si no hay otro disponible, el seguimiento golpea de nuevo al mismo objetivo.
 
 **Fuentes (las probabilidades se suman en una única tirada por acción):**
 - Maestría de Acción — árbol de Trance (nodos de probabilidad multi-objetivo), solo mientras **Trance** está activo

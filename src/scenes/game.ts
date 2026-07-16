@@ -7245,15 +7245,17 @@ export function createGameScene(
             if (queue.length === 0) pendingMultiActions.delete(entity.id)
           }
 
-          // Find a different in-range enemy (null if none; used when queuing multi-actions)
-          const pickOtherTarget = (): Entity | null => {
+          // Find a different in-range enemy (null if none; used when queuing
+          // multi-actions). rangeMult widens the search (strike additional
+          // targets look twice as far).
+          const pickOtherTarget = (rangeMult = 1): Entity | null => {
             let best: Entity | null = null
             let bestDist = Infinity
             for (const e of entities) {
               if (e === target || e.role !== 'enemy') continue
               const ex = e.x - entity.x, ey = e.y - entity.y
               const d = Math.sqrt(ex * ex + ey * ey)
-              if (d - e.radius > entity.actionRange) continue
+              if (d - e.radius > entity.actionRange * rangeMult) continue
               if (d < bestDist) { bestDist = d; best = e }
             }
             return best
@@ -7293,7 +7295,12 @@ export function createGameScene(
             }
             if (isPlayerProjectile && pb) totalChance += pb.additionalTargetChance
             if (totalChance > 0 && Math.random() * 100 < totalChance) {
-              const extra = pickOtherTarget()
+              // Strike additional targets search twice the action range and
+              // favor a different enemy, falling back to the same target when
+              // no other enemy is available.
+              const extra = action.tags.includes('strike')
+                ? (pickOtherTarget(2) ?? (target as Entity))
+                : pickOtherTarget()
               if (extra) queueMA('additionalTarget', childInherited, extra)
             }
           }
