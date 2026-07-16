@@ -263,7 +263,7 @@ A category of **Effect** in which an additional cast of a player action is trigg
 
 ## Additional Target
 
-A **Multi-action** that queues a follow-up cast at **1/5 of the normal cycle** against a different in-range enemy, paying no mana. The follow-up deals full damage with no Multi-action-specific modifier.
+A **Multi-action** that queues a follow-up cast at **1/5 of the normal cycle** against a different in-range enemy, paying no mana. The follow-up deals full damage with no Multi-action-specific modifier. For **strike** actions, the additional target is searched within **twice the action's range**, favoring a different enemy — when no other enemy is available, the follow-up strikes the same target again.
 
 **Sources (chances are summed into a single roll per action):**
 - Action mastery — Trance tree (multi-target chance nodes), only while **Trance** is active

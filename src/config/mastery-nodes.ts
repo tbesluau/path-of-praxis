@@ -1417,7 +1417,7 @@ const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
     2: { projRangeIncrease: 12 },
     3: { projRangeIncrease: 5 },
     4: { projDamageIncrease: 5 },
-    5: { projDamagePerRange: 3 },
+    5: { projDamagePerRange: 5 },
     // 12-13: key nodes — not yet defined
   },
   3: {  // Knockback (short tree — line nodes 0-5, key nodes 12-13)
@@ -1735,12 +1735,12 @@ const STRIKE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     // 12-13: key nodes — not yet defined
   },
   3: {  // Additional Target (short tree — line nodes 0-5, key nodes 12-13)
-    0: { strikeAdditionalTargetChance: 5 },
+    0: { strikeAdditionalTargetChance: 8 },
     1: { strikeActionSpeedIncrease: 3 },
-    2: { strikeAdditionalTargetChance: 10 },
-    3: { strikeAdditionalTargetChance: 5 },
+    2: { strikeAdditionalTargetChance: 15 },
+    3: { strikeAdditionalTargetChance: 8 },
     4: { strikeActionSpeedIncrease: 3 },
-    5: { strikeAdditionalTargetMore: 10 },
+    5: { strikeAdditionalTargetMore: 20 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -2749,7 +2749,7 @@ const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     2: '+12% increased projectile range',
     3: '+5% increased projectile range',
     4: '+5% increased projectile damage',
-    5: '+3% increased projectile damage per 1 range unit (minimum 3% at range 1)',
+    5: '+5% increased projectile damage per 1 range unit (minimum 5% at range 1)',
   },
   3: {  // Knockback
     0: 'Projectile hits have +10% chance to knock back the target',
@@ -2799,12 +2799,12 @@ const STRIKE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     5: '+10% more strike range · +5% more strike action speed',
   },
   3: {  // Additional Target
-    0: '+5% increased chance for strike actions to target an additional enemy',
+    0: '+8% increased chance for strike actions to target an additional enemy',
     1: '+3% increased strike action speed',
-    2: '+10% increased chance for strike actions to target an additional enemy',
-    3: '+5% increased chance for strike actions to target an additional enemy',
+    2: '+15% increased chance for strike actions to target an additional enemy',
+    3: '+8% increased chance for strike actions to target an additional enemy',
     4: '+3% increased strike action speed',
-    5: '+10% more chance for strike actions to target an additional enemy',
+    5: '+20% more chance for strike actions to target an additional enemy',
   },
 }
 
