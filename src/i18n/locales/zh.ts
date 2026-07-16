@@ -226,7 +226,8 @@ export const zh: TranslationSchema = {
     slotMinor: '次要',
     slotMajor: '主要',
     slotKey: '关键',
-    levelHint: '行动等级 {level} — {unlocked}/6 槽已解锁 — +{bonus}% 经验',
+    slotSource: '来源',
+    levelHint: '行动等级 {level} — {unlocked}/7 槽已解锁 — +{bonus}% 经验',
     selectTitle: '{type} 符文 — 第 {n} 槽',
   },
   menu: {
@@ -394,7 +395,8 @@ export const zh: TranslationSchema = {
   runeLabel: {
     minorDmg: '伤害', minorSpeed: '速度', minorMana: '法力', minorXp: '经验', minorAll: '综合',
     majorDmg: '伤害', majorSpeed: '速度', majorMana: '法力', majorXp: '经验', majorAll: '综合',
-    keySplit: '分裂行动', keyHeavy: '慢而重', keyManaless: '无法力',
+    keySplit: '分裂行动', keyHeavy: '慢而重', keyManaless: '无法力', keyConsequences: '后果',
+    sourceCold: '冰箱开着', sourceFire: '炉子开着', sourceLightning: '灭虫灯插着', sourcePhysical: '钉子撒了', sourceRot: '袜子乱丢',
   },
   runeDesc: {
     minorDmg: '+15% 提升行动伤害',
@@ -407,9 +409,15 @@ export const zh: TranslationSchema = {
     majorMana: '20% 更少行动法力消耗',
     majorXp: '15% 更多行动经验',
     majorAll: '2.5% 更多伤害 / 1.25% 更多速度 / 5% 更少法力 / 3.75% 更多经验',
-    keySplit: '×0.5 伤害 — 每次行动自动触发第二次行动',
-    keyHeavy: '×2 伤害 — ×0.5 行动速度',
+    keySplit: '×2 行动速度 — 行动伤害降低 33%',
+    keyHeavy: '×2 行动伤害 — 行动速度降低 33%',
     keyManaless: '×2 法力消耗 — 即使法力不足也会触发行动',
+    keyConsequences: '该行动的异常状态伤害 ×2（对不造成伤害的异常状态无效）',
+    sourceCold: '20% 的击打视为冰冷伤害而非行动原本的伤害来源——应用冰冷精通的效果与经验',
+    sourceFire: '20% 的击打视为火焰伤害而非行动原本的伤害来源——应用火焰精通的效果与经验',
+    sourceLightning: '20% 的击打视为闪电伤害而非行动原本的伤害来源——应用闪电精通的效果与经验',
+    sourcePhysical: '20% 的击打视为物理伤害而非行动原本的伤害来源——应用物理精通的效果与经验',
+    sourceRot: '20% 的击打视为腐蚀伤害而非行动原本的伤害来源——应用腐蚀精通的效果与经验',
   },
   actionLabel: {
     sword: '剑击', bow: '狙击箭', fireball: '火球', zap: '电击',
