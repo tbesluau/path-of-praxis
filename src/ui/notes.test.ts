@@ -11,6 +11,16 @@ describe('buff-bar note slugs resolve', () => {
   })
 })
 
+describe('splash note linking', () => {
+  it('the splash note exists', () => {
+    expect(getNoteTitle('splash')).toBe('Splash')
+  })
+
+  it('the strike major descriptions link the term to the note', () => {
+    expect(linkifyNoteTerms('Strikes have 10% increased chance to splash')).toContain('data-note-id="splash"')
+  })
+})
+
 describe('block note linking', () => {
   it('the block note exists', () => {
     expect(getNoteTitle('block')).toBe('Block')

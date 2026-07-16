@@ -66,6 +66,7 @@ export interface TranslationSchema {
     dpsAfflictionBleed: string
     dpsAfflictionGroundFire: string
     dpsAfflictionPoison: string
+    dpsSplash: string            // DPS meter: strike splash damage row
     dpsTakenHits: string         // DPS meter: damage taken from hits
     dpsTakenAfflictions: string  // DPS meter: damage taken from affliction ticks
     dpsAvgHitTaken: string       // DPS meter: average damage of hits taken
@@ -480,6 +481,7 @@ export const en: TranslationSchema = {
     dpsAfflictionBleed: 'Bleed',
     dpsAfflictionGroundFire: 'Ground fire',
     dpsAfflictionPoison: 'Poison',
+    dpsSplash: 'Splash',
     dpsTakenHits: 'Damage taken (hits)',
     dpsTakenAfflictions: 'Damage taken (afflictions)',
     dpsAvgHitTaken: 'Average hit taken',

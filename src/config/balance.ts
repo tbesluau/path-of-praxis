@@ -295,6 +295,11 @@ export const balance = {
     },
   },
 
+  // ── Splash (strike mastery majors) ────────────────────────────────────────
+  splash: {
+    rangeUnits: 3,   // fixed splash radius around the struck enemy (player-radius units); not modifiable
+  },
+
   // ── Critical hits ─────────────────────────────────────────────────────────
   criticalHit: {
     chanceProjectile: 0.05,  // 5% base chance for projectile actions

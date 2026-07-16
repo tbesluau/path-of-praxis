@@ -68,6 +68,7 @@ export const fr: TranslationSchema = {
     dpsAfflictionBleed: 'Saignement',
     dpsAfflictionGroundFire: 'Feu au sol',
     dpsAfflictionPoison: 'Poison',
+    dpsSplash: 'Éclaboussure',
     dpsTakenHits: 'Dégâts subis (coups)',
     dpsTakenAfflictions: 'Dégâts subis (afflictions)',
     dpsAvgHitTaken: 'Coup subi moyen',
