@@ -32,7 +32,7 @@ import { mountCharacterCustomizeModal } from '../ui/character-customize'
 import { mountCharacterStatsModal, type PlayerStatsSnapshot, type StatFactor, type StatLine, type OddsLine, type ActionStatBlock } from '../ui/character-stats'
 import { mountActionPickerModal, buildActionThumbnail, refreshActionThumbnailIcons, type ActionThumbXp } from '../ui/action-picker'
 import { getPrefs, setPref, isCheatMode } from '../core/prefs'
-import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId } from '../config/runes'
+import { computeRuneBonuses, SLOT_TYPES, runesByType, unlockedSlotCount, type RuneId, SOURCE_CONVERT_CHANCE } from '../config/runes'
 import { mountRunesModal } from '../ui/runes'
 import { playSound, preloadSounds, essenceSfxId } from '../audio'
 import { loadTileTextures } from '../assets/tile-svgs'
@@ -132,7 +132,11 @@ export function createGameScene(
 
   function getActionRunes(id: string): ActionRunes {
     const r = actionRunes[id]
-    if (r) return r
+    if (r) {
+      // Saves predating the level-70 source slot carry 6-slot arrays — pad.
+      while (r.selected.length < SLOT_TYPES.length) r.selected.push(null)
+      return r
+    }
     const fresh = defaultActionRunes()
     actionRunes[id] = fresh
     return fresh
@@ -1324,7 +1328,6 @@ export function createGameScene(
       const rb = getRuneBonuses(id)
       entity.actionDamage *= (1 + rb.damageIncrease / 100) * rb.damageMore
       entity.actionSpeed  *= (1 + rb.speedIncrease  / 100) * rb.speedMore
-      if (rb.slowHeavy) { entity.actionDamage *= 2; entity.actionSpeed *= 0.5 }
       // Global action speed from Mana mastery Maximum Mana tree (node 8)
       const mb = getManaBonuses()
       if (mb.actionSpeedIncrease > 0) entity.actionSpeed *= (1 + mb.actionSpeedIncrease / 100)
@@ -1332,7 +1335,7 @@ export function createGameScene(
     entityActions.set(entity.id, id)
   }
 
-  function awardXp(actionId: ActionId, amount: number): void {
+  function awardXp(actionId: ActionId, amount: number, sourceShift?: { from: string | null; to: string }): void {
     amount *= (1 + ascentCount * balance.ascent.xpGainPerAscent) * transcendXpMult()
     const prev = actionProgress[actionId] ?? { xp: 0, level: 1, maxLevel: 1 }
     // Fields default-guarded so a legacy/corrupted entry can't poison the math
@@ -1345,6 +1348,12 @@ export function createGameScene(
     const scaledXp = amount * (1 + (maxLevel - 1) * 0.1) * (1 + rb.xpIncrease / 100) * rb.xpMore
     xp += scaledXp
     runActionXp[actionId] = (Number.isFinite(runActionXp[actionId]) ? runActionXp[actionId] : 0) + scaledXp
+    // Source-conversion runes: shift this hit's essence-mastery share from the
+    // action's own source to the converted one (applied in computeMasteryGains).
+    if (sourceShift) {
+      runSourceXpShift[sourceShift.to] = (runSourceXpShift[sourceShift.to] ?? 0) + scaledXp
+      if (sourceShift.from) runSourceXpShift[sourceShift.from] = (runSourceXpShift[sourceShift.from] ?? 0) - scaledXp
+    }
     let leveled = false
     while (xp >= actionXpNeeded(level)) {
       xp -= actionXpNeeded(level)
@@ -1713,6 +1722,7 @@ export function createGameScene(
   let runActionXp: Record<string, number> = { ...(char?.runProgress?.actionXp ?? {}) }
   let runLifeXp = char?.runProgress?.lifeXp ?? 0
   let runBlockXp = char?.runProgress?.blockXp ?? 0
+  let runSourceXpShift: Record<string, number> = { ...(char?.runProgress?.sourceXpShift ?? {}) }
   let runManaXp = char?.runProgress?.manaXp ?? 0
   let runEnemyXp = char?.runProgress?.enemyXp ?? 0
   let runDistancePx = char?.runProgress?.distancePx ?? 0
@@ -1729,6 +1739,7 @@ export function createGameScene(
       critXp: runCritXp,
       freeRebirthUsed,
       charNotifSeen,
+      sourceXpShift: runSourceXpShift,
     }
   }
 
@@ -1891,6 +1902,7 @@ export function createGameScene(
     splitAction: t('game', 'dpsSplitCast'), jump: t('game', 'dpsChainJump'), tremor: t('game', 'dpsTremor'),
   }
   const DPS_AFFLICTION_LABELS: Record<string, string> = {
+    'splash': t('game', 'dpsSplash'),
     'affliction:burn': t('game', 'dpsAfflictionBurn'), 'affliction:bleed': t('game', 'dpsAfflictionBleed'), 'affliction:groundFire': t('game', 'dpsAfflictionGroundFire'), 'affliction:poison': t('game', 'dpsAfflictionPoison'),
   }
   const DPS_MULTI_TYPES = Object.keys(DPS_MULTI_LABELS) as MultiActionType[]
@@ -1991,6 +2003,67 @@ export function createGameScene(
     dpsMeterEl.innerHTML = html
   }
   const dpsMeterInterval = setInterval(updateDpsMeter, 1000)
+
+  // ── Hotkeys ─────────────────────────────────────────────────────────────
+  // r: die & rebirth (never the free one) · f: free rebirth · a: artifacts ·
+  // s: stats · q double-press: mastery "Assign all" (Ctrl held: with dump) ·
+  // c: ascend when available.
+  let lastQPressAt = 0
+  function triggerAssignAll(withDump: boolean): void {
+    const doClick = (): void => {
+      const btn = container.querySelector<HTMLButtonElement>('[data-action="assign-all"]')
+      if (!btn) return
+      const dump = container.querySelector<HTMLInputElement>('[data-action="assign-all-dump"]')
+      const prev = dump?.checked ?? false
+      if (dump) dump.checked = withDump
+      btn.click()
+      if (dump) dump.checked = prev
+    }
+    if (container.querySelector('[data-action="assign-all"]')) { doClick(); return }
+    // Mastery modal closed — open it, then fire once its DOM exists.
+    if (modalCleanup) { modalCleanup(); modalCleanup = null }
+    el.querySelector<HTMLButtonElement>('[data-action="open-mastery"]')!.click()
+    requestAnimationFrame(doClick)
+  }
+  const onHotkey = (e: KeyboardEvent): void => {
+    if (destroyed || e.repeat || e.metaKey || e.altKey) return
+    const target = e.target as HTMLElement | null
+    if (target && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable)) return
+    const key = e.key.toLowerCase()
+    if (key === 'q') {
+      const now = performance.now()
+      if (now - lastQPressAt < 500) {
+        lastQPressAt = 0
+        triggerAssignAll(e.ctrlKey)
+      } else {
+        lastQPressAt = now
+      }
+      return
+    }
+    if (e.ctrlKey) return
+    switch (key) {
+      case 'r':
+        if (!playerDead) manualDieAndRebirth()
+        break
+      case 'f':
+        if (!playerDead && freeRebirthActive()) grantMasteryWithoutDeath()
+        break
+      case 'a':
+        if (ascentCount >= balance.ascent.artifactSlot1UnlockAscent || transcendCount > 0) openArtifactsModal()
+        break
+      case 's':
+        if (modalCleanup) { modalCleanup(); modalCleanup = null }
+        modalCleanup = mountCharacterStatsModal(el, {
+          snapshot: buildPlayerStatsSnapshot(),
+          onClose: () => { modalCleanup = null },
+        })
+        break
+      case 'c':
+        if (isAscentUnlocked() && ascentXp >= ascentXpNeeded()) ascend()
+        break
+    }
+  }
+  document.addEventListener('keydown', onHotkey)
 
   let zoomLevel = getPrefs().zoomLevel ?? 1.0
   const topCenter = el.querySelector<HTMLElement>('.game-top-center')!
@@ -2880,10 +2953,6 @@ export function createGameScene(
       if (rb.damageMore !== 1) dmgFactors.push({ text: mul(rb.damageMore), origin: 'runes (more)', kind: 'more', group: 'runes' })
       if (rb.speedIncrease !== 0) spdFactors.push(incF(rb.speedIncrease, 'runes total increased', 'runes'))
       if (rb.speedMore !== 1) spdFactors.push({ text: mul(rb.speedMore), origin: 'runes (more)', kind: 'more', group: 'runes' })
-      if (rb.slowHeavy) {
-        dmgFactors.push({ text: '×2', origin: 'rune: Slow & Heavy', kind: 'more', group: 'runes' })
-        spdFactors.push({ text: '×0.5', origin: 'rune: Slow & Heavy', kind: 'less', group: 'runes' })
-      }
       if (mb.actionSpeedIncrease > 0) spdFactors.push(incF(mb.actionSpeedIncrease, 'mana mastery total increased', 'mana mastery'))
 
       // Recompute totals exactly as assignAction would (authoritative source of
@@ -2926,7 +2995,6 @@ export function createGameScene(
         const pb = pbData.b
         if (pb.extraChance > 0) multiStrike.push({ label: 'Additional projectile', odds: pct(pb.extraChance), origin: 'projectile mastery' })
       }
-      if (rb.splitCast) multiStrike.push({ label: 'Split action', odds: 'always', origin: 'rune: Split Action', note: 'second cast at ×0.5 damage' })
       if (libData) {
         const lib = libData.b
         if (lib.jumpChance > 0) multiStrike.push({ label: 'Chain jump', odds: pct(lib.jumpChance), origin: 'lightning mastery', note: lib.jumpFromElectrocutedChance > 0 ? `+${pct(lib.jumpFromElectrocutedChance)} vs electrocuted` : undefined })
@@ -3186,7 +3254,7 @@ export function createGameScene(
   let hitSeq = 0
 
   const DPS_WINDOW_MS = 20_000
-  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire' | 'affliction:poison'
+  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'splash' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire' | 'affliction:poison'
   interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
   const dpsLog: DpsEvent[] = []
   const dpsActionOrder: ActionId[] = []  // stable first-fire order for display
@@ -3953,6 +4021,7 @@ export function createGameScene(
     runEnemyXp = 0
     runDistancePx = 0
     runCritXp = 0
+    runSourceXpShift = {}
     freeRebirthUsed = false
     charNotifSeen = false
     refreshCharNotifDot()
@@ -4330,6 +4399,12 @@ export function createGameScene(
         if (mastery) gainMap.set(mastery.id, (gainMap.get(mastery.id) ?? 0) + xp * balance.mastery.actionXpMultiplier)
       }
     }
+    // Source-conversion runes: move essence-mastery XP between damage sources.
+    for (const [tag, delta] of Object.entries(runSourceXpShift)) {
+      if (!delta) continue
+      const mastery = allMasteries.find(m => m.tag === tag)
+      if (mastery) gainMap.set(mastery.id, Math.max(0, (gainMap.get(mastery.id) ?? 0) + delta * balance.mastery.actionXpMultiplier))
+    }
     if (totalActionXp > 0) gainMap.set('action', totalActionXp * balance.mastery.actionXpMultiplier)
     // criticalHit mastery: awards 2× the standard rate so it levels at half the base requirement
     if (runCritXp > 0) gainMap.set('criticalHit', runCritXp * balance.mastery.actionXpMultiplier * 2)
@@ -4387,9 +4462,21 @@ export function createGameScene(
     runEnemyXp = 0
     runDistancePx = 0
     runCritXp = 0
+    runSourceXpShift = {}
     freeRebirthUsed = true
     refreshCharNotifDot()
     persistState()
+  }
+
+  // Plain die-and-rebirth, never the freeRebirth bank (R hotkey uses this
+  // directly). Respects the "confirm before manual death" preference.
+  function manualDieAndRebirth(): void {
+    const doDie = (): void => {
+      playerEntity.currentLife = 0
+      killEntity(playerEntity)
+    }
+    if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
+    else doDie()
   }
 
   // Shared behavior for the die-and-rebirth buttons (character + mastery
@@ -4400,12 +4487,7 @@ export function createGameScene(
       grantMasteryWithoutDeath()
       return
     }
-    const doDie = (): void => {
-      playerEntity.currentLife = 0
-      killEntity(playerEntity)
-    }
-    if (getPrefs().confirmManualDeath) mountDieConfirmModal(container, doDie)
-    else doDie()
+    manualDieAndRebirth()
   }
 
   function totalFreeMasteryPointsEarned(): number {
@@ -6342,12 +6424,31 @@ export function createGameScene(
           const frenzyAfflBonus = (isPlayerAttacker && frenzyCharges > 0 && sbHit) ? frenzyCharges * sbHit.frenzyAfflictionChancePerCharge : 0
           const extraAfflChance = strikeAfflBonus + frenzyAfflBonus
 
+          // Per-action rune context: Consequences (×2 affliction dps) and the
+          // level-70 source-conversion runes. A successful conversion roll makes
+          // THIS hit count as the rune's source — resistances, on-hit mastery
+          // effects, afflictions, and mastery XP all follow the converted
+          // source. No effect when the action already has that source.
+          const hitRb = isPlayerAttacker ? getRuneBonuses(actionId) : null
+          const runeAfflMult = hitRb?.afflictionDamageMult ?? 1
+          let hitTags: readonly string[] = action.tags
+          let convertedFrom: string | null = null
+          let convertedTo: string | null = null
+          if (hitRb?.convertSource && !action.tags.includes(hitRb.convertSource)
+              && Math.random() * 100 < SOURCE_CONVERT_CHANCE) {
+            const ESSENCES = ['physical', 'fire', 'lightning', 'cold', 'rot']
+            convertedFrom = action.tags.find(tg => ESSENCES.includes(tg)) ?? null
+            convertedTo = hitRb.convertSource
+            hitTags = [...action.tags.filter(tg => tg !== convertedFrom), convertedTo]
+          }
+          const hitHas = (tag: string): boolean => hitTags.includes(tag)
+
           let finalDamage = damage
           if (target.role === 'player') {
             const lb = getLifeBonuses()
             let totalResistance = 0
-            if (action.tags.includes('physical') || action.tags.includes('rot')) totalResistance += lb.physRotResistance
-            if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) {
+            if (hitHas('physical') || hitHas('rot')) totalResistance += lb.physRotResistance
+            if (hitHas('fire') || hitHas('lightning') || hitHas('cold')) {
               totalResistance += lb.elementalResistance
             }
             if (playerIsKiting) {
@@ -6376,7 +6477,7 @@ export function createGameScene(
             }
           }
           // Bleeding enemies take more physical damage (Physical Damage tree node 11)
-          if (target.role === 'enemy' && attacker.role === 'player' && action.tags.includes('physical') && bleedStacks.has(target.id)) {
+          if (target.role === 'enemy' && attacker.role === 'player' && hitHas('physical') && bleedStacks.has(target.id)) {
             const pbBleed = getPhysicalBonuses()
             if (pbBleed.bleedingTakeMore > 0) {
               finalDamage *= 1 + pbBleed.bleedingTakeMore / 100
@@ -6416,14 +6517,14 @@ export function createGameScene(
           if (target.role === 'enemy' && !ignoreMitigation) {
             let physRotR = 0
             let eleR = 0
-            if (action.tags.includes('physical') || action.tags.includes('rot')) physRotR = target.physRotResist ?? 0
-            if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) eleR = target.eleResist ?? 0
-            if (action.tags.includes('fire') && isBurning(target)) {
+            if (hitHas('physical') || hitHas('rot')) physRotR = target.physRotResist ?? 0
+            if (hitHas('fire') || hitHas('lightning') || hitHas('cold')) eleR = target.eleResist ?? 0
+            if (hitHas('fire') && isBurning(target)) {
               const fbResist = getFireBonuses()
               if (fbResist.burnEnemyResistReduction > 0) eleR = Math.max(0, eleR - fbResist.burnEnemyResistReduction)
             }
             // Weakening node 5: poison stacks reduce enemy physRot resistance on direct physical/rot hits
-            if ((action.tags.includes('physical') || action.tags.includes('rot')) && isPoisoned(target)) {
+            if ((hitHas('physical') || hitHas('rot')) && isPoisoned(target)) {
               const rbResist = getRotBonuses()
               if (rbResist.weakeningResistPerStack > 0) {
                 const stackCount = poisonStacks.get(target.id)?.length ?? 0
@@ -6434,12 +6535,12 @@ export function createGameScene(
             if (enemyResist > 0) finalDamage *= 1 - Math.min(100, enemyResist) / 100
           }
           // Frost — frosted enemies take more damage from non-cold sources (Cold Damage tree node 11)
-          if (target.role === 'enemy' && frostTimers.has(target.id) && !action.tags.includes('cold')) {
+          if (target.role === 'enemy' && frostTimers.has(target.id) && !hitHas('cold')) {
             const cbVuln = getColdBonuses()
             if (cbVuln.frostedVulnerable > 0) finalDamage *= 1 + cbVuln.frostedVulnerable / 100
           }
           // Rot: poisoned enemies take more rot damage (Rot Damage tree node 11 + Weakening tree nodes 0 & 3)
-          if (target.role === 'enemy' && action.tags.includes('rot') && isPoisoned(target)) {
+          if (target.role === 'enemy' && hitHas('rot') && isPoisoned(target)) {
             const rbVuln = getRotBonuses()
             if (rbVuln.poisonedTakeMore > 0)        finalDamage *= 1 + rbVuln.poisonedTakeMore / 100
             if (rbVuln.weakeningRotDamageTaken > 0) finalDamage *= 1 + rbVuln.weakeningRotDamageTaken / 100
@@ -6485,8 +6586,8 @@ export function createGameScene(
               if (mb.manaShieldResistancesApply) {
                 const lbMS = getLifeBonuses()
                 let totalRes = 0
-                if (action.tags.includes('physical') || action.tags.includes('rot')) totalRes += lbMS.physRotResistance
-                if (action.tags.includes('fire') || action.tags.includes('lightning') || action.tags.includes('cold')) totalRes += lbMS.elementalResistance
+                if (hitHas('physical') || hitHas('rot')) totalRes += lbMS.physRotResistance
+                if (hitHas('fire') || hitHas('lightning') || hitHas('cold')) totalRes += lbMS.elementalResistance
                 manaRate *= Math.max(0, 1 - Math.min(100, totalRes) / 100)
               }
               const manaCost = absorbed * manaRate
@@ -6523,9 +6624,9 @@ export function createGameScene(
           // landed pre-suppression so affliction gates that read `actualDamage > 0` still fire.
           const wouldHaveLanded = finalDamage > 0
           if (attacker.role === 'player' && target.role === 'enemy') {
-            if (action.tags.includes('physical') && getPhysicalBonuses().suppressPhysicalHitDamage) finalDamage = 0
-            if (action.tags.includes('fire')     && getFireBonuses().suppressFireHitDamage)         finalDamage = 0
-            if (action.tags.includes('rot')      && getRotBonuses().suppressRotHitDamage)           finalDamage = 0
+            if (hitHas('physical') && getPhysicalBonuses().suppressPhysicalHitDamage) finalDamage = 0
+            if (hitHas('fire')     && getFireBonuses().suppressFireHitDamage)         finalDamage = 0
+            if (hitHas('rot')      && getRotBonuses().suppressRotHitDamage)           finalDamage = 0
           }
           const prevLife = target.currentLife
           if (!_gi && target.role === 'enemy') {
@@ -6549,7 +6650,8 @@ export function createGameScene(
           if (attacker.role === 'player' && actualDamage > 0) {
             const eLevel = enemyLevels.get(target.id) ?? 1
             const xpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, eLevel - 1) * tierXpMult(target.id)
-            awardXp(actionId, actualDamage * xpMult)
+            awardXp(actionId, actualDamage * xpMult,
+              convertedTo ? { from: convertedFrom, to: convertedTo } : undefined)
             if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(actualDamage)
             awardAscentXp(actualDamage)
             if (isCrit) {
@@ -6562,6 +6664,34 @@ export function createGameScene(
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
             recordDps(actionId, actualDamage, currentHitMultiType ? `multi:${currentHitMultiType}` : 'direct')
+            // Splash (strike mastery majors): the strike's damage is also dealt
+            // to every other enemy within a fixed 3-range radius of the target.
+            // Not an area action and not a hit: the radius takes no range/area
+            // bonuses, and the splashed damage cannot crit, proc statuses,
+            // afflict, steal, or trigger tremors.
+            if (hitHas('strike') && sbHit && sbHit.splashChance > 0
+                && Math.random() * 100 < sbHit.splashChance) {
+              const splashRadius = balance.splash.rangeUnits * balance.player.radius
+              for (const other of entities) {
+                if (other === target || other.role !== 'enemy') continue
+                const sdx = other.x - target.x, sdy = other.y - target.y
+                if (Math.sqrt(sdx * sdx + sdy * sdy) - other.radius > splashRadius) continue
+                const sPrev = other.currentLife
+                other.currentLife = Math.max(0, other.currentLife - actualDamage)
+                const sActual = sPrev - other.currentLife
+                if (sActual > 0) {
+                  const sLevel = enemyLevels.get(other.id) ?? 1
+                  const sXpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, sLevel - 1) * tierXpMult(other.id)
+                  awardXp(actionId, sActual * sXpMult,
+                    convertedTo ? { from: convertedFrom, to: convertedTo } : undefined)
+                  if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(sActual)
+                  awardAscentXp(sActual)
+                  recordDps(actionId, sActual, 'splash')
+                  spawnDamageNumber(other.x, other.y - other.radius - 8, sActual, 0xffffff)
+                  damagedIds.add(other.id)
+                }
+              }
+            }
             // Base vs crit split: the first 1× of damage is base, the remainder is crit bonus
             const critMult = (isCrit && !cb.noDamageBonus)
               ? critDamageMultiplier(cb.damageToAfflictions) * (cb.tripleDamageOnDouble && isDoubleDamage ? 1.5 : 1)
@@ -6590,7 +6720,7 @@ export function createGameScene(
             let kbMoreRange = 0
             let kbSlowAmount = 0
             let kbDamageReduction = 0
-            if (action.tags.includes('area')) {
+            if (hitHas('area')) {
               const ab = getAreaBonuses()
               kbChance += ab.knockbackChance
               kbBaseRange = Math.max(kbBaseRange, balance.player.radius * 1.0)
@@ -6598,7 +6728,7 @@ export function createGameScene(
               kbSlowAmount = Math.max(kbSlowAmount, ab.knockbackMoveSlowAmount)
               kbDamageReduction = Math.max(kbDamageReduction, ab.knockbackDamageReduction)
             }
-            if (action.tags.includes('projectile')) {
+            if (hitHas('projectile')) {
               const pb = getProjectileBonuses()
               kbChance += pb.knockbackChance
               kbBaseRange = Math.max(kbBaseRange, balance.player.radius * 0.5)
@@ -6635,7 +6765,7 @@ export function createGameScene(
           // Burning: roll on fire-tagged player hits to enemy targets.
           // The hit-suppression key can zero actualDamage; gate on whether the hit would have
           // landed in absence of suppression so afflictions still trigger.
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('fire') && (actualDamage > 0 || wouldHaveLanded)) {
+          if (attacker.role === 'player' && target.role === 'enemy' && hitHas('fire') && (actualDamage > 0 || wouldHaveLanded)) {
             const fb = getFireBonuses()
             const immolBurnBonus = hasEffect('immolation') ? fb.immolateBurnChance : 0
             const chance = balance.effects.baseApplyChance + fb.burnApplyChance + immolBurnBonus + extraAfflChance
@@ -6646,6 +6776,7 @@ export function createGameScene(
                 * Math.max(0, 1 - fb.burnLessDamage / 100)
                 * fb.burnDamageMult
                 * critAfflMult
+                * runeAfflMult
               const duration = balance.effects.burnBaseDurationMs
                 * (1 + fb.burnDurationIncrease / 100)
                 * fb.burnDurationMult
@@ -6667,7 +6798,7 @@ export function createGameScene(
             }
           }
           // Electrocution: roll on lightning-tagged player hits to enemy targets
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('lightning') && actualDamage > 0) {
+          if (attacker.role === 'player' && target.role === 'enemy' && hitHas('lightning') && actualDamage > 0) {
             const lbElec = getLightningBonuses()
             const chance = balance.effects.baseApplyChance + lbElec.electrocuteApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
@@ -6679,14 +6810,14 @@ export function createGameScene(
             }
           }
           // Electrifying: lightning-tagged player hits roll a chance to apply Electrified to the player
-          if (attacker.role === 'player' && action.tags.includes('lightning') && actualDamage > 0) {
+          if (attacker.role === 'player' && hitHas('lightning') && actualDamage > 0) {
             const lbElec = getLightningBonuses()
             if (lbElec.electrifyChance > 0 && Math.random() * 100 < lbElec.electrifyChance) applyElectrified()
           }
           // Frost: roll on cold-tagged player hits to enemy targets. A positive roll always
           // counts toward the affliction trigger (even if the target is already frosted);
           // a new frost is only applied when not already frosted (immune while active — no refresh).
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('cold') && actualDamage > 0) {
+          if (attacker.role === 'player' && target.role === 'enemy' && hitHas('cold') && actualDamage > 0) {
             const cbFrostApply = getColdBonuses()
             const frostChance = balance.frost.baseFrostChancePct + cbFrostApply.frostApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < frostChance) {
@@ -6713,12 +6844,12 @@ export function createGameScene(
           }
           // Bleeding: roll on physical-tagged player hits to enemy targets. The hit-suppression
           // key can zero actualDamage; gate on whether the hit would have landed pre-suppression.
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('physical') && (actualDamage > 0 || wouldHaveLanded)) {
+          if (attacker.role === 'player' && target.role === 'enemy' && hitHas('physical') && (actualDamage > 0 || wouldHaveLanded)) {
             const pb = getPhysicalBonuses()
             const bloodlustBleedBonus = hasEffect('bloodlust') ? pb.bloodlustBleedChance : 0
             const chance = balance.effects.baseApplyChance + pb.bleedApplyChance + bloodlustBleedBonus + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
-              const newBaseDps  = damage * balance.effects.bleedDpsFraction * critAfflMult
+              const newBaseDps  = damage * balance.effects.bleedDpsFraction * critAfflMult * runeAfflMult
               const duration    = balance.effects.bleedBaseDurationMs
                 * (1 + pb.bleedDurationIncrease / 100)
                 * pb.bleedDurationMult
@@ -6741,7 +6872,7 @@ export function createGameScene(
             }
           }
           // Resistance Breaking: roll on physical-tagged player hits to permanently reduce enemy physRot resistance
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('physical') && actualDamage > 0) {
+          if (attacker.role === 'player' && target.role === 'enemy' && hitHas('physical') && actualDamage > 0) {
             const pbBreak = getPhysicalBonuses()
             if (pbBreak.resistBreakChance > 0 && (target.physRotResist ?? 0) > 0
                 && Math.random() * 100 < pbBreak.resistBreakChance) {
@@ -6749,15 +6880,15 @@ export function createGameScene(
             }
           }
           // Frenzy: roll on strike-tagged player hits to enemy targets
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('strike') && actualDamage > 0) {
+          if (attacker.role === 'player' && target.role === 'enemy' && hitHas('strike') && actualDamage > 0) {
             if (sbHit && sbHit.frenzyChance > 0 && Math.random() * 100 < sbHit.frenzyChance) applyFrenzy()
           }
           // Poison: roll on rot-tagged player hits to enemy targets (burn model: always push new stack)
-          if (attacker.role === 'player' && target.role === 'enemy' && action.tags.includes('rot') && (actualDamage > 0 || wouldHaveLanded)) {
+          if (attacker.role === 'player' && target.role === 'enemy' && hitHas('rot') && (actualDamage > 0 || wouldHaveLanded)) {
             const rb = getRotBonuses()
             const chance = balance.effects.baseApplyChance + rb.poisonApplyChance + extraAfflChance
             if (guaranteedAfflictions || Math.random() * 100 < chance) {
-              const newDps  = damage * (balance.ascent.poisonBaseDamagePct / 100) * critAfflMult
+              const newDps  = damage * (balance.ascent.poisonBaseDamagePct / 100) * critAfflMult * runeAfflMult
               const duration = balance.ascent.poisonBaseDurationMs
                 * (1 + rb.poisonDurationIncrease / 100)
                 * rb.poisonDurationMult
@@ -6790,18 +6921,18 @@ export function createGameScene(
           if (attacker.role === 'enemy' && target.role === 'player' && actualDamage > 0 && !blockSuppressAffl) {
             const enemyChance = balance.effects.baseApplyChance * balance.effects.enemyAfflictionChanceMult
             const durMult = balance.effects.enemyAfflictionDurationMult
-            if (action.tags.includes('fire') && Math.random() * 100 < enemyChance) {
+            if (hitHas('fire') && Math.random() * 100 < enemyChance) {
               const dps = damage * balance.effects.burnDpsFraction
               const duration = balance.effects.burnBaseDurationMs * durMult
               const list = burnStacks.get(target.id) ?? []
               list.push({ dps, remainingMs: duration, sourceActionId: actionId })
               burnStacks.set(target.id, list)
             }
-            if (action.tags.includes('lightning') && Math.random() * 100 < enemyChance) {
+            if (hitHas('lightning') && Math.random() * 100 < enemyChance) {
               const duration = balance.effects.electrocutionBaseDurationMs * durMult
               electrocuteStacks.set(target.id, duration)
             }
-            if (action.tags.includes('physical') && Math.random() * 100 < enemyChance) {
+            if (hitHas('physical') && Math.random() * 100 < enemyChance) {
               const newBaseDps = damage * balance.effects.bleedDpsFraction
               const duration   = balance.effects.bleedBaseDurationMs * durMult
               const existing   = bleedStacks.get(target.id)
@@ -6815,7 +6946,7 @@ export function createGameScene(
                 existing.sourceActionId = actionId
               }
             }
-            if (action.tags.includes('rot') && Math.random() * 100 < enemyChance) {
+            if (hitHas('rot') && Math.random() * 100 < enemyChance) {
               const newDps = damage * (balance.ascent.poisonBaseDamagePct / 100)
               const duration = balance.ascent.poisonBaseDurationMs * durMult
               const list = poisonStacks.get(target.id) ?? []
@@ -6961,7 +7092,7 @@ export function createGameScene(
             effectiveDamage = entity.actionDamage * pending.inheritedDamageMult * ownMult
             childInherited = pending.inheritedDamageMult * ownMult * 0.9
           } else {
-            effectiveDamage = entity.actionDamage * (rb?.splitCast ? 0.5 : 1.0)
+            effectiveDamage = entity.actionDamage
             childInherited = 0.9
           }
 
@@ -7178,15 +7309,17 @@ export function createGameScene(
             if (queue.length === 0) pendingMultiActions.delete(entity.id)
           }
 
-          // Find a different in-range enemy (null if none; used when queuing multi-actions)
-          const pickOtherTarget = (): Entity | null => {
+          // Find a different in-range enemy (null if none; used when queuing
+          // multi-actions). rangeMult widens the search (strike additional
+          // targets look twice as far).
+          const pickOtherTarget = (rangeMult = 1): Entity | null => {
             let best: Entity | null = null
             let bestDist = Infinity
             for (const e of entities) {
               if (e === target || e.role !== 'enemy') continue
               const ex = e.x - entity.x, ey = e.y - entity.y
               const d = Math.sqrt(ex * ex + ey * ey)
-              if (d - e.radius > entity.actionRange) continue
+              if (d - e.radius > entity.actionRange * rangeMult) continue
               if (d < bestDist) { bestDist = d; best = e }
             }
             return best
@@ -7226,7 +7359,12 @@ export function createGameScene(
             }
             if (isPlayerProjectile && pb) totalChance += pb.additionalTargetChance
             if (totalChance > 0 && Math.random() * 100 < totalChance) {
-              const extra = pickOtherTarget()
+              // Strike additional targets search twice the action range and
+              // favor a different enemy, falling back to the same target when
+              // no other enemy is available.
+              const extra = action.tags.includes('strike')
+                ? (pickOtherTarget(2) ?? (target as Entity))
+                : pickOtherTarget()
               if (extra) queueMA('additionalTarget', childInherited, extra)
             }
           }
@@ -7249,10 +7387,6 @@ export function createGameScene(
             queueMA('additionalProjectile', childInherited, pickOtherTarget() ?? (target as Entity), false)
           }
 
-          // splitCast (key rune)
-          if (!pending && entity.role === 'player' && rb?.splitCast) {
-            queueMA('splitAction', childInherited)
-          }
 
           // jump: on any lightning-tagged player primary hit
           if (!pending && entity.role === 'player' && action.tags.includes('lightning')) {
@@ -7350,7 +7484,6 @@ export function createGameScene(
             if (slotDef.tags.includes('physical')) effectiveSlotSpeed *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
             if (slotDef.tags.includes('area')) effectiveSlotSpeed *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
             effectiveSlotSpeed *= (1 + slotRb.speedIncrease / 100) * slotRb.speedMore
-            if (slotRb.slowHeavy) effectiveSlotSpeed *= 0.5
             { const mb = getManaBonuses(); if (mb.actionSpeedIncrease > 0) effectiveSlotSpeed *= (1 + mb.actionSpeedIncrease / 100) }
 
             // Speed-balance:
@@ -7370,7 +7503,6 @@ export function createGameScene(
             if (slotDef.tags.includes('physical')) { const b = getPhysicalBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             if (slotDef.tags.includes('area')) { const b = getAreaBonuses(); slotDmg *= (1 + b.damageIncrease / 100) * (1 + b.moreDamage / 100) }
             slotDmg *= (1 + slotRb.damageIncrease / 100) * slotRb.damageMore
-            if (slotRb.slowHeavy) slotDmg *= 2
             if (ascentCount > 0 || transcendCount > 0) slotDmg *= (1 + ascentCount * balance.ascent.damagePerAscent) * universeDamageMult() * transcendDamageMult()
 
             const slotPreHitDuration = (1000 / effectiveSlotSpeed) / 3
@@ -7446,7 +7578,6 @@ export function createGameScene(
                 }
               }
               // splitAction (rune) — same target inheritance as doubleAction for dependent triggers
-              if (slotRb.splitCast) queueSlotMA('splitAction', childInherited, isDependent && !slotDef.selfTargeted ? slotTarget : undefined)
               // jump (lightning)
               if (slotDef.tags.includes('lightning')) {
                 const lb = getLightningBonuses()
@@ -7500,7 +7631,6 @@ export function createGameScene(
             if (tSlotDef.tags.includes('physical')) tSpeedMult *= (1 + getPhysicalBonuses().actionSpeedIncrease / 100)
             if (tSlotDef.tags.includes('area')) tSpeedMult *= Math.max(0.01, 1 - getAreaBonuses().lessActionSpeed / 100)
             tSpeedMult *= (1 + tRb.speedIncrease / 100) * tRb.speedMore
-            if (tRb.slowHeavy) tSpeedMult *= 0.5
             { const mb = getManaBonuses(); if (mb.actionSpeedIncrease > 0) tSpeedMult *= (1 + mb.actionSpeedIncrease / 100) }
             // Action speed bonus multiplier shortens the trigger interval
             const effectiveInterval = balance.ascent.timeTriggerIntervalMs / tSpeedMult
@@ -7673,6 +7803,7 @@ export function createGameScene(
     clearInterval(masteryDotInterval)
     if (enemySpawnTimeout !== null) { clearTimeout(enemySpawnTimeout); enemySpawnTimeout = null }
     if (onVisibilityChange) { document.removeEventListener('visibilitychange', onVisibilityChange); onVisibilityChange = null }
+    document.removeEventListener('keydown', onHotkey)
     if (bgTicker) { bgTicker.dispose(); bgTicker = null }
     if (modalCleanup) { modalCleanup(); modalCleanup = null }
     unmountSettings()

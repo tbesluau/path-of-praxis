@@ -203,6 +203,7 @@ export interface NodeEffect {
   // Strike mastery effects (Additional Target tree)
   strikeAdditionalTargetChance?: number  // additive %; chance for strike to target an additional enemy
   strikeAdditionalTargetMore?: number    // 'more' %; multiplies the total chance after increased
+  strikeSplashChance?: number            // additive %; chance for a strike hit to splash its damage around the target
 
   // Lightning mastery effects (Lightning Damage tree)
   lightningDamageIncrease?: number       // additive %; for lightning-tagged actions
@@ -554,6 +555,7 @@ export interface StrikeBonuses {
   moreActionSpeed: number          // total 'more' %; strike action speed
   additionalTargetChance: number   // total additive %; chance for strikes to target an additional enemy
   additionalTargetMore: number     // total 'more' %; multiplies additional-target chance after increased
+  splashChance: number             // total additive %; chance for a strike hit to splash
 }
 
 export interface AreaBonuses {
@@ -1417,7 +1419,7 @@ const PROJ_EFFECTS: Partial<Record<number, TreeEffects>> = {
     2: { projRangeIncrease: 12 },
     3: { projRangeIncrease: 5 },
     4: { projDamageIncrease: 5 },
-    5: { projDamagePerRange: 3 },
+    5: { projDamagePerRange: 5 },
     // 12-13: key nodes — not yet defined
   },
   3: {  // Knockback (short tree — line nodes 0-5, key nodes 12-13)
@@ -1731,16 +1733,16 @@ const STRIKE_EFFECTS: Partial<Record<number, TreeEffects>> = {
     2: { strikeRangeIncrease: 5, strikeDamageIncrease: 5 },
     3: { strikeRangeIncrease: 5 },
     4: { strikeActionSpeedIncrease: 3 },
-    5: { strikeMoreRange: 10, strikeMoreActionSpeed: 5 },
+    5: { strikeMoreRange: 10, strikeMoreActionSpeed: 5, strikeSplashChance: 10 },
     // 12-13: key nodes — not yet defined
   },
   3: {  // Additional Target (short tree — line nodes 0-5, key nodes 12-13)
-    0: { strikeAdditionalTargetChance: 5 },
+    0: { strikeAdditionalTargetChance: 8 },
     1: { strikeActionSpeedIncrease: 3 },
-    2: { strikeAdditionalTargetChance: 10 },
-    3: { strikeAdditionalTargetChance: 5 },
+    2: { strikeAdditionalTargetChance: 15 },
+    3: { strikeAdditionalTargetChance: 8 },
     4: { strikeActionSpeedIncrease: 3 },
-    5: { strikeAdditionalTargetMore: 10 },
+    5: { strikeAdditionalTargetMore: 20, strikeSplashChance: 10 },
     // 12-13: key nodes — not yet defined
   },
 }
@@ -1757,7 +1759,7 @@ export function computeStrikeBonuses(nodes: number[][], dumpedPoints = 0): Strik
     frenzyFlatDamage: 0, frenzyFlatSpeed: 0,
     frenzyAfflictionChancePerCharge: 0, frenzyDurationIncrease: 0, frenzyMaxChargesBonus: 0,
     rangeIncrease: 0, moreRange: 0, moreActionSpeed: dumpedPoints * MASTERY_DUMP.strike.rate,
-    additionalTargetChance: 0, additionalTargetMore: 0,
+    additionalTargetChance: 0, additionalTargetMore: 0, splashChance: 0,
   }
   for (let treeIdx = 0; treeIdx < nodes.length; treeIdx++) {
     for (const nodeIdx of nodes[treeIdx]) {
@@ -1780,6 +1782,7 @@ export function computeStrikeBonuses(nodes: number[][], dumpedPoints = 0): Strik
       b.moreActionSpeed             += eff.strikeMoreActionSpeed ?? 0
       b.additionalTargetChance      += eff.strikeAdditionalTargetChance ?? 0
       b.additionalTargetMore        += eff.strikeAdditionalTargetMore ?? 0
+      b.splashChance                += eff.strikeSplashChance ?? 0
     }
   }
   return b
@@ -2749,7 +2752,7 @@ const PROJ_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>>>
     2: '+12% increased projectile range',
     3: '+5% increased projectile range',
     4: '+5% increased projectile damage',
-    5: '+3% increased projectile damage per 1 range unit (minimum 3% at range 1)',
+    5: '+5% increased projectile damage per 1 range unit (minimum 5% at range 1)',
   },
   3: {  // Knockback
     0: 'Projectile hits have +10% chance to knock back the target',
@@ -2796,15 +2799,15 @@ const STRIKE_DESCRIPTIONS: Partial<Record<number, Partial<Record<number, string>
     2: '+5% increased strike range · +5% increased strike damage',
     3: '+5% increased strike range',
     4: '+3% increased strike action speed',
-    5: '+10% more strike range · +5% more strike action speed',
+    5: '+10% more strike range · +5% more strike action speed · Strikes have 10% increased chance to splash',
   },
   3: {  // Additional Target
-    0: '+5% increased chance for strike actions to target an additional enemy',
+    0: '+8% increased chance for strike actions to target an additional enemy',
     1: '+3% increased strike action speed',
-    2: '+10% increased chance for strike actions to target an additional enemy',
-    3: '+5% increased chance for strike actions to target an additional enemy',
+    2: '+15% increased chance for strike actions to target an additional enemy',
+    3: '+8% increased chance for strike actions to target an additional enemy',
     4: '+3% increased strike action speed',
-    5: '+10% more chance for strike actions to target an additional enemy',
+    5: '+20% more chance for strike actions to target an additional enemy · Strikes have 10% increased chance to splash',
   },
 }
 

@@ -263,13 +263,27 @@ A category of **Effect** in which an additional cast of a player action is trigg
 
 ## Additional Target
 
-A **Multi-action** that queues a follow-up cast at **1/5 of the normal cycle** against a different in-range enemy, paying no mana. The follow-up deals full damage with no Multi-action-specific modifier.
+A **Multi-action** that queues a follow-up cast at **1/5 of the normal cycle** against a different in-range enemy, paying no mana. The follow-up deals full damage with no Multi-action-specific modifier. For **strike** actions, the additional target is searched within **twice the action's range**, favoring a different enemy — when no other enemy is available, the follow-up strikes the same target again.
 
 **Sources (chances are summed into a single roll per action):**
 - Action mastery — Trance tree (multi-target chance nodes), only while **Trance** is active
 - Strike mastery — Additional Target tree, on any **strike**-tagged action; total chance = strike additional-target chance × (1 + strike additional-target more / 100)
 
 Per the standard Multi-action rules, the follow-up is a proper new action — it can roll for **Double Damage**, **Double Action**, **Additional Projectile**, **Second Action**, and trigger Statuses or Afflictions. It cannot roll for another Additional Target.
+
+---
+
+## Splash
+
+A **strike** bonus granted by Strike mastery major nodes: when a strike hit splashes, its damage is also dealt to **every other enemy within 3 range** of the struck target — the main target is never hit twice.
+
+Splash is **not** an area action and the action remains a strike:
+
+- The 3-range radius is fixed — range and area bonuses never change it
+- The splashed damage is **not a hit** — it cannot crit, trigger afflictions, statuses, tremors, life steal, or mana steal
+- Splashed damage awards action experience normally
+
+Each strike hit rolls splash chance independently (10% per Strike mastery major node that grants it).
 
 ---
 

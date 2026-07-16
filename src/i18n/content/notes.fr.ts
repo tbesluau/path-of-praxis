@@ -254,9 +254,22 @@ Les ennemis Élites ne peuvent pas apparaître sans des nœuds de maîtrise Enne
 4. **Ordre de déclenchement.** Quand plusieurs Multi-actions sont éligibles au tirage sur la même action, elles sont évaluées de la **source la plus générique à la plus spécifique** : d'abord les Multi-actions de niveau action (Double action, Cible supplémentaire), puis de niveau projectile (Projectile supplémentaire), puis spécifiques à une rune (Seconde action), puis spécifiques à la foudre (Saut). Cet ordre détermine aussi quelle action en file se déclenche en premier lorsque plusieurs sont en attente.`,
   },
 
+  splash: {
+    title: 'Éclaboussure',
+    body: `Un bonus de **frappe** accordé par les nœuds majeurs de la maîtrise de Frappe : quand un coup de frappe éclabousse, ses dégâts sont aussi infligés à **chaque autre ennemi à 3 de portée** de la cible frappée — la cible principale n'est jamais touchée deux fois.
+
+L'éclaboussure n'est **pas** une action de zone et l'action reste une frappe :
+
+- Le rayon de 3 de portée est fixe — les bonus de portée et de zone ne le modifient jamais
+- Les dégâts éclaboussés ne sont **pas un coup** — ils ne peuvent pas être critiques ni déclencher d'afflictions, de statuts, de secousses, de vol de vie ou de mana
+- Les dégâts éclaboussés accordent normalement de l'expérience d'action
+
+Chaque coup de frappe tire sa chance d'éclaboussure indépendamment (10% par nœud majeur de maîtrise de Frappe qui l'accorde).`,
+  },
+
   'additional-target': {
     title: 'Cible supplémentaire',
-    body: `Une **Multi-action** qui met en file un cast de suivi à **1/5 du cycle normal** contre un ennemi différent à portée, sans payer de mana. Le suivi inflige des dégâts complets sans modificateur spécifique à la Multi-action.
+    body: `Une **Multi-action** qui met en file un cast de suivi à **1/5 du cycle normal** contre un ennemi différent à portée, sans payer de mana. Le suivi inflige des dégâts complets sans modificateur spécifique à la Multi-action. Pour les actions de **frappe**, la cible supplémentaire est cherchée dans **le double de la portée de l'action**, en privilégiant un ennemi différent — s'il n'y en a pas d'autre, le suivi frappe à nouveau la même cible.
 
 **Sources (les chances sont sommées en un seul tirage par action) :**
 - Maîtrise d'Action — arbre Transe (nœuds de chance multi-cible), uniquement pendant que la **Transe** est active

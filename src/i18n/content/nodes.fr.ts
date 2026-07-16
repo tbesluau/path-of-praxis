@@ -288,7 +288,7 @@ export const nodesFr: Record<string, string> = {
   'projectile_2_2': '+12% d\'augmentation de la portée des projectiles',
   'projectile_2_3': '+5% d\'augmentation de la portée des projectiles',
   'projectile_2_4': '+5% d\'augmentation des dégâts de projectile',
-  'projectile_2_5': '+3% d\'augmentation des dégâts de projectile par unité de portée (minimum 3% à portée 1)',
+  'projectile_2_5': '+5% d\'augmentation des dégâts de projectile par unité de portée (minimum 5% à portée 1)',
 
   'projectile_3_0': 'Les frappes de projectile ont +10% de chances de repousser la cible',
   'projectile_3_1': 'Les ennemis repoussés ont 10% de réduction de vitesse de déplacement pendant 2 secondes',
@@ -328,14 +328,14 @@ export const nodesFr: Record<string, string> = {
   'strike_2_2': '+5% d\'augmentation de la portée de frappe · +5% d\'augmentation des dégâts de frappe',
   'strike_2_3': '+5% d\'augmentation de la portée de frappe',
   'strike_2_4': '+3% d\'augmentation de la vitesse d\'action de frappe',
-  'strike_2_5': '+10% de portée de frappe supplémentaire · +5% de vitesse d\'action de frappe supplémentaire',
+  'strike_2_5': '+10% de portée de frappe supplémentaire · +5% de vitesse d\'action de frappe supplémentaire · Les frappes ont 10% de chances supplémentaires d\'éclabousser',
 
-  'strike_3_0': '+5% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
+  'strike_3_0': '+8% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
   'strike_3_1': '+3% d\'augmentation de la vitesse d\'action de frappe',
-  'strike_3_2': '+10% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
-  'strike_3_3': '+5% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
+  'strike_3_2': '+15% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
+  'strike_3_3': '+8% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
   'strike_3_4': '+3% d\'augmentation de la vitesse d\'action de frappe',
-  'strike_3_5': '+10% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
+  'strike_3_5': '+20% de chances en plus que les actions de frappe ciblent un ennemi supplémentaire · Les frappes ont 10% de chances supplémentaires d\'éclabousser',
 
   'life_0_0': '+5% d\'augmentation des points de vie maximum',
   'life_0_1': '+5% de résistance physique et putréfaction',

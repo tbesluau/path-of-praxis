@@ -96,7 +96,7 @@ export interface ActionRunes {
 }
 
 export function defaultActionRunes(): ActionRunes {
-  return { selected: [null, null, null, null, null, null], history: [], autoApply: true }
+  return { selected: [null, null, null, null, null, null, null], history: [], autoApply: true }
 }
 
 export interface RunProgress {
@@ -112,6 +112,9 @@ export interface RunProgress {
   charNotifSeen?: boolean
   // Block mastery XP banked this run (damage prevented by blocks).
   blockXp?: number
+  // Source-conversion runes: per-essence-tag action-XP deltas (converted hits
+  // credit the converted mastery instead of the action's own source).
+  sourceXpShift?: Record<string, number>
 }
 
 export function defaultRunProgress(): RunProgress {

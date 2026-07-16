@@ -66,6 +66,7 @@ export interface TranslationSchema {
     dpsAfflictionBleed: string
     dpsAfflictionGroundFire: string
     dpsAfflictionPoison: string
+    dpsSplash: string            // DPS meter: strike splash damage row
     dpsTakenHits: string         // DPS meter: damage taken from hits
     dpsTakenAfflictions: string  // DPS meter: damage taken from affliction ticks
     dpsAvgHitTaken: string       // DPS meter: average damage of hits taken
@@ -224,7 +225,8 @@ export interface TranslationSchema {
     slotMinor: string
     slotMajor: string
     slotKey: string
-    levelHint: string              // template: "Action Lv. {level} — {unlocked}/6 slots unlocked — +{bonus}% XP"
+    slotSource: string
+    levelHint: string              // template: "Action Lv. {level} — {unlocked}/7 slots unlocked — +{bonus}% XP"
     selectTitle: string            // template: "{type} Rune — Slot {n}"
   }
   menu: {
@@ -283,6 +285,7 @@ export interface TranslationSchema {
     title: string
     language: string
     languageTitle: string
+    hotkeysTitle: string         // title/aria of the hotkeys reference modal
     langEn: string
     langFr: string
     langEs: string
@@ -389,12 +392,14 @@ export interface TranslationSchema {
   runeLabel: {
     minorDmg: string; minorSpeed: string; minorMana: string; minorXp: string; minorAll: string
     majorDmg: string; majorSpeed: string; majorMana: string; majorXp: string; majorAll: string
-    keySplit: string; keyHeavy: string; keyManaless: string
+    keySplit: string; keyHeavy: string; keyManaless: string; keyConsequences: string
+    sourceCold: string; sourceFire: string; sourceLightning: string; sourcePhysical: string; sourceRot: string
   }
   runeDesc: {
     minorDmg: string; minorSpeed: string; minorMana: string; minorXp: string; minorAll: string
     majorDmg: string; majorSpeed: string; majorMana: string; majorXp: string; majorAll: string
-    keySplit: string; keyHeavy: string; keyManaless: string
+    keySplit: string; keyHeavy: string; keyManaless: string; keyConsequences: string
+    sourceCold: string; sourceFire: string; sourceLightning: string; sourcePhysical: string; sourceRot: string
   }
   actionLabel: {
     sword: string; bow: string; fireball: string; zap: string; 'fire-nova': string
@@ -476,6 +481,7 @@ export const en: TranslationSchema = {
     dpsAfflictionBleed: 'Bleed',
     dpsAfflictionGroundFire: 'Ground fire',
     dpsAfflictionPoison: 'Poison',
+    dpsSplash: 'Splash',
     dpsTakenHits: 'Damage taken (hits)',
     dpsTakenAfflictions: 'Damage taken (afflictions)',
     dpsAvgHitTaken: 'Average hit taken',
@@ -634,7 +640,8 @@ export const en: TranslationSchema = {
     slotMinor: 'Minor',
     slotMajor: 'Major',
     slotKey: 'Key',
-    levelHint: 'Action Lv. {level} — {unlocked}/6 slots unlocked — +{bonus}% XP',
+    slotSource: 'Source',
+    levelHint: 'Action Lv. {level} — {unlocked}/7 slots unlocked — +{bonus}% XP',
     selectTitle: '{type} Rune — Slot {n}',
   },
   menu: {
@@ -693,6 +700,7 @@ export const en: TranslationSchema = {
     title: 'Settings',
     language: 'Language',
     languageTitle: 'Language',
+    hotkeysTitle: 'Hotkeys',
     langEn: 'English',
     langFr: 'French',
     langEs: 'Spanish',
@@ -800,7 +808,8 @@ export const en: TranslationSchema = {
   runeLabel: {
     minorDmg: 'Damage', minorSpeed: 'Speed', minorMana: 'Mana', minorXp: 'Experience', minorAll: 'Sampler',
     majorDmg: 'Damage', majorSpeed: 'Speed', majorMana: 'Mana', majorXp: 'Experience', majorAll: 'Sampler',
-    keySplit: 'Split Action', keyHeavy: 'Slow & Heavy', keyManaless: 'Manaless',
+    keySplit: 'Split Action', keyHeavy: 'Slow & Heavy', keyManaless: 'Manaless', keyConsequences: 'Consequences',
+    sourceCold: 'Fridge Open', sourceFire: 'Stove On', sourceLightning: 'Bug Zapper Plugged', sourcePhysical: 'Nail Spilled', sourceRot: 'Socks Out',
   },
   runeDesc: {
     minorDmg: '+15% increased action damage',
@@ -813,9 +822,15 @@ export const en: TranslationSchema = {
     majorMana: '20% less action mana cost',
     majorXp: '15% more action experience',
     majorAll: '2.5% more damage / 1.25% more speed / 5% less mana / 3.75% more experience',
-    keySplit: '×0.5 damage — every action automatically fires a second action',
-    keyHeavy: '×2 damage — ×0.5 action speed',
+    keySplit: '×2 action speed — 33% less action damage',
+    keyHeavy: '×2 action damage — 33% less action speed',
     keyManaless: '×2 mana cost — action fires even when mana is insufficient',
+    keyConsequences: '×2 affliction damage from this action (no effect on non-damaging afflictions)',
+    sourceCold: "20% of hits count as cold instead of the action's source — cold mastery effects and experience apply",
+    sourceFire: "20% of hits count as fire instead of the action's source — fire mastery effects and experience apply",
+    sourceLightning: "20% of hits count as lightning instead of the action's source — lightning mastery effects and experience apply",
+    sourcePhysical: "20% of hits count as physical instead of the action's source — physical mastery effects and experience apply",
+    sourceRot: "20% of hits count as rot instead of the action's source — rot mastery effects and experience apply",
   },
   actionLabel: {
     sword: 'Sword Strike', bow: 'Sniping Arrow', fireball: 'Fireball', zap: 'Zap',
