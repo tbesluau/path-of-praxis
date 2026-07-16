@@ -226,7 +226,8 @@ export const fr: TranslationSchema = {
     slotMinor: 'Mineur',
     slotMajor: 'Majeur',
     slotKey: 'Clé',
-    levelHint: 'Action Nv. {level} — {unlocked}/6 emplacements déverrouillés — +{bonus} % XP',
+    slotSource: 'Source',
+    levelHint: 'Action Nv. {level} — {unlocked}/7 emplacements déverrouillés — +{bonus} % XP',
     selectTitle: 'Rune {type} — Emplacement {n}',
   },
   menu: {
@@ -394,7 +395,8 @@ export const fr: TranslationSchema = {
   runeLabel: {
     minorDmg: 'Dégâts', minorSpeed: 'Vitesse', minorMana: 'Mana', minorXp: 'Expérience', minorAll: 'Échantillon',
     majorDmg: 'Dégâts', majorSpeed: 'Vitesse', majorMana: 'Mana', majorXp: 'Expérience', majorAll: 'Échantillon',
-    keySplit: 'Action divisée', keyHeavy: 'Lent & lourd', keyManaless: 'Sans mana',
+    keySplit: 'Action divisée', keyHeavy: 'Lent & lourd', keyManaless: 'Sans mana', keyConsequences: 'Conséquences',
+    sourceCold: 'Frigo ouvert', sourceFire: 'Cuisinière allumée', sourceLightning: 'Piège à insectes branché', sourcePhysical: 'Clous renversés', sourceRot: 'Chaussettes qui traînent',
   },
   runeDesc: {
     minorDmg: '+15 % de dégâts d\'action augmentés',
@@ -407,9 +409,15 @@ export const fr: TranslationSchema = {
     majorMana: '20 % moins de coût en mana d\'action',
     majorXp: '15 % d\'expérience d\'action en plus',
     majorAll: '2,5 % de dégâts en plus / 1,25 % de vitesse en plus / 5 % moins de mana / 3,75 % d\'expérience en plus',
-    keySplit: '×0,5 dégâts — chaque action déclenche automatiquement une seconde action',
-    keyHeavy: '×2 dégâts — ×0,5 vitesse d\'action',
+    keySplit: '×2 vitesse d\'action — 33% de dégâts d\'action en moins',
+    keyHeavy: '×2 dégâts d\'action — 33% de vitesse d\'action en moins',
     keyManaless: '×2 coût en mana — l\'action se déclenche même si le mana est insuffisant',
+    keyConsequences: '×2 dégâts d\'affliction de cette action (aucun effet sur les afflictions sans dégâts)',
+    sourceCold: '20% des coups comptent comme froid au lieu de la source de l\'action — les effets et l\'expérience de la maîtrise du froid s\'appliquent',
+    sourceFire: '20% des coups comptent comme feu au lieu de la source de l\'action — les effets et l\'expérience de la maîtrise du feu s\'appliquent',
+    sourceLightning: '20% des coups comptent comme foudre au lieu de la source de l\'action — les effets et l\'expérience de la maîtrise de la foudre s\'appliquent',
+    sourcePhysical: '20% des coups comptent comme physique au lieu de la source de l\'action — les effets et l\'expérience de la maîtrise physique s\'appliquent',
+    sourceRot: '20% des coups comptent comme pourriture au lieu de la source de l\'action — les effets et l\'expérience de la maîtrise de la pourriture s\'appliquent',
   },
   actionLabel: {
     sword: 'Coup d\'épée', bow: 'Flèche de sniper', fireball: 'Boule de feu', zap: 'Choc électrique',

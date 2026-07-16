@@ -226,7 +226,8 @@ export const es: TranslationSchema = {
     slotMinor: 'Menor',
     slotMajor: 'Mayor',
     slotKey: 'Clave',
-    levelHint: 'Acción Nv. {level} — {unlocked}/6 ranuras desbloqueadas — +{bonus}% XP',
+    slotSource: 'Fuente',
+    levelHint: 'Acción Nv. {level} — {unlocked}/7 ranuras desbloqueadas — +{bonus}% XP',
     selectTitle: 'Runa {type} — Ranura {n}',
   },
   menu: {
@@ -394,7 +395,8 @@ export const es: TranslationSchema = {
   runeLabel: {
     minorDmg: 'Daño', minorSpeed: 'Velocidad', minorMana: 'Maná', minorXp: 'Experiencia', minorAll: 'Muestrario',
     majorDmg: 'Daño', majorSpeed: 'Velocidad', majorMana: 'Maná', majorXp: 'Experiencia', majorAll: 'Muestrario',
-    keySplit: 'Acción dividida', keyHeavy: 'Lento y pesado', keyManaless: 'Sin maná',
+    keySplit: 'Acción dividida', keyHeavy: 'Lento y pesado', keyManaless: 'Sin maná', keyConsequences: 'Consecuencias',
+    sourceCold: 'Nevera abierta', sourceFire: 'Fogón encendido', sourceLightning: 'Matainsectos enchufado', sourcePhysical: 'Clavos derramados', sourceRot: 'Calcetines fuera',
   },
   runeDesc: {
     minorDmg: '+15% de daño de acción aumentado',
@@ -407,9 +409,15 @@ export const es: TranslationSchema = {
     majorMana: '20% menos de coste de maná de acción',
     majorXp: '15% más de experiencia de acción',
     majorAll: '2,5% más de daño / 1,25% más de velocidad / 5% menos de maná / 3,75% más de experiencia',
-    keySplit: '×0,5 de daño — cada acción dispara automáticamente una segunda acción',
-    keyHeavy: '×2 de daño — ×0,5 de velocidad de acción',
+    keySplit: '×2 de velocidad de acción — 33% menos de daño de acción',
+    keyHeavy: '×2 de daño de acción — 33% menos de velocidad de acción',
     keyManaless: '×2 coste de maná — la acción se activa aunque el maná sea insuficiente',
+    keyConsequences: '×2 de daño de aflicción de esta acción (sin efecto en aflicciones que no causan daño)',
+    sourceCold: 'El 20% de los golpes cuentan como frío en lugar de la fuente de la acción — se aplican los efectos y la experiencia de la maestría de frío',
+    sourceFire: 'El 20% de los golpes cuentan como fuego en lugar de la fuente de la acción — se aplican los efectos y la experiencia de la maestría de fuego',
+    sourceLightning: 'El 20% de los golpes cuentan como rayo en lugar de la fuente de la acción — se aplican los efectos y la experiencia de la maestría de rayo',
+    sourcePhysical: 'El 20% de los golpes cuentan como físico en lugar de la fuente de la acción — se aplican los efectos y la experiencia de la maestría física',
+    sourceRot: 'El 20% de los golpes cuentan como podredumbre en lugar de la fuente de la acción — se aplican los efectos y la experiencia de la maestría de podredumbre',
   },
   actionLabel: {
     sword: 'Golpe de espada', bow: 'Flecha de francotirador', fireball: 'Bola de fuego', zap: 'Descarga',

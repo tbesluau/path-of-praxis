@@ -3,8 +3,8 @@ import type { ActionRunes } from '../core/character'
 import { t } from '../i18n'
 import { playSound } from '../audio'
 
-const SLOT_TYPE_KEY: Record<RuneType, 'slotMinor' | 'slotMajor' | 'slotKey'> = {
-  minor: 'slotMinor', major: 'slotMajor', key: 'slotKey',
+const SLOT_TYPE_KEY: Record<RuneType, 'slotMinor' | 'slotMajor' | 'slotKey' | 'slotSource'> = {
+  minor: 'slotMinor', major: 'slotMajor', key: 'slotKey', source: 'slotSource',
 }
 
 // ── Rune Select Modal ──────────────────────────────────────────────────────
