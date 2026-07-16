@@ -285,6 +285,7 @@ export const zh: TranslationSchema = {
     title: '设置',
     language: '语言',
     languageTitle: '语言',
+    hotkeysTitle: '快捷键',
     langEn: 'English',
     langFr: 'Français',
     langEs: 'Español',
