@@ -328,14 +328,14 @@ export const nodesFr: Record<string, string> = {
   'strike_2_2': '+5% d\'augmentation de la portée de frappe · +5% d\'augmentation des dégâts de frappe',
   'strike_2_3': '+5% d\'augmentation de la portée de frappe',
   'strike_2_4': '+3% d\'augmentation de la vitesse d\'action de frappe',
-  'strike_2_5': '+10% de portée de frappe supplémentaire · +5% de vitesse d\'action de frappe supplémentaire',
+  'strike_2_5': '+10% de portée de frappe supplémentaire · +5% de vitesse d\'action de frappe supplémentaire · Les frappes ont 10% de chances supplémentaires d\'éclabousser',
 
   'strike_3_0': '+8% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
   'strike_3_1': '+3% d\'augmentation de la vitesse d\'action de frappe',
   'strike_3_2': '+15% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
   'strike_3_3': '+8% de chances supplémentaires que les actions de frappe ciblent un ennemi supplémentaire',
   'strike_3_4': '+3% d\'augmentation de la vitesse d\'action de frappe',
-  'strike_3_5': '+20% de chances en plus que les actions de frappe ciblent un ennemi supplémentaire',
+  'strike_3_5': '+20% de chances en plus que les actions de frappe ciblent un ennemi supplémentaire · Les frappes ont 10% de chances supplémentaires d\'éclabousser',
 
   'life_0_0': '+5% d\'augmentation des points de vie maximum',
   'life_0_1': '+5% de résistance physique et putréfaction',

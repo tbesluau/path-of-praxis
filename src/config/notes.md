@@ -273,6 +273,20 @@ Per the standard Multi-action rules, the follow-up is a proper new action — it
 
 ---
 
+## Splash
+
+A **strike** bonus granted by Strike mastery major nodes: when a strike hit splashes, its damage is also dealt to **every other enemy within 3 range** of the struck target — the main target is never hit twice.
+
+Splash is **not** an area action and the action remains a strike:
+
+- The 3-range radius is fixed — range and area bonuses never change it
+- The splashed damage is **not a hit** — it cannot crit, trigger afflictions, statuses, tremors, life steal, or mana steal
+- Splashed damage awards action experience normally
+
+Each strike hit rolls splash chance independently (10% per Strike mastery major node that grants it).
+
+---
+
 ## Additional Projectile
 
 A **Multi-action** triggered by Projectile mastery (extra-projectile chance nodes). Each successful roll queues a follow-up projectile at **1/5 of the normal cycle**, dealing **×0.5 damage** (boosted additively by Projectile mastery extra-damage nodes), preferring a different in-range enemy when available.

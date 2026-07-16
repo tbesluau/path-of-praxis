@@ -68,6 +68,7 @@ export const ru: TranslationSchema = {
     dpsAfflictionBleed: 'Кровотечение',
     dpsAfflictionGroundFire: 'Горящая земля',
     dpsAfflictionPoison: 'Яд',
+    dpsSplash: 'Всплеск',
     dpsTakenHits: 'Полученный урон (удары)',
     dpsTakenAfflictions: 'Полученный урон (недуги)',
     dpsAvgHitTaken: 'Средний полученный удар',

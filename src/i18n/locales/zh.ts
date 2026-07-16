@@ -68,6 +68,7 @@ export const zh: TranslationSchema = {
     dpsAfflictionBleed: '流血',
     dpsAfflictionGroundFire: '地面火焰',
     dpsAfflictionPoison: '中毒',
+    dpsSplash: '溅射',
     dpsTakenHits: '受到伤害（击打）',
     dpsTakenAfflictions: '受到伤害（异常状态）',
     dpsAvgHitTaken: '平均受击伤害',

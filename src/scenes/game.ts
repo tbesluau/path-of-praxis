@@ -1902,6 +1902,7 @@ export function createGameScene(
     splitAction: t('game', 'dpsSplitCast'), jump: t('game', 'dpsChainJump'), tremor: t('game', 'dpsTremor'),
   }
   const DPS_AFFLICTION_LABELS: Record<string, string> = {
+    'splash': t('game', 'dpsSplash'),
     'affliction:burn': t('game', 'dpsAfflictionBurn'), 'affliction:bleed': t('game', 'dpsAfflictionBleed'), 'affliction:groundFire': t('game', 'dpsAfflictionGroundFire'), 'affliction:poison': t('game', 'dpsAfflictionPoison'),
   }
   const DPS_MULTI_TYPES = Object.keys(DPS_MULTI_LABELS) as MultiActionType[]
@@ -3253,7 +3254,7 @@ export function createGameScene(
   let hitSeq = 0
 
   const DPS_WINDOW_MS = 20_000
-  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire' | 'affliction:poison'
+  type DpsKind = 'direct' | `multi:${MultiActionType}` | 'hit:base' | 'hit:crit' | 'splash' | 'affliction:burn' | 'affliction:bleed' | 'affliction:groundFire' | 'affliction:poison'
   interface DpsEvent { t: number; actionId: ActionId; dmg: number; kind: DpsKind }
   const dpsLog: DpsEvent[] = []
   const dpsActionOrder: ActionId[] = []  // stable first-fire order for display
@@ -6663,6 +6664,34 @@ export function createGameScene(
             applyLifeSteal(actualDamage)
             applyManaSteal(actualDamage)
             recordDps(actionId, actualDamage, currentHitMultiType ? `multi:${currentHitMultiType}` : 'direct')
+            // Splash (strike mastery majors): the strike's damage is also dealt
+            // to every other enemy within a fixed 3-range radius of the target.
+            // Not an area action and not a hit: the radius takes no range/area
+            // bonuses, and the splashed damage cannot crit, proc statuses,
+            // afflict, steal, or trigger tremors.
+            if (hitHas('strike') && sbHit && sbHit.splashChance > 0
+                && Math.random() * 100 < sbHit.splashChance) {
+              const splashRadius = balance.splash.rangeUnits * balance.player.radius
+              for (const other of entities) {
+                if (other === target || other.role !== 'enemy') continue
+                const sdx = other.x - target.x, sdy = other.y - target.y
+                if (Math.sqrt(sdx * sdx + sdy * sdy) - other.radius > splashRadius) continue
+                const sPrev = other.currentLife
+                other.currentLife = Math.max(0, other.currentLife - actualDamage)
+                const sActual = sPrev - other.currentLife
+                if (sActual > 0) {
+                  const sLevel = enemyLevels.get(other.id) ?? 1
+                  const sXpMult = Math.pow(balance.enemyLevel.xpMultiplierPerLevel, sLevel - 1) * tierXpMult(other.id)
+                  awardXp(actionId, sActual * sXpMult,
+                    convertedTo ? { from: convertedFrom, to: convertedTo } : undefined)
+                  if (enemyProgress.level === enemyProgress.maxLevel) awardEnemyXp(sActual)
+                  awardAscentXp(sActual)
+                  recordDps(actionId, sActual, 'splash')
+                  spawnDamageNumber(other.x, other.y - other.radius - 8, sActual, 0xffffff)
+                  damagedIds.add(other.id)
+                }
+              }
+            }
             // Base vs crit split: the first 1× of damage is base, the remainder is crit bonus
             const critMult = (isCrit && !cb.noDamageBonus)
               ? critDamageMultiplier(cb.damageToAfflictions) * (cb.tripleDamageOnDouble && isDoubleDamage ? 1.5 : 1)

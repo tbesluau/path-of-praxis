@@ -248,6 +248,19 @@ Los enemigos Élite no pueden aparecer sin nodos de maestría de Enemigo que oto
 4. **Orden de activación.** Cuando varias Multi-acciones son elegibles para tirar en la misma acción, se evalúan desde la **fuente más genérica a la más específica**: primero las Multi-acciones de nivel de acción (Acción doble, Objetivo adicional), luego las de nivel de proyectil (Proyectil adicional), luego las específicas de runa (Segunda acción) y luego las específicas de rayo (Salto). Este orden también determina qué acción encolada se dispara primero cuando hay varias pendientes.`,
   },
 
+  splash: {
+    title: 'Salpicadura',
+    body: `Un bono de **golpe** otorgado por los nodos mayores de la maestría de Golpe: cuando un golpe salpica, su daño también se inflige a **cada otro enemigo a 3 de alcance** del objetivo golpeado — el objetivo principal nunca recibe el daño dos veces.
+
+La salpicadura **no** es una acción de área y la acción sigue siendo un golpe:
+
+- El radio de 3 de alcance es fijo — los bonos de alcance y de área nunca lo modifican
+- El daño salpicado **no es un golpe** — no puede ser crítico ni activar aflicciones, estados, temblores, robo de vida ni de maná
+- El daño salpicado otorga experiencia de acción con normalidad
+
+Cada golpe tira su probabilidad de salpicadura de forma independiente (10% por nodo mayor de la maestría de Golpe que la otorgue).`,
+  },
+
   'additional-target': {
     title: 'Objetivo adicional',
     body: `Una **Multi-acción** que encola un lanzamiento de seguimiento a **1/5 del ciclo normal** contra un enemigo distinto dentro de rango, sin pagar maná. El seguimiento inflige daño completo sin modificador específico de Multi-acción. Para las acciones de **golpe**, el objetivo adicional se busca dentro del **doble del alcance de la acción**, favoreciendo a un enemigo distinto — si no hay otro disponible, el seguimiento golpea de nuevo al mismo objetivo.
