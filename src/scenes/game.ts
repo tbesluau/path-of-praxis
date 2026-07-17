@@ -1494,7 +1494,10 @@ export function createGameScene(
 
   recomputeArtifactMods()
   assignAction(playerEntity, playerActionId)
-  applyAutoRunes(playerActionId)
+  // applyAutoRunes(playerActionId) is deferred to just below persistState's
+  // declaration: it can call persistState() when it auto-fills a slot, and
+  // persistState reads state (targetingMode, ascentCount, …) not declared
+  // until well after this point — calling it here is a temporal-dead-zone crash.
 
   // ── Physics ─────────────────────────────────────────────────────────────
 
@@ -1778,6 +1781,13 @@ export function createGameScene(
       triggerSlotsNotif,
     )
   }
+
+  // Auto-fill empty rune slots from history on load. Runs here — after every
+  // state variable persistState reads has been declared — because a successful
+  // auto-fill calls persistState(); doing it up in the setup section would hit
+  // those `let`s before initialization (TDZ crash → grey screen on load).
+  applyAutoRunes(playerActionId)
+
   let playerPrevX = 0
   let playerPrevY = 0
 
