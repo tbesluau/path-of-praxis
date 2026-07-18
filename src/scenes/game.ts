@@ -2803,6 +2803,7 @@ export function createGameScene(
     if (lb.moreMaxLife !== 0) lifeFactors.push(moreF(lb.moreMaxLife, moreNodeLabel(lifeNodes, lifeDumped, MASTERY_DUMP.life.rate, (t, n) => getLifeNodeEffect(t, n).lifeMoreMax ?? 0, 'life mastery'), 'life mastery'))
     if (lb.lessMaxLife !== 0) lifeFactors.push({ text: mul(Math.max(0, 1 - lb.lessMaxLife / 100)), origin: 'life mastery (less)', kind: 'less', group: 'life mastery' })
     if (mb.moreMaxLife !== 0) lifeFactors.push(moreF(mb.moreMaxLife, moreNodeLabel(manaNodes, 0, 0, (t, n) => getManaNodeEffect(t, n).manaMoreLife ?? 0, 'mana mastery'), 'mana mastery'))
+    if (transcendCount > 0) lifeFactors.push({ text: mul(1 + transcendCount * balance.transcend.maxLifePerTranscend), origin: `transcendence (${transcendCount})`, kind: 'more', group: 'prestige' })
     const life: StatLine = { label: 'Life', total: fmt(computePlayerMaxLife()), factors: lifeFactors }
 
     const manaFactors: StatFactor[] = [{ text: fmt(balance.player.maxMana), origin: 'base', kind: 'base' }]
@@ -2812,8 +2813,9 @@ export function createGameScene(
     if (mb.moreMaxMana !== 0) manaFactors.push(moreF(mb.moreMaxMana, moreNodeLabel(manaNodes, dumpedFor('mana'), MASTERY_DUMP.mana.rate, (t, n) => getManaNodeEffect(t, n).manaMoreMax ?? 0, 'mana mastery'), 'mana mastery'))
     const mana: StatLine = { label: 'Mana', total: fmt(computePlayerMaxMana()), factors: manaFactors }
 
-    const physRes = Math.max(0, Math.min(100, lb.physRotResistance))
-    const eleRes  = Math.max(0, Math.min(100, lb.elementalResistance))
+    // Mirrors applyHit: the artifact all-resistances penalty subtracts before clamping.
+    const physRes = Math.max(0, Math.min(100, lb.physRotResistance - artifactMods.resistanceLess))
+    const eleRes  = Math.max(0, Math.min(100, lb.elementalResistance - artifactMods.resistanceLess))
 
     // ── Equipped actions ──────────────────────────────────────────────────
     const entries: { id: ActionId; slot: number }[] = [{ id: playerActionId, slot: 0 }]
@@ -2879,14 +2881,16 @@ export function createGameScene(
       if (ab.damageIncrease !== 0) dmgFactors.push(incF(ab.damageIncrease, 'action mastery total increased', 'action mastery'))
       if (ab.moreDamage !== 0) dmgFactors.push(moreF(ab.moreDamage,
         moreNodeLabel(actionNodes, actionDumped, MASTERY_DUMP.action.rate,
-          (t, n) => getActionNodeEffect(t, n).actionMoreDamage ?? 0, 'action mastery'), 'action mastery'))
+          (t, n) => getActionNodeEffect(t, n).actionMoreDamage ?? 0, 'action mastery')
+          + (artifactMods.globalMoreDamage !== 0 ? ' + artifacts' : ''), 'action mastery'))
       if (ab.lessActionDamage !== 0) dmgFactors.push({ text: mul(Math.max(0, 1 - ab.lessActionDamage / 100)), origin: 'action mastery (less)', kind: 'less', group: 'action mastery' })
       if (lbAct.lessActionDamage !== 0) dmgFactors.push({ text: mul(Math.max(0, 1 - lbAct.lessActionDamage / 100)), origin: 'life mastery (less)', kind: 'less', group: 'life mastery' })
       if (ab.actionSpeedIncrease !== 0) spdFactors.push(incF(ab.actionSpeedIncrease, 'action mastery total increased', 'action mastery'))
       if (ab.moreActionSpeed !== 0) spdFactors.push(moreF(ab.moreActionSpeed,
         moreNodeLabel(actionNodes, 0, 0,
-          (t, n) => getActionNodeEffect(t, n).actionMoreSpeed ?? 0, 'action mastery'), 'action mastery'))
-      if (ab.lessActionSpeed !== 0) spdFactors.push({ text: mul(Math.max(0, 1 - ab.lessActionSpeed / 100)), origin: 'action mastery (less)', kind: 'less', group: 'action mastery' })
+          (t, n) => getActionNodeEffect(t, n).actionMoreSpeed ?? 0, 'action mastery')
+          + (artifactMods.globalActionSpeedMore !== 0 ? ' + artifacts' : ''), 'action mastery'))
+      if (ab.lessActionSpeed !== 0) spdFactors.push({ text: mul(Math.max(0, 1 - ab.lessActionSpeed / 100)), origin: artifactMods.actionSpeedLess !== 0 ? 'action mastery + artifacts (less)' : 'action mastery (less)', kind: 'less', group: 'action mastery' })
 
       if (pbData) {
         const { b: pb, nodes: projNodes } = pbData
@@ -2912,43 +2916,49 @@ export function createGameScene(
         if (lib.damageIncrease !== 0) dmgFactors.push(incF(lib.damageIncrease, 'lightning mastery total increased', 'lightning mastery'))
         if (lib.moreDamage !== 0) dmgFactors.push(moreF(lib.moreDamage,
           moreNodeLabel(lightNodes, lightDumped, MASTERY_DUMP.lightning.rate,
-            (t, n) => getLightningNodeEffect(t, n).lightningMoreDamage ?? 0, 'lightning mastery'), 'lightning mastery'))
+            (t, n) => getLightningNodeEffect(t, n).lightningMoreDamage ?? 0, 'lightning mastery')
+            + (artifactMods.lightningMoreDamage !== 0 ? ' + artifacts' : ''), 'lightning mastery'))
         if (lib.actionSpeedIncrease !== 0) spdFactors.push(incF(lib.actionSpeedIncrease, 'lightning mastery total increased', 'lightning mastery'))
         if (lib.moreActionSpeed !== 0) spdFactors.push(moreF(lib.moreActionSpeed,
           moreNodeLabel(lightNodes, 0, 0,
-            (t, n) => getLightningNodeEffect(t, n).lightningMoreActionSpeed ?? 0, 'lightning mastery'), 'lightning mastery'))
+            (t, n) => getLightningNodeEffect(t, n).lightningMoreActionSpeed ?? 0, 'lightning mastery')
+            + (artifactMods.lightningMoreActionSpeed !== 0 ? ' + artifacts' : ''), 'lightning mastery'))
       }
       if (fbData) {
         const { b: fb, nodes: fireNodes, dumped: fireDumped } = fbData
         if (fb.damageIncrease !== 0) dmgFactors.push(incF(fb.damageIncrease, 'fire mastery total increased', 'fire mastery'))
         if (fb.moreDamage !== 0) dmgFactors.push(moreF(fb.moreDamage,
           moreNodeLabel(fireNodes, fireDumped, MASTERY_DUMP.fire.rate,
-            (t, n) => getFireNodeEffect(t, n).fireMoreDamage ?? 0, 'fire mastery'), 'fire mastery'))
-        if (fb.actionSpeedIncrease !== 0) spdFactors.push(incF(fb.actionSpeedIncrease, 'fire mastery total increased', 'fire mastery'))
+            (t, n) => getFireNodeEffect(t, n).fireMoreDamage ?? 0, 'fire mastery')
+            + (artifactMods.fireMoreDamage !== 0 ? ' + artifacts' : ''), 'fire mastery'))
+        if (fb.actionSpeedIncrease !== 0) spdFactors.push(incF(fb.actionSpeedIncrease, artifactMods.fireActionSpeedAdd !== 0 ? 'fire mastery + artifacts (increased)' : 'fire mastery total increased', 'fire mastery'))
       }
       if (cbData) {
         const { b: cb2, nodes: coldNodes, dumped: coldDumped } = cbData
         if (cb2.damageIncrease !== 0) dmgFactors.push(incF(cb2.damageIncrease, 'cold mastery total increased', 'cold mastery'))
         if (cb2.moreDamage !== 0) dmgFactors.push(moreF(cb2.moreDamage,
           moreNodeLabel(coldNodes, coldDumped, MASTERY_DUMP.cold.rate,
-            (t, n) => getColdNodeEffect(t, n).coldMoreDamage ?? 0, 'cold mastery'), 'cold mastery'))
-        if (cb2.actionSpeedIncrease !== 0) spdFactors.push(incF(cb2.actionSpeedIncrease, 'cold mastery total increased', 'cold mastery'))
+            (t, n) => getColdNodeEffect(t, n).coldMoreDamage ?? 0, 'cold mastery')
+            + (artifactMods.coldMoreDamage !== 0 ? ' + artifacts' : ''), 'cold mastery'))
+        if (cb2.actionSpeedIncrease !== 0) spdFactors.push(incF(cb2.actionSpeedIncrease, artifactMods.coldActionSpeedAdd !== 0 ? 'cold mastery + artifacts (increased)' : 'cold mastery total increased', 'cold mastery'))
       }
       if (rotData) {
         const { b: rotb, nodes: rotNodes, dumped: rotDumped } = rotData
         if (rotb.damageIncrease !== 0) dmgFactors.push(incF(rotb.damageIncrease, 'rot mastery total increased', 'rot mastery'))
         if (rotb.moreDamage !== 0) dmgFactors.push(moreF(rotb.moreDamage,
           moreNodeLabel(rotNodes, rotDumped, MASTERY_DUMP.rot.rate,
-            (t, n) => getRotNodeEffect(t, n).rotMoreDamage ?? 0, 'rot mastery'), 'rot mastery'))
-        if (rotb.actionSpeedIncrease !== 0) spdFactors.push(incF(rotb.actionSpeedIncrease, 'rot mastery total increased', 'rot mastery'))
+            (t, n) => getRotNodeEffect(t, n).rotMoreDamage ?? 0, 'rot mastery')
+            + (artifactMods.rotMoreDamage !== 0 ? ' + artifacts' : ''), 'rot mastery'))
+        if (rotb.actionSpeedIncrease !== 0) spdFactors.push(incF(rotb.actionSpeedIncrease, artifactMods.rotActionSpeedAdd !== 0 ? 'rot mastery + artifacts (increased)' : 'rot mastery total increased', 'rot mastery'))
       }
       if (phbData) {
         const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
         if (phb.damageIncrease !== 0) dmgFactors.push(incF(phb.damageIncrease, 'physical mastery total increased', 'physical mastery'))
         if (phb.moreDamage !== 0) dmgFactors.push(moreF(phb.moreDamage,
           moreNodeLabel(physNodes, physDumped, MASTERY_DUMP.physical.rate,
-            (t, n) => getPhysicalNodeEffect(t, n).physicalMoreDamage ?? 0, 'physical mastery'), 'physical mastery'))
-        if (phb.actionSpeedIncrease !== 0) spdFactors.push(incF(phb.actionSpeedIncrease, 'physical mastery total increased', 'physical mastery'))
+            (t, n) => getPhysicalNodeEffect(t, n).physicalMoreDamage ?? 0, 'physical mastery')
+            + (artifactMods.physicalMoreDamage !== 0 ? ' + artifacts' : ''), 'physical mastery'))
+        if (phb.actionSpeedIncrease !== 0) spdFactors.push(incF(phb.actionSpeedIncrease, artifactMods.physicalActionSpeedAdd !== 0 ? 'physical mastery + artifacts (increased)' : 'physical mastery total increased', 'physical mastery'))
       }
       if (arbData) {
         const { b: arb, nodes: areaNodes, dumped: areaDumped } = arbData
@@ -2977,10 +2987,35 @@ export function createGameScene(
       const triggerMult = triggerType === 'crit'       ? balance.ascent.critTriggerDamageMult
                         : triggerType === 'affliction'  ? balance.ascent.afflictionTriggerDamageMult
                         : 1
-      const adjustedDamage = tmp.actionDamage * slotPenalty * triggerMult
+      let adjustedDamage = tmp.actionDamage * slotPenalty * triggerMult
+
+      // Prestige multipliers — mirror the cast-time chain (ascension gate included):
+      // (1 + ascents·damagePerAscent) × universe points × transcendence × Onslaught.
+      if (ascentCount > 0 || transcendCount > 0) {
+        const ascentMult = 1 + ascentCount * balance.ascent.damagePerAscent
+        const uniMult = universeDamageMult()
+        const transMult = 1 + transcendCount * balance.transcend.damagePerTranscend
+        const onslaughtMult = hasRelic('onslaught') ? 1 + balance.transcend.onslaughtMoreDamage : 1
+        adjustedDamage *= ascentMult * uniMult * transMult * onslaughtMult
+        if (ascentMult !== 1) dmgFactors.push({ text: mul(ascentMult), origin: `ascension (${ascentCount})`, kind: 'more', group: 'prestige' })
+        if (uniMult !== 1) dmgFactors.push({ text: mul(uniMult), origin: 'universe points', kind: 'more', group: 'prestige' })
+        if (transMult !== 1) dmgFactors.push({ text: mul(transMult), origin: `transcendence (${transcendCount})`, kind: 'more', group: 'prestige' })
+        if (onslaughtMult !== 1) dmgFactors.push({ text: mul(onslaughtMult), origin: 'relic: Onslaught', kind: 'more', group: 'prestige' })
+      }
 
       const damage: StatLine = { label: 'Total damage', total: fmt(adjustedDamage, 2), factors: dmgFactors }
-      const speed:  StatLine = { label: 'Total speed (actions/sec)', total: fmt(tmp.actionSpeed, 2), factors: spdFactors }
+      // Fixed-frequency triggers (crit/affliction/mana) fire at their trigger's
+      // own rate — action speed only scales the damage of each firing. The
+      // displayed total is the resulting damage multiplier: speed × the 2s
+      // speed-balance interval (same formula the cast uses).
+      if (isDependentTrigger) {
+        spdFactors.push({ text: mul(balance.ascent.timeTriggerIntervalMs / 1000), origin: 'speed-balance interval (2s)', kind: 'mul' })
+      }
+      const speed:  StatLine = {
+        label: isDependentTrigger ? 'Increased damage from action speed' : 'Total speed (actions/sec)',
+        total: isDependentTrigger ? mul(tmp.actionSpeed * (balance.ascent.timeTriggerIntervalMs / 1000)) : fmt(tmp.actionSpeed, 2),
+        factors: spdFactors,
+      }
 
       // ── Multi-strike (calculation order) ──────────────────────────────────
       const multiStrike: OddsLine[] = []
@@ -2999,7 +3034,7 @@ export function createGameScene(
         if (chance > 0) multiStrike.push({ label: 'Additional target', odds: pct(chance), origin: parts.join(' + '), note: 'plus trance bonus while active' })
       }
       if (ab.doubleActionChance > 0) {
-        multiStrike.push({ label: 'Double action', odds: pct(ab.doubleActionChance), origin: 'action mastery', note: ab.doubleActionReroll ? 'rerolls once' : undefined })
+        multiStrike.push({ label: 'Double action', odds: pct(ab.doubleActionChance), origin: artifactMods.doubleActionChance !== 0 ? 'action mastery + artifacts' : 'action mastery', note: ab.doubleActionReroll ? 'rerolls once' : undefined })
       }
       if (pbData) {
         const pb = pbData.b
@@ -3033,7 +3068,8 @@ export function createGameScene(
         if (fb.burnDamageIncrease !== 0) df.push(incF(fb.burnDamageIncrease, 'fire mastery total increased', 'fire mastery'))
         if (fb.burnMoreDamage !== 0) df.push(moreF(fb.burnMoreDamage,
           moreNodeLabel(fireNodes, fireDumped, 0,
-            (t, n) => getFireNodeEffect(t, n).fireBurnMoreDamage ?? 0, 'fire mastery'), 'fire mastery'))
+            (t, n) => getFireNodeEffect(t, n).fireBurnMoreDamage ?? 0, 'fire mastery')
+            + (artifactMods.burnMoreDamage !== 0 ? ' + artifacts' : ''), 'fire mastery'))
         afflictionDamage = { label: 'Burn DPS', total: fmt(dps, 2), factors: df }
       } else if (phbData) {
         const { b: phb, nodes: physNodes, dumped: physDumped } = phbData
@@ -3047,7 +3083,8 @@ export function createGameScene(
         if (phb.bleedDamageIncrease !== 0) df.push(incF(phb.bleedDamageIncrease, 'physical mastery total increased', 'physical mastery'))
         if (phb.bleedMoreDamage !== 0) df.push(moreF(phb.bleedMoreDamage,
           moreNodeLabel(physNodes, physDumped, 0,
-            (t, n) => getPhysicalNodeEffect(t, n).physicalBleedMoreDamage ?? 0, 'physical mastery'), 'physical mastery'))
+            (t, n) => getPhysicalNodeEffect(t, n).physicalBleedMoreDamage ?? 0, 'physical mastery')
+            + (artifactMods.bleedMoreDamage !== 0 ? ' + artifacts' : ''), 'physical mastery'))
         afflictionDamage = { label: 'Bleed DPS', total: fmt(dps, 2), factors: df }
       } else if (libData) {
         const { b: lib } = libData
@@ -3065,7 +3102,8 @@ export function createGameScene(
         if (rotb.poisonDamageIncrease !== 0) df.push(incF(rotb.poisonDamageIncrease, 'rot mastery total increased', 'rot mastery'))
         if (rotb.poisonMoreDamage !== 0) df.push(moreF(rotb.poisonMoreDamage,
           moreNodeLabel(rotNodes, rotDumped, 0,
-            (t, n) => getRotNodeEffect(t, n).rotPoisonMoreDamage ?? 0, 'rot mastery'), 'rot mastery'))
+            (t, n) => getRotNodeEffect(t, n).rotPoisonMoreDamage ?? 0, 'rot mastery')
+            + (artifactMods.poisonMoreDamage !== 0 ? ' + artifacts' : ''), 'rot mastery'))
         afflictionDamage = { label: 'Poison DPS', total: fmt(dps, 2), factors: df }
       } else if (cbData) {
         const { b: cb2 } = cbData
@@ -3135,7 +3173,9 @@ export function createGameScene(
       life, mana,
       physRotResist: pct(physRes),
       elementalResist: pct(eleRes),
-      resistNote: 'Phys/Rot applies to physical & rot hits; Elemental to fire, lightning & cold. Kiting adds more. Capped at 100%.',
+      resistNote: 'Phys/Rot applies to physical & rot hits; Elemental to fire, lightning & cold. Kiting adds more. Capped at 100%.'
+        + (artifactMods.resistanceLess > 0 ? ` Includes −${fmt(artifactMods.resistanceLess)}% from artifacts.` : '')
+        + (artifactMods.damageTakenMore > 0 ? ` Artifacts: +${fmt(artifactMods.damageTakenMore)}% damage taken.` : ''),
       actions,
     }
   }
