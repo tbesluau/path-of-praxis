@@ -104,7 +104,8 @@ function renderActionBlock(block: ActionStatBlock): HTMLElement {
 
   section.appendChild(renderStatLine(block.damage))
   if (block.isDependentTrigger) {
-    section.appendChild(el('div', 'stat-note', `Action speed: ${block.speed.total} actions/sec per trigger event`))
+    section.appendChild(renderStatLine(block.speed))
+    section.appendChild(el('div', 'stat-note', 'This slot fires at its trigger\'s own rate — action speed increases damage instead of cast rate.'))
   } else {
     section.appendChild(renderStatLine(block.speed))
   }
